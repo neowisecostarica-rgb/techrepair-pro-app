@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useUserAccount, withOrgId } from '../components/hooks/useOrgData';
+import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 
 export default function Inventario() {
   const [showModal, setShowModal] = useState(false);

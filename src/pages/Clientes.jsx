@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, User, Mail, Phone, Building2, History } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useUserAccount, withOrgId } from '../hooks/useOrgData';
 
 export default function Clientes() {
   const [showModal, setShowModal] = useState(false);
@@ -16,10 +17,14 @@ export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCliente, setSelectedCliente] = useState(null);
   const queryClient = useQueryClient();
+  const { userAccount } = useUserAccount();
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes'],
-    queryFn: () => base44.entities.Cliente.list('-created_date'),
+    queryKey: ['clientes', userAccount?.organization_id],
+    queryFn: () => base44.entities.Cliente.filter({
+      organization_id: userAccount.organization_id
+    }),
+    enabled: !!userAccount?.organization_id,
   });
 
   const { data: ordenesCliente = [] } = useQuery({
@@ -29,7 +34,7 @@ export default function Clientes() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Cliente.create(data),
+    mutationFn: (data) => base44.entities.Cliente.create(withOrgId(data, userAccount)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       setShowModal(false);

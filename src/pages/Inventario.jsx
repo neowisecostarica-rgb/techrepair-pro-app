@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useUserAccount, withOrgId } from '../hooks/useOrgData';
 
 export default function Inventario() {
   const [showModal, setShowModal] = useState(false);
@@ -16,14 +17,18 @@ export default function Inventario() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
   const queryClient = useQueryClient();
+  const { userAccount } = useUserAccount();
 
   const { data: items = [] } = useQuery({
-    queryKey: ['inventario'],
-    queryFn: () => base44.entities.Inventario.list('-created_date'),
+    queryKey: ['inventario', userAccount?.organization_id],
+    queryFn: () => base44.entities.Inventario.filter({
+      organization_id: userAccount.organization_id
+    }),
+    enabled: !!userAccount?.organization_id,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Inventario.create(data),
+    mutationFn: (data) => base44.entities.Inventario.create(withOrgId(data, userAccount)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
       setShowModal(false);

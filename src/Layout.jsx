@@ -64,6 +64,27 @@ export default function Layout({ children, currentPageName }) {
     menuItems = orgAdminMenu;
   }
 
+  // Guard: bloquear SUPER_ADMIN de vistas operativas
+  const operationalPages = ['Dashboard', 'MiDia', 'OrdenesTrabajo', 'Clientes', 'Inventario', 
+                             'PuntoVenta', 'Agenda', 'Reciclaje', 'Calidad'];
+  
+  if (userAccount?.role === 'SUPER_ADMIN' && operationalPages.includes(currentPageName)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acceso Restringido</h1>
+          <p className="text-slate-600 mb-6">Los SUPER_ADMIN no tienen acceso a vistas operativas.</p>
+          <Button onClick={() => window.location.href = createPageUrl('Saas')}>
+            Ir al Panel SaaS
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const handleLogout = () => {
     base44.auth.logout();
   };

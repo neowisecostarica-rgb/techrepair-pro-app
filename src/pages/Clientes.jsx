@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, User, Mail, Phone, Building2, History } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useUserAccount, withOrgId } from '../hooks/useOrgData';
+import { useUserAccount, withOrgId } from '../components/hooks/useOrgData';
 
 export default function Clientes() {
   const [showModal, setShowModal] = useState(false);

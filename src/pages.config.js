@@ -11,6 +11,7 @@ import Saas from './pages/Saas';
 import Settings from './pages/Settings';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
+import MigrationAdmin from './pages/MigrationAdmin';
 import __Layout from './Layout.jsx';
 
 
@@ -28,6 +29,7 @@ export const PAGES = {
     "Settings": Settings,
     "Onboarding": Onboarding,
     "Home": Home,
+    "MigrationAdmin": MigrationAdmin,
 }
 
 export const pagesConfig = {

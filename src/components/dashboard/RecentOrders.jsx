@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Clock, CheckCircle, AlertTriangle, Circle } from 'lucide-react';
+import { Clock, CheckCircle, AlertTriangle, Circle, Wrench } from 'lucide-react';
 
 const estadoConfig = {
   recibido: { color: 'bg-slate-100 text-slate-700', icon: Circle },

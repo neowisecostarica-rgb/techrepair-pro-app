@@ -1,25 +1,33 @@
+import Agenda from './pages/Agenda';
+import Calidad from './pages/Calidad';
+import Clientes from './pages/Clientes';
 import Dashboard from './pages/Dashboard';
+import Inventario from './pages/Inventario';
 import MiDia from './pages/MiDia';
 import OrdenesTrabajo from './pages/OrdenesTrabajo';
-import Clientes from './pages/Clientes';
-import Inventario from './pages/Inventario';
 import PuntoVenta from './pages/PuntoVenta';
-import Agenda from './pages/Agenda';
 import Reciclaje from './pages/Reciclaje';
-import Calidad from './pages/Calidad';
+import Saas from './pages/Saas';
+import Settings from './pages/Settings';
+import Onboarding from './pages/Onboarding';
+import Home from './pages/Home';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "Agenda": Agenda,
+    "Calidad": Calidad,
+    "Clientes": Clientes,
     "Dashboard": Dashboard,
+    "Inventario": Inventario,
     "MiDia": MiDia,
     "OrdenesTrabajo": OrdenesTrabajo,
-    "Clientes": Clientes,
-    "Inventario": Inventario,
     "PuntoVenta": PuntoVenta,
-    "Agenda": Agenda,
     "Reciclaje": Reciclaje,
-    "Calidad": Calidad,
+    "Saas": Saas,
+    "Settings": Settings,
+    "Onboarding": Onboarding,
+    "Home": Home,
 }
 
 export const pagesConfig = {

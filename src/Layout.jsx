@@ -20,13 +20,31 @@ import { Button } from '@/components/ui/button';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    base44.auth.me().then(async (u) => {
+      setUser(u);
+      // Obtener UserAccount
+      const accounts = await base44.entities.UserAccount.filter({ user_id: u.id });
+      if (accounts.length > 0) {
+        setUserAccount(accounts[0]);
+      }
+    }).catch(() => {});
   }, []);
 
-  const menuItems = [
+  // Menús según role
+  const superAdminMenu = [
+    { label: 'Panel SaaS', path: 'Saas', icon: LayoutDashboard },
+  ];
+
+  const orgAdminMenu = [
+    { label: 'Configuración', path: 'Settings', icon: LayoutDashboard },
+    { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
+  ];
+
+  const operationalMenu = [
     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
     { label: 'Mi Día', path: 'MiDia', icon: Wrench },
     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
@@ -37,6 +55,14 @@ export default function Layout({ children, currentPageName }) {
     { label: 'Reciclaje', path: 'Reciclaje', icon: Recycle },
     { label: 'Calidad', path: 'Calidad', icon: AlertCircle },
   ];
+
+  // Seleccionar menú según role
+  let menuItems = operationalMenu;
+  if (userAccount?.role === 'SUPER_ADMIN') {
+    menuItems = superAdminMenu;
+  } else if (userAccount?.role === 'ORG_ADMIN') {
+    menuItems = orgAdminMenu;
+  }
 
   const handleLogout = () => {
     base44.auth.logout();
@@ -116,7 +142,9 @@ export default function Layout({ children, currentPageName }) {
                   <div className="px-4 py-3 bg-slate-50 rounded-xl">
                     <p className="text-sm font-medium text-slate-900">{user.full_name}</p>
                     <p className="text-xs text-slate-500">{user.email}</p>
-                    <p className="text-xs text-emerald-600 font-medium mt-1 capitalize">{user.role}</p>
+                    {userAccount && (
+                      <p className="text-xs text-emerald-600 font-medium mt-1">{userAccount.role}</p>
+                    )}
                   </div>
                   <Button
                     onClick={handleLogout}

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
-import { useAuthContext } from './components/contexts/AuthContext';
+import { AuthProvider, useAuthContext } from './components/contexts/AuthContext';
 import ImpersonationBanner from './components/superadmin/ImpersonationBanner';
 import {
   LayoutDashboard,
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function Layout({ children, currentPageName }) {
+function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, effectiveRole, isImpersonating, effectiveOrgId, refreshAuth } = useAuthContext();
 
@@ -231,5 +231,13 @@ return (
       </main>
     </div>
   </>
-);
+  );
+}
+
+export default function Layout(props) {
+  return (
+    <AuthProvider>
+      <LayoutContent {...props} />
+    </AuthProvider>
+  );
 }

@@ -14,6 +14,8 @@ import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '../utils';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -37,6 +39,7 @@ export default function OrdenesTrabajo() {
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
+  const navigate = useNavigate();
 
   const { data: ordenes = [] } = useQuery({
     queryKey: ['ordenes', userAccount?.organization_id],
@@ -65,6 +68,22 @@ export default function OrdenesTrabajo() {
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', userAccount?.organization_id],
     queryFn: () => base44.entities.Branch.filter({
+      organization_id: userAccount.organization_id
+    }),
+    enabled: !!userAccount?.organization_id,
+  });
+
+  const { data: diagnosticos = [] } = useQuery({
+    queryKey: ['diagnosticos', userAccount?.organization_id],
+    queryFn: () => base44.entities.Diagnostico.filter({
+      organization_id: userAccount.organization_id
+    }),
+    enabled: !!userAccount?.organization_id,
+  });
+
+  const { data: ventas = [] } = useQuery({
+    queryKey: ['ventas', userAccount?.organization_id],
+    queryFn: () => base44.entities.Venta.filter({
       organization_id: userAccount.organization_id
     }),
     enabled: !!userAccount?.organization_id,
@@ -128,6 +147,71 @@ export default function OrdenesTrabajo() {
   const getEquipoInfo = (equipoId) => {
     const equipo = equipos.find(e => e.id === equipoId);
     return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';
+  };
+
+  const handleCobrarTrabajo = async (orden) => {
+    // Verificar que exista diagnóstico completado
+    const diagnostico = diagnosticos.find(d => 
+      d.orden_trabajo_id === orden.id && 
+      d.estado_diagnostico === 'completado'
+    );
+
+    if (!diagnostico) {
+      alert('No hay diagnóstico completado para esta orden');
+      return;
+    }
+
+    // Verificar que no exista venta ya
+    const ventaExistente = ventas.find(v => v.referencia_ot_id === orden.id);
+    if (ventaExistente && ventaExistente.estado === 'pagada') {
+      alert('Esta orden ya fue cobrada');
+      return;
+    }
+
+    // Crear venta en borrador con items del diagnóstico
+    const ventaData = withOrgId({
+      branch_id: orden.branch_id,
+      cliente_id: orden.cliente_id,
+      origen_venta: 'taller',
+      referencia_ot_id: orden.id,
+      referencia_diagnostico_id: diagnostico.id,
+      total: diagnostico.propuesta_precio_total || 0,
+      subtotal: (diagnostico.propuesta_precio_total || 0) / 1.13,
+      impuesto: (diagnostico.propuesta_precio_total || 0) * 0.13 / 1.13,
+      estado: 'borrador',
+      created_by_user_id: user?.id,
+    }, userAccount);
+
+    try {
+      const venta = await base44.entities.Venta.create(ventaData);
+      
+      // Crear items desde propuesta_precio_detalle si existe
+      if (diagnostico.propuesta_precio_detalle && Array.isArray(diagnostico.propuesta_precio_detalle)) {
+        for (const item of diagnostico.propuesta_precio_detalle) {
+          await base44.entities.VentaItem.create(withOrgId({
+            venta_id: venta.id,
+            tipo: 'servicio', // Asumir servicio por defecto
+            referencia_id: null,
+            descripcion: item.descripcion,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio_unitario,
+            subtotal: item.subtotal
+          }, userAccount));
+        }
+      }
+
+      // Redirigir al POS con la venta precargada
+      navigate(createPageUrl('PuntoVenta'), { 
+        state: { 
+          venta: {
+            ...venta,
+            items: diagnostico.propuesta_precio_detalle || []
+          }
+        } 
+      });
+    } catch (error) {
+      alert('Error al crear venta: ' + error.message);
+    }
   };
 
   return (
@@ -427,6 +511,14 @@ export default function OrdenesTrabajo() {
                     className="bg-gradient-to-r from-purple-500 to-blue-500"
                   >
                     🧪 Iniciar Diagnóstico
+                  </Button>
+                )}
+                {(selectedOT.estado === 'DIAGNOSTICADA' || selectedOT.estado === 'FINALIZADA') && (
+                  <Button 
+                    onClick={() => handleCobrarTrabajo(selectedOT)}
+                    className="bg-gradient-to-r from-green-500 to-emerald-500"
+                  >
+                    💳 Cobrar Trabajo
                   </Button>
                 )}
                 <Button 

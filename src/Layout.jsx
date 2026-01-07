@@ -64,6 +64,18 @@ export default function Layout({ children, currentPageName }) {
     menuItems = superAdminMenu;
   } else if (userAccount?.role === 'ORG_ADMIN') {
     menuItems = orgAdminMenu;
+  } else if (userAccount?.role === 'CASHIER') {
+    // CASHIER solo ve: Clientes, POS
+    menuItems = [
+      { label: 'Clientes', path: 'Clientes', icon: Users },
+      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
+      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
+    ];
+  } else if (userAccount?.role === 'TECHNICIAN') {
+    // TECHNICIAN solo ve: Mi Día
+    menuItems = [
+      { label: 'Mi Día', path: 'MiDia', icon: Wrench },
+    ];
   }
 
   // Guard: bloquear SUPER_ADMIN de vistas operativas

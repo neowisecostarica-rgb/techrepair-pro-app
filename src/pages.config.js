@@ -1,6 +1,7 @@
 import Agenda from './pages/Agenda';
 import Calidad from './pages/Calidad';
 import Clientes from './pages/Clientes';
+import ColaRevision from './pages/ColaRevision';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Inventario from './pages/Inventario';
@@ -12,7 +13,6 @@ import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import ColaRevision from './pages/ColaRevision';
 import __Layout from './Layout.jsx';
 
 
@@ -20,6 +20,7 @@ export const PAGES = {
     "Agenda": Agenda,
     "Calidad": Calidad,
     "Clientes": Clientes,
+    "ColaRevision": ColaRevision,
     "Dashboard": Dashboard,
     "Home": Home,
     "Inventario": Inventario,
@@ -31,7 +32,6 @@ export const PAGES = {
     "Reciclaje": Reciclaje,
     "Saas": Saas,
     "Settings": Settings,
-    "ColaRevision": ColaRevision,
 }
 
 export const pagesConfig = {

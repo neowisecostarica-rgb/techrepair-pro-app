@@ -58,26 +58,28 @@ export default function Layout({ children, currentPageName }) {
     { label: 'Calidad', path: 'Calidad', icon: AlertCircle },
   ];
 
-  // Seleccionar menú según role
-  let menuItems = operationalMenu;
-  if (userAccount?.role === 'SUPER_ADMIN') {
-    menuItems = superAdminMenu;
-  } else if (userAccount?.role === 'ORG_ADMIN') {
-    menuItems = orgAdminMenu;
-  } else if (userAccount?.role === 'SALES') {
-  // SALES solo ve: Clientes, OT, POS
+ // Seleccionar menú según role (FIX: no default operativo)
+let menuItems = [];
+
+if (!userAccount) {
+  // Mientras carga el UserAccount, no mostrar menú
+  menuItems = [];
+} else if (userAccount.role === 'SUPER_ADMIN') {
+  menuItems = superAdminMenu;
+} else if (userAccount.role === 'ORG_ADMIN') {
+  menuItems = orgAdminMenu;
+} else if (userAccount.role === 'SALES') {
   menuItems = [
     { label: 'Clientes', path: 'Clientes', icon: Users },
     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
   ];
+} else if (userAccount.role === 'TECHNICIAN') {
+  menuItems = [
+    { label: 'Mi Día', path: 'MiDia', icon: Wrench },
+  ];
+}
 
-  } else if (userAccount?.role === 'TECHNICIAN') {
-    // TECHNICIAN solo ve: Mi Día
-    menuItems = [
-      { label: 'Mi Día', path: 'MiDia', icon: Wrench },
-    ];
-  }
 
   // Guard: bloquear SUPER_ADMIN de vistas operativas
   const operationalPages = ['Dashboard', 'MiDia', 'ColaRevision', 'OrdenesTrabajo', 'Clientes', 'Inventario', 

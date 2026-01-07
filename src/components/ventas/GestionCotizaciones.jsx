@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Send, FileText, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Send, FileText, Trash2, AlertCircle, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { withOrgId } from '@/components/hooks/useOrgData';
@@ -54,6 +54,37 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       setShowModal(false);
       resetForm();
     },
+  });
+
+  const enviarSeguimientoMutation = useMutation({
+    mutationFn: async ({ cotizacion, cliente }) => {
+      const canal = cliente.telefono ? 'whatsapp' : 'email';
+      const mensaje = `Hola ${cliente.nombre_completo}, te escribo para dar seguimiento a la cotización que te compartimos. Quedo atento(a) si tienes alguna duda. — ${user.full_name || 'El equipo'}`;
+      
+      return await base44.entities.MensajeCliente.create(withOrgId({
+        cliente_id: clienteId,
+        orden_trabajo_id: ordenTrabajoId || null,
+        remitente_id: user.id,
+        remitente_nombre: user.full_name || user.email,
+        tipo: 'seguimiento',
+        plantilla_usada: 'Seguimiento de Cotización',
+        asunto: 'Seguimiento de tu cotización',
+        contenido: mensaje,
+        canal: canal,
+        enviado: true,
+        enviado_at: new Date().toISOString(),
+      }, userAccount));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mensajes-cliente'] });
+      alert('Seguimiento enviado correctamente');
+    },
+  });
+
+  const { data: cliente } = useQuery({
+    queryKey: ['cliente', clienteId],
+    queryFn: () => base44.entities.Cliente.filter({ id: clienteId }).then(res => res[0]),
+    enabled: !!clienteId,
   });
 
   const resetForm = () => {
@@ -221,6 +252,18 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                               Enviar
                             </Button>
                           </>
+                        )}
+                        {cot.estado === 'enviada' && cliente && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => enviarSeguimientoMutation.mutate({ cotizacion: cot, cliente })}
+                            disabled={enviarSeguimientoMutation.isPending}
+                            className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Dar seguimiento
+                          </Button>
                         )}
                       </div>
                     </div>

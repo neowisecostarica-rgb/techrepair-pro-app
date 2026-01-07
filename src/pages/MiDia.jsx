@@ -20,6 +20,8 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
+import NotificacionesPanel from '@/components/notificaciones/NotificacionesPanel';
+import { useNotificacionesAutomaticas } from '@/components/notificaciones/useNotificacionesAutomaticas';
 
 export default function MiDia() {
   const [user, setUser] = useState(null);
@@ -157,6 +159,9 @@ export default function MiDia() {
     otro: 'Otro'
   };
 
+  // Generar notificaciones automáticas
+  useNotificacionesAutomaticas(userAccount);
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -164,6 +169,9 @@ export default function MiDia() {
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
         <p className="text-slate-500">Gestión de trabajos asignados</p>
       </div>
+
+      {/* Notificaciones */}
+      <NotificacionesPanel userAccount={userAccount} />
 
       {/* Sección ACTIVO */}
       <div>

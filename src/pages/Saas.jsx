@@ -14,6 +14,7 @@ import ImpersonationBanner from '../components/superadmin/ImpersonationBanner';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
+import { useAuthContext } from '../components/contexts/AuthContext';
 
 export default function Saas() {
   return (
@@ -33,22 +34,20 @@ function SaasContent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  const { user: authUser, isImpersonating: authIsImpersonating, effectiveOrgId } = useAuthContext();
+
   useEffect(() => {
-    base44.auth.me().then(u => {
-      setUser(u);
-      // Verificar si es Super Admin
-      if (!u.is_super_admin) {
-        navigate(createPageUrl('Dashboard'));
-      }
-      // Verificar si está impersonando
-      if (u.impersonating_org_id) {
-        setIsImpersonating(true);
-        base44.entities.Organization.filter({ id: u.impersonating_org_id }).then(orgs => {
+    if (authUser) {
+      setUser(authUser);
+      setIsImpersonating(authIsImpersonating);
+      
+      if (authIsImpersonating && effectiveOrgId) {
+        base44.entities.Organization.filter({ id: effectiveOrgId }).then(orgs => {
           if (orgs.length > 0) setImpersonatedOrg(orgs[0]);
         });
       }
-    }).catch(() => {});
-  }, []);
+    }
+  }, [authUser, authIsImpersonating, effectiveOrgId]);
 
   const { data: organizations = [] } = useQuery({
     queryKey: ['organizations'],

@@ -90,7 +90,7 @@ function SettingsContent() {
       </div>
 
       <Tabs defaultValue="empresa" className="space-y-6">
-        <TabsList className="bg-white border border-slate-200 p-1">
+        <TabsList className="bg-white border border-slate-200 p-1 grid grid-cols-6">
           <TabsTrigger value="empresa" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
             <Building2 className="w-4 h-4 mr-2" />
             Empresa
@@ -102,6 +102,15 @@ function SettingsContent() {
           <TabsTrigger value="usuarios" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
             <Users className="w-4 h-4 mr-2" />
             Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="senales" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+            🔔 Señales
+          </TabsTrigger>
+          <TabsTrigger value="aprobaciones" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+            ✅ Aprobaciones
+          </TabsTrigger>
+          <TabsTrigger value="config" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+            ⚙️ Config
           </TabsTrigger>
         </TabsList>
 
@@ -198,6 +207,21 @@ function SettingsContent() {
             currentUserId={user?.id}
             branches={branches}
           />
+        </TabsContent>
+
+        {/* Tab Señales */}
+        <TabsContent value="senales">
+          <SenalesNegocio userAccount={userAccount} />
+        </TabsContent>
+
+        {/* Tab Aprobaciones */}
+        <TabsContent value="aprobaciones">
+          <AprobacionesPanel userAccount={userAccount} user={user} />
+        </TabsContent>
+
+        {/* Tab Configuración */}
+        <TabsContent value="config">
+          <ConfiguracionPanel />
         </TabsContent>
       </Tabs>
 

@@ -18,6 +18,13 @@ export default function PageGuard({ allowedRoles, children }) {
     const checkAccess = async () => {
       try {
         const user = await base44.auth.me();
+
+        // Si permite SUPER_ADMIN y el usuario lo es, dar acceso
+        if (allowedRoles.includes('SUPER_ADMIN') && user.is_super_admin) {
+          setLoading(false);
+          return;
+        }
+
         const accounts = await base44.entities.UserAccount.filter({ user_id: user.id });
         
         if (accounts.length > 0) {

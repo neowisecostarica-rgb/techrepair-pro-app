@@ -24,14 +24,45 @@ export default function Saas() {
 }
 
 function SaasContent() {
+  const [user, setUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonatedOrg, setImpersonatedOrg] = useState(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    base44.auth.me().then(u => {
+      setUser(u);
+      // Verificar si es Super Admin
+      if (!u.is_super_admin) {
+        navigate(createPageUrl('Dashboard'));
+      }
+      // Verificar si está impersonando
+      if (u.impersonating_org_id) {
+        setIsImpersonating(true);
+        base44.entities.Organization.filter({ id: u.impersonating_org_id }).then(orgs => {
+          if (orgs.length > 0) setImpersonatedOrg(orgs[0]);
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   const { data: organizations = [] } = useQuery({
     queryKey: ['organizations'],
     queryFn: () => base44.entities.Organization.list('-created_date'),
+  });
+
+  const { data: allUserAccounts = [] } = useQuery({
+    queryKey: ['all-user-accounts'],
+    queryFn: () => base44.entities.UserAccount.list(),
+  });
+
+  const { data: allOrders = [] } = useQuery({
+    queryKey: ['all-orders'],
+    queryFn: () => base44.entities.OrdenTrabajo.list(),
   });
 
   const { data: partners = [] } = useQuery({
@@ -155,6 +186,9 @@ function SaasContent() {
         role: 'ORG_ADMIN',
         active: true,
       });
+
+      // Auditar creación
+      await recordAudit('create_org', org.id, data.organization.name, 'Organización creada');
       
       return org;
     },
@@ -191,22 +225,71 @@ function SaasContent() {
     org.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Panel SaaS</h1>
-          <p className="text-slate-500">Gestión de organizaciones y configuración</p>
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+          <p className="text-slate-600">Cargando...</p>
         </div>
-        <Button
-          onClick={() => setShowModal(true)}
-          className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Crear Empresa
-        </Button>
       </div>
+    );
+  }
+
+  if (!user.is_super_admin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-orange-50 flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ShieldAlert className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acceso Denegado</h1>
+          <p className="text-slate-600 mb-6">Solo Super Admins pueden acceder a este panel.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {isImpersonating && impersonatedOrg && (
+        <ImpersonationBanner 
+          organizationName={impersonatedOrg.name}
+          onEndImpersonation={handleEndImpersonation}
+        />
+      )}
+      
+      <div className={`max-w-7xl mx-auto space-y-6 ${isImpersonating ? 'pt-20' : ''}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                <ShieldAlert className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-slate-900">Panel Super Admin</h1>
+                <p className="text-slate-500">Gobierno y soporte de plataforma</p>
+              </div>
+            </div>
+            {user && (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge className="bg-purple-100 text-purple-700 border-0">
+                  👑 Super Admin
+                </Badge>
+                <span className="text-sm text-slate-600">{user.email}</span>
+              </div>
+            )}
+          </div>
+          <Button
+            onClick={() => setShowModal(true)}
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:shadow-lg transition-all"
+            disabled={isImpersonating}
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Nueva Organización
+          </Button>
+        </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -262,51 +345,31 @@ function SaasContent() {
         </CardContent>
       </Card>
 
-      {/* Organizations List */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b border-slate-100">
-          <CardTitle className="text-lg font-semibold">Empresas Registradas</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Empresa</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">País</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Plan</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredOrgs.map(org => (
-                  <tr key={org.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-semibold text-slate-900">{org.name}</p>
-                        {org.legal_name && <p className="text-sm text-slate-500">{org.legal_name}</p>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">{org.country}</td>
-                    <td className="px-6 py-4">
-                      <Badge className="bg-blue-100 text-blue-700 border-0">
-                        {org.plan}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge className={org.status === 'active' 
-                        ? 'bg-emerald-100 text-emerald-700 border-0' 
-                        : 'bg-red-100 text-red-700 border-0'}>
-                        {org.status}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Grid de organizaciones */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredOrgs.map(org => (
+          <OrganizationCard
+            key={org.id}
+            organization={org}
+            stats={getOrgStats(org.id)}
+            onViewDetails={(org) => {
+              recordAudit('view_org_detail', org.id, org.name);
+              alert('Vista de detalles (no implementado en MVP)');
+            }}
+            onImpersonate={handleImpersonate}
+            onToggleStatus={handleToggleStatus}
+          />
+        ))}
+      </div>
+
+      {filteredOrgs.length === 0 && (
+        <Card className="border-0 shadow-lg">
+          <CardContent className="p-12 text-center">
+            <Building2 className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+            <p className="text-slate-400">No se encontraron organizaciones</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Modal Crear Empresa */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -383,6 +446,7 @@ function SaasContent() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }

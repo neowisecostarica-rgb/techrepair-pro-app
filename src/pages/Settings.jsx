@@ -11,8 +11,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, MapPin, Users, Plus, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import PageGuard from '../components/guards/PageGuard';
 
 export default function Settings() {
+  return (
+    <PageGuard allowedRoles={['ORG_ADMIN']}>
+      <SettingsContent />
+    </PageGuard>
+  );
+}
+
+function SettingsContent() {
   const [user, setUser] = useState(null);
   const [userAccount, setUserAccount] = useState(null);
   const [showBranchModal, setShowBranchModal] = useState(false);

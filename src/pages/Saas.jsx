@@ -9,8 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Building2, Plus, Search } from 'lucide-react';
+import PageGuard from '../components/guards/PageGuard';
 
 export default function Saas() {
+  return (
+    <PageGuard allowedRoles={['SUPER_ADMIN']}>
+      <SaasContent />
+    </PageGuard>
+  );
+}
+
+function SaasContent() {
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);

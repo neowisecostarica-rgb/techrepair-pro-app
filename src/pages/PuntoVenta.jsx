@@ -10,8 +10,17 @@ import { ShoppingCart, Plus, Trash2, Search, DollarSign, Package, Wrench } from 
 import { Badge } from '@/components/ui/badge';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { useLocation } from 'react-router-dom';
+import PageGuard from '../components/guards/PageGuard';
 
 export default function PuntoVenta() {
+  return (
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN']}>
+      <PuntoVentaContent />
+    </PageGuard>
+  );
+}
+
+function PuntoVentaContent() {
   const location = useLocation();
   const preloadedVenta = location.state?.venta;
   

@@ -23,8 +23,17 @@ import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 import NotificacionesPanel from '@/components/notificaciones/NotificacionesPanel';
 import { useNotificacionesAutomaticas } from '@/components/notificaciones/useNotificacionesAutomaticas';
 import { useUserAccount } from '@/components/hooks/useOrgData';
+import PageGuard from '@/components/guards/PageGuard';
 
 export default function MiDia() {
+  return (
+    <PageGuard allowedRoles={['TECHNICIAN']}>
+      <MiDiaContent />
+    </PageGuard>
+  );
+}
+
+function MiDiaContent() {
   const [user, setUser] = useState(null);
   const { userAccount } = useUserAccount();
   const [showPauseModal, setShowPauseModal] = useState(false);

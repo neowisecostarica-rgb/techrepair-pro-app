@@ -18,8 +18,17 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import PageGuard from '../components/guards/PageGuard';
 
 export default function Dashboard() {
+  return (
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'AUDITOR', 'CFO', 'CEO']}>
+      <DashboardContent />
+    </PageGuard>
+  );
+}
+
+function DashboardContent() {
   const { userAccount } = useUserAccount();
   
   const { data: ordenes = [] } = useQuery({

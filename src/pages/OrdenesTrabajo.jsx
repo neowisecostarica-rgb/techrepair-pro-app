@@ -16,6 +16,7 @@ import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
+import PageGuard from '../components/guards/PageGuard';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -30,6 +31,14 @@ const estadoConfig = {
 };
 
 export default function OrdenesTrabajo() {
+  return (
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN']}>
+      <OrdenesTrabajoContent />
+    </PageGuard>
+  );
+}
+
+function OrdenesTrabajoContent() {
   const [showModal, setShowModal] = useState(false);
   const [editingOT, setEditingOT] = useState(null);
   const [selectedOT, setSelectedOT] = useState(null);

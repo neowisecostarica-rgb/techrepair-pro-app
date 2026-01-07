@@ -9,11 +9,12 @@ import MiDia from './pages/MiDia';
 import MigrationAdmin from './pages/MigrationAdmin';
 import Onboarding from './pages/Onboarding';
 import OrdenesTrabajo from './pages/OrdenesTrabajo';
+import PortalCliente from './pages/PortalCliente';
 import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import PortalCliente from './pages/PortalCliente';
+import CrearUsuariosPrueba from './pages/CrearUsuariosPrueba';
 import __Layout from './Layout.jsx';
 
 
@@ -29,11 +30,12 @@ export const PAGES = {
     "MigrationAdmin": MigrationAdmin,
     "Onboarding": Onboarding,
     "OrdenesTrabajo": OrdenesTrabajo,
+    "PortalCliente": PortalCliente,
     "PuntoVenta": PuntoVenta,
     "Reciclaje": Reciclaje,
     "Saas": Saas,
     "Settings": Settings,
-    "PortalCliente": PortalCliente,
+    "CrearUsuariosPrueba": CrearUsuariosPrueba,
 }
 
 export const pagesConfig = {

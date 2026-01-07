@@ -48,6 +48,7 @@ export default function Layout({ children, currentPageName }) {
   const operationalMenu = [
     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
     { label: 'Mi Día', path: 'MiDia', icon: Wrench },
+    { label: 'Cola Revisión', path: 'ColaRevision', icon: LayoutDashboard },
     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
     { label: 'Clientes', path: 'Clientes', icon: Users },
     { label: 'Inventario', path: 'Inventario', icon: Package },
@@ -66,7 +67,7 @@ export default function Layout({ children, currentPageName }) {
   }
 
   // Guard: bloquear SUPER_ADMIN de vistas operativas
-  const operationalPages = ['Dashboard', 'MiDia', 'OrdenesTrabajo', 'Clientes', 'Inventario', 
+  const operationalPages = ['Dashboard', 'MiDia', 'ColaRevision', 'OrdenesTrabajo', 'Clientes', 'Inventario', 
                              'PuntoVenta', 'Agenda', 'Reciclaje', 'Calidad'];
   
   if (userAccount?.role === 'SUPER_ADMIN' && operationalPages.includes(currentPageName)) {

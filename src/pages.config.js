@@ -2,6 +2,7 @@ import Agenda from './pages/Agenda';
 import Calidad from './pages/Calidad';
 import Clientes from './pages/Clientes';
 import ColaRevision from './pages/ColaRevision';
+import CrearUsuariosPrueba from './pages/CrearUsuariosPrueba';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Inventario from './pages/Inventario';
@@ -14,7 +15,6 @@ import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import CrearUsuariosPrueba from './pages/CrearUsuariosPrueba';
 import __Layout from './Layout.jsx';
 
 
@@ -23,6 +23,7 @@ export const PAGES = {
     "Calidad": Calidad,
     "Clientes": Clientes,
     "ColaRevision": ColaRevision,
+    "CrearUsuariosPrueba": CrearUsuariosPrueba,
     "Dashboard": Dashboard,
     "Home": Home,
     "Inventario": Inventario,
@@ -35,7 +36,6 @@ export const PAGES = {
     "Reciclaje": Reciclaje,
     "Saas": Saas,
     "Settings": Settings,
-    "CrearUsuariosPrueba": CrearUsuariosPrueba,
 }
 
 export const pagesConfig = {

@@ -10,7 +10,8 @@ export default function CrearUsuariosPrueba() {
 
   const usuarios = [
     { email: 'ventas@compustorecr.com', role: 'user', userRole: 'SALES' },
-    { email: 'alejandro@compustorecr.com', role: 'user', userRole: 'TECHNICIAN' }
+    { email: 'alejandro@compustorecr.com', role: 'user', userRole: 'TECHNICIAN' },
+    { email: 'gustavo@compustorecr.com', role: 'user', userRole: 'ORG_ADMIN' }
   ];
 
   const crearUsuarios = async () => {
@@ -67,6 +68,7 @@ export default function CrearUsuariosPrueba() {
             <ul className="list-disc list-inside space-y-1 text-sm text-slate-600">
               <li>ventas@compustorecr.com - Role: SALES</li>
               <li>alejandro@compustorecr.com - Role: TECHNICIAN</li>
+              <li>gustavo@compustorecr.com - Role: ORG_ADMIN</li>
             </ul>
           </div>
 

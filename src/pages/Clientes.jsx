@@ -30,8 +30,20 @@ function ClientesContent() {
   const [editingCliente, setEditingCliente] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCliente, setSelectedCliente] = useState(null);
+  const [showDetalleModal, setShowDetalleModal] = useState(false);
+  const [user, setUser] = useState(null);
+  const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
   const queryClient = useQueryClient();
   const { userAccount } = useUserAccount();
+
+  useEffect(() => {
+    base44.auth.me().then(setUser).catch(() => {});
+  }, []);
+
+  const mostrarMensajeReconocimiento = (contexto) => {
+    setMensajeMotivacion({ tipo: 'reconocimiento', contexto });
+    setTimeout(() => setMensajeMotivacion(null), 8000);
+  };
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes', userAccount?.organization_id],
@@ -94,6 +106,14 @@ function ClientesContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Mensaje de Motivación Diario (solo para SALES) */}
+      {userAccount?.role === 'SALES' && <MensajesMotivacionVentas tipo="diaria" />}
+
+      {/* Mensajes contextuales */}
+      {mensajeMotivacion && (
+        <MensajesMotivacionVentas tipo={mensajeMotivacion.tipo} contexto={mensajeMotivacion.contexto} />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -161,17 +181,31 @@ function ClientesContent() {
                 </div>
               </div>
 
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingCliente(cliente);
-                  setShowModal(true);
-                }}
-                variant="outline"
-                className="w-full mt-4"
-              >
-                Editar
-              </Button>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingCliente(cliente);
+                    setShowModal(true);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Editar
+                </Button>
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCliente(cliente);
+                    setShowDetalleModal(true);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  Historial
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -274,52 +308,70 @@ function ClientesContent() {
       </Dialog>
 
       {/* Modal Historial Cliente */}
-      <Dialog open={!!selectedCliente && !showModal} onOpenChange={() => setSelectedCliente(null)}>
-        <DialogContent className="max-w-3xl">
+      <Dialog open={showDetalleModal} onOpenChange={setShowDetalleModal}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold">
-                {selectedCliente?.nombre_completo?.charAt(0)}
-              </div>
-              {selectedCliente?.nombre_completo}
-            </DialogTitle>
+            <DialogTitle>Perfil del Cliente</DialogTitle>
           </DialogHeader>
+          {selectedCliente && user && (
+            <Tabs defaultValue="seguimiento" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="seguimiento">
+                  <History className="w-4 h-4 mr-2" />
+                  Seguimiento
+                </TabsTrigger>
+                <TabsTrigger value="cotizaciones">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Cotizaciones
+                </TabsTrigger>
+                <TabsTrigger value="comunicacion">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Comunicación
+                </TabsTrigger>
+              </TabsList>
 
-          <div className="space-y-6 mt-4">
-            <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
-              <div>
-                <p className="text-xs text-slate-500">Email</p>
-                <p className="font-medium">{selectedCliente?.email || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Teléfono</p>
-                <p className="font-medium">{selectedCliente?.telefono}</p>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                <History className="w-5 h-5 text-emerald-600" />
-                Historial de Órdenes
-              </h3>
-              <div className="space-y-2">
-                {ordenesCliente?.map(orden => (
-                  <div key={orden.id} className="p-3 border border-slate-200 rounded-lg flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">{orden.numero_ot}</p>
-                      <p className="text-xs text-slate-500">{orden.falla_reportada}</p>
+              <TabsContent value="seguimiento" className="space-y-4">
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-slate-900 mb-2">{selectedCliente.nombre_completo}</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-slate-500">Email</p>
+                        <p className="text-slate-900">{selectedCliente.email || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Teléfono</p>
+                        <p className="text-slate-900">{selectedCliente.telefono}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Tipo</p>
+                        <Badge className="capitalize">{selectedCliente.tipo}</Badge>
+                      </div>
                     </div>
-                    <Badge className={`${estadoConfig[orden.estado]?.color} border-0`}>
-                      {estadoConfig[orden.estado]?.label}
-                    </Badge>
-                  </div>
-                ))}
-                {ordenesCliente?.length === 0 && (
-                  <p className="text-center text-slate-400 py-4">Sin órdenes registradas</p>
-                )}
-              </div>
-            </div>
-          </div>
+                  </CardContent>
+                </Card>
+                <SeguimientoCliente clienteId={selectedCliente.id} />
+              </TabsContent>
+
+              <TabsContent value="cotizaciones">
+                <GestionCotizaciones
+                  clienteId={selectedCliente.id}
+                  ordenTrabajoId={null}
+                  user={user}
+                  userAccount={userAccount}
+                />
+              </TabsContent>
+
+              <TabsContent value="comunicacion">
+                <ComunicacionCliente
+                  clienteId={selectedCliente.id}
+                  ordenTrabajoId={null}
+                  user={user}
+                  userAccount={userAccount}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
         </DialogContent>
       </Dialog>
     </div>

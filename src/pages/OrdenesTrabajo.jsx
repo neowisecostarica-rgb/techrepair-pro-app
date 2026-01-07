@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
+import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -30,6 +31,8 @@ export default function OrdenesTrabajo() {
   const [showModal, setShowModal] = useState(false);
   const [editingOT, setEditingOT] = useState(null);
   const [selectedOT, setSelectedOT] = useState(null);
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardOT, setWizardOT] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const queryClient = useQueryClient();
@@ -414,6 +417,18 @@ export default function OrdenesTrabajo() {
                 <Button variant="outline" onClick={() => setSelectedOT(null)}>
                   Cerrar
                 </Button>
+                {selectedOT.estado === 'EN_REVISION' && (
+                  <Button 
+                    onClick={() => {
+                      setWizardOT(selectedOT);
+                      setShowWizard(true);
+                      setSelectedOT(null);
+                    }}
+                    className="bg-gradient-to-r from-purple-500 to-blue-500"
+                  >
+                    🧪 Iniciar Diagnóstico
+                  </Button>
+                )}
                 <Button 
                   onClick={() => {
                     setEditingOT(selectedOT);
@@ -427,6 +442,24 @@ export default function OrdenesTrabajo() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Wizard Diagnóstico */}
+      <Dialog open={showWizard} onOpenChange={setShowWizard}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <WizardDiagnostico
+            ordenTrabajo={wizardOT}
+            onClose={() => {
+              setShowWizard(false);
+              setWizardOT(null);
+            }}
+            onComplete={() => {
+              setShowWizard(false);
+              setWizardOT(null);
+              queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

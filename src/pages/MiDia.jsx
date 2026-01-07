@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Play, 
   Pause, 
@@ -15,7 +16,11 @@ import {
   AlertCircle, 
   CheckCircle,
   ArrowRight,
-  Zap
+  Zap,
+  Package,
+  FileText,
+  MessageSquare,
+  Shield
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -24,6 +29,11 @@ import NotificacionesPanel from '@/components/notificaciones/NotificacionesPanel
 import { useNotificacionesAutomaticas } from '@/components/notificaciones/useNotificacionesAutomaticas';
 import { useUserAccount } from '@/components/hooks/useOrgData';
 import PageGuard from '@/components/guards/PageGuard';
+import SolicitudesTecnicas from '@/components/tecnico/SolicitudesTecnicas';
+import BloqueosTecnicos from '@/components/tecnico/BloqueosTecnicos';
+import PruebasTecnicas from '@/components/tecnico/PruebasTecnicas';
+import NotasInternas from '@/components/tecnico/NotasInternas';
+import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
 
 export default function MiDia() {
   return (
@@ -38,9 +48,11 @@ function MiDiaContent() {
   const { userAccount } = useUserAccount();
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
+  const [showDetalleOT, setShowDetalleOT] = useState(false);
   const [selectedOT, setSelectedOT] = useState(null);
   const [motivoPausa, setMotivoPausa] = useState('interrupcion');
   const [observacionesPausa, setObservacionesPausa] = useState('');
+  const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -163,6 +175,21 @@ function MiDiaContent() {
     setShowWizard(true);
   };
 
+  const handleVerDetalle = (orden) => {
+    setSelectedOT(orden);
+    setShowDetalleOT(true);
+  };
+
+  const mostrarMensajeAgradecimiento = (contexto) => {
+    setMensajeMotivacion({ tipo: 'agradecimiento', contexto });
+    setTimeout(() => setMensajeMotivacion(null), 8000);
+  };
+
+  const mostrarMensajeProteccion = (contexto) => {
+    setMensajeMotivacion({ tipo: 'proteccion', contexto });
+    setTimeout(() => setMensajeMotivacion(null), 8000);
+  };
+
   const motivoPausaLabels = {
     esperando_repuesto: 'Esperando Repuesto',
     esperando_cliente: 'Esperando Cliente',
@@ -180,6 +207,14 @@ function MiDiaContent() {
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
         <p className="text-slate-500">Gestión de trabajos asignados</p>
       </div>
+
+      {/* Mensaje de Motivación Diario */}
+      <MensajesMotivacion tipo="diaria" />
+
+      {/* Mensajes contextuales (agradecimiento/protección) */}
+      {mensajeMotivacion && (
+        <MensajesMotivacion tipo={mensajeMotivacion.tipo} contexto={mensajeMotivacion.contexto} />
+      )}
 
       {/* Notificaciones */}
       <NotificacionesPanel userAccount={userAccount} />
@@ -234,10 +269,17 @@ function MiDiaContent() {
                 </div>
 
                 <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={() => handleVerDetalle(ordenActiva)}
+                    className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Ver Detalle
+                  </Button>
                   {ordenActiva.estado === 'EN_REVISION' && (
                     <Button
                       onClick={() => handleIniciarDiagnostico(ordenActiva)}
-                      className="bg-gradient-to-r from-purple-500 to-blue-500"
+                      variant="outline"
                     >
                       <Play className="w-4 h-4 mr-2" />
                       Continuar Diagnóstico
@@ -334,13 +376,23 @@ function MiDiaContent() {
                     )}
                   </div>
 
-                  <Button
-                    onClick={() => handleRetomar(orden)}
-                    className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    Retomar
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      onClick={() => handleVerDetalle(orden)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Ver Detalle
+                    </Button>
+                    <Button
+                      onClick={() => handleRetomar(orden)}
+                      className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Retomar
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -472,8 +524,98 @@ function MiDiaContent() {
               setShowWizard(false);
               setSelectedOT(null);
               queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+              mostrarMensajeAgradecimiento('diagnostico');
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Detalle de OT */}
+      <Dialog open={showDetalleOT} onOpenChange={setShowDetalleOT}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalle de Orden de Trabajo</DialogTitle>
+          </DialogHeader>
+          {selectedOT && (
+            <Tabs defaultValue="general" className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="solicitudes">
+                  <Package className="w-4 h-4 mr-2" />
+                  Solicitudes
+                </TabsTrigger>
+                <TabsTrigger value="bloqueos">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Bloqueos
+                </TabsTrigger>
+                <TabsTrigger value="pruebas">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Pruebas
+                </TabsTrigger>
+                <TabsTrigger value="notas">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Notas
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="general" className="space-y-4">
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm text-slate-500">Cliente</p>
+                        <p className="font-medium text-slate-900">{getClienteName(selectedOT.cliente_id)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Equipo</p>
+                        <p className="font-medium text-slate-900">{getEquipoInfo(selectedOT.equipo_id)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Motivo de Ingreso</p>
+                        <p className="font-medium text-slate-900">{selectedOT.motivo_ingreso}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Estado</p>
+                        <Badge className="bg-blue-100 text-blue-700 border-0">{selectedOT.estado}</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="solicitudes">
+                <SolicitudesTecnicas
+                  ordenTrabajoId={selectedOT.id}
+                  tecnicoId={user.id}
+                  userAccount={userAccount}
+                />
+              </TabsContent>
+
+              <TabsContent value="bloqueos">
+                <BloqueosTecnicos
+                  ordenTrabajoId={selectedOT.id}
+                  tecnicoId={user.id}
+                  userAccount={userAccount}
+                />
+              </TabsContent>
+
+              <TabsContent value="pruebas">
+                <PruebasTecnicas
+                  ordenTrabajoId={selectedOT.id}
+                  tecnicoId={user.id}
+                  userAccount={userAccount}
+                />
+              </TabsContent>
+
+              <TabsContent value="notas">
+                <NotasInternas
+                  ordenTrabajoId={selectedOT.id}
+                  user={user}
+                  userAccount={userAccount}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -28,7 +28,26 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     base44.auth.me().then(async (u) => {
       setUser(u);
-      // Obtener UserAccount
+      
+      // Si es Super Admin sin impersonación, no cargar UserAccount
+      if (u.is_super_admin && !u.impersonating_org_id) {
+        return;
+      }
+
+      // Si está impersonando, buscar UserAccount en la org impersonada
+      if (u.is_super_admin && u.impersonating_org_id) {
+        // Crear UserAccount temporal como ORG_ADMIN para la org impersonada
+        setUserAccount({
+          user_id: u.id,
+          user_email: u.email,
+          organization_id: u.impersonating_org_id,
+          role: 'ORG_ADMIN',
+          active: true,
+        });
+        return;
+      }
+
+      // Obtener UserAccount normal
       const accounts = await base44.entities.UserAccount.filter({ user_id: u.id });
       if (accounts.length > 0) {
         setUserAccount(accounts[0]);
@@ -38,6 +57,24 @@ export default function Layout({ children, currentPageName }) {
 
   // Implementar redirect post-login basado en rol
   useRoleBasedRedirect(userAccount, currentPageName);
+
+  // Si es Super Admin sin impersonación, solo mostrar página Saas
+  if (user?.is_super_admin && !user?.impersonating_org_id && currentPageName !== 'Saas') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ShieldAlert className="w-8 h-8 text-purple-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Panel Super Admin</h1>
+          <p className="text-slate-600 mb-6">Accede al panel de administración de plataforma.</p>
+          <Button onClick={() => window.location.href = createPageUrl('Saas')}>
+            Ir al Panel SaaS
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Menús según role
   const superAdminMenu = [

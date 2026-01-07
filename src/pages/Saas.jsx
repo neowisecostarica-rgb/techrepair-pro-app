@@ -8,7 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Building2, Plus, Search } from 'lucide-react';
+import { Building2, Plus, Search, ShieldAlert, AlertCircle } from 'lucide-react';
+import OrganizationCard from '../components/superadmin/OrganizationCard';
+import ImpersonationBanner from '../components/superadmin/ImpersonationBanner';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
 
 export default function Saas() {
@@ -34,6 +38,108 @@ function SaasContent() {
     queryKey: ['partners'],
     queryFn: () => base44.entities.Partner.list(),
   });
+
+  // Auditoría de acciones
+  const auditMutation = useMutation({
+    mutationFn: (auditData) => base44.entities.SuperAdminAudit.create(auditData),
+  });
+
+  const recordAudit = async (action, orgId = null, orgName = null, context = null) => {
+    if (!user) return;
+    await auditMutation.mutateAsync({
+      super_admin_id: user.id,
+      super_admin_email: user.email,
+      action,
+      target_organization_id: orgId,
+      target_organization_name: orgName,
+      context
+    });
+  };
+
+  const toggleOrgStatusMutation = useMutation({
+    mutationFn: async ({ orgId, newStatus }) => {
+      return await base44.entities.Organization.update(orgId, { status: newStatus });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      const org = organizations.find(o => o.id === variables.orgId);
+      recordAudit(
+        variables.newStatus === 'active' ? 'activate_org' : 'deactivate_org',
+        variables.orgId,
+        org?.name,
+        `Cambio de estado a ${variables.newStatus}`
+      );
+    },
+  });
+
+  const handleImpersonate = async (organization) => {
+    if (!user) return;
+
+    // Actualizar user con impersonation
+    await base44.auth.updateMe({
+      impersonating_org_id: organization.id,
+      impersonating_started_at: new Date().toISOString()
+    });
+
+    // Registrar auditoría
+    await recordAudit(
+      'impersonate_start',
+      organization.id,
+      organization.name,
+      `Impersonando como Admin`
+    );
+
+    setIsImpersonating(true);
+    setImpersonatedOrg(organization);
+
+    // Redirigir al Dashboard de la organización
+    window.location.reload(); // Recargar para actualizar contexto
+  };
+
+  const handleEndImpersonation = async () => {
+    if (!user || !impersonatedOrg) return;
+
+    // Registrar fin de impersonación
+    await recordAudit(
+      'impersonate_end',
+      impersonatedOrg.id,
+      impersonatedOrg.name,
+      `Fin de impersonación`
+    );
+
+    // Limpiar impersonation
+    await base44.auth.updateMe({
+      impersonating_org_id: null,
+      impersonating_started_at: null
+    });
+
+    setIsImpersonating(false);
+    setImpersonatedOrg(null);
+
+    // Volver a SaaS panel
+    window.location.reload();
+  };
+
+  const handleToggleStatus = async (organization) => {
+    const newStatus = organization.status === 'active' ? 'suspended' : 'active';
+    const confirmMsg = newStatus === 'suspended'
+      ? `¿Suspender organización "${organization.name}"?\n\nLos usuarios no podrán acceder.`
+      : `¿Reactivar organización "${organization.name}"?`;
+
+    if (confirm(confirmMsg)) {
+      toggleOrgStatusMutation.mutate({ orgId: organization.id, newStatus });
+    }
+  };
+
+  const getOrgStats = (orgId) => {
+    const users = allUserAccounts.filter(u => u.organization_id === orgId && u.active).length;
+    const activeOrders = allOrders.filter(o => 
+      o.organization_id === orgId && 
+      !['ENTREGADA', 'CANCELADA'].includes(o.estado)
+    ).length;
+
+    return { users, activeOrders };
+  };
 
   const createOrgMutation = useMutation({
     mutationFn: async (data) => {

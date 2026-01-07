@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,11 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, User, Mail, Phone, Building2, History } from 'lucide-react';
+import { Plus, Search, User, Mail, Phone, Building2, History, MessageSquare, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import PageGuard from '../components/guards/PageGuard';
+import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
+import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
+import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
+import MensajesMotivacionVentas from '../components/ventas/MensajesMotivacionVentas';
 
 export default function Clientes() {
   return (

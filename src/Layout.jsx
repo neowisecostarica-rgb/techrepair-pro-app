@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
+import { useRoleBasedRedirect } from './components/hooks/useRoleBasedRedirect';
 import {
   LayoutDashboard,
   Wrench,
@@ -34,6 +35,9 @@ export default function Layout({ children, currentPageName }) {
       }
     }).catch(() => {});
   }, []);
+
+  // Implementar redirect post-login basado en rol
+  useRoleBasedRedirect(userAccount, currentPageName);
 
   // Menús según role
   const superAdminMenu = [

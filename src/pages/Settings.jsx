@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,40 +14,32 @@ import UserManagementPanel from '../components/settings/UserManagementPanel';
 import SenalesNegocio from '../components/admin/SenalesNegocio';
 import AprobacionesPanel from '../components/admin/AprobacionesPanel';
 import ConfiguracionPanel from '../components/admin/ConfiguracionPanel';
+import { useAuthContext } from '../components/contexts/AuthContext';
 
 export default function Settings() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN']}>
       <SettingsContent />
     </PageGuard>
   );
 }
 
 function SettingsContent() {
-  const [user, setUser] = useState(null);
-  const [userAccount, setUserAccount] = useState(null);
+  const { user, userAccount, effectiveOrgId } = useAuthContext();
   const [showBranchModal, setShowBranchModal] = useState(false);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    base44.auth.me().then(async (u) => {
-      setUser(u);
-      const accounts = await base44.entities.UserAccount.filter({ user_id: u.id });
-      if (accounts.length > 0) setUserAccount(accounts[0]);
-    });
-  }, []);
-
   const { data: organization } = useQuery({
-    queryKey: ['organization', userAccount?.organization_id],
-    queryFn: () => base44.entities.Organization.filter({ id: userAccount.organization_id }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['organization', effectiveOrgId],
+    queryFn: () => base44.entities.Organization.filter({ id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
     select: (data) => data[0],
   });
 
   const { data: branches = [] } = useQuery({
-    queryKey: ['branches', userAccount?.organization_id],
-    queryFn: () => base44.entities.Branch.filter({ organization_id: userAccount.organization_id }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['branches', effectiveOrgId],
+    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
   });
 
   const createBranchMutation = useMutation({
@@ -70,7 +61,7 @@ function SettingsContent() {
     e.preventDefault();
     const formData = new FormData(e.target);
     createBranchMutation.mutate({
-      organization_id: userAccount.organization_id,
+      organization_id: effectiveOrgId,
       name: formData.get('name'),
       address: formData.get('address'),
       phone: formData.get('phone'),
@@ -203,7 +194,7 @@ function SettingsContent() {
         {/* Tab Usuarios */}
         <TabsContent value="usuarios">
           <UserManagementPanel
-            organizationId={userAccount?.organization_id}
+            organizationId={effectiveOrgId}
             currentUserId={user?.id}
             branches={branches}
           />

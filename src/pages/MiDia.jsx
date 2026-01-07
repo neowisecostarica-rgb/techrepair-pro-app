@@ -22,9 +22,11 @@ import { es } from 'date-fns/locale';
 import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 import NotificacionesPanel from '@/components/notificaciones/NotificacionesPanel';
 import { useNotificacionesAutomaticas } from '@/components/notificaciones/useNotificacionesAutomaticas';
+import { useUserAccount } from '@/components/hooks/useOrgData';
 
 export default function MiDia() {
   const [user, setUser] = useState(null);
+  const { userAccount } = useUserAccount();
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [selectedOT, setSelectedOT] = useState(null);

@@ -4,6 +4,9 @@ import { base44 } from '@/api/base44Client';
 import StatsCard from '../components/dashboard/StatsCard';
 import QuickActions from '../components/dashboard/QuickActions';
 import RecentOrders from '../components/dashboard/RecentOrders';
+import NotificacionesPanel from '../components/notificaciones/NotificacionesPanel';
+import { useNotificacionesAutomaticas } from '../components/notificaciones/useNotificacionesAutomaticas';
+import { useUserAccount } from '../components/hooks/useOrgData';
 import { 
   Wrench, 
   DollarSign, 
@@ -17,10 +20,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 export default function Dashboard() {
+  const { userAccount } = useUserAccount();
+  
   const { data: ordenes = [] } = useQuery({
     queryKey: ['ordenes'],
     queryFn: () => base44.entities.OrdenTrabajo.list('-created_date', 100),
   });
+
+  // Generar notificaciones automáticas
+  useNotificacionesAutomaticas(userAccount);
 
   const { data: ventas = [] } = useQuery({
     queryKey: ['ventas'],
@@ -83,6 +91,9 @@ export default function Dashboard() {
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Dashboard Ejecutivo</h1>
         <p className="text-slate-500">Vista general de operaciones y métricas clave</p>
       </div>
+
+      {/* Notificaciones */}
+      <NotificacionesPanel userAccount={userAccount} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

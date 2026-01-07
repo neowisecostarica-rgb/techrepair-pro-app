@@ -1,67 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import React from 'react';
+import { useAuthContext } from '../contexts/AuthContext';
 import { createPageUrl } from '../../utils';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 /**
- * Guard de página que verifica permisos por rol.
- * Si el usuario no tiene acceso, lo redirige a su landing page correspondiente.
- * 
- * @param {Array<string>} allowedRoles - Lista de roles permitidos para esta página
- * @param {React.ReactNode} children - Contenido de la página
+ * Guard de página que verifica permisos por rol efectivo.
+ * Usa AuthContext unificado.
  */
 export default function PageGuard({ allowedRoles, children }) {
-  const [loading, setLoading] = useState(true);
-  const [userAccount, setUserAccount] = useState(null);
-
-  useEffect(() => {
-    const checkAccess = async () => {
-      try {
-        const user = await base44.auth.me();
-
-        // Si permite SUPER_ADMIN y el usuario lo es, dar acceso
-        if (allowedRoles.includes('SUPER_ADMIN') && user.is_super_admin) {
-          setLoading(false);
-          return;
-        }
-
-        const accounts = await base44.entities.UserAccount.filter({ user_id: user.id });
-        
-        if (accounts.length > 0) {
-          const account = accounts[0];
-          setUserAccount(account);
-
-          // Verificar si el rol tiene acceso
-          if (!allowedRoles.includes(account.role)) {
-            // Redirigir a landing page según rol
-            const landingByRole = {
-              'SUPER_ADMIN': 'Saas',
-              'ORG_ADMIN': 'Dashboard',
-              'SALES': 'Clientes',
-              'TECHNICIAN': 'MiDia',
-              'BRANCH_ADMIN': 'Dashboard',
-              'AUDITOR': 'Dashboard',
-              'CFO': 'Dashboard',
-              'CEO': 'Dashboard'
-            };
-
-            const targetLanding = landingByRole[account.role];
-            if (targetLanding) {
-              window.location.href = createPageUrl(targetLanding);
-              return;
-            }
-          }
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        // Si no está autenticado, redirigir a login
-        base44.auth.redirectToLogin();
-      }
-    };
-
-    checkAccess();
-  }, [allowedRoles]);
+  const { user, userAccount, effectiveRole, loading } = useAuthContext();
 
   if (loading) {
     return (
@@ -69,6 +16,60 @@ export default function PageGuard({ allowedRoles, children }) {
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-emerald-600" />
           <p className="text-slate-600">Verificando acceso...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no está autenticado, redirigir a login
+  if (!user) {
+    if (typeof window !== 'undefined') {
+      base44.auth.redirectToLogin();
+    }
+    return null;
+  }
+
+  // Si no tiene rol efectivo y no es página permitida sin rol, mostrar error
+  if (!effectiveRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center max-w-md p-6">
+          <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Sin Rol Asignado</h2>
+          <p className="text-slate-600">
+            Tu usuario no tiene un rol asignado en ninguna organización. Contacta al administrador.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Verificar si el rol efectivo tiene acceso
+  if (!allowedRoles.includes(effectiveRole)) {
+    // Redirigir a landing page según rol efectivo
+    const landingByRole = {
+      'SUPER_ADMIN': 'Saas',
+      'ORG_ADMIN': 'Dashboard',
+      'SALES': 'Clientes',
+      'TECHNICIAN': 'MiDia',
+      'BRANCH_ADMIN': 'Dashboard',
+      'AUDITOR': 'Dashboard',
+      'CFO': 'Dashboard',
+      'CEO': 'Dashboard'
+    };
+
+    const targetLanding = landingByRole[effectiveRole];
+    if (targetLanding && typeof window !== 'undefined') {
+      window.location.href = createPageUrl(targetLanding);
+      return null;
+    }
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center max-w-md p-6">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Acceso Denegado</h2>
+          <p className="text-slate-600">No tienes permisos para acceder a esta página.</p>
         </div>
       </div>
     );

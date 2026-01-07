@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
-import { useRoleBasedRedirect } from './components/hooks/useRoleBasedRedirect';
+import { useAuthContext } from './components/contexts/AuthContext';
+import ImpersonationBanner from './components/superadmin/ImpersonationBanner';
 import {
   LayoutDashboard,
   Wrench,
@@ -16,50 +17,35 @@ import {
   X,
   LogOut,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Settings,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Layout({ children, currentPageName }) {
-  const [user, setUser] = useState(null);
-  const [userAccount, setUserAccount] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { user, effectiveRole, isImpersonating, effectiveOrgId, refreshAuth } = useAuthContext();
 
-  useEffect(() => {
-    base44.auth.me().then(async (u) => {
-      setUser(u);
-      
-      // Si es Super Admin sin impersonación, no cargar UserAccount
-      if (u.is_super_admin && !u.impersonating_org_id) {
-        return;
-      }
+  const handleEndImpersonation = async () => {
+    await base44.auth.updateMe({
+      impersonating_org_id: null,
+      impersonating_started_at: null
+    });
+    
+    // Registrar fin en auditoría
+    await base44.entities.SuperAdminAudit.create({
+      super_admin_id: user.id,
+      super_admin_email: user.email,
+      action: 'impersonate_end',
+      target_organization_id: effectiveOrgId,
+    });
 
-      // Si está impersonando, buscar UserAccount en la org impersonada
-      if (u.is_super_admin && u.impersonating_org_id) {
-        // Crear UserAccount temporal como ORG_ADMIN para la org impersonada
-        setUserAccount({
-          user_id: u.id,
-          user_email: u.email,
-          organization_id: u.impersonating_org_id,
-          role: 'ORG_ADMIN',
-          active: true,
-        });
-        return;
-      }
-
-      // Obtener UserAccount normal
-      const accounts = await base44.entities.UserAccount.filter({ user_id: u.id });
-      if (accounts.length > 0) {
-        setUserAccount(accounts[0]);
-      }
-    }).catch(() => {});
-  }, []);
-
-  // Implementar redirect post-login basado en rol
-  useRoleBasedRedirect(userAccount, currentPageName);
+    window.location.href = createPageUrl('Saas');
+  };
 
   // Si es Super Admin sin impersonación, solo mostrar página Saas
-  if (user?.is_super_admin && !user?.impersonating_org_id && currentPageName !== 'Saas') {
+  if (user?.is_super_admin && !isImpersonating && currentPageName !== 'Saas') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center p-6">
         <div className="text-center max-w-md">
@@ -99,56 +85,43 @@ export default function Layout({ children, currentPageName }) {
     { label: 'Calidad', path: 'Calidad', icon: AlertCircle },
   ];
 
- // Seleccionar menú según role (FIX: no default operativo)
-let menuItems = [];
+ // Seleccionar menú según effectiveRole
+ let menuItems = [];
 
-if (!userAccount) {
-  // Mientras carga el UserAccount, no mostrar menú
-  menuItems = [];
-} else if (userAccount.role === 'SUPER_ADMIN') {
-  menuItems = superAdminMenu;
-} else if (userAccount.role === 'ORG_ADMIN') {
-  menuItems = orgAdminMenu;
-} else if (userAccount.role === 'SALES') {
-  menuItems = [
-    { label: 'Clientes', path: 'Clientes', icon: Users },
-    { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
-    { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
-  ];
-} else if (userAccount.role === 'TECHNICIAN') {
-  menuItems = [
-    { label: 'Mi Día', path: 'MiDia', icon: Wrench },
-  ];
-}
+ if (!effectiveRole) {
+   menuItems = [];
+ } else if (effectiveRole === 'SUPER_ADMIN') {
+   menuItems = superAdminMenu;
+ } else if (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN') {
+   menuItems = orgAdminMenu;
+ } else if (effectiveRole === 'SALES') {
+   menuItems = [
+     { label: 'Clientes', path: 'Clientes', icon: Users },
+     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
+     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
+   ];
+ } else if (effectiveRole === 'TECHNICIAN') {
+   menuItems = [
+     { label: 'Mi Día', path: 'MiDia', icon: Wrench },
+     { label: 'Cola Revisión', path: 'ColaRevision', icon: LayoutDashboard },
+     { label: 'Inventario', path: 'Inventario', icon: Package },
+   ];
+ }
 
+const handleLogout = () => {
+  base44.auth.logout();
+};
 
-  // Guard: bloquear SUPER_ADMIN de vistas operativas
-  const operationalPages = ['Dashboard', 'MiDia', 'ColaRevision', 'OrdenesTrabajo', 'Clientes', 'Inventario', 
-                             'PuntoVenta', 'Agenda', 'Reciclaje', 'Calidad'];
-  
-  if (userAccount?.role === 'SUPER_ADMIN' && operationalPages.includes(currentPageName)) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ShieldAlert className="w-8 h-8 text-red-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acceso Restringido</h1>
-          <p className="text-slate-600 mb-6">Los SUPER_ADMIN no tienen acceso a vistas operativas.</p>
-          <Button onClick={() => window.location.href = createPageUrl('Saas')}>
-            Ir al Panel SaaS
-          </Button>
-        </div>
-      </div>
-    );
-  }
+return (
+  <>
+    {isImpersonating && (
+      <ImpersonationBanner 
+        organizationName="Organización"
+        onEndImpersonation={handleEndImpersonation}
+      />
+    )}
 
-  const handleLogout = () => {
-    base44.auth.logout();
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 ${isImpersonating ? 'pt-16' : ''}`}>
       <style>{`
         :root {
           --primary: 142 71% 45%;
@@ -221,8 +194,11 @@ if (!userAccount) {
                   <div className="px-4 py-3 bg-slate-50 rounded-xl">
                     <p className="text-sm font-medium text-slate-900">{user.full_name}</p>
                     <p className="text-xs text-slate-500">{user.email}</p>
-                    {userAccount && (
-                      <p className="text-xs text-emerald-600 font-medium mt-1">{userAccount.role}</p>
+                    {effectiveRole && (
+                      <p className="text-xs text-emerald-600 font-medium mt-1">
+                        {effectiveRole}
+                        {isImpersonating && ' (Soporte)'}
+                      </p>
                     )}
                   </div>
                   <Button

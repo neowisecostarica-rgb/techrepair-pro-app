@@ -1,49 +1,36 @@
-import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useAuthContext } from '../contexts/AuthContext';
 
-// Hook para obtener UserAccount actual
+// Hook para obtener UserAccount actual (DEPRECADO - usar useAuthContext)
 export function useUserAccount() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
-
-  const { data: userAccount } = useQuery({
-    queryKey: ['current-user-account', user?.id],
-    queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({ user_id: user.id });
-      return accounts[0];
-    },
-    enabled: !!user?.id,
-  });
-
+  const { user, userAccount } = useAuthContext();
   return { user, userAccount };
 }
 
 // Hook para queries filtradas por organización
 export function useOrgQuery(entityName, additionalFilters = {}, options = {}) {
-  const { userAccount } = useUserAccount();
+  const { effectiveOrgId } = useAuthContext();
 
   return useQuery({
-    queryKey: [entityName, userAccount?.organization_id, additionalFilters],
+    queryKey: [entityName, effectiveOrgId, additionalFilters],
     queryFn: () => base44.entities[entityName].filter({
-      organization_id: userAccount.organization_id,
+      organization_id: effectiveOrgId,
       ...additionalFilters
     }),
-    enabled: !!userAccount?.organization_id && options.enabled !== false,
+    enabled: !!effectiveOrgId && options.enabled !== false,
     ...options,
   });
 }
 
 // Helper para crear con organization_id inyectado
-export function withOrgId(data, userAccount) {
-  if (!userAccount?.organization_id) {
+export function withOrgId(data, contextOrAccount) {
+  const orgId = contextOrAccount?.effectiveOrgId || contextOrAccount?.organization_id;
+  if (!orgId) {
     throw new Error('No organization_id available');
   }
   return {
     ...data,
-    organization_id: userAccount.organization_id
+    organization_id: orgId
   };
 }

@@ -13,6 +13,7 @@ import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
+import PortalCliente from './pages/PortalCliente';
 import __Layout from './Layout.jsx';
 
 
@@ -32,6 +33,7 @@ export const PAGES = {
     "Reciclaje": Reciclaje,
     "Saas": Saas,
     "Settings": Settings,
+    "PortalCliente": PortalCliente,
 }
 
 export const pagesConfig = {

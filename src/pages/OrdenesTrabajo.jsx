@@ -124,11 +124,22 @@ export default function OrdenesTrabajo() {
       created_by_user_id: user?.id,
     };
 
+    // Generar token único para nuevas OTs
+    if (!editingOT) {
+      data.public_access_token = `ot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
+
     if (editingOT) {
       updateMutation.mutate({ id: editingOT.id, data });
     } else {
       createMutation.mutate(data);
     }
+  };
+
+  const handleCopiarLink = (orden) => {
+    const link = `${window.location.origin}${createPageUrl('PortalCliente')}?token=${orden.public_access_token}`;
+    navigator.clipboard.writeText(link);
+    alert('Link copiado al portapapeles');
   };
 
   const ordenesFiltradas = ordenes.filter(o => {
@@ -501,6 +512,15 @@ export default function OrdenesTrabajo() {
                 <Button variant="outline" onClick={() => setSelectedOT(null)}>
                   Cerrar
                 </Button>
+                {selectedOT.public_access_token && (
+                  <Button 
+                    onClick={() => handleCopiarLink(selectedOT)}
+                    variant="outline"
+                    className="border-blue-500 text-blue-700 hover:bg-blue-50"
+                  >
+                    📋 Copiar Link Cliente
+                  </Button>
+                )}
                 {selectedOT.estado === 'EN_REVISION' && (
                   <Button 
                     onClick={() => {

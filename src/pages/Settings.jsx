@@ -10,8 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, MapPin, Users, Plus, Trash2 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import PageGuard from '../components/guards/PageGuard';
+import UserManagementPanel from '../components/settings/UserManagementPanel';
 
 export default function Settings() {
   return (
@@ -25,8 +25,6 @@ function SettingsContent() {
   const [user, setUser] = useState(null);
   const [userAccount, setUserAccount] = useState(null);
   const [showBranchModal, setShowBranchModal] = useState(false);
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [inviting, setInviting] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -50,12 +48,6 @@ function SettingsContent() {
     enabled: !!userAccount?.organization_id,
   });
 
-  const { data: users = [] } = useQuery({
-    queryKey: ['userAccounts', userAccount?.organization_id],
-    queryFn: () => base44.entities.UserAccount.filter({ organization_id: userAccount.organization_id }),
-    enabled: !!userAccount?.organization_id,
-  });
-
   const createBranchMutation = useMutation({
     mutationFn: (data) => base44.entities.Branch.create(data),
     onSuccess: () => {
@@ -71,30 +63,6 @@ function SettingsContent() {
     },
   });
 
-  const inviteUserMutation = useMutation({
-    mutationFn: async (data) => {
-      // Pre-crear UserAccount
-      await base44.entities.UserAccount.create({
-        user_email: data.user_email,
-        organization_id: userAccount.organization_id,
-        branch_id: data.branch_id || undefined,
-        role: data.role,
-        active: false, // Se activará en onboarding
-      });
-
-      // Invitar usuario
-      await base44.users.inviteUser(data.user_email, 'user');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['userAccounts'] });
-      setShowUserModal(false);
-      setInviting(false);
-    },
-    onError: () => {
-      setInviting(false);
-    },
-  });
-
   const handleCreateBranch = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -104,17 +72,6 @@ function SettingsContent() {
       address: formData.get('address'),
       phone: formData.get('phone'),
       active: true,
-    });
-  };
-
-  const handleInviteUser = (e) => {
-    e.preventDefault();
-    setInviting(true);
-    const formData = new FormData(e.target);
-    inviteUserMutation.mutate({
-      user_email: formData.get('user_email'),
-      branch_id: formData.get('branch_id'),
-      role: formData.get('role'),
     });
   };
 
@@ -233,45 +190,11 @@ function SettingsContent() {
 
         {/* Tab Usuarios */}
         <TabsContent value="usuarios">
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between">
-              <CardTitle>Usuarios del Sistema</CardTitle>
-              <Button onClick={() => setShowUserModal(true)} size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Invitar Usuario
-              </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rol</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {users.map(u => (
-                      <tr key={u.id}>
-                        <td className="px-6 py-4 text-slate-900">{u.user_email}</td>
-                        <td className="px-6 py-4">
-                          <Badge className="bg-purple-100 text-purple-700 border-0">{u.role}</Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge className={u.active 
-                            ? 'bg-emerald-100 text-emerald-700 border-0' 
-                            : 'bg-yellow-100 text-yellow-700 border-0'}>
-                            {u.active ? 'Activo' : 'Pendiente'}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          <UserManagementPanel
+            organizationId={userAccount?.organization_id}
+            currentUserId={user?.id}
+            branches={branches}
+          />
         </TabsContent>
       </Tabs>
 
@@ -304,57 +227,7 @@ function SettingsContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Invitar Usuario */}
-      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Invitar Usuario</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleInviteUser} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="user_email">Email *</Label>
-              <Input id="user_email" name="user_email" type="email" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Rol *</Label>
-              <Select name="role" required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar rol" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BRANCH_ADMIN">Administrador Sucursal</SelectItem>
-                  <SelectItem value="TECHNICIAN">Técnico</SelectItem>
-                  <SelectItem value="SALES">Ventas</SelectItem>
-                  <SelectItem value="AUDITOR">Auditor</SelectItem>
-                  <SelectItem value="CFO">CFO</SelectItem>
-                  <SelectItem value="CEO">CEO</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="branch_id">Sucursal (Opcional)</Label>
-              <Select name="branch_id">
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin sucursal" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map(b => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-3 justify-end">
-              <Button type="button" variant="outline" onClick={() => setShowUserModal(false)} disabled={inviting}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={inviting}>
-                {inviting ? 'Invitando...' : 'Invitar Usuario'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

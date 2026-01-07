@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 
 const AuthContext = createContext(null);
@@ -6,25 +6,34 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userAccount, setUserAccount] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('idle'); // idle | loading | ready | error
 
-  // Valores efectivos (considerando impersonation)
-  const isImpersonating = user?.impersonating_org_id ? true : false;
-  const effectiveOrgId = user?.impersonating_org_id || userAccount?.organization_id || null;
-  const effectiveRole = isImpersonating ? 'ORG_ADMIN' : (userAccount?.role || (user?.is_super_admin ? 'SUPER_ADMIN' : null));
+  // 1️⃣ Prevent double initialization
+  const hasInitializedRef = useRef(false);
+  const isLoadingRef = useRef(false);
 
   useEffect(() => {
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
     loadAuthData();
   }, []);
 
   const loadAuthData = async () => {
+    // Prevent concurrent executions
+    if (isLoadingRef.current) return;
+    
+    isLoadingRef.current = true;
+    setStatus('loading');
+
     try {
       const u = await base44.auth.me();
       setUser(u);
 
       // Si es Super Admin sin impersonación, no cargar UserAccount
       if (u.is_super_admin && !u.impersonating_org_id) {
-        setLoading(false);
+        setUserAccount(null);
+        setStatus('ready');
+        isLoadingRef.current = false;
         return;
       }
 
@@ -37,7 +46,8 @@ export function AuthProvider({ children }) {
           role: 'ORG_ADMIN',
           active: true,
         });
-        setLoading(false);
+        setStatus('ready');
+        isLoadingRef.current = false;
         return;
       }
 
@@ -45,27 +55,59 @@ export function AuthProvider({ children }) {
       const accounts = await base44.entities.UserAccount.filter({ user_id: u.id });
       if (accounts.length > 0) {
         setUserAccount(accounts[0]);
+      } else {
+        setUserAccount(null);
       }
       
-      setLoading(false);
+      setStatus('ready');
+      isLoadingRef.current = false;
     } catch (error) {
-      setLoading(false);
+      console.error('AuthContext: Error loading auth data', error);
+      setStatus('error');
+      isLoadingRef.current = false;
     }
   };
 
-  const refreshAuth = () => {
-    loadAuthData();
+  const refreshAuth = async () => {
+    // Reset state for safe re-initialization
+    hasInitializedRef.current = false;
+    isLoadingRef.current = false;
+    setStatus('idle');
+    
+    // Re-run initialization
+    hasInitializedRef.current = true;
+    await loadAuthData();
   };
 
-  const value = {
+  // 5️⃣ Memoize derived values
+  const isImpersonating = useMemo(() => {
+    return user?.impersonating_org_id ? true : false;
+  }, [user?.impersonating_org_id]);
+
+  const effectiveOrgId = useMemo(() => {
+    return user?.impersonating_org_id || userAccount?.organization_id || null;
+  }, [user?.impersonating_org_id, userAccount?.organization_id]);
+
+  const effectiveRole = useMemo(() => {
+    if (isImpersonating) return 'ORG_ADMIN';
+    if (userAccount?.role) return userAccount.role;
+    if (user?.is_super_admin) return 'SUPER_ADMIN';
+    return null;
+  }, [isImpersonating, userAccount?.role, user?.is_super_admin]);
+
+  // Maintain backward compatibility with 'loading' boolean
+  const loading = status === 'idle' || status === 'loading';
+
+  const value = useMemo(() => ({
     user,
     userAccount,
     effectiveRole,
     effectiveOrgId,
     isImpersonating,
     loading,
+    status,
     refreshAuth,
-  };
+  }), [user, userAccount, effectiveRole, effectiveOrgId, isImpersonating, loading, status]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

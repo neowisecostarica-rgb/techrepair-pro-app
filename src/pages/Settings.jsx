@@ -12,6 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, MapPin, Users, Plus, Trash2 } from 'lucide-react';
 import PageGuard from '../components/guards/PageGuard';
 import UserManagementPanel from '../components/settings/UserManagementPanel';
+import SenalesNegocio from '../components/admin/SenalesNegocio';
+import AprobacionesPanel from '../components/admin/AprobacionesPanel';
+import ConfiguracionPanel from '../components/admin/ConfiguracionPanel';
 
 export default function Settings() {
   return (

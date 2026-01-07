@@ -32,7 +32,7 @@ const estadoConfig = {
 
 export default function OrdenesTrabajo() {
   return (
-    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN']}>
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'AUDITOR']}>
       <OrdenesTrabajoContent />
     </PageGuard>
   );

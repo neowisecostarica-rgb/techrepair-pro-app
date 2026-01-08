@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 
 function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { user, effectiveRole, isImpersonating, effectiveOrgId, status, refreshAuth } = useAuthContext();
+  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, refreshAuth } = useAuthContext();
 
   const handleEndImpersonation = async () => {
     await base44.auth.updateMe({

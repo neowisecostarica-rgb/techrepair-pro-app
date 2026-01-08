@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
+import { useAuthContext } from '@/components/contexts/AuthContext';
+import ExportarInventario from '@/components/inventario/ExportarInventario';
+import ImportarInventario from '@/components/inventario/ImportarInventario';
 
 export default function Inventario() {
   const [showModal, setShowModal] = useState(false);
@@ -18,6 +21,17 @@ export default function Inventario() {
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
   const queryClient = useQueryClient();
   const { userAccount } = useUserAccount();
+  const { effectiveRole, effectiveOrgId, user } = useAuthContext();
+  const [organization, setOrganization] = useState(null);
+
+  // Obtener nombre de organización para export
+  React.useEffect(() => {
+    if (effectiveOrgId) {
+      base44.entities.Organization.filter({ id: effectiveOrgId }).then(orgs => {
+        if (orgs.length > 0) setOrganization(orgs[0]);
+      });
+    }
+  }, [effectiveOrgId]);
 
   const { data: items = [] } = useQuery({
     queryKey: ['inventario', userAccount?.organization_id],
@@ -90,13 +104,29 @@ export default function Inventario() {
           <h1 className="text-4xl font-bold text-slate-900 mb-2">Inventario</h1>
           <p className="text-slate-500">Control de repuestos y productos</p>
         </div>
-        <Button
-          onClick={() => { setEditingItem(null); setShowModal(true); }}
-          className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Nuevo Item
-        </Button>
+        <div className="flex gap-3">
+          <ExportarInventario 
+            items={itemsFiltrados} 
+            organizationName={organization?.name}
+          />
+          
+          <ImportarInventario
+            effectiveOrgId={effectiveOrgId}
+            effectiveRole={effectiveRole}
+            userEmail={user?.email}
+            onImportSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['inventario'] });
+            }}
+          />
+
+          <Button
+            onClick={() => { setEditingItem(null); setShowModal(true); }}
+            className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Nuevo Item
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}

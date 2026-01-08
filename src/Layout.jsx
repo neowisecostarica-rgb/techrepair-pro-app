@@ -145,12 +145,14 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Clientes', path: 'Clientes', icon: Users },
      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
+     { label: 'Agenda', path: 'Agenda', icon: Calendar },
    ];
  } else if (effectiveRole === 'TECHNICIAN') {
    menuItems = [
      { label: 'Mi Día', path: 'MiDia', icon: Wrench },
      { label: 'Cola Revisión', path: 'ColaRevision', icon: FileText },
      { label: 'Inventario', path: 'Inventario', icon: Package },
+     { label: 'Mi Agenda', path: 'Agenda', icon: Calendar },
    ];
  }
 

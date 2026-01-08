@@ -17,6 +17,8 @@ import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
+import AgendarDesdeOT from '@/components/ot/AgendarDesdeOT';
+import { useAuthContext } from '@/components/contexts/AuthContext';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -48,6 +50,7 @@ function OrdenesTrabajoContent() {
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
+  const { effectiveOrgId, effectiveRole } = useAuthContext();
   const navigate = useNavigate();
 
   const { data: ordenes = [] } = useQuery({
@@ -108,9 +111,45 @@ function OrdenesTrabajoContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.OrdenTrabajo.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      // P0.4: Si se cancela, liberar agenda
+      const ordenAnterior = ordenes.find(o => o.id === id);
+      const cambioACancelada = ordenAnterior?.estado !== 'CANCELADA' && data.estado === 'CANCELADA';
+      
+      const result = await base44.entities.OrdenTrabajo.update(id, data);
+      
+      if (cambioACancelada) {
+        // Liberar agenda: cancelar todas las citas futuras de esta OT
+        const citasFuturas = await base44.entities.Cita.filter({
+          organization_id: efectiveOrgId,
+          orden_trabajo_id: id,
+        });
+        
+        const ahora = new Date();
+        for (const cita of citasFuturas) {
+          if (cita.estado !== 'cancelada' && cita.estado !== 'no_asistio') {
+            const fechaCita = new Date(`${cita.fecha}T${cita.hora_inicio || '00:00'}`);
+            if (fechaCita > ahora) {
+              await base44.entities.Cita.update(cita.id, { estado: 'cancelada' });
+            }
+          }
+        }
+        
+        // Auditoría
+        await base44.entities.SuperAdminAudit.create({
+          super_admin_id: user?.id || 'system',
+          super_admin_email: user?.email || 'system',
+          action: 'ot_cancel_release_calendar',
+          target_organization_id: effectiveOrgId,
+          context: `OT ${id} cancelada, agenda liberada`,
+        });
+      }
+      
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['citas'] });
       setShowModal(false);
       setEditingOT(null);
       setSelectedOT(null);
@@ -530,6 +569,18 @@ function OrdenesTrabajoContent() {
                     📋 Copiar Link Cliente
                   </Button>
                 )}
+                
+                {/* P0.3: Integrar AgendarDesdeOT */}
+                {['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole) && (
+                  <AgendarDesdeOT 
+                    ordenTrabajo={selectedOT} 
+                    effectiveOrgId={effectiveOrgId}
+                    onSuccess={() => {
+                      queryClient.invalidateQueries({ queryKey: ['citas'] });
+                    }}
+                  />
+                )}
+
                 {selectedOT.estado === 'EN_REVISION' && (
                   <Button 
                     onClick={() => {

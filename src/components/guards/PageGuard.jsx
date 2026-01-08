@@ -12,7 +12,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
  * FASE 4: Block inactive users from accessing operational routes.
  */
 export default function PageGuard({ allowedRoles, children }) {
-  const { user, userAccount, effectiveRole, status } = useAuthContext();
+  const { user, userAccount, effectiveRole, effectiveOrgId, status } = useAuthContext();
 
   // Wait for auth to be ready
   if (status !== 'ready') {
@@ -30,6 +30,15 @@ export default function PageGuard({ allowedRoles, children }) {
   if (!user) {
     if (typeof window !== 'undefined') {
       base44.auth.redirectToLogin();
+    }
+    return null;
+  }
+
+  // P0.2 TENANT ZERO: Block access without valid tenant
+  // This is a second layer of defense beyond Layout
+  if (!effectiveOrgId) {
+    if (typeof window !== 'undefined') {
+      window.location.href = createPageUrl('Onboarding');
     }
     return null;
   }

@@ -31,6 +31,12 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
     enabled: !!organizationId,
   });
 
+  // P0.1 TENANT ZERO: Calculate active ORG_ADMIN count
+  const activeOrgAdmins = users.filter(u => u.role === 'ORG_ADMIN' && u.active === true);
+  const isLastActiveOrgAdmin = (user) => {
+    return user.role === 'ORG_ADMIN' && user.active === true && activeOrgAdmins.length === 1;
+  };
+
   const inviteUserMutation = useMutation({
     mutationFn: async (data) => {
       await base44.entities.UserAccount.create({
@@ -90,6 +96,12 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   };
 
   const handleDeactivate = (user) => {
+    // P0.1 TENANT ZERO: Prevent deactivating last ORG_ADMIN
+    if (isLastActiveOrgAdmin(user)) {
+      alert('⚠️ Esta empresa debe tener al menos un administrador activo.\n\nNo puedes desactivar el último ORG_ADMIN.');
+      return;
+    }
+
     if (confirm(`¿Desactivar acceso de ${user.user_email}?\n\nEl usuario no podrá iniciar sesión pero su historial quedará intacto.`)) {
       updateUserMutation.mutate({
         id: user.id,
@@ -202,6 +214,8 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                             setShowEditModal(true);
                           }}
                           className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          disabled={isLastActiveOrgAdmin(user)}
+                          title={isLastActiveOrgAdmin(user) ? 'Esta empresa debe tener al menos un administrador activo' : ''}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -211,7 +225,8 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                             size="sm"
                             onClick={() => handleDeactivate(user)}
                             className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                            disabled={user.user_id === currentUserId}
+                            disabled={user.user_id === currentUserId || isLastActiveOrgAdmin(user)}
+                            title={isLastActiveOrgAdmin(user) ? 'Esta empresa debe tener al menos un administrador activo' : ''}
                           >
                             <UserX className="w-4 h-4" />
                           </Button>
@@ -298,9 +313,27 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                 <Label>Email</Label>
                 <Input value={editingUser.user_email} disabled className="bg-slate-50" />
               </div>
+
+              {/* P0.1 TENANT ZERO: Warning for last ORG_ADMIN */}
+              {isLastActiveOrgAdmin(editingUser) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm text-amber-800 font-medium">
+                    ⚠️ Este es el único administrador activo de la empresa.
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    No puedes cambiar el rol ni desactivar este usuario. Invita a otro administrador primero.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="role">Rol *</Label>
-                <Select name="role" defaultValue={editingUser.role} required>
+                <Select 
+                  name="role" 
+                  defaultValue={editingUser.role} 
+                  required
+                  disabled={isLastActiveOrgAdmin(editingUser)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -329,7 +362,12 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
               </div>
               <div className="space-y-2">
                 <Label htmlFor="active">Estado *</Label>
-                <Select name="active" defaultValue={editingUser.active ? 'true' : 'false'} required>
+                <Select 
+                  name="active" 
+                  defaultValue={editingUser.active ? 'true' : 'false'} 
+                  required
+                  disabled={isLastActiveOrgAdmin(editingUser)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -343,7 +381,10 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                 <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button 
+                  type="submit"
+                  disabled={isLastActiveOrgAdmin(editingUser)}
+                >
                   Guardar Cambios
                 </Button>
               </div>

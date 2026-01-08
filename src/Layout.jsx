@@ -95,6 +95,7 @@ function LayoutContent({ children, currentPageName }) {
     { label: 'Mi Día', path: 'MiDia', icon: Wrench },
     { label: 'Cola Revisión', path: 'ColaRevision', icon: LayoutDashboard },
     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
+    { label: 'CRM', path: 'CRM', icon: Users },
     { label: 'Clientes', path: 'Clientes', icon: Users },
     { label: 'Inventario', path: 'Inventario', icon: Package },
     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
@@ -116,6 +117,7 @@ function LayoutContent({ children, currentPageName }) {
    menuItems = [
      { label: 'Configuración', path: 'Settings', icon: Settings },
      { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
+     { label: 'CRM', path: 'CRM', icon: Users },
      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
      { label: 'Clientes', path: 'Clientes', icon: Users },
      { label: 'Inventario', path: 'Inventario', icon: Package },
@@ -130,6 +132,7 @@ function LayoutContent({ children, currentPageName }) {
    menuItems = [
      { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
+     { label: 'CRM', path: 'CRM', icon: Users },
      { label: 'Clientes', path: 'Clientes', icon: Users },
      { label: 'Inventario', path: 'Inventario', icon: Package },
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
@@ -137,6 +140,8 @@ function LayoutContent({ children, currentPageName }) {
    ];
  } else if (effectiveRole === 'SALES') {
    menuItems = [
+     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
+     { label: 'CRM', path: 'CRM', icon: Users },
      { label: 'Clientes', path: 'Clientes', icon: Users },
      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },

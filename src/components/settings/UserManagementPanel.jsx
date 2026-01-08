@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useAuthContext } from '../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,17 +9,21 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, UserX, Trash2, Edit, UserCheck } from 'lucide-react';
+import { Plus, Search, UserX, Edit, UserCheck } from 'lucide-react';
 
 export default function UserManagementPanel({ organizationId, currentUserId, branches }) {
+  const { effectiveRole, status } = useAuthContext();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [inviting, setInviting] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const queryClient = useQueryClient();
+
+  // Wait for auth to be ready
+  if (status !== 'ready') {
+    return <div className="p-6 text-center text-slate-500">Cargando...</div>;
+  }
 
   const { data: users = [] } = useQuery({
     queryKey: ['userAccounts', organizationId],
@@ -58,13 +63,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
     },
   });
 
-  const deleteUserMutation = useMutation({
-    mutationFn: (id) => base44.entities.UserAccount.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['userAccounts'] });
-      setDeleteConfirm(null);
-    },
-  });
+
 
   const handleInviteUser = (e) => {
     e.preventDefault();
@@ -106,15 +105,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
     });
   };
 
-  const handleDelete = (user) => {
-    setDeleteConfirm(user);
-  };
 
-  const confirmDelete = () => {
-    if (deleteConfirm) {
-      deleteUserMutation.mutate(deleteConfirm.id);
-    }
-  };
 
   const getBranchName = (branchId) => {
     const branch = branches.find(b => b.id === branchId);
@@ -126,6 +117,25 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
     u.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Determine available roles based on current user's effectiveRole
+  const getAvailableRoles = () => {
+    if (effectiveRole === 'ORG_ADMIN') {
+      // ORG_ADMIN can assign all roles EXCEPT SUPER_ADMIN and ORG_ADMIN
+      return [
+        { value: 'BRANCH_ADMIN', label: 'Administrador Sucursal' },
+        { value: 'TECHNICIAN', label: 'Técnico' },
+        { value: 'SALES', label: 'Ventas' },
+        { value: 'AUDITOR', label: 'Auditor' },
+        { value: 'CFO', label: 'CFO' },
+        { value: 'CEO', label: 'CEO' },
+      ];
+    }
+    // BRANCH_ADMIN has limited assignment (if needed in future)
+    return [];
+  };
+
+  const availableRoles = getAvailableRoles();
 
   return (
     <>
@@ -215,15 +225,6 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                             <UserCheck className="w-4 h-4" />
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(user)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          disabled={user.user_id === currentUserId}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -252,13 +253,11 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                   <SelectValue placeholder="Seleccionar rol" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ORG_ADMIN">Administrador Organización</SelectItem>
-                  <SelectItem value="BRANCH_ADMIN">Administrador Sucursal</SelectItem>
-                  <SelectItem value="TECHNICIAN">Técnico</SelectItem>
-                  <SelectItem value="SALES">Ventas</SelectItem>
-                  <SelectItem value="AUDITOR">Auditor</SelectItem>
-                  <SelectItem value="CFO">CFO</SelectItem>
-                  <SelectItem value="CEO">CEO</SelectItem>
+                  {availableRoles.map(role => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -306,13 +305,11 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ORG_ADMIN">Administrador Organización</SelectItem>
-                    <SelectItem value="BRANCH_ADMIN">Administrador Sucursal</SelectItem>
-                    <SelectItem value="TECHNICIAN">Técnico</SelectItem>
-                    <SelectItem value="SALES">Ventas</SelectItem>
-                    <SelectItem value="AUDITOR">Auditor</SelectItem>
-                    <SelectItem value="CFO">CFO</SelectItem>
-                    <SelectItem value="CEO">CEO</SelectItem>
+                    {availableRoles.map(role => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -354,44 +351,6 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Alert Dialog Eliminar Usuario */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                Estás a punto de eliminar la cuenta de: <strong>{deleteConfirm?.user_email}</strong>
-              </p>
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-900">
-                  ⚠️ Esta acción solo debe usarse para:
-                </p>
-                <ul className="list-disc list-inside text-sm text-amber-900 mt-2 space-y-1">
-                  <li>Usuarios duplicados</li>
-                  <li>Cuentas creadas por error</li>
-                  <li>Usuarios sin datos asociados</li>
-                </ul>
-              </div>
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <p className="text-sm text-emerald-900">
-                  ✓ Los datos históricos (OT, ventas, clientes, diagnósticos) NO se eliminarán.
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Eliminar Usuario
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

@@ -9,9 +9,10 @@ import { Loader2, AlertCircle } from 'lucide-react';
  * Usa AuthContext unificado.
  * Enforce strict role-based access control per FASE 2.
  * FASE 3: Layout handles onboarding, PageGuard assumes user is ready.
+ * FASE 4: Block inactive users from accessing operational routes.
  */
 export default function PageGuard({ allowedRoles, children }) {
-  const { user, effectiveRole, status } = useAuthContext();
+  const { user, userAccount, effectiveRole, status } = useAuthContext();
 
   // Wait for auth to be ready
   if (status !== 'ready') {
@@ -39,6 +40,27 @@ export default function PageGuard({ allowedRoles, children }) {
     // This should never happen if Layout orchestration is correct
     console.error('PageGuard: No effectiveRole but user passed Layout checks');
     return null;
+  }
+
+  // FASE 4: Block inactive users (soft disabled)
+  if (userAccount && userAccount.active === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center max-w-md p-6">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Cuenta Desactivada</h2>
+          <p className="text-slate-600">
+            Tu cuenta ha sido desactivada. Contacta al administrador para más información.
+          </p>
+          <Button
+            onClick={() => base44.auth.logout()}
+            className="mt-6"
+          >
+            Cerrar Sesión
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   // Verificar si el rol efectivo tiene acceso

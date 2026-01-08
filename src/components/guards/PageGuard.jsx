@@ -8,9 +8,10 @@ import { Loader2, AlertCircle } from 'lucide-react';
  * Guard de página que verifica permisos por rol efectivo.
  * Usa AuthContext unificado.
  * Enforce strict role-based access control per FASE 2.
+ * FASE 3: Layout handles onboarding, PageGuard assumes user is ready.
  */
 export default function PageGuard({ allowedRoles, children }) {
-  const { user, userAccount, effectiveRole, status } = useAuthContext();
+  const { user, effectiveRole, status } = useAuthContext();
 
   // Wait for auth to be ready
   if (status !== 'ready') {
@@ -32,19 +33,12 @@ export default function PageGuard({ allowedRoles, children }) {
     return null;
   }
 
-  // Si no tiene rol efectivo y no es página permitida sin rol, mostrar error
+  // FASE 3: Assume Layout already handled onboarding
+  // If we reach here without effectiveRole, something is wrong, but Layout should have redirected
   if (!effectiveRole) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center max-w-md p-6">
-          <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Sin Rol Asignado</h2>
-          <p className="text-slate-600">
-            Tu usuario no tiene un rol asignado en ninguna organización. Contacta al administrador.
-          </p>
-        </div>
-      </div>
-    );
+    // This should never happen if Layout orchestration is correct
+    console.error('PageGuard: No effectiveRole but user passed Layout checks');
+    return null;
   }
 
   // Verificar si el rol efectivo tiene acceso

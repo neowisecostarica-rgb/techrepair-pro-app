@@ -44,27 +44,40 @@ function LayoutContent({ children, currentPageName }) {
     window.location.href = createPageUrl('Saas');
   };
 
-  // Wait for auth to be ready before enforcing role separation
+  // FASE 3: ONBOARDING ORCHESTRATION
+  // Wait for auth to be ready before making any routing decisions
   if (status !== 'ready') {
     return null;
   }
 
-  // STRICT ROLE ENFORCEMENT: SUPER_ADMIN (non-impersonating) can ONLY access SaaS panel
+  // 1. SUPER_ADMIN (non-impersonating) → must access SaaS panel only
   if (effectiveRole === 'SUPER_ADMIN' && !isImpersonating && currentPageName !== 'Saas') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ShieldAlert className="w-8 h-8 text-purple-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Panel Super Admin</h1>
-          <p className="text-slate-600 mb-6">Accede al panel de administración de plataforma.</p>
-          <Button onClick={() => window.location.href = createPageUrl('Saas')}>
-            Ir al Panel SaaS
-          </Button>
-        </div>
-      </div>
-    );
+    if (typeof window !== 'undefined') {
+      window.location.href = createPageUrl('Saas');
+    }
+    return null;
+  }
+
+  // 2. No UserAccount → send to Onboarding
+  if (!userAccount && currentPageName !== 'Onboarding') {
+    if (typeof window !== 'undefined') {
+      window.location.href = createPageUrl('Onboarding');
+    }
+    return null;
+  }
+
+  // 3. UserAccount exists but incomplete setup → send to Onboarding
+  // Check if organization_id is missing (indicates incomplete setup)
+  if (userAccount && !userAccount.organization_id && currentPageName !== 'Onboarding') {
+    if (typeof window !== 'undefined') {
+      window.location.href = createPageUrl('Onboarding');
+    }
+    return null;
+  }
+
+  // 4. User is in Onboarding page → allow access without further checks
+  if (currentPageName === 'Onboarding') {
+    return <>{children}</>;
   }
 
   // Menús según role

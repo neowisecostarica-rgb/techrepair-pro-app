@@ -1,16 +1,19 @@
 import React from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { createPageUrl } from '../../utils';
+import { base44 } from '@/api/base44Client';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 /**
  * Guard de página que verifica permisos por rol efectivo.
  * Usa AuthContext unificado.
+ * Enforce strict role-based access control per FASE 2.
  */
 export default function PageGuard({ allowedRoles, children }) {
-  const { user, userAccount, effectiveRole, loading } = useAuthContext();
+  const { user, userAccount, effectiveRole, status } = useAuthContext();
 
-  if (loading) {
+  // Wait for auth to be ready
+  if (status !== 'ready') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

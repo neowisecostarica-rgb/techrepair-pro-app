@@ -104,7 +104,31 @@ export default function Onboarding() {
         is_default: true,
       });
 
-      // 3. Crear UserAccount como ORG_ADMIN (owner)
+      // 3. SEED CATEGORÍAS BASE (idempotente)
+      const categoriasBase = [
+        { nombre: "Servicios", permite_stock: false, permite_precio: true, es_vendible: true },
+        { nombre: "Repuestos", permite_stock: true, permite_precio: true, es_vendible: true },
+        { nombre: "Equipos / Portátiles", permite_stock: true, permite_precio: true, es_vendible: true },
+        { nombre: "Accesorios", permite_stock: true, permite_precio: true, es_vendible: true },
+        { nombre: "Reciclaje", permite_stock: true, permite_precio: false, es_vendible: false }
+      ];
+
+      for (const cat of categoriasBase) {
+        const existing = await base44.entities.CategoriaInventario.filter({
+          organization_id: org.id,
+          nombre: cat.nombre
+        });
+
+        if (existing.length === 0) {
+          await base44.entities.CategoriaInventario.create({
+            ...cat,
+            organization_id: org.id,
+            activo: true
+          });
+        }
+      }
+
+      // 4. Crear UserAccount como ORG_ADMIN (owner)
       await base44.entities.UserAccount.create({
         user_id: user.id,
         user_email: user.email,

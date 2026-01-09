@@ -7,18 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign, Leaf } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import ExportarInventario from '@/components/inventario/ExportarInventario';
 import ImportarInventario from '@/components/inventario/ImportarInventario';
+import QuickCreateCategoria from '@/components/inventario/QuickCreateCategoria';
+import { generarCodigoInterno } from '@/components/inventario/utils/generarCodigoInterno';
 
 export default function Inventario() {
   const [showModal, setShowModal] = useState(false);
+  const [showQuickCreateCategoria, setShowQuickCreateCategoria] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
+  const [selectedCategoriaId, setSelectedCategoriaId] = useState('');
+  const [codigoInternoPreview, setCodigoInternoPreview] = useState('');
   const queryClient = useQueryClient();
   const { userAccount } = useUserAccount();
   const { effectiveRole, effectiveOrgId, user } = useAuthContext();
@@ -41,22 +47,116 @@ export default function Inventario() {
     enabled: !!userAccount?.organization_id,
   });
 
+  // CARGAR CATEGORÍAS DINÁMICAS
+  const { data: categorias = [] } = useQuery({
+    queryKey: ['categorias', effectiveOrgId],
+    queryFn: () => base44.entities.CategoriaInventario.filter({
+      organization_id: effectiveOrgId,
+      activo: true
+    }),
+    enabled: !!effectiveOrgId,
+  });
+
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Inventario.create(withOrgId(data, userAccount)),
+    mutationFn: async (data) => {
+      // Validar categoría
+      const categoria = categorias.find(c => c.id === data.categoria_id);
+      if (!categoria) {
+        throw new Error('Debe seleccionar una categoría válida');
+      }
+
+      // VALIDACIONES BLOQUEANTES
+      if (!categoria.permite_stock && data.cantidad_disponible > 0) {
+        throw new Error(`La categoría "${categoria.nombre}" no permite stock. Debe ser 0.`);
+      }
+
+      if (!categoria.es_vendible && data.precio_venta > 0) {
+        throw new Error(`La categoría "${categoria.nombre}" no es vendible. El precio debe ser 0.`);
+      }
+
+      if (categoria.es_vendible && !data.precio_venta) {
+        throw new Error(`La categoría "${categoria.nombre}" requiere precio de venta.`);
+      }
+
+      // Auto-generar codigo_interno
+      const codigoInterno = generarCodigoInterno(effectiveOrgId);
+      
+      return base44.entities.Inventario.create({
+        ...data,
+        codigo_interno: codigoInterno,
+        organization_id: effectiveOrgId
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
       setShowModal(false);
       setEditingItem(null);
+      setSelectedCategoriaId('');
+      setCodigoInternoPreview('');
     },
+    onError: (error) => {
+      alert('Error: ' + error.message);
+    }
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Inventario.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      // Validar categoría
+      const categoria = categorias.find(c => c.id === data.categoria_id);
+      if (!categoria) {
+        throw new Error('Debe seleccionar una categoría válida');
+      }
+
+      // VALIDACIONES BLOQUEANTES
+      if (!categoria.permite_stock && data.cantidad_disponible > 0) {
+        throw new Error(`La categoría "${categoria.nombre}" no permite stock. Debe ser 0.`);
+      }
+
+      if (!categoria.es_vendible && data.precio_venta > 0) {
+        throw new Error(`La categoría "${categoria.nombre}" no es vendible. El precio debe ser 0.`);
+      }
+
+      if (categoria.es_vendible && !data.precio_venta) {
+        throw new Error(`La categoría "${categoria.nombre}" requiere precio de venta.`);
+      }
+
+      // Registrar historial de cambios críticos
+      const itemAnterior = items.find(i => i.id === id);
+      if (itemAnterior) {
+        const camposCriticos = [
+          { campo: 'costo_unitario', anterior: itemAnterior.costo_unitario, nuevo: data.costo_unitario },
+          { campo: 'precio_venta', anterior: itemAnterior.precio_venta, nuevo: data.precio_venta },
+          { campo: 'cantidad_disponible', anterior: itemAnterior.cantidad_disponible, nuevo: data.cantidad_disponible },
+          { campo: 'ubicacion', anterior: itemAnterior.ubicacion, nuevo: data.ubicacion },
+          { campo: 'estado', anterior: itemAnterior.estado, nuevo: data.estado },
+          { campo: 'categoria_id', anterior: itemAnterior.categoria_id, nuevo: data.categoria_id }
+        ];
+
+        for (const cambio of camposCriticos) {
+          if (cambio.anterior !== cambio.nuevo) {
+            await base44.entities.InventarioHistorial.create({
+              organization_id: effectiveOrgId,
+              inventario_id: id,
+              campo: cambio.campo,
+              valor_anterior: String(cambio.anterior || ''),
+              valor_nuevo: String(cambio.nuevo || ''),
+              modificado_por: user.id
+            });
+          }
+        }
+      }
+
+      return base44.entities.Inventario.update(id, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
       setShowModal(false);
       setEditingItem(null);
+      setSelectedCategoriaId('');
     },
+    onError: (error) => {
+      alert('Error: ' + error.message);
+    }
   });
 
   const handleSubmit = async (e) => {
@@ -64,7 +164,7 @@ export default function Inventario() {
     const formData = new FormData(e.target);
     const codigoBarras = formData.get('codigo_barras');
     
-    // Validar código único
+    // Validar código único (opcional)
     if (codigoBarras) {
       const duplicado = items.find(i => 
         i.codigo_barras === codigoBarras && 
@@ -75,22 +175,28 @@ export default function Inventario() {
         return;
       }
     }
+
+    const categoriaSeleccionada = categorias.find(c => c.id === selectedCategoriaId);
     
     const data = {
-      codigo_barras: codigoBarras,
+      codigo_barras: codigoBarras || undefined,
       sku: formData.get('sku') || undefined,
       nombre: formData.get('nombre'),
       descripcion: formData.get('descripcion'),
-      categoria: formData.get('categoria'),
+      categoria_id: selectedCategoriaId,
       marca: formData.get('marca'),
       modelo: formData.get('modelo'),
-      cantidad_disponible: parseFloat(formData.get('cantidad_disponible')) || 0,
+      cantidad_disponible: categoriaSeleccionada?.permite_stock ? (parseFloat(formData.get('cantidad_disponible')) || 0) : 0,
       ubicacion: formData.get('ubicacion'),
       costo_unitario: parseFloat(formData.get('costo_unitario')) || 0,
-      precio_venta: parseFloat(formData.get('precio_venta')) || 0,
+      precio_venta: categoriaSeleccionada?.es_vendible ? (parseFloat(formData.get('precio_venta')) || 0) : 0,
       punto_reorden: parseFloat(formData.get('punto_reorden')) || 5,
       proveedor: formData.get('proveedor'),
       estado: formData.get('estado') || 'activo',
+      // Campos de reciclaje (opcionales)
+      co2_evitado: parseFloat(formData.get('co2_evitado')) || 0,
+      valor_recuperado: parseFloat(formData.get('valor_recuperado')) || 0,
+      notas_reciclaje: formData.get('notas_reciclaje') || undefined
     };
 
     if (editingItem) {
@@ -99,6 +205,23 @@ export default function Inventario() {
       createMutation.mutate(data);
     }
   };
+
+  // Generar código interno al abrir modal para crear
+  React.useEffect(() => {
+    if (showModal && !editingItem && effectiveOrgId) {
+      const preview = generarCodigoInterno(effectiveOrgId);
+      setCodigoInternoPreview(preview);
+    }
+  }, [showModal, editingItem, effectiveOrgId]);
+
+  // Auto-seleccionar categoría al editar
+  React.useEffect(() => {
+    if (editingItem) {
+      setSelectedCategoriaId(editingItem.categoria_id || '');
+    } else {
+      setSelectedCategoriaId('');
+    }
+  }, [editingItem]);
 
   const handleSearchKeyDown = (e) => {
     if (e.key === 'Enter' && searchTerm) {
@@ -114,10 +237,11 @@ export default function Inventario() {
 
   const itemsFiltrados = items.filter(i => {
     const matchSearch = !searchTerm ||
+      i.codigo_interno?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.nombre?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCategoria = filtroCategoria === 'todas' || i.categoria === filtroCategoria;
+    const matchCategoria = filtroCategoria === 'todas' || i.categoria_id === filtroCategoria;
     return matchSearch && matchCategoria;
   });
 
@@ -216,11 +340,11 @@ export default function Inventario() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas las categorías</SelectItem>
-                <SelectItem value="repuesto">Repuestos</SelectItem>
-                <SelectItem value="equipo_nuevo">Equipos Nuevos</SelectItem>
-                <SelectItem value="accesorio">Accesorios</SelectItem>
-                <SelectItem value="consumible">Consumibles</SelectItem>
-                <SelectItem value="suministro">Suministros</SelectItem>
+                {categorias.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.nombre}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -237,8 +361,8 @@ export default function Inventario() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Código</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">SKU</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Código Interno</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Código/SKU</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Producto</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Categoría</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Stock</th>
@@ -252,14 +376,25 @@ export default function Inventario() {
                 {itemsFiltrados.map((item) => {
                   const margen = ((item.precio_venta - item.costo_unitario) / item.precio_venta * 100) || 0;
                   const bajoStock = item.cantidad_disponible <= item.punto_reorden;
+                  const categoria = categorias.find(c => c.id === item.categoria_id);
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-4">
-                        <span className="font-mono text-sm font-bold text-blue-600">{item.codigo_barras || 'N/A'}</span>
+                        <span className="font-mono text-sm font-bold text-emerald-600">{item.codigo_interno}</span>
                       </td>
                       <td className="p-4">
-                        <span className="font-mono text-xs text-slate-500">{item.sku || '-'}</span>
+                        <div>
+                          {item.codigo_barras && (
+                            <span className="font-mono text-xs text-blue-600 block">{item.codigo_barras}</span>
+                          )}
+                          {item.sku && (
+                            <span className="font-mono text-xs text-slate-500 block">{item.sku}</span>
+                          )}
+                          {!item.codigo_barras && !item.sku && (
+                            <span className="text-xs text-slate-400">-</span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4">
                         <div>
@@ -269,7 +404,7 @@ export default function Inventario() {
                       </td>
                       <td className="p-4">
                         <Badge variant="outline" className="capitalize">
-                          {item.categoria?.replace('_', ' ')}
+                          {categoria?.nombre || 'Sin categoría'}
                         </Badge>
                       </td>
                       <td className="p-4">
@@ -334,42 +469,94 @@ export default function Inventario() {
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
+              {/* CÓDIGO INTERNO - AUTO GENERADO */}
+              {!editingItem && (
+                <div className="space-y-2 col-span-2">
+                  <Label>Código Interno del Sistema</Label>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                    <span className="font-mono text-sm font-bold text-emerald-600">
+                      {codigoInternoPreview}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Este código se generará automáticamente al crear el producto
+                  </p>
+                </div>
+              )}
+
+              {editingItem && (
+                <div className="space-y-2 col-span-2">
+                  <Label>Código Interno</Label>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                    <span className="font-mono text-sm font-bold text-emerald-600">
+                      {editingItem.codigo_interno}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* CATEGORÍA CON QUICK CREATE */}
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="codigo_barras">Código de Barras *</Label>
+                <Label htmlFor="categoria">Categoría *</Label>
+                <div className="flex gap-2">
+                  <Select 
+                    value={selectedCategoriaId} 
+                    onValueChange={setSelectedCategoriaId}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Seleccionar categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categorias.length === 0 && (
+                        <div className="p-2 text-sm text-slate-500">
+                          No hay categorías. Crea una nueva.
+                        </div>
+                      )}
+                      {categorias.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowQuickCreateCategoria(true)}
+                    className="shrink-0"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Nueva
+                  </Button>
+                </div>
+                {!selectedCategoriaId && (
+                  <p className="text-xs text-slate-500">
+                    Ej: Repuestos, Servicios, Reciclaje
+                  </p>
+                )}
+              </div>
+
+              {/* CÓDIGO DE BARRAS Y SKU */}
+              <div className="space-y-2">
+                <Label htmlFor="codigo_barras">Código de Barras</Label>
                 <Input
                   id="codigo_barras"
                   name="codigo_barras"
                   defaultValue={editingItem?.codigo_barras}
-                  placeholder="Escanear o ingresar código"
-                  required
-                  autoFocus
+                  placeholder="Ej: 7501234567890"
                 />
+                <p className="text-xs text-slate-500">Opcional - Escanear o ingresar</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="sku">SKU (opcional)</Label>
+                <Label htmlFor="sku">SKU</Label>
                 <Input
                   id="sku"
                   name="sku"
                   defaultValue={editingItem?.sku}
-                  placeholder="SKU-12345"
+                  placeholder="Ej: SKU-DELL-65W"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="categoria">Categoría *</Label>
-                <Select name="categoria" defaultValue={editingItem?.categoria}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="repuesto">Repuesto</SelectItem>
-                    <SelectItem value="equipo_nuevo">Equipo Nuevo</SelectItem>
-                    <SelectItem value="accesorio">Accesorio</SelectItem>
-                    <SelectItem value="consumible">Consumible</SelectItem>
-                    <SelectItem value="suministro">Suministro</SelectItem>
-                  </SelectContent>
-                </Select>
+                <p className="text-xs text-slate-500">Opcional</p>
               </div>
 
               <div className="space-y-2 col-span-2">
@@ -378,6 +565,7 @@ export default function Inventario() {
                   id="nombre"
                   name="nombre"
                   defaultValue={editingItem?.nombre}
+                  placeholder="Ej: Cargador Dell 65W, SSD Kingston 500GB"
                   required
                 />
               </div>
@@ -409,16 +597,19 @@ export default function Inventario() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cantidad_disponible">Cantidad Disponible</Label>
-                <Input
-                  type="number"
-                  id="cantidad_disponible"
-                  name="cantidad_disponible"
-                  defaultValue={editingItem?.cantidad_disponible || 0}
-                  min="0"
-                />
-              </div>
+              {/* CAMPOS DINÁMICOS SEGÚN CATEGORÍA */}
+              {selectedCategoriaId && categorias.find(c => c.id === selectedCategoriaId)?.permite_stock && (
+                <div className="space-y-2">
+                  <Label htmlFor="cantidad_disponible">Cantidad Disponible</Label>
+                  <Input
+                    type="number"
+                    id="cantidad_disponible"
+                    name="cantidad_disponible"
+                    defaultValue={editingItem?.cantidad_disponible || 0}
+                    min="0"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="ubicacion">Ubicación</Label>
@@ -448,18 +639,85 @@ export default function Inventario() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="precio_venta">Precio de Venta (₡) *</Label>
-                <Input
-                  type="number"
-                  id="precio_venta"
-                  name="precio_venta"
-                  defaultValue={editingItem?.precio_venta}
-                  step="0.01"
-                  min="0"
-                  required
-                />
-              </div>
+              {selectedCategoriaId && categorias.find(c => c.id === selectedCategoriaId)?.es_vendible && (
+                <div className="space-y-2">
+                  <Label htmlFor="precio_venta">Precio de Venta (₡) *</Label>
+                  <Input
+                    type="number"
+                    id="precio_venta"
+                    name="precio_venta"
+                    defaultValue={editingItem?.precio_venta}
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
+              )}
+
+              {/* CAMPOS DE RECICLAJE */}
+              {selectedCategoriaId && categorias.find(c => c.id === selectedCategoriaId)?.nombre === 'Reciclaje' && (
+                <>
+                  <div className="space-y-2 col-span-2">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                      <Leaf className="w-5 h-5 text-green-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-green-900 mb-1">
+                          Información de Reciclaje
+                        </p>
+                        <p className="text-xs text-green-700">
+                          Los siguientes campos son opcionales y sirven para tracking interno de impacto ambiental.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="co2_evitado">CO₂ Evitado (kg)</Label>
+                    <Input
+                      type="number"
+                      id="co2_evitado"
+                      name="co2_evitado"
+                      defaultValue={editingItem?.co2_evitado || 0}
+                      step="0.01"
+                      min="0"
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Estimación opcional del CO₂ evitado al reutilizar o reciclar este componente. Puede dejarse en 0.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="valor_recuperado">Valor Recuperado (₡)</Label>
+                    <Input
+                      type="number"
+                      id="valor_recuperado"
+                      name="valor_recuperado"
+                      defaultValue={editingItem?.valor_recuperado || 0}
+                      step="0.01"
+                      min="0"
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Valor económico estimado recuperado. Opcional.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="notas_reciclaje">Notas de Reciclaje</Label>
+                    <Textarea
+                      id="notas_reciclaje"
+                      name="notas_reciclaje"
+                      defaultValue={editingItem?.notas_reciclaje}
+                      placeholder="Observaciones internas sobre el destino del material..."
+                      rows={3}
+                    />
+                    <p className="text-xs text-slate-500">
+                      Observaciones internas sobre el destino del material.
+                    </p>
+                  </div>
+                </>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="punto_reorden">Punto de Reorden</Label>
@@ -483,16 +741,39 @@ export default function Inventario() {
             </div>
 
             <div className="flex gap-3 justify-end pt-6">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setShowModal(false);
+                  setSelectedCategoriaId('');
+                  setCodigoInternoPreview('');
+                }}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-gradient-to-r from-emerald-500 to-blue-500">
+              <Button 
+                type="submit" 
+                className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                disabled={!selectedCategoriaId}
+              >
                 {editingItem ? 'Actualizar' : 'Crear'} Item
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* QUICK CREATE CATEGORÍA */}
+      <QuickCreateCategoria
+        open={showQuickCreateCategoria}
+        onOpenChange={setShowQuickCreateCategoria}
+        organizationId={effectiveOrgId}
+        onCreated={(newCategoria) => {
+          queryClient.invalidateQueries({ queryKey: ['categorias'] });
+          setSelectedCategoriaId(newCategoria.id);
+        }}
+      />
     </div>
   );
 }

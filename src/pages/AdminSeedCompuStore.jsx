@@ -132,7 +132,11 @@ function AdminSeedContent() {
       });
       addLog(`✓ UserAccount creado como ORG_ADMIN`, 'success');
 
-      // 5. Seed mínimo
+      // 5. Seed categorías (SIEMPRE)
+      addLog('Creando categorías base...', 'info');
+      await seedCategorias(org.id, addLog);
+
+      // 6. Seed mínimo
       if (incluirSeed) {
         addLog('Cargando seed enriquecido...', 'info');
         await seedEnriquecido(org.id, addLog);
@@ -153,16 +157,57 @@ function AdminSeedContent() {
   };
 
   // ============================================
+  // SEED DE CATEGORÍAS (IDEMPOTENTE)
+  // ============================================
+  async function seedCategorias(orgId, logger) {
+    const categoriasBase = [
+      { nombre: "Servicios", permite_stock: false, permite_precio: true, es_vendible: true },
+      { nombre: "Repuestos", permite_stock: true, permite_precio: true, es_vendible: true },
+      { nombre: "Equipos / Portátiles", permite_stock: true, permite_precio: true, es_vendible: true },
+      { nombre: "Accesorios", permite_stock: true, permite_precio: true, es_vendible: true },
+      { nombre: "Reciclaje", permite_stock: true, permite_precio: false, es_vendible: false }
+    ];
+
+    for (const cat of categoriasBase) {
+      // Validar si ya existe (idempotente)
+      const existing = await base44.entities.CategoriaInventario.filter({
+        organization_id: orgId,
+        nombre: cat.nombre
+      });
+
+      if (existing.length === 0) {
+        await base44.entities.CategoriaInventario.create({
+          ...cat,
+          organization_id: orgId,
+          activo: true
+        });
+      }
+    }
+    
+    logger(`✓ Categorías base creadas/validadas`, 'success');
+  }
+
+  // ============================================
   // SEED ENRIQUECIDO
   // ============================================
   async function seedEnriquecido(orgId, logger) {
-    // 5-7 productos con 2 categorías
+    // 1. PRIMERO crear categorías
+    await seedCategorias(orgId, logger);
+    
+    // 2. Obtener categorías para asignar IDs
+    const categorias = await base44.entities.CategoriaInventario.filter({
+      organization_id: orgId
+    });
+    const categoriaRepuestos = categorias.find(c => c.nombre === "Repuestos");
+    const categoriaAccesorios = categorias.find(c => c.nombre === "Accesorios");
+    // 3. Crear productos con categorías dinámicas
     const productos = [
       {
+        codigo_interno: `PROD-${orgId.slice(0,4).toUpperCase()}-${Date.now().toString().slice(-8)}-A001`,
         codigo_barras: `7501234${Date.now().toString().slice(-6)}01`,
         sku: "RAM-8GB-DDR4",
         nombre: "Memoria RAM DDR4 8GB Kingston",
-        categoria: "repuesto",
+        categoria_id: categoriaRepuestos?.id,
         marca: "Kingston",
         modelo: "DDR4-2666",
         cantidad_disponible: 10,
@@ -173,10 +218,11 @@ function AdminSeedContent() {
         organization_id: orgId
       },
       {
+        codigo_interno: `PROD-${orgId.slice(0,4).toUpperCase()}-${Date.now().toString().slice(-8)}-A002`,
         codigo_barras: `7501234${Date.now().toString().slice(-6)}02`,
         sku: "SSD-256-SATA",
         nombre: "SSD 256GB SATA Samsung",
-        categoria: "repuesto",
+        categoria_id: categoriaRepuestos?.id,
         marca: "Samsung",
         modelo: "860 EVO",
         cantidad_disponible: 5,
@@ -187,10 +233,11 @@ function AdminSeedContent() {
         organization_id: orgId
       },
       {
+        codigo_interno: `PROD-${orgId.slice(0,4).toUpperCase()}-${Date.now().toString().slice(-8)}-A003`,
         codigo_barras: `7501234${Date.now().toString().slice(-6)}03`,
         sku: "MOUSE-LOG-M185",
         nombre: "Mouse Inalámbrico Logitech",
-        categoria: "accesorio",
+        categoria_id: categoriaAccesorios?.id,
         marca: "Logitech",
         modelo: "M185",
         cantidad_disponible: 20,
@@ -201,10 +248,11 @@ function AdminSeedContent() {
         organization_id: orgId
       },
       {
+        codigo_interno: `PROD-${orgId.slice(0,4).toUpperCase()}-${Date.now().toString().slice(-8)}-A004`,
         codigo_barras: `7501234${Date.now().toString().slice(-6)}04`,
         sku: "TECLADO-USB",
         nombre: "Teclado USB Genérico",
-        categoria: "accesorio",
+        categoria_id: categoriaAccesorios?.id,
         marca: "Generic",
         modelo: "KB-100",
         cantidad_disponible: 15,
@@ -215,10 +263,11 @@ function AdminSeedContent() {
         organization_id: orgId
       },
       {
+        codigo_interno: `PROD-${orgId.slice(0,4).toUpperCase()}-${Date.now().toString().slice(-8)}-A005`,
         codigo_barras: `7501234${Date.now().toString().slice(-6)}05`,
         sku: "HDD-1TB-WD",
         nombre: "Disco Duro 1TB Western Digital",
-        categoria: "repuesto",
+        categoria_id: categoriaRepuestos?.id,
         marca: "Western Digital",
         modelo: "Blue 1TB",
         cantidad_disponible: 8,
@@ -229,10 +278,11 @@ function AdminSeedContent() {
         organization_id: orgId
       },
       {
+        codigo_interno: `PROD-${orgId.slice(0,4).toUpperCase()}-${Date.now().toString().slice(-8)}-A006`,
         codigo_barras: `7501234${Date.now().toString().slice(-6)}06`,
         sku: "CABLE-HDMI",
         nombre: "Cable HDMI 2.0 1.5m",
-        categoria: "accesorio",
+        categoria_id: categoriaAccesorios?.id,
         marca: "Generic",
         modelo: "HDMI-150",
         cantidad_disponible: 0, // Stock en 0
@@ -243,10 +293,11 @@ function AdminSeedContent() {
         organization_id: orgId
       },
       {
+        codigo_interno: `PROD-${orgId.slice(0,4).toUpperCase()}-${Date.now().toString().slice(-8)}-A007`,
         codigo_barras: `7501234${Date.now().toString().slice(-6)}07`,
         sku: "FUENTE-500W",
         nombre: "Fuente de Poder 500W",
-        categoria: "repuesto",
+        categoria_id: categoriaRepuestos?.id,
         marca: "Thermaltake",
         modelo: "Smart 500W",
         cantidad_disponible: 3,
@@ -258,12 +309,13 @@ function AdminSeedContent() {
       }
     ];
 
+    // 4. Crear productos
     for (const prod of productos) {
       await base44.entities.Inventario.create(prod);
     }
-    logger(`✓ ${productos.length} productos creados (2 categorías, 1 sin stock)`, 'success');
+    logger(`✓ ${productos.length} productos creados con categorías dinámicas`, 'success');
 
-    // 1 Cliente
+    // 5. Cliente
     await base44.entities.Cliente.create({
       organization_id: orgId,
       nombre_completo: "Juan Pérez Sandbox",
@@ -275,7 +327,7 @@ function AdminSeedContent() {
     });
     logger('✓ Cliente creado', 'success');
 
-    // 2 Servicios
+    // 6. Servicios
     await base44.entities.Servicio.create({
       organization_id: orgId,
       nombre: "Diagnóstico General",
@@ -477,7 +529,11 @@ function AdminSeedContent() {
       });
       addLog(`✓ ORG_ADMIN configurado`, 'success');
 
-      // 4. Seed producción
+      // 4. Seed categorías
+      addLog('Creando categorías base...', 'info');
+      await seedCategorias(org.id, addLog);
+
+      // 5. Seed producción
       addLog('Cargando seed de producción...', 'info');
       await seedEnriquecido(org.id, addLog);
 

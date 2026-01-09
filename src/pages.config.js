@@ -1,4 +1,5 @@
 import AdminDashboard from './pages/AdminDashboard';
+import AdminSeedCompuStore from './pages/AdminSeedCompuStore';
 import Agenda from './pages/Agenda';
 import AnalisisTrabajo from './pages/AnalisisTrabajo';
 import CRM from './pages/CRM';
@@ -19,12 +20,12 @@ import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import AdminSeedCompuStore from './pages/AdminSeedCompuStore';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AdminDashboard": AdminDashboard,
+    "AdminSeedCompuStore": AdminSeedCompuStore,
     "Agenda": Agenda,
     "AnalisisTrabajo": AnalisisTrabajo,
     "CRM": CRM,
@@ -45,7 +46,6 @@ export const PAGES = {
     "Reciclaje": Reciclaje,
     "Saas": Saas,
     "Settings": Settings,
-    "AdminSeedCompuStore": AdminSeedCompuStore,
 }
 
 export const pagesConfig = {

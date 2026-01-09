@@ -21,10 +21,10 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
 
   const descargarPlantilla = () => {
     const plantilla = [
-      'SKU*,Nombre*,Categoria*,Stock,CostoUnitario*,PrecioVenta*,Ubicacion,Estado',
-      'SKU-001,Pantalla LCD 15.6",repuesto,10,25000.00,45000.00,bodega,activo',
-      'SKU-002,Teclado USB,accesorio,25,3500.00,7500.00,vitrina,activo',
-      'SKU-003,Mouse Inalámbrico,accesorio,15,4000.00,8500.00,vitrina,activo',
+      'CodigoBarras*,SKU,Nombre*,Categoria*,Stock,CostoUnitario*,PrecioVenta*,Ubicacion,Estado',
+      '7501234567890,SKU-001,Pantalla LCD 15.6",repuesto,10,25000.00,45000.00,bodega,activo',
+      '7501234567891,SKU-002,Teclado USB,accesorio,25,3500.00,7500.00,vitrina,activo',
+      '7501234567892,SKU-003,Mouse Inalámbrico,accesorio,15,4000.00,8500.00,vitrina,activo',
     ].join('\n');
 
     const blob = new Blob([plantilla], { type: 'text/csv;charset=utf-8;' });
@@ -88,11 +88,11 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
   };
 
   const validarYPrevisualizarImportacion = async (rows) => {
-    // Obtener SKUs existentes para detectar duplicados
+    // Obtener códigos existentes para detectar duplicados
     const existingItems = await base44.entities.Inventario.filter({
       organization_id: effectiveOrgId
     });
-    const existingSKUs = new Set(existingItems.map(item => item.sku?.toLowerCase()));
+    const existingCodes = new Set(existingItems.map(item => item.codigo_barras?.toLowerCase()));
 
     const categorias = ['repuesto', 'equipo_nuevo', 'accesorio', 'consumible', 'suministro'];
     const ubicaciones = ['bodega', 'vitrina', 'taller', 'otro'];
@@ -109,8 +109,8 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
       let isValid = true;
 
       // Validaciones obligatorias
-      if (!row.SKU) {
-        issues.push('SKU requerido');
+      if (!row.CodigoBarras) {
+        issues.push('CodigoBarras requerido');
         isValid = false;
       }
 
@@ -159,14 +159,15 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
       }
 
       // Detectar duplicados
-      const skuLower = row.SKU?.toLowerCase();
-      if (existingSKUs.has(skuLower)) {
-        warnings.push('SKU ya existe - se actualizará');
+      const codeLower = row.CodigoBarras?.toLowerCase();
+      if (existingCodes.has(codeLower)) {
+        warnings.push('Código ya existe - se actualizará');
       }
 
       const processedRow = {
         lineNum,
-        sku: row.SKU,
+        codigo_barras: row.CodigoBarras,
+        sku: row.SKU || undefined,
         nombre: row.Nombre,
         categoria: row.Categoria?.toLowerCase(),
         cantidad_disponible: parseFloat(row.Stock) || 0,
@@ -180,7 +181,7 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
         issues,
         warnings,
         isValid,
-        isUpdate: existingSKUs.has(skuLower),
+        isUpdate: existingCodes.has(codeLower),
       };
 
       if (isValid && warnings.length === 0) {
@@ -222,12 +223,13 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
       });
 
       const existingMap = new Map(
-        existingItems.map(item => [item.sku?.toLowerCase(), item])
+        existingItems.map(item => [item.codigo_barras?.toLowerCase(), item])
       );
 
       for (const item of itemsAImportar) {
         const data = {
           organization_id: effectiveOrgId, // CRÍTICO: inyectar organization_id
+          codigo_barras: item.codigo_barras,
           sku: item.sku,
           nombre: item.nombre,
           categoria: item.categoria,
@@ -242,7 +244,7 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
           punto_reorden: 5, // default
         };
 
-        const existing = existingMap.get(item.sku.toLowerCase());
+        const existing = existingMap.get(item.codigo_barras.toLowerCase());
         
         if (existing) {
           await base44.entities.Inventario.update(existing.id, data);
@@ -389,7 +391,7 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
                     <div className="space-y-2">
                       {previewData.errores.slice(0, 10).map((item) => (
                         <div key={item.lineNum} className="bg-red-50 border border-red-200 rounded p-3 text-sm">
-                          <p className="font-medium text-red-900">Línea {item.lineNum}: {item.sku || 'Sin SKU'}</p>
+                          <p className="font-medium text-red-900">Línea {item.lineNum}: {item.codigo_barras || 'Sin Código'}</p>
                           <ul className="list-disc list-inside text-red-700 mt-1">
                             {item.issues.map((issue, i) => (
                               <li key={i}>{issue}</li>
@@ -415,7 +417,7 @@ export default function ImportarInventario({ effectiveOrgId, effectiveRole, user
                       {previewData.advertencias.slice(0, 5).map((item) => (
                         <div key={item.lineNum} className="bg-amber-50 border border-amber-200 rounded p-3 text-sm">
                           <p className="font-medium text-amber-900">
-                            {item.sku} - {item.nombre}
+                            {item.codigo_barras} - {item.nombre}
                             {item.isUpdate && <Badge className="ml-2 bg-blue-100 text-blue-700">ACTUALIZAR</Badge>}
                           </p>
                           <ul className="list-disc list-inside text-amber-700 mt-1">

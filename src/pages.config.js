@@ -1,4 +1,6 @@
+import AdminDashboard from './pages/AdminDashboard';
 import Agenda from './pages/Agenda';
+import AnalisisTrabajo from './pages/AnalisisTrabajo';
 import CRM from './pages/CRM';
 import Calidad from './pages/Calidad';
 import Clientes from './pages/Clientes';
@@ -12,18 +14,18 @@ import MigrationAdmin from './pages/MigrationAdmin';
 import Onboarding from './pages/Onboarding';
 import OrdenesTrabajo from './pages/OrdenesTrabajo';
 import PortalCliente from './pages/PortalCliente';
+import ProductividadTecnicos from './pages/ProductividadTecnicos';
 import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import AdminDashboard from './pages/AdminDashboard';
-import ProductividadTecnicos from './pages/ProductividadTecnicos';
-import AnalisisTrabajo from './pages/AnalisisTrabajo';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AdminDashboard": AdminDashboard,
     "Agenda": Agenda,
+    "AnalisisTrabajo": AnalisisTrabajo,
     "CRM": CRM,
     "Calidad": Calidad,
     "Clientes": Clientes,
@@ -37,13 +39,11 @@ export const PAGES = {
     "Onboarding": Onboarding,
     "OrdenesTrabajo": OrdenesTrabajo,
     "PortalCliente": PortalCliente,
+    "ProductividadTecnicos": ProductividadTecnicos,
     "PuntoVenta": PuntoVenta,
     "Reciclaje": Reciclaje,
     "Saas": Saas,
     "Settings": Settings,
-    "AdminDashboard": AdminDashboard,
-    "ProductividadTecnicos": ProductividadTecnicos,
-    "AnalisisTrabajo": AnalisisTrabajo,
 }
 
 export const pagesConfig = {

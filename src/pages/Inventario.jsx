@@ -59,11 +59,26 @@ export default function Inventario() {
     },
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const codigoBarras = formData.get('codigo_barras');
+    
+    // Validar código único
+    if (codigoBarras) {
+      const duplicado = items.find(i => 
+        i.codigo_barras === codigoBarras && 
+        i.id !== editingItem?.id
+      );
+      if (duplicado) {
+        alert(`Código de barras ya existe: ${duplicado.nombre}`);
+        return;
+      }
+    }
+    
     const data = {
-      sku: formData.get('sku'),
+      codigo_barras: codigoBarras,
+      sku: formData.get('sku') || undefined,
       nombre: formData.get('nombre'),
       descripcion: formData.get('descripcion'),
       categoria: formData.get('categoria'),
@@ -85,8 +100,21 @@ export default function Inventario() {
     }
   };
 
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter' && searchTerm) {
+      // Buscar exacto por código de barras
+      const exacto = items.find(i => i.codigo_barras === searchTerm);
+      if (exacto) {
+        setEditingItem(exacto);
+        setShowModal(true);
+        setSearchTerm('');
+      }
+    }
+  };
+
   const itemsFiltrados = items.filter(i => {
     const matchSearch = !searchTerm ||
+      i.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.nombre?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchCategoria = filtroCategoria === 'todas' || i.categoria === filtroCategoria;
@@ -175,9 +203,10 @@ export default function Inventario() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <Input
-                placeholder="Buscar por SKU o nombre..."
+                placeholder="Buscar por código, SKU o nombre... (Enter para buscar exacto)"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 className="pl-10"
               />
             </div>
@@ -208,6 +237,7 @@ export default function Inventario() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Código</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">SKU</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Producto</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Categoría</th>
@@ -226,7 +256,10 @@ export default function Inventario() {
                   return (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-4">
-                        <span className="font-mono text-sm font-medium">{item.sku}</span>
+                        <span className="font-mono text-sm font-bold text-blue-600">{item.codigo_barras || 'N/A'}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className="font-mono text-xs text-slate-500">{item.sku || '-'}</span>
                       </td>
                       <td className="p-4">
                         <div>
@@ -301,14 +334,25 @@ export default function Inventario() {
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="codigo_barras">Código de Barras *</Label>
+                <Input
+                  id="codigo_barras"
+                  name="codigo_barras"
+                  defaultValue={editingItem?.codigo_barras}
+                  placeholder="Escanear o ingresar código"
+                  required
+                  autoFocus
+                />
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="sku">SKU *</Label>
+                <Label htmlFor="sku">SKU (opcional)</Label>
                 <Input
                   id="sku"
                   name="sku"
                   defaultValue={editingItem?.sku}
                   placeholder="SKU-12345"
-                  required
                 />
               </div>
 

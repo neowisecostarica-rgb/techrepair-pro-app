@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { useLocation } from 'react-router-dom';
 import PageGuard from '../components/guards/PageGuard';
+import CrearProductoRapido from '../components/inventario/CrearProductoRapido';
+import { useAuthContext } from '../components/contexts/AuthContext';
 
 export default function PuntoVenta() {
   return (
@@ -30,8 +32,11 @@ function PuntoVentaContent() {
   const [origenVenta, setOrigenVenta] = useState('tienda');
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [ventaId, setVentaId] = useState(null);
+  const [showCrearRapido, setShowCrearRapido] = useState(false);
+  const [codigoNoEncontrado, setCodigoNoEncontrado] = useState('');
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
+  const { effectiveRole } = useAuthContext();
 
   // Precargar venta si viene de taller
   useEffect(() => {
@@ -171,8 +176,22 @@ function PuntoVentaContent() {
     createVentaMutation.mutate(ventaData);
   };
 
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter' && searchTerm && !ventaId) {
+      // Buscar exacto por código de barras
+      const exacto = inventario.find(i => i.codigo_barras === searchTerm);
+      if (exacto) {
+        agregarAlCarrito(exacto, 'producto');
+        setSearchTerm('');
+      } else {
+        setCodigoNoEncontrado(searchTerm);
+      }
+    }
+  };
+
   const itemsBusqueda = [
     ...inventario.filter(i =>
+      i.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.sku?.toLowerCase().includes(searchTerm.toLowerCase())
     ).slice(0, 3).map(i => ({ ...i, tipo: 'producto' })),
@@ -202,14 +221,40 @@ function PuntoVentaContent() {
                 <CardTitle className="text-lg font-semibold">Buscar Productos y Servicios</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <Input
-                    placeholder="Buscar por nombre o SKU..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Input
+                      placeholder="Escanear código o buscar... (Enter para agregar)"
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCodigoNoEncontrado('');
+                      }}
+                      onKeyDown={handleSearchKeyDown}
+                      className="pl-10"
+                      autoFocus
+                    />
+                  </div>
+                  
+                  {codigoNoEncontrado && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+                      <span className="text-sm text-red-700">
+                        ❌ Producto no encontrado: <strong>{codigoNoEncontrado}</strong>
+                      </span>
+                      {(effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN') && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setShowCrearRapido(true);
+                          }}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Crear Producto
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {searchTerm && itemsBusqueda.length > 0 && (
@@ -427,6 +472,19 @@ function PuntoVentaContent() {
           </Card>
         </div>
       </div>
+
+      <CrearProductoRapido
+        open={showCrearRapido}
+        onClose={() => {
+          setShowCrearRapido(false);
+          setCodigoNoEncontrado('');
+        }}
+        codigoBarras={codigoNoEncontrado}
+        onProductoCreado={(producto) => {
+          agregarAlCarrito(producto, 'producto');
+          setCodigoNoEncontrado('');
+        }}
+      />
     </div>
   );
 }

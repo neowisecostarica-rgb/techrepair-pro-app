@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 import WizardPreDiagnostico from '@/components/prediagnostico/WizardPreDiagnostico';
+import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
@@ -58,6 +59,9 @@ function OrdenesTrabajoContent() {
   const [wizardOT, setWizardOT] = useState(null);
   const [showPreDiagnostico, setShowPreDiagnostico] = useState(false);
   const [preDiagnosticoOT, setPreDiagnosticoOT] = useState(null);
+  const [showDiagnosticoTecnico, setShowDiagnosticoTecnico] = useState(false);
+  const [diagnosticoTecnicoOT, setDiagnosticoTecnicoOT] = useState(null);
+  const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showQuickCreateCliente, setShowQuickCreateCliente] = useState(false);
@@ -1010,6 +1014,31 @@ function OrdenesTrabajoContent() {
                     📋 Pre-Diagnóstico
                   </Button>
                 )}
+
+                {/* Diagnóstico Técnico */}
+                {effectiveRole === 'TECHNICIAN' && selectedOT.estado === 'EN_REVISION' && (
+                  <Button 
+                    onClick={async () => {
+                      // Cargar pre-diagnóstico antes de abrir wizard
+                      try {
+                        const preDiag = await base44.entities.PreDiagnostico.filter({
+                          organization_id: effectiveOrgId,
+                          orden_trabajo_id: selectedOT.id
+                        });
+                        setPreDiagnosticoData(preDiag[0] || null);
+                      } catch (error) {
+                        console.error('Error cargando pre-diagnóstico:', error);
+                        setPreDiagnosticoData(null);
+                      }
+                      setDiagnosticoTecnicoOT(selectedOT);
+                      setShowDiagnosticoTecnico(true);
+                      setSelectedOT(null);
+                    }}
+                    className="bg-gradient-to-r from-purple-500 to-blue-500"
+                  >
+                    🔧 Diagnóstico Técnico
+                  </Button>
+                )}
                 
                 {/* P0.3: Integrar AgendarDesdeOT */}
                 {['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole) && (
@@ -1087,6 +1116,31 @@ function OrdenesTrabajoContent() {
               onComplete={() => {
                 setShowPreDiagnostico(false);
                 setPreDiagnosticoOT(null);
+                queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Wizard Diagnóstico Técnico */}
+      <Dialog open={showDiagnosticoTecnico} onOpenChange={setShowDiagnosticoTecnico}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {diagnosticoTecnicoOT && (
+            <WizardDiagnosticoTecnico
+              ordenTrabajo={diagnosticoTecnicoOT}
+              preDiagnostico={preDiagnosticoData}
+              effectiveOrgId={effectiveOrgId}
+              tecnicoId={user?.id}
+              onClose={() => {
+                setShowDiagnosticoTecnico(false);
+                setDiagnosticoTecnicoOT(null);
+                setPreDiagnosticoData(null);
+              }}
+              onComplete={() => {
+                setShowDiagnosticoTecnico(false);
+                setDiagnosticoTecnicoOT(null);
+                setPreDiagnosticoData(null);
                 queryClient.invalidateQueries({ queryKey: ['ordenes'] });
               }}
             />

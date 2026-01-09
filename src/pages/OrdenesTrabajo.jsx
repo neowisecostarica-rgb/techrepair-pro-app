@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,7 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, FileText, Clock } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -23,6 +25,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IniciarActividad from '@/components/actividades/IniciarActividad';
 import ActividadActiva from '@/components/actividades/ActividadActiva';
 import ListaActividades from '@/components/actividades/ListaActividades';
+import QuickCreateCliente from '@/components/ot/QuickCreateCliente';
+import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
+import { generarCodigoOT, calcularFechaEntregaEstimada } from '@/components/ot/utils/generarCodigoOT';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -52,6 +57,13 @@ function OrdenesTrabajoContent() {
   const [wizardOT, setWizardOT] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
+  const [showQuickCreateCliente, setShowQuickCreateCliente] = useState(false);
+  const [showQuickCreateEquipo, setShowQuickCreateEquipo] = useState(false);
+  const [selectedClienteId, setSelectedClienteId] = useState('');
+  const [selectedEquipoId, setSelectedEquipoId] = useState('');
+  const [selectedPrioridad, setSelectedPrioridad] = useState('normal');
+  const [terminosAceptados, setTerminosAceptados] = useState(false);
+  const [terminosActivos, setTerminosActivos] = useState(null);
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
   const { effectiveOrgId, effectiveRole } = useAuthContext();
@@ -105,12 +117,45 @@ function OrdenesTrabajoContent() {
     enabled: !!userAccount?.organization_id,
   });
 
+  // Cargar términos activos
+  const { data: terminos = [] } = useQuery({
+    queryKey: ['terminos', effectiveOrgId],
+    queryFn: () => base44.entities.TerminosYCondiciones.filter({
+      organization_id: effectiveOrgId,
+      activo: true
+    }),
+    enabled: !!effectiveOrgId,
+  });
+
+  useEffect(() => {
+    if (terminos.length > 0) {
+      setTerminosActivos(terminos[0]);
+    }
+  }, [terminos]);
+
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.OrdenTrabajo.create(withOrgId(data, userAccount)),
+    mutationFn: async (data) => {
+      // Generar código OT
+      const codigoOT = await generarCodigoOT(base44, effectiveOrgId);
+      
+      // Calcular fecha entrega estimada
+      const fechaEstimada = calcularFechaEntregaEstimada(data.prioridad);
+      
+      return base44.entities.OrdenTrabajo.create(withOrgId({
+        ...data,
+        codigo_ot: codigoOT,
+        fecha_entrega_estimada: fechaEstimada,
+        fecha_ingreso: new Date().toISOString()
+      }, userAccount));
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
       setShowModal(false);
       setEditingOT(null);
+      setSelectedClienteId('');
+      setSelectedEquipoId('');
+      setSelectedPrioridad('normal');
+      setTerminosAceptados(false);
     },
   });
 
@@ -197,19 +242,36 @@ function OrdenesTrabajoContent() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validar términos solo en creación
+    if (!editingOT && !terminosAceptados) {
+      alert('Debe aceptar los términos y condiciones para continuar');
+      return;
+    }
+    
     const formData = new FormData(e.target);
     
     const data = {
       branch_id: formData.get('branch_id'),
-      cliente_id: formData.get('cliente_id'),
-      equipo_id: formData.get('equipo_id'),
+      cliente_id: selectedClienteId,
+      equipo_id: selectedEquipoId,
       motivo_ingreso: formData.get('motivo_ingreso'),
       observaciones_ingreso: formData.get('observaciones_ingreso'),
-      prioridad: formData.get('prioridad') || 'normal',
+      tipo_ingreso: formData.get('tipo_ingreso') || 'presencial',
+      tracking_code: formData.get('tracking_code') || undefined,
+      responsable_recepcion: formData.get('responsable_recepcion') || user?.full_name,
+      prioridad: selectedPrioridad,
       estado: editingOT ? formData.get('estado') : 'EN_COLA_REVISION',
-      fecha_ingreso: editingOT?.fecha_ingreso || new Date().toISOString(),
       created_by_user_id: user?.id,
     };
+
+    // Agregar términos en creación
+    if (!editingOT && terminosActivos) {
+      data.terminos_aceptados = true;
+      data.terminos_aceptados_at = new Date().toISOString();
+      data.terminos_version = terminosActivos.version;
+      data.terminos_texto_snapshot = terminosActivos.texto;
+    }
 
     // Generar token único para nuevas OTs
     if (!editingOT) {
@@ -231,11 +293,17 @@ function OrdenesTrabajoContent() {
 
   const ordenesFiltradas = ordenes.filter(o => {
     const matchSearch = !searchTerm || 
+      o.codigo_ot?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       o.motivo_ingreso?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       o.observaciones_ingreso?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchEstado = filtroEstado === 'todas' || o.estado === filtroEstado;
     return matchSearch && matchEstado;
   });
+
+  // Filtrar equipos por cliente seleccionado
+  const equiposDelCliente = selectedClienteId 
+    ? equipos.filter(e => e.cliente_id === selectedClienteId)
+    : [];
 
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
@@ -336,7 +404,7 @@ function OrdenesTrabajoContent() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <Input
-                placeholder="Buscar por motivo u observaciones..."
+                placeholder="Buscar por código OT, motivo u observaciones..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -376,6 +444,9 @@ function OrdenesTrabajoContent() {
                         OT
                       </div>
                       <div>
+                        <p className="text-xs font-mono text-emerald-600 font-bold mb-1">
+                          {orden.codigo_ot || 'OT-LEGACY'}
+                        </p>
                         <h3 className="font-bold text-slate-900 text-lg">{orden.motivo_ingreso}</h3>
                         <p className="text-sm text-slate-500">
                           {getClienteName(orden.cliente_id)} • {getEquipoInfo(orden.equipo_id)}
@@ -425,6 +496,85 @@ function OrdenesTrabajoContent() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+            {/* Cliente con Quick Create */}
+            <div className="space-y-2">
+              <Label htmlFor="cliente_id">Cliente *</Label>
+              <div className="flex gap-2">
+                <Select 
+                  value={selectedClienteId} 
+                  onValueChange={setSelectedClienteId}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Seleccionar cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.length === 0 && (
+                      <div className="p-2 text-sm text-slate-500">
+                        No hay clientes. Crea uno nuevo.
+                      </div>
+                    )}
+                    {clientes.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nombre_completo} - {c.telefono}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowQuickCreateCliente(true)}
+                  className="shrink-0"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Nuevo
+                </Button>
+              </div>
+            </div>
+
+            {/* Equipo con Quick Create */}
+            <div className="space-y-2">
+              <Label htmlFor="equipo_id">Equipo *</Label>
+              <div className="flex gap-2">
+                <Select 
+                  value={selectedEquipoId} 
+                  onValueChange={setSelectedEquipoId}
+                  disabled={!selectedClienteId}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder={selectedClienteId ? "Seleccionar equipo" : "Primero selecciona un cliente"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {equiposDelCliente.length === 0 && selectedClienteId && (
+                      <div className="p-2 text-sm text-slate-500">
+                        Este cliente no tiene equipos. Crea uno nuevo.
+                      </div>
+                    )}
+                    {equiposDelCliente.map(e => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.tipo} - {e.marca} {e.modelo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowQuickCreateEquipo(true)}
+                  disabled={!selectedClienteId}
+                  className="shrink-0"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Nuevo
+                </Button>
+              </div>
+              {!selectedClienteId && (
+                <p className="text-xs text-slate-500">
+                  Debes seleccionar un cliente primero
+                </p>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="branch_id">Sucursal *</Label>
@@ -441,50 +591,42 @@ function OrdenesTrabajoContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prioridad">Prioridad</Label>
-                <Select name="prioridad" defaultValue={editingOT?.prioridad || 'normal'}>
+                <Label htmlFor="prioridad">Prioridad *</Label>
+                <Select value={selectedPrioridad} onValueChange={setSelectedPrioridad}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Baja</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                    <SelectItem value="urgente">Urgente</SelectItem>
+                    <SelectItem value="low">Baja (+7 días)</SelectItem>
+                    <SelectItem value="normal">Normal (+3 días)</SelectItem>
+                    <SelectItem value="high">Alta (+1 día)</SelectItem>
+                    <SelectItem value="urgente">Urgente (hoy)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cliente_id">Cliente *</Label>
-                <Select name="cliente_id" defaultValue={editingOT?.cliente_id} required>
+                <Label htmlFor="tipo_ingreso">Tipo de Ingreso *</Label>
+                <Select name="tipo_ingreso" defaultValue={editingOT?.tipo_ingreso || 'presencial'}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cliente" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {clientes.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.nombre_completo}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="presencial">Presencial</SelectItem>
+                    <SelectItem value="mensajeria">Mensajería</SelectItem>
+                    <SelectItem value="retiro">Retiro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="equipo_id">Equipo *</Label>
-                <Select name="equipo_id" defaultValue={editingOT?.equipo_id} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar equipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equipos.map(e => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.marca} {e.modelo} - {e.serie}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="tracking_code">Código de Seguimiento</Label>
+                <Input
+                  id="tracking_code"
+                  name="tracking_code"
+                  defaultValue={editingOT?.tracking_code}
+                  placeholder="Opcional (para mensajería)"
+                />
               </div>
             </div>
 
@@ -527,11 +669,61 @@ function OrdenesTrabajoContent() {
               </div>
             )}
 
+            {/* Términos y Condiciones (solo en creación) */}
+            {!editingOT && (
+              <div className="space-y-4 border-t border-slate-200 pt-6">
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Términos y Condiciones *</Label>
+                  
+                  {terminosActivos ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 max-h-40 overflow-y-auto">
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                        {terminosActivos.texto}
+                      </p>
+                    </div>
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="w-4 h-4" />
+                      <AlertDescription>
+                        No hay términos y condiciones configurados. Contacta al administrador.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {terminosActivos && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="terminos"
+                        checked={terminosAceptados}
+                        onCheckedChange={setTerminosAceptados}
+                      />
+                      <Label 
+                        htmlFor="terminos" 
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Acepto los términos y condiciones (obligatorio)
+                      </Label>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+              <Button type="button" variant="outline" onClick={() => {
+                setShowModal(false);
+                setSelectedClienteId('');
+                setSelectedEquipoId('');
+                setSelectedPrioridad('normal');
+                setTerminosAceptados(false);
+              }}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-gradient-to-r from-emerald-500 to-blue-500">
+              <Button 
+                type="submit" 
+                className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                disabled={!editingOT && (!selectedClienteId || !selectedEquipoId || !terminosAceptados)}
+              >
                 {editingOT ? 'Actualizar' : 'Crear'} Orden
               </Button>
             </div>
@@ -693,6 +885,29 @@ function OrdenesTrabajoContent() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Quick Create Cliente */}
+      <QuickCreateCliente
+        open={showQuickCreateCliente}
+        onOpenChange={setShowQuickCreateCliente}
+        organizationId={effectiveOrgId}
+        onCreated={(newCliente) => {
+          queryClient.invalidateQueries({ queryKey: ['clientes'] });
+          setSelectedClienteId(newCliente.id);
+        }}
+      />
+
+      {/* Quick Create Equipo */}
+      <QuickCreateEquipo
+        open={showQuickCreateEquipo}
+        onOpenChange={setShowQuickCreateEquipo}
+        organizationId={effectiveOrgId}
+        clienteId={selectedClienteId}
+        onCreated={(newEquipo) => {
+          queryClient.invalidateQueries({ queryKey: ['equipos'] });
+          setSelectedEquipoId(newEquipo.id);
+        }}
+      />
     </div>
   );
 }

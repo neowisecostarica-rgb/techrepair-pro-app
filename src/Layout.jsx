@@ -117,6 +117,9 @@ function LayoutContent({ children, currentPageName }) {
    menuItems = [
      { label: 'Configuración', path: 'Settings', icon: Settings },
      { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
+     { label: 'Admin Dashboard', path: 'AdminDashboard', icon: LayoutDashboard },
+     { label: 'Productividad', path: 'ProductividadTecnicos', icon: Users },
+     { label: 'Análisis', path: 'AnalisisTrabajo', icon: FileText },
      { label: 'CRM', path: 'CRM', icon: Users },
      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
      { label: 'Clientes', path: 'Clientes', icon: Users },

@@ -16,6 +16,7 @@ import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
+import WizardPreDiagnostico from '@/components/prediagnostico/WizardPreDiagnostico';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
@@ -55,6 +56,8 @@ function OrdenesTrabajoContent() {
   const [selectedOT, setSelectedOT] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
   const [wizardOT, setWizardOT] = useState(null);
+  const [showPreDiagnostico, setShowPreDiagnostico] = useState(false);
+  const [preDiagnosticoOT, setPreDiagnosticoOT] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showQuickCreateCliente, setShowQuickCreateCliente] = useState(false);
@@ -922,6 +925,16 @@ function OrdenesTrabajoContent() {
               </TabsList>
 
               <TabsContent value="general" className="space-y-6">
+                {/* Pre-Diagnóstico Resumen */}
+                {selectedOT.diagnostico_resumido && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-blue-900 mb-2">Pre-Diagnóstico de Recepción</h4>
+                    <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                      {selectedOT.diagnostico_resumido}
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
                 <div>
                   <p className="text-xs text-slate-500">Estado</p>
@@ -983,6 +996,21 @@ function OrdenesTrabajoContent() {
                   </Button>
                 )}
                 
+                {/* Pre-Diagnóstico */}
+                {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && 
+                  ['EN_COLA_REVISION', 'ASIGNADA'].includes(selectedOT.estado) && (
+                  <Button 
+                    onClick={() => {
+                      setPreDiagnosticoOT(selectedOT);
+                      setShowPreDiagnostico(true);
+                      setSelectedOT(null);
+                    }}
+                    className="bg-gradient-to-r from-blue-500 to-indigo-500"
+                  >
+                    📋 Pre-Diagnóstico
+                  </Button>
+                )}
+                
                 {/* P0.3: Integrar AgendarDesdeOT */}
                 {['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole) && (
                   <AgendarDesdeOT 
@@ -1040,6 +1068,28 @@ function OrdenesTrabajoContent() {
                 <ListaActividades ordenTrabajoId={selectedOT.id} />
               </TabsContent>
             </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Wizard Pre-Diagnóstico */}
+      <Dialog open={showPreDiagnostico} onOpenChange={setShowPreDiagnostico}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {preDiagnosticoOT && (
+            <WizardPreDiagnostico
+              ordenTrabajo={preDiagnosticoOT}
+              effectiveOrgId={effectiveOrgId}
+              userId={user?.id}
+              onClose={() => {
+                setShowPreDiagnostico(false);
+                setPreDiagnosticoOT(null);
+              }}
+              onComplete={() => {
+                setShowPreDiagnostico(false);
+                setPreDiagnosticoOT(null);
+                queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+              }}
+            />
           )}
         </DialogContent>
       </Dialog>

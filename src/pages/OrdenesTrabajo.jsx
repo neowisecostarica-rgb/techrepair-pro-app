@@ -59,11 +59,20 @@ function OrdenesTrabajoContent() {
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showQuickCreateCliente, setShowQuickCreateCliente] = useState(false);
   const [showQuickCreateEquipo, setShowQuickCreateEquipo] = useState(false);
+  const [showInlineEquipo, setShowInlineEquipo] = useState(false);
   const [selectedClienteId, setSelectedClienteId] = useState('');
   const [selectedEquipoId, setSelectedEquipoId] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState('normal');
-  const [terminosAceptados, setTerminosAceptados] = useState(false);
   const [terminosActivos, setTerminosActivos] = useState(null);
+  const [newEquipoData, setNewEquipoData] = useState({
+    tipo: '',
+    marca: '',
+    modelo: '',
+    serie_ingreso: '',
+    accesorios_ingreso: '',
+    estado_fisico_ingreso: 'bueno',
+    contrasena_ingreso: ''
+  });
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
   const { effectiveOrgId, effectiveRole } = useAuthContext();
@@ -152,12 +161,25 @@ function OrdenesTrabajoContent() {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
       setShowModal(false);
       setEditingOT(null);
-      setSelectedClienteId('');
-      setSelectedEquipoId('');
-      setSelectedPrioridad('normal');
-      setTerminosAceptados(false);
+      resetForm();
     },
   });
+
+  const resetForm = () => {
+    setSelectedClienteId('');
+    setSelectedEquipoId('');
+    setSelectedPrioridad('normal');
+    setShowInlineEquipo(false);
+    setNewEquipoData({
+      tipo: '',
+      marca: '',
+      modelo: '',
+      serie_ingreso: '',
+      accesorios_ingreso: '',
+      estado_fisico_ingreso: 'bueno',
+      contrasena_ingreso: ''
+    });
+  };
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
@@ -240,21 +262,41 @@ function OrdenesTrabajoContent() {
     },
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validar términos solo en creación
-    if (!editingOT && !terminosAceptados) {
-      alert('Debe aceptar los términos y condiciones para continuar');
+    // Validar términos configurados
+    if (!editingOT && !terminosActivos) {
+      alert('No se pueden crear órdenes sin términos configurados');
       return;
     }
     
     const formData = new FormData(e.target);
+    let equipoIdFinal = selectedEquipoId;
+
+    // Si se está creando equipo inline, crearlo primero
+    if (showInlineEquipo && !selectedEquipoId) {
+      try {
+        const newEquipo = await base44.entities.Equipo.create({
+          organization_id: effectiveOrgId,
+          cliente_id: selectedClienteId,
+          tipo: newEquipoData.tipo,
+          marca: newEquipoData.marca,
+          modelo: newEquipoData.modelo || undefined,
+          estado_fisico: 'bueno'
+        });
+        equipoIdFinal = newEquipo.id;
+        queryClient.invalidateQueries({ queryKey: ['equipos'] });
+      } catch (error) {
+        alert('Error al crear el equipo: ' + error.message);
+        return;
+      }
+    }
     
     const data = {
       branch_id: formData.get('branch_id'),
       cliente_id: selectedClienteId,
-      equipo_id: selectedEquipoId,
+      equipo_id: equipoIdFinal,
       motivo_ingreso: formData.get('motivo_ingreso'),
       observaciones_ingreso: formData.get('observaciones_ingreso'),
       tipo_ingreso: formData.get('tipo_ingreso') || 'presencial',
@@ -263,15 +305,12 @@ function OrdenesTrabajoContent() {
       prioridad: selectedPrioridad,
       estado: editingOT ? formData.get('estado') : 'EN_COLA_REVISION',
       created_by_user_id: user?.id,
+      // Datos contextuales del equipo
+      serie_ingreso: newEquipoData.serie_ingreso || undefined,
+      accesorios_ingreso: newEquipoData.accesorios_ingreso || undefined,
+      estado_fisico_ingreso: newEquipoData.estado_fisico_ingreso || undefined,
+      contrasena_ingreso: newEquipoData.contrasena_ingreso || undefined,
     };
-
-    // Agregar términos en creación
-    if (!editingOT && terminosActivos) {
-      data.terminos_aceptados = true;
-      data.terminos_aceptados_at = new Date().toISOString();
-      data.terminos_version = terminosActivos.version;
-      data.terminos_texto_snapshot = terminosActivos.texto;
-    }
 
     // Generar token único para nuevas OTs
     if (!editingOT) {
@@ -496,13 +535,26 @@ function OrdenesTrabajoContent() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+            {/* Mensaje informativo sobre recepción */}
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertCircle className="w-4 h-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>Recepción de Equipo:</strong> Esta orden registra la recepción del equipo para diagnóstico.
+                La aprobación del trabajo se solicitará al cliente después del diagnóstico.
+              </AlertDescription>
+            </Alert>
+
             {/* Cliente con Quick Create */}
             <div className="space-y-2">
               <Label htmlFor="cliente_id">Cliente *</Label>
               <div className="flex gap-2">
                 <Select 
                   value={selectedClienteId} 
-                  onValueChange={setSelectedClienteId}
+                  onValueChange={(value) => {
+                    setSelectedClienteId(value);
+                    setSelectedEquipoId('');
+                    setShowInlineEquipo(false);
+                  }}
                 >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Seleccionar cliente" />
@@ -532,42 +584,156 @@ function OrdenesTrabajoContent() {
               </div>
             </div>
 
-            {/* Equipo con Quick Create */}
-            <div className="space-y-2">
-              <Label htmlFor="equipo_id">Equipo *</Label>
-              <div className="flex gap-2">
-                <Select 
-                  value={selectedEquipoId} 
-                  onValueChange={setSelectedEquipoId}
-                  disabled={!selectedClienteId}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder={selectedClienteId ? "Seleccionar equipo" : "Primero selecciona un cliente"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equiposDelCliente.length === 0 && selectedClienteId && (
-                      <div className="p-2 text-sm text-slate-500">
-                        Este cliente no tiene equipos. Crea uno nuevo.
-                      </div>
-                    )}
-                    {equiposDelCliente.map(e => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.tipo} - {e.marca} {e.modelo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowQuickCreateEquipo(true)}
-                  disabled={!selectedClienteId}
-                  className="shrink-0"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Nuevo
-                </Button>
-              </div>
+            {/* Equipo con Inline Create */}
+            <div className="space-y-3">
+              <Label>Equipo *</Label>
+              
+              {!showInlineEquipo ? (
+                <div className="flex gap-2">
+                  <Select 
+                    value={selectedEquipoId} 
+                    onValueChange={setSelectedEquipoId}
+                    disabled={!selectedClienteId}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder={selectedClienteId ? "Seleccionar equipo existente" : "Primero selecciona un cliente"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {equiposDelCliente.map(e => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.tipo} - {e.marca} {e.modelo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowInlineEquipo(true);
+                      setSelectedEquipoId('');
+                    }}
+                    disabled={!selectedClienteId}
+                    className="shrink-0"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Nuevo Equipo
+                  </Button>
+                </div>
+              ) : (
+                <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-emerald-900">Registrar Nuevo Equipo</h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowInlineEquipo(false);
+                        setNewEquipoData({
+                          tipo: '',
+                          marca: '',
+                          modelo: '',
+                          serie_ingreso: '',
+                          accesorios_ingreso: '',
+                          estado_fisico_ingreso: 'bueno',
+                          contrasena_ingreso: ''
+                        });
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm">Tipo *</Label>
+                      <Select 
+                        value={newEquipoData.tipo} 
+                        onValueChange={(value) => setNewEquipoData({...newEquipoData, tipo: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="laptop">Laptop</SelectItem>
+                          <SelectItem value="desktop">Desktop</SelectItem>
+                          <SelectItem value="tablet">Tablet</SelectItem>
+                          <SelectItem value="smartphone">Smartphone</SelectItem>
+                          <SelectItem value="impresora">Impresora</SelectItem>
+                          <SelectItem value="otro">Otro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Marca *</Label>
+                      <Input
+                        value={newEquipoData.marca}
+                        onChange={(e) => setNewEquipoData({...newEquipoData, marca: e.target.value})}
+                        placeholder="Ej: Dell, HP"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Modelo</Label>
+                      <Input
+                        value={newEquipoData.modelo}
+                        onChange={(e) => setNewEquipoData({...newEquipoData, modelo: e.target.value})}
+                        placeholder="Opcional"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Serie / IMEI</Label>
+                      <Input
+                        value={newEquipoData.serie_ingreso}
+                        onChange={(e) => setNewEquipoData({...newEquipoData, serie_ingreso: e.target.value})}
+                        placeholder="Número de serie"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Estado Físico</Label>
+                      <Select 
+                        value={newEquipoData.estado_fisico_ingreso} 
+                        onValueChange={(value) => setNewEquipoData({...newEquipoData, estado_fisico_ingreso: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="excelente">Excelente</SelectItem>
+                          <SelectItem value="bueno">Bueno</SelectItem>
+                          <SelectItem value="regular">Regular</SelectItem>
+                          <SelectItem value="malo">Malo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Contraseña / PIN</Label>
+                      <Input
+                        type="password"
+                        value={newEquipoData.contrasena_ingreso}
+                        onChange={(e) => setNewEquipoData({...newEquipoData, contrasena_ingreso: e.target.value})}
+                        placeholder="Si aplica"
+                      />
+                    </div>
+
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-sm">Accesorios Entregados</Label>
+                      <Textarea
+                        value={newEquipoData.accesorios_ingreso}
+                        onChange={(e) => setNewEquipoData({...newEquipoData, accesorios_ingreso: e.target.value})}
+                        placeholder="Ej: Cargador, funda, audífonos"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {!selectedClienteId && (
                 <p className="text-xs text-slate-500">
                   Debes seleccionar un cliente primero
@@ -669,41 +835,54 @@ function OrdenesTrabajoContent() {
               </div>
             )}
 
-            {/* Términos y Condiciones (solo en creación) */}
+            {/* Términos y Condiciones (solo informativo) */}
             {!editingOT && (
-              <div className="space-y-4 border-t border-slate-200 pt-6">
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Términos y Condiciones *</Label>
-                  
+              <div className="space-y-3 border-t border-slate-200 pt-6">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <p className="text-sm text-slate-700 mb-2">
+                    Los Términos y Condiciones de la empresa están disponibles para consulta del cliente.
+                  </p>
                   {terminosActivos ? (
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 max-h-40 overflow-y-auto">
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap">
-                        {terminosActivos.texto}
-                      </p>
-                    </div>
+                    <a 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.open('about:blank').document.write(
+                          `<html><head><title>Términos y Condiciones</title></head><body style="font-family: sans-serif; padding: 20px;"><h1>Términos y Condiciones</h1><p style="white-space: pre-wrap;">${terminosActivos.texto}</p></body></html>`
+                        );
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800 underline"
+                    >
+                      📄 Ver Términos y Condiciones
+                    </a>
                   ) : (
-                    <Alert>
+                    <Alert className="mt-3">
                       <AlertCircle className="w-4 h-4" />
                       <AlertDescription>
-                        No hay términos y condiciones configurados. Contacta al administrador.
+                        {effectiveRole === 'ORG_ADMIN' ? (
+                          <div className="space-y-3">
+                            <p className="text-sm">
+                              Antes de recibir equipos, debes configurar los Términos y Condiciones de tu taller.
+                            </p>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                window.location.href = createPageUrl('Settings');
+                              }}
+                              className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                              size="sm"
+                            >
+                              Configurar Términos y Condiciones
+                            </Button>
+                          </div>
+                        ) : (
+                          <p className="text-sm">
+                            El sistema aún no tiene Términos y Condiciones configurados.
+                            Un administrador debe completar esta configuración para continuar.
+                          </p>
+                        )}
                       </AlertDescription>
                     </Alert>
-                  )}
-                  
-                  {terminosActivos && (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="terminos"
-                        checked={terminosAceptados}
-                        onCheckedChange={setTerminosAceptados}
-                      />
-                      <Label 
-                        htmlFor="terminos" 
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        Acepto los términos y condiciones (obligatorio)
-                      </Label>
-                    </div>
                   )}
                 </div>
               </div>
@@ -712,19 +891,16 @@ function OrdenesTrabajoContent() {
             <div className="flex gap-3 justify-end pt-4">
               <Button type="button" variant="outline" onClick={() => {
                 setShowModal(false);
-                setSelectedClienteId('');
-                setSelectedEquipoId('');
-                setSelectedPrioridad('normal');
-                setTerminosAceptados(false);
+                resetForm();
               }}>
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
                 className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                disabled={!editingOT && (!selectedClienteId || !selectedEquipoId || !terminosAceptados)}
+                disabled={!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)))}
               >
-                {editingOT ? 'Actualizar' : 'Crear'} Orden
+                {editingOT ? 'Actualizar' : 'Registrar Recepción'}
               </Button>
             </div>
           </form>
@@ -897,7 +1073,7 @@ function OrdenesTrabajoContent() {
         }}
       />
 
-      {/* Quick Create Equipo */}
+      {/* Quick Create Equipo (solo para seleccionar equipos ya existentes de otros clientes) */}
       <QuickCreateEquipo
         open={showQuickCreateEquipo}
         onOpenChange={setShowQuickCreateEquipo}
@@ -906,6 +1082,7 @@ function OrdenesTrabajoContent() {
         onCreated={(newEquipo) => {
           queryClient.invalidateQueries({ queryKey: ['equipos'] });
           setSelectedEquipoId(newEquipo.id);
+          setShowInlineEquipo(false);
         }}
       />
     </div>

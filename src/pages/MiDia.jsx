@@ -34,6 +34,8 @@ import BloqueosTecnicos from '@/components/tecnico/BloqueosTecnicos';
 import PruebasTecnicas from '@/components/tecnico/PruebasTecnicas';
 import NotasInternas from '@/components/tecnico/NotasInternas';
 import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
+import ActividadActiva from '@/components/actividades/ActividadActiva';
+import { useAuthContext } from '@/components/contexts/AuthContext';
 
 export default function MiDia() {
   return (
@@ -75,6 +77,21 @@ function MiDiaContent() {
   const { data: equipos = [] } = useQuery({
     queryKey: ['equipos'],
     queryFn: () => base44.entities.Equipo.list(),
+  });
+
+  const { effectiveOrgId } = useAuthContext();
+
+  // Query para actividad en progreso del técnico
+  const { data: actividadActiva } = useQuery({
+    queryKey: ['actividad_activa', user?.id, effectiveOrgId],
+    queryFn: () => base44.entities.ActividadTecnica.filter({
+      organization_id: effectiveOrgId,
+      tecnico_id: user.id,
+      estado: 'en_progreso',
+      soft_deleted: false
+    }),
+    enabled: !!user?.id && !!effectiveOrgId,
+    select: (data) => data[0] || null
   });
 
   const updateOTMutation = useMutation({
@@ -218,6 +235,17 @@ function MiDiaContent() {
 
       {/* Notificaciones */}
       <NotificacionesPanel userAccount={userAccount} />
+
+      {/* Actividad Actual */}
+      {actividadActiva && (
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-4">⚡ Actividad Actual</h2>
+          <ActividadActiva 
+            actividad={actividadActiva} 
+            onUpdated={() => queryClient.invalidateQueries({ queryKey: ['actividad_activa'] })}
+          />
+        </div>
+      )}
 
       {/* Sección ACTIVO */}
       <div>

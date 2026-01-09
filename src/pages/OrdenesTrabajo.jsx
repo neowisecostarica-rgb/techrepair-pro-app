@@ -19,6 +19,10 @@ import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
 import AgendarDesdeOT from '@/components/ot/AgendarDesdeOT';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import IniciarActividad from '@/components/actividades/IniciarActividad';
+import ActividadActiva from '@/components/actividades/ActividadActiva';
+import ListaActividades from '@/components/actividades/ListaActividades';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -112,8 +116,27 @@ function OrdenesTrabajoContent() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      // P0.4: Si se cancela, liberar agenda
       const ordenAnterior = ordenes.find(o => o.id === id);
+      
+      // P0: Si se cierra/finaliza/entrega, validar actividades abiertas
+      const estadosCierre = ['CERRADA', 'FINALIZADA', 'ENTREGADA'];
+      const vaCerrar = !estadosCierre.includes(ordenAnterior?.estado) && estadosCierre.includes(data.estado);
+      
+      if (vaCerrar) {
+        // Pre-check actividades
+        const actividadesAbiertas = await base44.entities.ActividadTecnica.filter({
+          organization_id: effectiveOrgId,
+          orden_trabajo_id: id,
+          estado: 'en_progreso',
+          soft_deleted: false
+        });
+        
+        if (actividadesAbiertas.length > 0) {
+          throw new Error(`No se puede cerrar OT: hay ${actividadesAbiertas.length} actividad(es) en progreso`);
+        }
+      }
+      
+      // P0.4: Si se cancela, liberar agenda
       const cambioACancelada = ordenAnterior?.estado !== 'CANCELADA' && data.estado === 'CANCELADA';
       
       const result = await base44.entities.OrdenTrabajo.update(id, data);
@@ -121,7 +144,7 @@ function OrdenesTrabajoContent() {
       if (cambioACancelada) {
         // Liberar agenda: cancelar todas las citas futuras de esta OT
         const citasFuturas = await base44.entities.Cita.filter({
-          organization_id: efectiveOrgId,
+          organization_id: effectiveOrgId,
           orden_trabajo_id: id,
         });
         
@@ -143,6 +166,22 @@ function OrdenesTrabajoContent() {
           target_organization_id: effectiveOrgId,
           context: `OT ${id} cancelada, agenda liberada`,
         });
+      }
+      
+      // Post-check si cerró
+      if (vaCerrar) {
+        const checkPost = await base44.entities.ActividadTecnica.filter({
+          organization_id: effectiveOrgId,
+          orden_trabajo_id: id,
+          estado: 'en_progreso',
+          soft_deleted: false
+        });
+        
+        if (checkPost.length > 0) {
+          // Rollback (intentar volver al estado anterior)
+          await base44.entities.OrdenTrabajo.update(id, { estado: ordenAnterior?.estado || 'EN_REPARACION' });
+          throw new Error('Conflicto detectado: actividad iniciada durante cierre');
+        }
       }
       
       return result;
@@ -508,8 +547,14 @@ function OrdenesTrabajoContent() {
           </DialogHeader>
 
           {selectedOT && (
-            <div className="space-y-6 mt-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
+            <Tabs defaultValue="general" className="mt-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="actividades">Actividades</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="general" className="space-y-6">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
                 <div>
                   <p className="text-xs text-slate-500">Estado</p>
                   <Badge className={`${estadoConfig[selectedOT.estado]?.color} border-0 mt-1`}>
@@ -612,7 +657,21 @@ function OrdenesTrabajoContent() {
                   Editar
                 </Button>
               </div>
-            </div>
+              </TabsContent>
+
+              <TabsContent value="actividades" className="space-y-4">
+                {effectiveRole === 'TECHNICIAN' && (
+                  <div className="mb-4">
+                    <IniciarActividad 
+                      ordenTrabajoId={selectedOT.id}
+                      onSuccess={() => queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] })}
+                    />
+                  </div>
+                )}
+
+                <ListaActividades ordenTrabajoId={selectedOT.id} />
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>

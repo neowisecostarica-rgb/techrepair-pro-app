@@ -1207,16 +1207,23 @@ function OrdenesTrabajoContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Quick Create Cliente */}
-      <QuickCreateCliente
-        open={showQuickCreateCliente}
-        onOpenChange={setShowQuickCreateCliente}
-        organizationId={effectiveOrgId}
-        onCreated={(newCliente) => {
-          queryClient.invalidateQueries({ queryKey: ['clientes'] });
-          setSelectedClienteId(newCliente.id);
-        }}
-      />
+      {/* Formulario Canónico de Cliente */}
+      <Dialog open={showQuickCreateCliente} onOpenChange={setShowQuickCreateCliente}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Cliente</DialogTitle>
+          </DialogHeader>
+          <FormularioCliente
+            efectiveOrgId={effectiveOrgId}
+            onGuardar={(newCliente) => {
+              setShowQuickCreateCliente(false);
+              queryClient.invalidateQueries({ queryKey: ['clientes'] });
+              setSelectedClienteId(newCliente.id);
+            }}
+            onCancelar={() => setShowQuickCreateCliente(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Create Equipo (solo para seleccionar equipos ya existentes de otros clientes) */}
       <QuickCreateEquipo

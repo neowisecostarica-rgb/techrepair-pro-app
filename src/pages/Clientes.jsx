@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, User, Mail, Phone, Building2, History, MessageSquare, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
+import { useQuery } from '@tanstack/react-query';
 import PageGuard from '../components/guards/PageGuard';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
@@ -33,8 +33,7 @@ function ClientesContent() {
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [user, setUser] = useState(null);
   const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
-  const queryClient = useQueryClient();
-  const { userAccount } = useUserAccount();
+  const { effectiveOrgId } = useAuthContext();
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -46,11 +45,11 @@ function ClientesContent() {
   };
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes', userAccount?.organization_id],
+    queryKey: ['clientes', effectiveOrgId],
     queryFn: () => base44.entities.Cliente.filter({
-      organization_id: userAccount.organization_id
+      organization_id: effectiveOrgId
     }),
-    enabled: !!userAccount?.organization_id,
+    enabled: !!effectiveOrgId,
   });
 
   const { data: ordenesCliente = [] } = useQuery({
@@ -59,43 +58,7 @@ function ClientesContent() {
     enabled: !!selectedCliente,
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Cliente.create(withOrgId(data, userAccount)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      setShowModal(false);
-      setEditingCliente(null);
-    },
-  });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Cliente.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      setShowModal(false);
-      setEditingCliente(null);
-    },
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = {
-      nombre_completo: formData.get('nombre_completo'),
-      email: formData.get('email'),
-      telefono: formData.get('telefono'),
-      identificacion: formData.get('identificacion'),
-      tipo: formData.get('tipo'),
-      direccion: formData.get('direccion'),
-      notas: formData.get('notas'),
-    };
-
-    if (editingCliente) {
-      updateMutation.mutate({ id: editingCliente.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
-  };
 
   const clientesFiltrados = clientes.filter(c =>
     !searchTerm ||
@@ -107,7 +70,7 @@ function ClientesContent() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Mensaje de Motivación Diario (solo para SALES) */}
-      {userAccount?.role === 'SALES' && <MensajesMotivacionVentas tipo="diaria" />}
+      <MensajesMotivacionVentas tipo="diaria" />
 
       {/* Mensajes contextuales */}
       {mensajeMotivacion && (
@@ -358,7 +321,6 @@ function ClientesContent() {
                   clienteId={selectedCliente.id}
                   ordenTrabajoId={null}
                   user={user}
-                  userAccount={userAccount}
                 />
               </TabsContent>
 
@@ -367,7 +329,6 @@ function ClientesContent() {
                   clienteId={selectedCliente.id}
                   ordenTrabajoId={null}
                   user={user}
-                  userAccount={userAccount}
                 />
               </TabsContent>
             </Tabs>

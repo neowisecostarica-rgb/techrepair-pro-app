@@ -33,6 +33,7 @@ function ClientesContent() {
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [user, setUser] = useState(null);
   const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
+  const queryClient = useQueryClient();
   const { effectiveOrgId } = useAuthContext();
 
   useEffect(() => {

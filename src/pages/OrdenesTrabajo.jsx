@@ -18,6 +18,7 @@ import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 import WizardPreDiagnostico from '@/components/prediagnostico/WizardPreDiagnostico';
 import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';
+import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
@@ -62,6 +63,8 @@ function OrdenesTrabajoContent() {
   const [showDiagnosticoTecnico, setShowDiagnosticoTecnico] = useState(false);
   const [diagnosticoTecnicoOT, setDiagnosticoTecnicoOT] = useState(null);
   const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
+  const [showCotizacion, setShowCotizacion] = useState(false);
+  const [cotizacionOT, setCotizacionOT] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showQuickCreateCliente, setShowQuickCreateCliente] = useState(false);
@@ -1039,6 +1042,21 @@ function OrdenesTrabajoContent() {
                     🔧 Diagnóstico Técnico
                   </Button>
                 )}
+
+                {/* Gestionar Cotización */}
+                {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && 
+                  ['DIAGNOSTICADA', 'COTIZADA'].includes(selectedOT.estado) && (
+                  <Button 
+                    onClick={() => {
+                      setCotizacionOT(selectedOT);
+                      setShowCotizacion(true);
+                      setSelectedOT(null);
+                    }}
+                    className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                  >
+                    💰 Gestionar Cotización
+                  </Button>
+                )}
                 
                 {/* P0.3: Integrar AgendarDesdeOT */}
                 {['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole) && (
@@ -1141,6 +1159,29 @@ function OrdenesTrabajoContent() {
                 setShowDiagnosticoTecnico(false);
                 setDiagnosticoTecnicoOT(null);
                 setPreDiagnosticoData(null);
+                queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Formulario de Cotización */}
+      <Dialog open={showCotizacion} onOpenChange={setShowCotizacion}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {cotizacionOT && (
+            <FormularioCotizacion
+              ordenTrabajo={cotizacionOT}
+              efectiveOrgId={effectiveOrgId}
+              userId={user?.id}
+              userRole={effectiveRole}
+              onClose={() => {
+                setShowCotizacion(false);
+                setCotizacionOT(null);
+              }}
+              onComplete={() => {
+                setShowCotizacion(false);
+                setCotizacionOT(null);
                 queryClient.invalidateQueries({ queryKey: ['ordenes'] });
               }}
             />

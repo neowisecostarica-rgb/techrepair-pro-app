@@ -137,6 +137,57 @@ export default function WizardDiagnosticoTecnico({
         diagnostico_resumido: resumenTecnico
       });
 
+      // Crear cotización automática en borrador
+      const itemsCotizacion = [];
+
+      // Agregar repuestos
+      if (dataCompleta.repuestos_requeridos && dataCompleta.repuestos_requeridos.length > 0) {
+        dataCompleta.repuestos_requeridos.forEach(rep => {
+          itemsCotizacion.push({
+            tipo: 'repuesto',
+            descripcion: rep.descripcion,
+            cantidad: rep.cantidad,
+            precio_unitario: 0, // Por definir por ORG_ADMIN/SALES
+            subtotal: 0
+          });
+        });
+      }
+
+      // Agregar mano de obra (si hay tiempo estimado)
+      if (dataCompleta.tiempo_estimado_horas > 0) {
+        itemsCotizacion.push({
+          tipo: 'mano_obra',
+          descripcion: 'Mano de obra técnica',
+          cantidad: dataCompleta.tiempo_estimado_horas,
+          precio_unitario: 0, // Por definir por ORG_ADMIN/SALES
+          subtotal: 0
+        });
+      }
+
+      // Calcular versión (contar cotizaciones anteriores)
+      const cotizacionesAnteriores = await base44.entities.Cotizacion.filter({
+        organization_id: effectiveOrgId,
+        orden_trabajo_id: ordenTrabajo.id
+      });
+      const version = `v1.${cotizacionesAnteriores.length}`;
+
+      // Crear cotización borrador
+      await base44.entities.Cotizacion.create({
+        organization_id: effectiveOrgId,
+        orden_trabajo_id: ordenTrabajo.id,
+        diagnostico_tecnico_id: diagnosticoFinal.id || diagnostico?.id,
+        cliente_id: ordenTrabajo.cliente_id,
+        vendedor_id: tecnicoId,
+        vendedor_nombre: 'Sistema',
+        version: version,
+        items: itemsCotizacion,
+        subtotal: 0,
+        descuento_total: 0,
+        impuesto: 0,
+        total: 0,
+        estado: 'borrador'
+      });
+
       onComplete();
     } catch (error) {
       console.error('Error completando diagnóstico:', error);

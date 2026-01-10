@@ -10,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, User, Mail, Phone, Building2, History, MessageSquare, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useQuery } from '@tanstack/react-query';
+import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
+import FormularioCliente from '@/components/clientes/FormularioCliente';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
 import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
@@ -184,7 +185,31 @@ function ClientesContent() {
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <FormularioCliente
+            cliente={editingCliente}
+            efectiveOrgId={effectiveOrgId}
+            onGuardar={() => {
+              setShowModal(false);
+              setEditingCliente(null);
+            }}
+            onCancelar={() => {
+              setShowModal(false);
+              setEditingCliente(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Historial Cliente (OLD - KEEPING FOR NOW) */}
+      <Dialog open={false} onOpenChange={() => {}}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">
+              OLD FORM
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={() => {}} className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="nombre_completo">Nombre Completo *</Label>

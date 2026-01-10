@@ -28,8 +28,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IniciarActividad from '@/components/actividades/IniciarActividad';
 import ActividadActiva from '@/components/actividades/ActividadActiva';
 import ListaActividades from '@/components/actividades/ListaActividades';
-import QuickCreateCliente from '@/components/ot/QuickCreateCliente';
 import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
+import FormularioCliente from '@/components/clientes/FormularioCliente';
 import { generarCodigoOT, calcularFechaEntregaEstimada } from '@/components/ot/utils/generarCodigoOT';
 
 const estadoConfig = {

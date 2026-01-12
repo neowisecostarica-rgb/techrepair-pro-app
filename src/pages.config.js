@@ -16,12 +16,12 @@ import Onboarding from './pages/Onboarding';
 import OrdenesTrabajo from './pages/OrdenesTrabajo';
 import PortalCliente from './pages/PortalCliente';
 import PortalCotizacion from './pages/PortalCotizacion';
+import PortalGarantia from './pages/PortalGarantia';
 import ProductividadTecnicos from './pages/ProductividadTecnicos';
 import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import PortalGarantia from './pages/PortalGarantia';
 import __Layout from './Layout.jsx';
 
 
@@ -44,12 +44,12 @@ export const PAGES = {
     "OrdenesTrabajo": OrdenesTrabajo,
     "PortalCliente": PortalCliente,
     "PortalCotizacion": PortalCotizacion,
+    "PortalGarantia": PortalGarantia,
     "ProductividadTecnicos": ProductividadTecnicos,
     "PuntoVenta": PuntoVenta,
     "Reciclaje": Reciclaje,
     "Saas": Saas,
     "Settings": Settings,
-    "PortalGarantia": PortalGarantia,
 }
 
 export const pagesConfig = {

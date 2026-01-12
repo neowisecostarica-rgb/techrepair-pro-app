@@ -113,49 +113,69 @@ function LayoutContent({ children, currentPageName }) {
    // SUPER_ADMIN can ONLY access SaaS panel (unless impersonating, which changes effectiveRole to ORG_ADMIN)
    menuItems = superAdminMenu;
  } else if (effectiveRole === 'ORG_ADMIN') {
-   // ORG_ADMIN gets full org access
+   // ORG_ADMIN gets full org access - CATEGORIZED MENU
    menuItems = [
-     { label: 'Configuración', path: 'Settings', icon: Settings },
-     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
-     { label: 'Admin Dashboard', path: 'AdminDashboard', icon: LayoutDashboard },
-     { label: 'Productividad', path: 'ProductividadTecnicos', icon: Users },
-     { label: 'Análisis', path: 'AnalisisTrabajo', icon: FileText },
-     { label: 'CRM', path: 'CRM', icon: Users },
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
-     { label: 'Clientes', path: 'Clientes', icon: Users },
-     { label: 'Inventario', path: 'Inventario', icon: Package },
-     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
-     { label: 'Cola Revisión', path: 'ColaRevision', icon: FileText },
-     { label: 'Agenda', path: 'Agenda', icon: Calendar },
-     { label: 'Reciclaje', path: 'Reciclaje', icon: Recycle },
-     { label: 'Calidad', path: 'Calidad', icon: AlertCircle },
+     // 🛠 OPERACIÓN
+     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'OPERACIÓN' },
+     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'OPERACIÓN' },
+     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'OPERACIÓN' },
+     { label: 'Reciclaje', path: 'Reciclaje', icon: Recycle, category: 'OPERACIÓN' },
+     { label: 'Calidad', path: 'Calidad', icon: AlertCircle, category: 'OPERACIÓN' },
+
+     // 💰 VENTAS
+     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
+
+     // 👥 CLIENTES
+     { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
+
+     // 📦 INVENTARIO
+     { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
+
+     // 📊 ANÁLISIS
+     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
+     { label: 'Admin Dashboard', path: 'AdminDashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
+     { label: 'Productividad', path: 'ProductividadTecnicos', icon: Users, category: 'ANÁLISIS' },
+     { label: 'Análisis', path: 'AnalisisTrabajo', icon: FileText, category: 'ANÁLISIS' },
+
+     // ⚙️ CONFIGURACIÓN (SIEMPRE AL FINAL)
+     { label: 'Configuración', path: 'Settings', icon: Settings, category: 'CONFIGURACIÓN' },
    ];
  } else if (effectiveRole === 'BRANCH_ADMIN') {
    // BRANCH_ADMIN gets operational access (no Settings)
    menuItems = [
-     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
-     { label: 'CRM', path: 'CRM', icon: Users },
-     { label: 'Clientes', path: 'Clientes', icon: Users },
-     { label: 'Inventario', path: 'Inventario', icon: Package },
-     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
-     { label: 'Cola Revisión', path: 'ColaRevision', icon: FileText },
+     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'OPERACIÓN' },
+     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'OPERACIÓN' },
+     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'OPERACIÓN' },
+
+     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
+
+     { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
+
+     { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
+
+     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
    ];
  } else if (effectiveRole === 'SALES') {
    menuItems = [
-     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
-     { label: 'CRM', path: 'CRM', icon: Users },
-     { label: 'Clientes', path: 'Clientes', icon: Users },
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
-     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
-     { label: 'Agenda', path: 'Agenda', icon: Calendar },
+     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
+
+     { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
+
+     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'OPERACIÓN' },
+     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'OPERACIÓN' },
+
+     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
    ];
  } else if (effectiveRole === 'TECHNICIAN') {
    menuItems = [
-     { label: 'Mi Día', path: 'MiDia', icon: Wrench },
-     { label: 'Cola Revisión', path: 'ColaRevision', icon: FileText },
-     { label: 'Inventario', path: 'Inventario', icon: Package },
-     { label: 'Mi Agenda', path: 'Agenda', icon: Calendar },
+     { label: 'Mi Día', path: 'MiDia', icon: Wrench, category: 'OPERACIÓN' },
+     { label: 'Cola Revisión', path: 'ColaRevision', icon: FileText, category: 'OPERACIÓN' },
+     { label: 'Mi Agenda', path: 'Agenda', icon: Calendar, category: 'OPERACIÓN' },
+
+     { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
    ];
  }
 
@@ -211,29 +231,56 @@ return (
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto p-4">
             <div className="space-y-1">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentPageName === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={createPageUrl(item.path)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                      isActive
-                        ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg shadow-emerald-500/30'
-                        : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-500'}`} />
-                    {sidebarOpen && (
-                      <>
-                        <span className="flex-1 font-medium">{item.label}</span>
-                        {isActive && <ChevronRight className="w-4 h-4" />}
-                      </>
-                    )}
-                  </Link>
-                );
-              })}
+              {(() => {
+                // Group items by category
+                const categories = [...new Set(menuItems.map(item => item.category))];
+                const categoryIcons = {
+                  'OPERACIÓN': '🛠',
+                  'VENTAS': '💰',
+                  'CLIENTES': '👥',
+                  'INVENTARIO': '📦',
+                  'ANÁLISIS': '📊',
+                  'CONFIGURACIÓN': '⚙️'
+                };
+
+                return categories.map((category, catIndex) => {
+                  const items = menuItems.filter(item => item.category === category);
+                  return (
+                    <div key={category} className={catIndex > 0 ? 'pt-4 mt-4 border-t border-slate-200' : ''}>
+                      {sidebarOpen && (
+                        <div className="px-3 mb-2">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            {categoryIcons[category]} {category}
+                          </p>
+                        </div>
+                      )}
+                      {items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = currentPageName === item.path;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={createPageUrl(item.path)}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                              isActive
+                                ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg shadow-emerald-500/30'
+                                : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-500'}`} />
+                            {sidebarOpen && (
+                              <>
+                                <span className="flex-1 font-medium">{item.label}</span>
+                                {isActive && <ChevronRight className="w-4 h-4" />}
+                              </>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </nav>
 

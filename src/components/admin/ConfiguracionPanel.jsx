@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Settings, Percent, FileText, CheckSquare } from 'lucide-react';
 import TerminosYCondicionesPanel from './TerminosYCondicionesPanel';
+import GarantiaPanel from './GarantiaPanel';
 import { useAuthContext } from '../contexts/AuthContext';
 
 export default function ConfiguracionPanel() {
@@ -28,6 +29,9 @@ export default function ConfiguracionPanel() {
 
       {/* Términos y Condiciones - Prioridad alta */}
       <TerminosYCondicionesPanel organizationId={effectiveOrgId} />
+
+      {/* Garantía del Taller */}
+      <GarantiaPanel organizationId={effectiveOrgId} />
 
       {/* Políticas Comerciales */}
       <Card className="border-0 shadow-md">

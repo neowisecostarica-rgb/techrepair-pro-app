@@ -12,7 +12,9 @@ import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { useLocation } from 'react-router-dom';
 import PageGuard from '../components/guards/PageGuard';
 import CrearProductoRapido from '../components/inventario/CrearProductoRapido';
+import TiqueteVenta from '../components/ventas/TiqueteVenta';
 import { useAuthContext } from '../components/contexts/AuthContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function PuntoVenta() {
   return (
@@ -34,6 +36,7 @@ function PuntoVentaContent() {
   const [ventaId, setVentaId] = useState(null);
   const [showCrearRapido, setShowCrearRapido] = useState(false);
   const [codigoNoEncontrado, setCodigoNoEncontrado] = useState('');
+  const [ventaCompletada, setVentaCompletada] = useState(null);
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
   const { effectiveRole } = useAuthContext();
@@ -104,14 +107,61 @@ function PuntoVentaContent() {
         }
       }
 
+      // ✅ EMISIÓN AUTOMÁTICA DE GARANTÍA
+      await emitirGarantiaAutomatica(venta);
+
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
+      
+      // Mostrar tiquete con garantía
+      setVentaCompletada(venta);
+      
       setCarrito([]);
       setClienteSeleccionado('');
       setVentaId(null);
-      alert('Venta procesada exitosamente');
     },
   });
+
+  const emitirGarantiaAutomatica = async (venta) => {
+    try {
+      // Solo emitir si hay cliente
+      if (!venta.cliente_id) return;
+
+      // Cargar config de garantía
+      const orgs = await base44.entities.Organization.list();
+      const org = orgs.find(o => o.id === venta.organization_id);
+      const config = org?.garantia_config;
+
+      if (!config || !config.texto_ventas) return;
+
+      // Generar token único
+      const token = `GRTV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Calcular fechas
+      const fechaEmision = new Date();
+      const fechaInicio = new Date();
+      const fechaFin = new Date();
+      fechaFin.setMonth(fechaFin.getMonth() + (config.meses_vigencia_ventas || 12));
+
+      // Crear garantía
+      await base44.entities.Garantia.create({
+        organization_id: venta.organization_id,
+        cliente_id: venta.cliente_id,
+        origen_tipo: 'VENTA',
+        origen_id: venta.id,
+        public_access_token: token,
+        fecha_emision: fechaEmision.toISOString().split('T')[0],
+        fecha_inicio: fechaInicio.toISOString().split('T')[0],
+        fecha_fin: fechaFin.toISOString().split('T')[0],
+        estado: 'ACTIVA',
+        texto_snapshot: config.texto_ventas,
+        creado_por: user?.id
+      });
+    } catch (error) {
+      console.error('Error emitiendo garantía:', error);
+      // No bloquear la venta si falla la garantía
+    }
+  };
 
   const agregarAlCarrito = (item, tipo) => {
     const yaExiste = carrito.find(c => c.referencia_id === item.id);
@@ -485,6 +535,18 @@ function PuntoVentaContent() {
           setCodigoNoEncontrado('');
         }}
       />
+
+      <Dialog open={!!ventaCompletada} onOpenChange={() => setVentaCompletada(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Comprobante de Venta</DialogTitle>
+          </DialogHeader>
+          <TiqueteVenta 
+            venta={ventaCompletada} 
+            onClose={() => setVentaCompletada(null)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

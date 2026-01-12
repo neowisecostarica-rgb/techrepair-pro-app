@@ -5,8 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Settings, Percent, FileText, CheckSquare } from 'lucide-react';
+import TerminosYCondicionesPanel from './TerminosYCondicionesPanel';
+import { useAuthContext } from '../contexts/AuthContext';
 
 export default function ConfiguracionPanel() {
+  const { effectiveOrgId } = useAuthContext();
   const [rangoDescuento, setRangoDescuento] = useState(15);
   const [modulosActivos, setModulosActivos] = useState({
     reciclaje: true,
@@ -22,6 +25,9 @@ export default function ConfiguracionPanel() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-slate-900">Configuración del Negocio</h2>
+
+      {/* Términos y Condiciones - Prioridad alta */}
+      <TerminosYCondicionesPanel organizationId={effectiveOrgId} />
 
       {/* Políticas Comerciales */}
       <Card className="border-0 shadow-md">

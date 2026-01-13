@@ -19,13 +19,47 @@ import {
   ShieldAlert,
   Settings,
   FileText,
-  Sun
+  Sun,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, refreshAuth } = useAuthContext();
+
+  // Estado de secciones colapsables
+  const [sectionsOpen, setSectionsOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sideMenuSections');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      // Fallback si hay error al parsear
+    }
+    return {
+      TALLER: true,
+      VENTAS: true,
+      CLIENTES: true,
+      INVENTARIO: true,
+      ANÁLISIS: true,
+      CONFIGURACIÓN: true,
+    };
+  });
+
+  const toggleSection = (category) => {
+    const newState = {
+      ...sectionsOpen,
+      [category]: !sectionsOpen[category]
+    };
+    setSectionsOpen(newState);
+    try {
+      localStorage.setItem('sideMenuSections', JSON.stringify(newState));
+    } catch (e) {
+      // Silenciar errores de localStorage
+    }
+  };
 
   const handleEndImpersonation = async () => {
     await base44.auth.updateMe({
@@ -249,17 +283,26 @@ return (
                   const items = menuItems.filter(item => item.category === category);
                   const isFirstCategory = catIndex === 0;
                   const needsSeparator = !isFirstCategory && category !== null;
+                  const isOpen = category === null || sectionsOpen[category];
 
                   return (
                     <div key={category || 'home'} className={needsSeparator ? 'pt-4 mt-4 border-t border-slate-200' : ''}>
                       {sidebarOpen && category && (
-                        <div className="px-3 mb-2">
+                        <button
+                          onClick={() => toggleSection(category)}
+                          className="w-full px-3 mb-2 flex items-center gap-2 hover:bg-slate-50 rounded-lg py-1 transition-colors"
+                        >
+                          {isOpen ? (
+                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-slate-400" />
+                          )}
                           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                             {category}
                           </p>
-                        </div>
+                        </button>
                       )}
-                      {items.map((item) => {
+                      {isOpen && items.map((item) => {
                         const Icon = item.icon;
                         const isActive = currentPageName === item.path;
                         return (

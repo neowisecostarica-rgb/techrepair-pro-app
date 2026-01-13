@@ -1003,9 +1003,9 @@ function OrdenesTrabajoContent() {
                   </Button>
                 )}
                 
-                {/* Pre-Diagnóstico */}
+                {/* Pre-Diagnóstico - Solo editable en EN_COLA_REVISION */}
                 {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && 
-                  ['EN_COLA_REVISION', 'ASIGNADA'].includes(selectedOT.estado) && (
+                  selectedOT.estado === 'EN_COLA_REVISION' && (
                   <Button 
                     onClick={() => {
                       setPreDiagnosticoOT(selectedOT);
@@ -1014,32 +1014,7 @@ function OrdenesTrabajoContent() {
                     }}
                     className="bg-gradient-to-r from-blue-500 to-indigo-500"
                   >
-                    📋 Pre-Diagnóstico
-                  </Button>
-                )}
-
-                {/* Diagnóstico Técnico */}
-                {effectiveRole === 'TECHNICIAN' && selectedOT.estado === 'EN_REVISION' && (
-                  <Button 
-                    onClick={async () => {
-                      // Cargar pre-diagnóstico antes de abrir wizard
-                      try {
-                        const preDiag = await base44.entities.PreDiagnostico.filter({
-                          organization_id: effectiveOrgId,
-                          orden_trabajo_id: selectedOT.id
-                        });
-                        setPreDiagnosticoData(preDiag[0] || null);
-                      } catch (error) {
-                        console.error('Error cargando pre-diagnóstico:', error);
-                        setPreDiagnosticoData(null);
-                      }
-                      setDiagnosticoTecnicoOT(selectedOT);
-                      setShowDiagnosticoTecnico(true);
-                      setSelectedOT(null);
-                    }}
-                    className="bg-gradient-to-r from-purple-500 to-blue-500"
-                  >
-                    🔧 Diagnóstico Técnico
+                    📋 Completar Pre-Diagnóstico
                   </Button>
                 )}
 
@@ -1069,18 +1044,7 @@ function OrdenesTrabajoContent() {
                   />
                 )}
 
-                {selectedOT.estado === 'EN_REVISION' && (
-                  <Button 
-                    onClick={() => {
-                      setWizardOT(selectedOT);
-                      setShowWizard(true);
-                      setSelectedOT(null);
-                    }}
-                    className="bg-gradient-to-r from-purple-500 to-blue-500"
-                  >
-                    🧪 Iniciar Diagnóstico
-                  </Button>
-                )}
+
                 {(selectedOT.estado === 'DIAGNOSTICADA' || selectedOT.estado === 'FINALIZADA') && (
                   <Button 
                     onClick={() => handleCobrarTrabajo(selectedOT)}

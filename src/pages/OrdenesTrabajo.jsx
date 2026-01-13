@@ -375,7 +375,7 @@ function OrdenesTrabajoContent() {
 
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nombre_completo || 'Cliente desconocido';
+    return cliente?.nombre_completo || 'Cliente sin identificar';
   };
 
   const getEquipoInfo = (equipoId) => {
@@ -580,9 +580,12 @@ function OrdenesTrabajoContent() {
                         <p className="text-xs font-mono text-emerald-600 font-bold mb-1">
                           {orden.codigo_ot || 'OT-LEGACY'}
                         </p>
-                        <h3 className="font-bold text-slate-900 text-lg">{orden.motivo_ingreso}</h3>
-                        <p className="text-sm text-slate-500">
-                          {getClienteName(orden.cliente_id)} • {getEquipoInfo(orden.equipo_id)}
+                        <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
+                        <p className="text-sm text-slate-600 font-medium">
+                          {orden.motivo_ingreso}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {getEquipoInfo(orden.equipo_id)}
                         </p>
                         <p className="text-xs text-slate-400">
                           Ingreso: {format(new Date(orden.fecha_ingreso || orden.created_date), 'dd MMM yyyy HH:mm', { locale: es })}

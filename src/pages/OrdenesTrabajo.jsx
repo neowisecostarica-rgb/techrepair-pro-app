@@ -1016,6 +1016,33 @@ function OrdenesTrabajoContent() {
               </TabsList>
 
               <TabsContent value="general" className="space-y-6">
+                {/* Diagnóstico Técnico Listo */}
+                {selectedOT.estado === 'DIAGNOSTICADA' && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-emerald-900 mb-1 flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5" />
+                          Diagnóstico Técnico Completo
+                        </h4>
+                        <p className="text-sm text-emerald-700">
+                          El diagnóstico técnico está listo para revisión
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          window.location.href = `/resumen-diagnostico?ot_id=${selectedOT.id}&diagnostico_id=${selectedOT.diagnostico_tecnico_id || 'N/A'}`;
+                        }}
+                        className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                        size="sm"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Ver Diagnóstico Técnico
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Pre-Diagnóstico Resumen */}
                 {selectedOT.diagnostico_resumido && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

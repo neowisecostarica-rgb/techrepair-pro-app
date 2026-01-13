@@ -188,7 +188,9 @@ export default function WizardDiagnosticoTecnico({
         estado: 'borrador'
       });
 
-      onComplete();
+      // Redirigir automáticamente al Resumen de Diagnóstico
+      const resumenUrl = `${window.location.origin}/resumen-diagnostico?ot_id=${ordenTrabajo.id}&diagnostico_id=${diagnosticoFinal.id || diagnostico?.id}`;
+      window.location.href = resumenUrl;
     } catch (error) {
       console.error('Error completando diagnóstico:', error);
       alert('Error al completar: ' + error.message);

@@ -390,11 +390,18 @@ function MiDiaContent() {
 
   // TECHNICIAN - Vista actual
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
-        <p className="text-slate-500">Gestión de trabajos asignados</p>
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
+            <Wrench className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900">Mi Día</h1>
+            <p className="text-slate-600">Gestión de trabajos asignados</p>
+          </div>
+        </div>
       </div>
 
       {/* Mensaje de Motivación Diario */}
@@ -411,7 +418,12 @@ function MiDiaContent() {
       {/* Actividad Actual */}
       {actividadActiva && (
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">⚡ Actividad Actual</h2>
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-purple-200">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900">Actividad en Curso</h2>
+          </div>
           <ActividadActiva 
             actividad={actividadActiva} 
             onUpdated={() => queryClient.invalidateQueries({ queryKey: ['actividad_activa'] })}
@@ -420,11 +432,14 @@ function MiDiaContent() {
       )}
 
       {/* Sección ACTIVO */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-          <h2 className="text-xl font-bold text-slate-900">ACTIVO</h2>
-          <Badge variant="outline" className="ml-auto">1 máximo</Badge>
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-red-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center relative">
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            <Play className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Trabajo Activo</h2>
+          <Badge variant="outline" className="ml-auto border-red-300 text-red-700">1 máximo</Badge>
         </div>
 
         {ordenActiva ? (
@@ -515,11 +530,15 @@ function MiDiaContent() {
       </div>
 
       {/* Sección PAUSADOS */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-          <h2 className="text-xl font-bold text-slate-900">PAUSADOS</h2>
-          <Badge variant="outline" className="ml-auto">{ordenesPausadas.length}</Badge>
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-yellow-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
+            <Pause className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Trabajos Pausados</h2>
+          <Badge variant="outline" className="ml-auto border-yellow-300 text-yellow-700 font-semibold">
+            {ordenesPausadas.length}
+          </Badge>
         </div>
 
         <div className="grid gap-4">
@@ -629,11 +648,15 @@ function MiDiaContent() {
       </div>
 
       {/* Sección ESPERANDO */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-          <h2 className="text-xl font-bold text-slate-900">ESPERANDO</h2>
-          <Badge variant="outline" className="ml-auto">{ordenesEsperando.length}</Badge>
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-blue-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+            <Clock className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">En Espera</h2>
+          <Badge variant="outline" className="ml-auto border-blue-300 text-blue-700 font-semibold">
+            {ordenesEsperando.length}
+          </Badge>
         </div>
 
         <div className="grid gap-4">
@@ -876,22 +899,35 @@ function MiDiaOrgAdmin({
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
-        <p className="text-slate-500">Vista operativa del día</p>
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900">Mi Día</h1>
+            <p className="text-slate-600">Vista operativa del día</p>
+          </div>
+        </div>
       </div>
 
       {/* Mensaje de Motivación Diario */}
       <MensajesMotivacion tipo="diaria" role={effectiveRole} />
 
       {/* 🚨 Prioridades del Día */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-red-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
+            <AlertCircle className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Prioridades del Día</h2>
+        </div>
       <Card className="border-2 border-red-200 bg-red-50/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-700">
-            <AlertCircle className="w-5 h-5" />
-            Prioridades del Día
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-red-800">
+            Atención Urgente Requerida
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -934,13 +970,20 @@ function MiDiaOrgAdmin({
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* 🛠 Taller Hoy */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center">
+            <Wrench className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Taller Hoy</h2>
+        </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wrench className="w-5 h-5" />
-            Taller Hoy
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-slate-800">
+            Operaciones Activas
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1006,13 +1049,20 @@ function MiDiaOrgAdmin({
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* 💰 Ventas Hoy */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-green-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+            <DollarSign className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Ventas Hoy</h2>
+        </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5" />
-            Ventas Hoy
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-slate-800">
+            Registro de Ventas del Día
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1046,13 +1096,20 @@ function MiDiaOrgAdmin({
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* 📅 Agenda Hoy */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-blue-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+            <Calendar className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Agenda Hoy</h2>
+        </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Agenda Hoy
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-slate-800">
+            Citas y Eventos Programados
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1089,22 +1146,35 @@ function MiDiaOrgAdmin({
 // =====================================================
 function MiDiaSales({ user, leadsSeguimiento, cotizacionesPendientes, ventasPropias, citasPropias }) {
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
-        <p className="text-slate-500">Seguimiento y cierres</p>
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900">Mi Día</h1>
+            <p className="text-slate-600">Seguimiento y cierres</p>
+          </div>
+        </div>
       </div>
 
       {/* Mensaje de Motivación Diario */}
       <MensajesMotivacion tipo="diaria" role="SALES" />
 
       {/* 📞 Seguimientos CRM */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-blue-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+            <Phone className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Seguimientos CRM</h2>
+        </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Phone className="w-5 h-5" />
-            Seguimientos CRM
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-slate-800">
+            Leads Pendientes de Contacto
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1132,13 +1202,20 @@ function MiDiaSales({ user, leadsSeguimiento, cotizacionesPendientes, ventasProp
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* 🧾 Cotizaciones Pendientes */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-orange-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Cotizaciones Pendientes</h2>
+        </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Cotizaciones Pendientes
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-slate-800">
+            Propuestas en Espera de Respuesta
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1165,13 +1242,20 @@ function MiDiaSales({ user, leadsSeguimiento, cotizacionesPendientes, ventasProp
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* 💵 Ventas del Día */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
+            <DollarSign className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Mis Ventas del Día</h2>
+        </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5" />
-            Mis Ventas del Día
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-slate-800">
+            Registro de Ventas Personales
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1203,13 +1287,20 @@ function MiDiaSales({ user, leadsSeguimiento, cotizacionesPendientes, ventasProp
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* 📅 Agenda Comercial */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-purple-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+            <Calendar className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Mi Agenda Hoy</h2>
+        </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Mi Agenda Hoy
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-slate-800">
+            Reuniones y Visitas Programadas
           </CardTitle>
         </CardHeader>
         <CardContent>

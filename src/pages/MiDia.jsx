@@ -333,6 +333,7 @@ function MiDiaContent() {
       citasHoy={citasHoy}
       clientes={clientes}
       equipos={equipos}
+      effectiveRole={effectiveRole}
     />;
   }
 
@@ -356,7 +357,7 @@ function MiDiaContent() {
       </div>
 
       {/* Mensaje de Motivación Diario */}
-      <MensajesMotivacion tipo="diaria" />
+      <MensajesMotivacion tipo="diaria" role="TECHNICIAN" />
 
       {/* Mensajes contextuales (agradecimiento/protección) */}
       {mensajeMotivacion && (
@@ -794,7 +795,8 @@ function MiDiaOrgAdmin({
   ventasHoy,
   citasHoy,
   clientes,
-  equipos
+  equipos,
+  effectiveRole
 }) {
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
@@ -813,6 +815,9 @@ function MiDiaOrgAdmin({
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
         <p className="text-slate-500">Vista operativa del día</p>
       </div>
+
+      {/* Mensaje de Motivación Diario */}
+      <MensajesMotivacion tipo="diaria" role={effectiveRole} />
 
       {/* 🚨 Prioridades del Día */}
       <Card className="border-2 border-red-200 bg-red-50/30">
@@ -1023,6 +1028,9 @@ function MiDiaSales({ user, leadsSeguimiento, cotizacionesPendientes, ventasProp
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
         <p className="text-slate-500">Seguimiento y cierres</p>
       </div>
+
+      {/* Mensaje de Motivación Diario */}
+      <MensajesMotivacion tipo="diaria" role="SALES" />
 
       {/* 📞 Seguimientos CRM */}
       <Card>

@@ -181,7 +181,7 @@ function MiDiaContent() {
 
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nombre_completo || 'Cliente desconocido';
+    return cliente?.nombre_completo || 'Cliente sin identificar';
   };
 
   const getEquipoInfo = (equipoId) => {
@@ -890,7 +890,7 @@ function MiDiaOrgAdmin({
 }) {
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nombre_completo || 'Cliente desconocido';
+    return cliente?.nombre_completo || 'Cliente sin identificar';
   };
 
   const getEquipoInfo = (equipoId) => {

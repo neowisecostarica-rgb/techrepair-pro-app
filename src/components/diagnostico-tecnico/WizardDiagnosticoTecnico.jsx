@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, FileText } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
 import { COMPONENTES_DISPONIBLES, PRUEBAS_POR_COMPONENTE } from './pruebasPorComponente';
 import { generarResumenTecnico } from './generarResumenTecnico';
 
@@ -189,8 +190,7 @@ export default function WizardDiagnosticoTecnico({
       });
 
       // Redirigir automáticamente al Resumen de Diagnóstico
-      const resumenUrl = `${window.location.origin}/resumen-diagnostico?ot_id=${ordenTrabajo.id}&diagnostico_id=${diagnosticoFinal.id || diagnostico?.id}`;
-      window.location.href = resumenUrl;
+      window.location.href = createPageUrl('ResumenDiagnostico') + `?ot_id=${ordenTrabajo.id}&diagnostico_id=${diagnosticoFinal.id || diagnostico?.id}`;
     } catch (error) {
       console.error('Error completando diagnóstico:', error);
       alert('Error al completar: ' + error.message);

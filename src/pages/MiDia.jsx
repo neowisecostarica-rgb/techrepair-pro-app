@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
+import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';
 import NotificacionesPanel from '@/components/notificaciones/NotificacionesPanel';
 import { useNotificacionesAutomaticas } from '@/components/notificaciones/useNotificacionesAutomaticas';
 import { useUserAccount } from '@/components/hooks/useOrgData';
@@ -61,6 +61,7 @@ function MiDiaContent() {
   const [showWizard, setShowWizard] = useState(false);
   const [showDetalleOT, setShowDetalleOT] = useState(false);
   const [selectedOT, setSelectedOT] = useState(null);
+  const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
   const [motivoPausa, setMotivoPausa] = useState('interrupcion');
   const [observacionesPausa, setObservacionesPausa] = useState('');
   const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
@@ -222,11 +223,24 @@ function MiDiaContent() {
     });
   };
 
-  const handleIniciarDiagnostico = (orden) => {
+  const handleIniciarDiagnostico = async (orden) => {
     if (orden.estado !== 'EN_REVISION') {
       alert('Esta orden debe estar en estado EN_REVISION para iniciar el diagnóstico');
       return;
     }
+    
+    // Cargar pre-diagnóstico como contexto (opcional)
+    try {
+      const preDiag = await base44.entities.PreDiagnostico.filter({
+        organization_id: effectiveOrgId,
+        orden_trabajo_id: orden.id
+      });
+      setPreDiagnosticoData(preDiag[0] || null);
+    } catch (error) {
+      console.error('Error cargando pre-diagnóstico:', error);
+      setPreDiagnosticoData(null);
+    }
+    
     setSelectedOT(orden);
     setShowWizard(true);
   };
@@ -670,22 +684,29 @@ function MiDiaContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Wizard Diagnóstico */}
+      {/* Wizard Diagnóstico Técnico */}
       <Dialog open={showWizard} onOpenChange={setShowWizard}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <WizardDiagnostico
-            ordenTrabajo={selectedOT}
-            onClose={() => {
-              setShowWizard(false);
-              setSelectedOT(null);
-            }}
-            onComplete={() => {
-              setShowWizard(false);
-              setSelectedOT(null);
-              queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
-              mostrarMensajeAgradecimiento('diagnostico');
-            }}
-          />
+          {selectedOT && (
+            <WizardDiagnosticoTecnico
+              ordenTrabajo={selectedOT}
+              preDiagnostico={preDiagnosticoData}
+              effectiveOrgId={effectiveOrgId}
+              tecnicoId={user?.id}
+              onClose={() => {
+                setShowWizard(false);
+                setSelectedOT(null);
+                setPreDiagnosticoData(null);
+              }}
+              onComplete={() => {
+                setShowWizard(false);
+                setSelectedOT(null);
+                setPreDiagnosticoData(null);
+                queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+                mostrarMensajeAgradecimiento('diagnostico');
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

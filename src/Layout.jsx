@@ -13,13 +13,13 @@ import {
   Calendar,
   Recycle,
   AlertCircle,
-  Menu,
-  X,
   LogOut,
   ChevronRight,
+  ChevronLeft,
   ShieldAlert,
   Settings,
-  FileText
+  FileText,
+  Sun
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -115,38 +115,42 @@ function LayoutContent({ children, currentPageName }) {
  } else if (effectiveRole === 'ORG_ADMIN') {
    // ORG_ADMIN gets full org access - CATEGORIZED MENU
    menuItems = [
-     // 🛠 OPERACIÓN
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'OPERACIÓN' },
-     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'OPERACIÓN' },
-     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'OPERACIÓN' },
-     { label: 'Reciclaje', path: 'Reciclaje', icon: Recycle, category: 'OPERACIÓN' },
-     { label: 'Calidad', path: 'Calidad', icon: AlertCircle, category: 'OPERACIÓN' },
+     // ⭐ HOME OPERATIVA (sin categoría)
+     { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
 
-     // 💰 VENTAS
+     // TALLER
+     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
+     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
+     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
+     { label: 'Reciclaje', path: 'Reciclaje', icon: Recycle, category: 'TALLER' },
+     { label: 'Calidad', path: 'Calidad', icon: AlertCircle, category: 'TALLER' },
+
+     // VENTAS
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
-     { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
 
-     // 👥 CLIENTES
+     // CLIENTES
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
+     { label: 'CRM', path: 'CRM', icon: Users, category: 'CLIENTES' },
 
-     // 📦 INVENTARIO
+     // INVENTARIO
      { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
 
-     // 📊 ANÁLISIS
+     // ANÁLISIS
      { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
-     { label: 'Admin Dashboard', path: 'AdminDashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
      { label: 'Productividad', path: 'ProductividadTecnicos', icon: Users, category: 'ANÁLISIS' },
      { label: 'Análisis', path: 'AnalisisTrabajo', icon: FileText, category: 'ANÁLISIS' },
 
-     // ⚙️ CONFIGURACIÓN (SIEMPRE AL FINAL)
+     // CONFIGURACIÓN (SIEMPRE AL FINAL)
      { label: 'Configuración', path: 'Settings', icon: Settings, category: 'CONFIGURACIÓN' },
    ];
  } else if (effectiveRole === 'BRANCH_ADMIN') {
    // BRANCH_ADMIN gets operational access (no Settings)
    menuItems = [
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'OPERACIÓN' },
-     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'OPERACIÓN' },
-     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'OPERACIÓN' },
+     { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
+
+     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
+     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
+     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
 
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
      { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
@@ -159,23 +163,28 @@ function LayoutContent({ children, currentPageName }) {
    ];
  } else if (effectiveRole === 'SALES') {
    menuItems = [
+     { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
+
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
-     { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
 
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
+     { label: 'CRM', path: 'CRM', icon: Users, category: 'CLIENTES' },
 
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'OPERACIÓN' },
-     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'OPERACIÓN' },
+     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
+     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
 
      { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
    ];
  } else if (effectiveRole === 'TECHNICIAN') {
    menuItems = [
-     { label: 'Mi Día', path: 'MiDia', icon: Wrench, category: 'OPERACIÓN' },
-     { label: 'Cola Revisión', path: 'ColaRevision', icon: FileText, category: 'OPERACIÓN' },
-     { label: 'Mi Agenda', path: 'Agenda', icon: Calendar, category: 'OPERACIÓN' },
+     { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
+
+     { label: 'Cola Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
+     { label: 'Mi Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
 
      { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
+
+     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
    ];
  }
 
@@ -222,8 +231,9 @@ return (
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                title={sidebarOpen ? 'Colapsar menú' : 'Expandir menú'}
               >
-                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
               </button>
             </div>
           </div>
@@ -232,25 +242,20 @@ return (
           <nav className="flex-1 overflow-y-auto p-4">
             <div className="space-y-1">
               {(() => {
-                // Group items by category
+                // Group items by category (null = no category, shown first)
                 const categories = [...new Set(menuItems.map(item => item.category))];
-                const categoryIcons = {
-                  'OPERACIÓN': '🛠',
-                  'VENTAS': '💰',
-                  'CLIENTES': '👥',
-                  'INVENTARIO': '📦',
-                  'ANÁLISIS': '📊',
-                  'CONFIGURACIÓN': '⚙️'
-                };
 
                 return categories.map((category, catIndex) => {
                   const items = menuItems.filter(item => item.category === category);
+                  const isFirstCategory = catIndex === 0;
+                  const needsSeparator = !isFirstCategory && category !== null;
+
                   return (
-                    <div key={category} className={catIndex > 0 ? 'pt-4 mt-4 border-t border-slate-200' : ''}>
-                      {sidebarOpen && (
+                    <div key={category || 'home'} className={needsSeparator ? 'pt-4 mt-4 border-t border-slate-200' : ''}>
+                      {sidebarOpen && category && (
                         <div className="px-3 mb-2">
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            {categoryIcons[category]} {category}
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                            {category}
                           </p>
                         </div>
                       )}

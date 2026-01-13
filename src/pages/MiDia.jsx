@@ -20,7 +20,13 @@ import {
   Package,
   FileText,
   MessageSquare,
-  Shield
+  Shield,
+  TrendingUp,
+  DollarSign,
+  Calendar,
+  Phone,
+  Users,
+  Wrench
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -36,10 +42,12 @@ import NotasInternas from '@/components/tecnico/NotasInternas';
 import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
 import ActividadActiva from '@/components/actividades/ActividadActiva';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { createPageUrl } from '../utils';
+import { Link } from 'react-router-dom';
 
 export default function MiDia() {
   return (
-    <PageGuard allowedRoles={['TECHNICIAN']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'TECHNICIAN', 'SALES', 'BRANCH_ADMIN']}>
       <MiDiaContent />
     </PageGuard>
   );
@@ -48,6 +56,7 @@ export default function MiDia() {
 function MiDiaContent() {
   const [user, setUser] = useState(null);
   const { userAccount } = useUserAccount();
+  const { effectiveRole, effectiveOrgId } = useAuthContext();
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [showDetalleOT, setShowDetalleOT] = useState(false);
@@ -75,11 +84,41 @@ function MiDiaContent() {
   });
 
   const { data: equipos = [] } = useQuery({
-    queryKey: ['equipos'],
-    queryFn: () => base44.entities.Equipo.list(),
+    queryKey: ['equipos', effectiveOrgId],
+    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
   });
 
-  const { effectiveOrgId } = useAuthContext();
+  // Queries adicionales para ORG_ADMIN y SALES
+  const { data: todasOrdenes = [] } = useQuery({
+    queryKey: ['todas-ordenes', effectiveOrgId],
+    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId && (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN'),
+  });
+
+  const { data: ventas = [] } = useQuery({
+    queryKey: ['ventas', effectiveOrgId],
+    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId && (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN'),
+  });
+
+  const { data: cotizaciones = [] } = useQuery({
+    queryKey: ['cotizaciones', effectiveOrgId],
+    queryFn: () => base44.entities.Cotizacion.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId && (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN'),
+  });
+
+  const { data: leads = [] } = useQuery({
+    queryKey: ['leads', effectiveOrgId],
+    queryFn: () => base44.entities.Lead.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId && (effectiveRole === 'SALES' || effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN'),
+  });
+
+  const { data: citas = [] } = useQuery({
+    queryKey: ['citas-hoy', effectiveOrgId],
+    queryFn: () => base44.entities.Cita.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
+  });
 
   // Query para actividad en progreso del técnico
   const { data: actividadActiva } = useQuery({
@@ -217,6 +256,97 @@ function MiDiaContent() {
   // Generar notificaciones automáticas
   useNotificacionesAutomaticas(userAccount);
 
+  // Calcular fecha de hoy
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const manana = new Date(hoy);
+  manana.setDate(manana.getDate() + 1);
+
+  // Filtros de datos por rol
+  const ventasHoy = ventas.filter(v => {
+    const fechaVenta = new Date(v.created_date);
+    fechaVenta.setHours(0, 0, 0, 0);
+    return fechaVenta.getTime() === hoy.getTime();
+  });
+
+  const ventasPropias = effectiveRole === 'SALES' 
+    ? ventasHoy.filter(v => v.created_by === user?.email)
+    : ventasHoy;
+
+  const citasHoy = citas.filter(c => {
+    const fechaCita = new Date(c.fecha);
+    fechaCita.setHours(0, 0, 0, 0);
+    return fechaCita.getTime() === hoy.getTime();
+  });
+
+  const citasPropias = citasHoy.filter(c => c.tecnico_asignado_id === user?.id);
+
+  // Prioridades para ORG_ADMIN
+  const otsVencidas = todasOrdenes.filter(o => {
+    if (!o.fecha_entrega_estimada) return false;
+    const fechaEntrega = new Date(o.fecha_entrega_estimada);
+    return fechaEntrega < hoy && !['ENTREGADA', 'CANCELADA'].includes(o.estado);
+  });
+
+  const cotizacionesPorVencer = cotizaciones
+    .filter(c => c.estado === 'enviada' && c.valida_hasta)
+    .sort((a, b) => new Date(a.valida_hasta) - new Date(b.valida_hasta))
+    .slice(0, 5);
+
+  const ventasSinCobrar = ventas.filter(v => 
+    v.estado_pago !== 'pagada' && v.estado_pago !== 'anulada'
+  ).slice(0, 5);
+
+  // OTs sin asignar para ORG_ADMIN
+  const otsColaRevision = todasOrdenes.filter(o => 
+    o.estado === 'EN_COLA_REVISION'
+  );
+
+  const otsCriticas = todasOrdenes.filter(o =>
+    ['PAUSADO', 'ESPERANDO'].includes(o.estado_atencion) && 
+    !['ENTREGADA', 'CANCELADA'].includes(o.estado)
+  );
+
+  const otsPropias = todasOrdenes.filter(o => o.tecnico_asignado_id === user?.id);
+
+  // Leads para SALES
+  const leadsSeguimiento = leads.filter(l => 
+    l.assigned_to === user?.id && 
+    ['new', 'contacted', 'qualified'].includes(l.status)
+  );
+
+  const cotizacionesPendientesSales = cotizaciones
+    .filter(c => c.estado === 'enviada' && c.vendedor_id === user?.id)
+    .sort((a, b) => new Date(a.valida_hasta) - new Date(b.valida_hasta));
+
+  // Renderizar según rol
+  if (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN') {
+    return <MiDiaOrgAdmin 
+      user={user}
+      otsVencidas={otsVencidas}
+      cotizacionesPorVencer={cotizacionesPorVencer}
+      ventasSinCobrar={ventasSinCobrar}
+      otsColaRevision={otsColaRevision}
+      otsCriticas={otsCriticas}
+      otsPropias={otsPropias}
+      ventasHoy={ventasHoy}
+      citasHoy={citasHoy}
+      clientes={clientes}
+      equipos={equipos}
+    />;
+  }
+
+  if (effectiveRole === 'SALES') {
+    return <MiDiaSales
+      user={user}
+      leadsSeguimiento={leadsSeguimiento}
+      cotizacionesPendientes={cotizacionesPendientesSales}
+      ventasPropias={ventasPropias}
+      citasPropias={citasPropias}
+    />;
+  }
+
+  // TECHNICIAN - Vista actual
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -646,6 +776,392 @@ function MiDiaContent() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// =====================================================
+// COMPONENTE: Mi Día ORG_ADMIN
+// =====================================================
+function MiDiaOrgAdmin({ 
+  user, 
+  otsVencidas, 
+  cotizacionesPorVencer, 
+  ventasSinCobrar,
+  otsColaRevision,
+  otsCriticas,
+  otsPropias,
+  ventasHoy,
+  citasHoy,
+  clientes,
+  equipos
+}) {
+  const getClienteName = (clienteId) => {
+    const cliente = clientes.find(c => c.id === clienteId);
+    return cliente?.nombre_completo || 'Cliente desconocido';
+  };
+
+  const getEquipoInfo = (equipoId) => {
+    const equipo = equipos.find(e => e.id === equipoId);
+    return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
+        <p className="text-slate-500">Vista operativa del día</p>
+      </div>
+
+      {/* 🚨 Prioridades del Día */}
+      <Card className="border-2 border-red-200 bg-red-50/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-700">
+            <AlertCircle className="w-5 h-5" />
+            Prioridades del Día
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {otsVencidas.length === 0 && cotizacionesPorVencer.length === 0 && ventasSinCobrar.length === 0 ? (
+            <p className="text-sm text-slate-500">✅ No hay prioridades urgentes</p>
+          ) : (
+            <>
+              {otsVencidas.slice(0, 3).map(ot => (
+                <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500" />
+                      <div>
+                        <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
+                        <p className="text-sm text-slate-500">{getClienteName(ot.cliente_id)} - Vencida</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline">Ver OT</Button>
+                  </div>
+                </Link>
+              ))}
+
+              {cotizacionesPorVencer.slice(0, 2).map(cot => (
+                <Link key={cot.id} to={createPageUrl('OrdenesTrabajo')}>
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-orange-500" />
+                      <div>
+                        <p className="font-medium text-slate-900">Cotización pendiente</p>
+                        <p className="text-sm text-slate-500">
+                          Vence: {cot.valida_hasta ? format(new Date(cot.valida_hasta), 'dd/MM/yyyy') : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline">Seguimiento</Button>
+                  </div>
+                </Link>
+              ))}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 🛠 Taller Hoy */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wrench className="w-5 h-5" />
+            Taller Hoy
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {otsColaRevision.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-2">Cola de Revisión ({otsColaRevision.length})</p>
+              <div className="space-y-2">
+                {otsColaRevision.slice(0, 3).map(ot => (
+                  <Link key={ot.id} to={createPageUrl('ColaRevision')}>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
+                      <div>
+                        <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
+                        <p className="text-sm text-slate-500">{getClienteName(ot.cliente_id)}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-400" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {otsCriticas.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-2">OTs Críticas ({otsCriticas.length})</p>
+              <div className="space-y-2">
+                {otsCriticas.slice(0, 3).map(ot => (
+                  <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
+                    <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors cursor-pointer">
+                      <div>
+                        <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
+                        <p className="text-sm text-slate-500">{ot.estado_atencion}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-400" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {otsPropias.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-2">Mis OTs ({otsPropias.length})</p>
+              <div className="space-y-2">
+                {otsPropias.slice(0, 3).map(ot => (
+                  <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
+                    <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer">
+                      <div>
+                        <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
+                        <p className="text-sm text-slate-500">{getClienteName(ot.cliente_id)}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-400" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {otsColaRevision.length === 0 && otsCriticas.length === 0 && otsPropias.length === 0 && (
+            <p className="text-sm text-slate-500">No hay OTs pendientes</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 💰 Ventas Hoy */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Ventas Hoy
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {ventasHoy.length > 0 ? (
+            <div className="space-y-2">
+              {ventasHoy.slice(0, 5).map(venta => (
+                <Link key={venta.id} to={createPageUrl('PuntoVenta')}>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        ${venta.total?.toFixed(2) || '0.00'}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {format(new Date(venta.created_date), 'HH:mm')}
+                      </p>
+                    </div>
+                    <Badge variant={venta.estado_pago === 'pagada' ? 'default' : 'outline'}>
+                      {venta.estado_pago}
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+              <Link to={createPageUrl('PuntoVenta')}>
+                <Button variant="outline" className="w-full mt-2">
+                  Ir a Punto de Venta
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No hay ventas registradas hoy</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 📅 Agenda Hoy */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Agenda Hoy
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {citasHoy.length > 0 ? (
+            <div className="space-y-2">
+              {citasHoy.slice(0, 5).map(cita => (
+                <div key={cita.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-slate-900">{cita.motivo || cita.tipo}</p>
+                    <p className="text-sm text-slate-500">
+                      {cita.hora_inicio} - {cita.hora_fin}
+                    </p>
+                  </div>
+                  <Badge>{cita.estado}</Badge>
+                </div>
+              ))}
+              <Link to={createPageUrl('Agenda')}>
+                <Button variant="outline" className="w-full mt-2">
+                  Ver Agenda Completa
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No hay citas programadas hoy</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// =====================================================
+// COMPONENTE: Mi Día SALES
+// =====================================================
+function MiDiaSales({ user, leadsSeguimiento, cotizacionesPendientes, ventasPropias, citasPropias }) {
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Día</h1>
+        <p className="text-slate-500">Seguimiento y cierres</p>
+      </div>
+
+      {/* 📞 Seguimientos CRM */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="w-5 h-5" />
+            Seguimientos CRM
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {leadsSeguimiento.length > 0 ? (
+            <div className="space-y-2">
+              {leadsSeguimiento.slice(0, 5).map(lead => (
+                <Link key={lead.id} to={createPageUrl('CRM')}>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div>
+                      <p className="font-medium text-slate-900">{lead.name}</p>
+                      <p className="text-sm text-slate-500">{lead.phone}</p>
+                    </div>
+                    <Badge>{lead.status}</Badge>
+                  </div>
+                </Link>
+              ))}
+              <Link to={createPageUrl('CRM')}>
+                <Button variant="outline" className="w-full mt-2">
+                  Abrir CRM
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No hay leads pendientes de seguimiento</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 🧾 Cotizaciones Pendientes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Cotizaciones Pendientes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {cotizacionesPendientes.length > 0 ? (
+            <div className="space-y-2">
+              {cotizacionesPendientes.slice(0, 5).map(cot => (
+                <Link key={cot.id} to={createPageUrl('OrdenesTrabajo')}>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        ${cot.total?.toFixed(2) || '0.00'}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Vence: {cot.valida_hasta ? format(new Date(cot.valida_hasta), 'dd/MM/yyyy') : 'N/A'}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline">Dar Seguimiento</Button>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No hay cotizaciones pendientes</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 💵 Ventas del Día */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Mis Ventas del Día
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {ventasPropias.length > 0 ? (
+            <div className="space-y-2">
+              {ventasPropias.map(venta => (
+                <div key={venta.id} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-slate-900">
+                      ${venta.total?.toFixed(2) || '0.00'}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {format(new Date(venta.created_date), 'HH:mm')}
+                    </p>
+                  </div>
+                  <Badge variant={venta.estado_pago === 'pagada' ? 'default' : 'outline'}>
+                    {venta.estado_pago}
+                  </Badge>
+                </div>
+              ))}
+              <Link to={createPageUrl('PuntoVenta')}>
+                <Button variant="outline" className="w-full mt-2">
+                  Ir a Punto de Venta
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No hay ventas registradas hoy</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 📅 Agenda Comercial */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Mi Agenda Hoy
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {citasPropias.length > 0 ? (
+            <div className="space-y-2">
+              {citasPropias.map(cita => (
+                <div key={cita.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-slate-900">{cita.motivo || cita.tipo}</p>
+                    <p className="text-sm text-slate-500">
+                      {cita.hora_inicio} - {cita.hora_fin}
+                    </p>
+                  </div>
+                  <Badge>{cita.estado}</Badge>
+                </div>
+              ))}
+              <Link to={createPageUrl('Agenda')}>
+                <Button variant="outline" className="w-full mt-2">
+                  Ver Agenda Completa
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No hay citas programadas hoy</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

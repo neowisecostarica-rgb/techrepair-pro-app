@@ -74,6 +74,10 @@ function OrdenesTrabajoContent() {
   const [selectedEquipoId, setSelectedEquipoId] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState('normal');
   const [terminosActivos, setTerminosActivos] = useState(null);
+  const [showReasignar, setShowReasignar] = useState(false);
+  const [reasignarOT, setReasignarOT] = useState(null);
+  const [nuevoTecnicoId, setNuevoTecnicoId] = useState('');
+  const [motivoReasignacion, setMotivoReasignacion] = useState('');
   const [newEquipoData, setNewEquipoData] = useState({
     tipo: '',
     marca: '',
@@ -134,6 +138,21 @@ function OrdenesTrabajoContent() {
       organization_id: userAccount.organization_id
     }),
     enabled: !!userAccount?.organization_id,
+  });
+
+  // Query para técnicos (usuarios con rol TECHNICIAN)
+  const { data: tecnicos = [] } = useQuery({
+    queryKey: ['tecnicos', effectiveOrgId],
+    queryFn: async () => {
+      const accounts = await base44.entities.UserAccount.filter({
+        organization_id: effectiveOrgId,
+        active: true
+      });
+      return accounts.filter(acc => 
+        acc.role === 'TECHNICIAN' || acc.role === 'ORG_ADMIN' || acc.role === 'BRANCH_ADMIN'
+      );
+    },
+    enabled: !!effectiveOrgId,
   });
 
   // Cargar términos activos
@@ -362,6 +381,71 @@ function OrdenesTrabajoContent() {
   const getEquipoInfo = (equipoId) => {
     const equipo = equipos.find(e => e.id === equipoId);
     return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';
+  };
+
+  const handleReasignar = async () => {
+    if (!reasignarOT || !nuevoTecnicoId || !motivoReasignacion.trim()) {
+      alert('Debes seleccionar un técnico y especificar el motivo');
+      return;
+    }
+
+    if (reasignarOT.tecnico_asignado_id === nuevoTecnicoId) {
+      alert('El técnico seleccionado ya está asignado a esta OT');
+      return;
+    }
+
+    try {
+      const tecnicoAnteriorId = reasignarOT.tecnico_asignado_id;
+
+      // 1. Cerrar/pausar actividad técnica actual si existe
+      if (tecnicoAnteriorId) {
+        const actividadesActivas = await base44.entities.ActividadTecnica.filter({
+          organization_id: effectiveOrgId,
+          orden_trabajo_id: reasignarOT.id,
+          tecnico_id: tecnicoAnteriorId,
+          estado: 'en_progreso',
+          soft_deleted: false
+        });
+
+        for (const actividad of actividadesActivas) {
+          await base44.entities.ActividadTecnica.update(actividad.id, {
+            estado: 'finalizada',
+            ended_at: new Date().toISOString(),
+            duracion_minutos: Math.round(
+              (new Date() - new Date(actividad.started_at)) / 60000
+            ),
+            resultado: 'incompleto',
+            notas: `Actividad cerrada por reasignación administrativa. Motivo: ${motivoReasignacion}`
+          });
+        }
+      }
+
+      // 2. Actualizar OT con nuevo técnico
+      await base44.entities.OrdenTrabajo.update(reasignarOT.id, {
+        tecnico_asignado_id: nuevoTecnicoId,
+        ultima_actividad: `Reasignada administrativamente. Motivo: ${motivoReasignacion}`,
+        ultima_actividad_at: new Date().toISOString()
+      });
+
+      // 3. Auditoría
+      await base44.entities.SuperAdminAudit.create({
+        super_admin_id: user?.id || 'system',
+        super_admin_email: user?.email || 'system',
+        action: 'ot_reasignacion',
+        target_organization_id: effectiveOrgId,
+        context: `OT ${reasignarOT.codigo_ot} reasignada de técnico ${tecnicoAnteriorId || 'sin asignar'} a ${nuevoTecnicoId}. Motivo: ${motivoReasignacion}`
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
+      setShowReasignar(false);
+      setReasignarOT(null);
+      setNuevoTecnicoId('');
+      setMotivoReasignacion('');
+      alert('OT reasignada correctamente');
+    } catch (error) {
+      alert('Error al reasignar: ' + error.message);
+    }
   };
 
   const handleCobrarTrabajo = async (orden) => {
@@ -989,7 +1073,7 @@ function OrdenesTrabajoContent() {
                 )}
               </div>
 
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-200">
+              <div className="flex gap-3 justify-end pt-4 border-t border-slate-200 flex-wrap">
                 <Button variant="outline" onClick={() => setSelectedOT(null)}>
                   Cerrar
                 </Button>
@@ -1000,6 +1084,22 @@ function OrdenesTrabajoContent() {
                     className="border-blue-500 text-blue-700 hover:bg-blue-50"
                   >
                     📋 Copiar Link Cliente
+                  </Button>
+                )}
+
+                {/* Reasignar Técnico */}
+                {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) &&
+                  ['EN_REVISION', 'DIAGNOSTICADA', 'PAUSADO', 'ESPERANDO'].includes(selectedOT.estado) && (
+                  <Button 
+                    onClick={() => {
+                      setReasignarOT(selectedOT);
+                      setNuevoTecnicoId(selectedOT.tecnico_asignado_id || '');
+                      setShowReasignar(true);
+                    }}
+                    variant="outline"
+                    className="border-purple-500 text-purple-700 hover:bg-purple-50"
+                  >
+                    🔄 Reasignar Técnico
                   </Button>
                 )}
                 
@@ -1201,6 +1301,94 @@ function OrdenesTrabajoContent() {
           setShowInlineEquipo(false);
         }}
       />
+
+      {/* Modal Reasignar Técnico */}
+      <Dialog open={showReasignar} onOpenChange={setShowReasignar}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reasignar Técnico</DialogTitle>
+          </DialogHeader>
+
+          {reasignarOT && (
+            <div className="space-y-4 mt-4">
+              <Alert className="bg-orange-50 border-orange-200">
+                <AlertCircle className="w-4 h-4 text-orange-600" />
+                <AlertDescription className="text-orange-800 text-sm">
+                  Esta acción cerrará cualquier actividad técnica en progreso del técnico actual.
+                  El nuevo técnico verá la OT en su "Mi Día" y podrá continuar el diagnóstico.
+                </AlertDescription>
+              </Alert>
+
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-sm text-slate-600">OT a reasignar:</p>
+                <p className="font-bold text-slate-900">{reasignarOT.codigo_ot}</p>
+                <p className="text-sm text-slate-700">{reasignarOT.motivo_ingreso}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Técnico Actual</Label>
+                <Input 
+                  value={
+                    reasignarOT.tecnico_asignado_id 
+                      ? tecnicos.find(t => t.user_id === reasignarOT.tecnico_asignado_id)?.user_email || 'No encontrado'
+                      : 'Sin asignar'
+                  }
+                  disabled
+                  className="bg-slate-100"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Nuevo Técnico *</Label>
+                <Select value={nuevoTecnicoId} onValueChange={setNuevoTecnicoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar técnico" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tecnicos.map(tec => (
+                      <SelectItem key={tec.user_id} value={tec.user_id}>
+                        {tec.user_email} ({tec.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Motivo de Reasignación *</Label>
+                <Textarea
+                  value={motivoReasignacion}
+                  onChange={(e) => setMotivoReasignacion(e.target.value)}
+                  placeholder="Ej: Carga de trabajo, ausencia, urgencia, especialización..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowReasignar(false);
+                    setReasignarOT(null);
+                    setNuevoTecnicoId('');
+                    setMotivoReasignacion('');
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleReasignar}
+                  className="bg-gradient-to-r from-purple-500 to-blue-500"
+                  disabled={!nuevoTecnicoId || !motivoReasignacion.trim()}
+                >
+                  Confirmar Reasignación
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -8,14 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, MapPin, Users, Plus, Trash2, Leaf, Edit2, RotateCcw } from 'lucide-react';
+import { Building2, MapPin, Users, Plus, Trash2 } from 'lucide-react';
 import PageGuard from '../components/guards/PageGuard';
 import UserManagementPanel from '../components/settings/UserManagementPanel';
 import SenalesNegocio from '../components/admin/SenalesNegocio';
 import AprobacionesPanel from '../components/admin/AprobacionesPanel';
 import ConfiguracionPanel from '../components/admin/ConfiguracionPanel';
 import { useAuthContext } from '../components/contexts/AuthContext';
-import { Switch } from '@/components/ui/switch';
 
 export default function Settings() {
   return (
@@ -82,7 +81,7 @@ function SettingsContent() {
       </div>
 
       <Tabs defaultValue="empresa" className="space-y-6">
-        <TabsList className="bg-white border border-slate-200 p-1 grid grid-cols-7">
+        <TabsList className="bg-white border border-slate-200 p-1 grid grid-cols-6">
           <TabsTrigger value="empresa" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
             <Building2 className="w-4 h-4 mr-2" />
             Empresa
@@ -103,10 +102,6 @@ function SettingsContent() {
           </TabsTrigger>
           <TabsTrigger value="config" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
             ⚙️ Config
-          </TabsTrigger>
-          <TabsTrigger value="ecofactors" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
-            <Leaf className="w-4 h-4 mr-2" />
-            Ecológico
           </TabsTrigger>
         </TabsList>
 
@@ -219,11 +214,6 @@ function SettingsContent() {
         <TabsContent value="config">
           <ConfiguracionPanel />
         </TabsContent>
-
-        {/* Tab Factores Ecológicos */}
-        <TabsContent value="ecofactors">
-          <EcoFactorsPanel organizationId={effectiveOrgId} />
-        </TabsContent>
       </Tabs>
 
       {/* Modal Nueva Sucursal */}
@@ -257,260 +247,5 @@ function SettingsContent() {
 
 
     </div>
-  );
-}
-
-// =====================================================
-// COMPONENTE: Panel de Factores Ecológicos
-// =====================================================
-function EcoFactorsPanel({ organizationId }) {
-  const queryClient = useQueryClient();
-  const [editingFactor, setEditingFactor] = useState(null);
-
-  const { data: ecoFactors = [] } = useQuery({
-    queryKey: ['eco-factors', organizationId],
-    queryFn: () => base44.entities.EcoFactor.filter({ organization_id: organizationId }),
-    enabled: !!organizationId,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.EcoFactor.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['eco-factors'] });
-      setEditingFactor(null);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.EcoFactor.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['eco-factors'] });
-      setEditingFactor(null);
-    },
-  });
-
-  const tiposResiduos = [
-    { value: 'electronico', label: 'Electrónico', defaultCO2: 2.5, defaultValor: 5000 },
-    { value: 'plastico', label: 'Plástico', defaultCO2: 1.8, defaultValor: 800 },
-    { value: 'metal', label: 'Metal', defaultCO2: 3.0, defaultValor: 1500 },
-    { value: 'papel', label: 'Papel', defaultCO2: 0.9, defaultValor: 400 },
-    { value: 'bateria', label: 'Batería', defaultCO2: 4.5, defaultValor: 3000 },
-    { value: 'otro', label: 'Otro', defaultCO2: 1.0, defaultValor: 500 },
-  ];
-
-  const handleSave = (tipoResiduo) => {
-    const factor = ecoFactors.find(f => f.tipo_residuo === tipoResiduo);
-    const formData = editingFactor[tipoResiduo];
-
-    if (factor) {
-      updateMutation.mutate({
-        id: factor.id,
-        data: {
-          factor_co2_por_kg: parseFloat(formData.co2) || 0,
-          valor_por_kg: parseFloat(formData.valor) || 0,
-          activo: formData.activo
-        }
-      });
-    } else {
-      createMutation.mutate({
-        organization_id: organizationId,
-        tipo_residuo: tipoResiduo,
-        factor_co2_por_kg: parseFloat(formData.co2) || 0,
-        valor_por_kg: parseFloat(formData.valor) || 0,
-        activo: formData.activo
-      });
-    }
-  };
-
-  const handleRestoreDefaults = () => {
-    if (!confirm('¿Restaurar todos los factores a valores predeterminados?')) return;
-
-    tiposResiduos.forEach(tipo => {
-      const factor = ecoFactors.find(f => f.tipo_residuo === tipo.value);
-      
-      if (factor) {
-        updateMutation.mutate({
-          id: factor.id,
-          data: {
-            factor_co2_por_kg: tipo.defaultCO2,
-            valor_por_kg: tipo.defaultValor,
-            activo: true
-          }
-        });
-      } else {
-        createMutation.mutate({
-          organization_id: organizationId,
-          tipo_residuo: tipo.value,
-          factor_co2_por_kg: tipo.defaultCO2,
-          valor_por_kg: tipo.defaultValor,
-          activo: true
-        });
-      }
-    });
-  };
-
-  const getFactor = (tipoResiduo) => {
-    return ecoFactors.find(f => f.tipo_residuo === tipoResiduo);
-  };
-
-  const isEditing = (tipoResiduo) => {
-    return editingFactor && editingFactor[tipoResiduo];
-  };
-
-  const startEdit = (tipoResiduo) => {
-    const factor = getFactor(tipoResiduo);
-    setEditingFactor({
-      ...editingFactor,
-      [tipoResiduo]: {
-        co2: factor?.factor_co2_por_kg || 0,
-        valor: factor?.valor_por_kg || 0,
-        activo: factor?.activo ?? true
-      }
-    });
-  };
-
-  const updateEdit = (tipoResiduo, field, value) => {
-    setEditingFactor({
-      ...editingFactor,
-      [tipoResiduo]: {
-        ...editingFactor[tipoResiduo],
-        [field]: value
-      }
-    });
-  };
-
-  return (
-    <Card className="border-0 shadow-lg">
-      <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Leaf className="w-5 h-5 text-green-600" />
-            Factores Ecológicos de Reciclaje
-          </CardTitle>
-          <p className="text-sm text-slate-500 mt-1">
-            Configura los factores de cálculo automático para CO₂ evitado y valor recuperado
-          </p>
-        </div>
-        <Button onClick={handleRestoreDefaults} variant="outline" size="sm">
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Restaurar Valores
-        </Button>
-      </CardHeader>
-      <CardContent className="p-6">
-        <div className="space-y-3">
-          {tiposResiduos.map(tipo => {
-            const factor = getFactor(tipo.value);
-            const editing = isEditing(tipo.value);
-
-            return (
-              <div 
-                key={tipo.value} 
-                className="p-4 border border-slate-200 rounded-lg hover:border-emerald-300 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 grid grid-cols-4 gap-4 items-center">
-                    <div>
-                      <p className="font-semibold text-slate-900">{tipo.label}</p>
-                      <Badge className="mt-1 text-xs" variant={factor?.activo ?? true ? 'default' : 'outline'}>
-                        {factor?.activo ?? true ? 'Activo' : 'Inactivo'}
-                      </Badge>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs text-slate-500">CO₂ por kg</Label>
-                      {editing ? (
-                        <Input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          value={editingFactor[tipo.value].co2}
-                          onChange={(e) => updateEdit(tipo.value, 'co2', e.target.value)}
-                          className="mt-1"
-                        />
-                      ) : (
-                        <p className="font-medium text-slate-900">{factor?.factor_co2_por_kg || 0} kg</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label className="text-xs text-slate-500">Valor por kg (₡)</Label>
-                      {editing ? (
-                        <Input
-                          type="number"
-                          step="100"
-                          min="0"
-                          value={editingFactor[tipo.value].valor}
-                          onChange={(e) => updateEdit(tipo.value, 'valor', e.target.value)}
-                          className="mt-1"
-                        />
-                      ) : (
-                        <p className="font-medium text-slate-900">₡{(factor?.valor_por_kg || 0).toLocaleString()}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {editing && (
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs text-slate-500">Activo</Label>
-                          <Switch
-                            checked={editingFactor[tipo.value].activo}
-                            onCheckedChange={(checked) => updateEdit(tipo.value, 'activo', checked)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 ml-4">
-                    {editing ? (
-                      <>
-                        <Button
-                          onClick={() => handleSave(tipo.value)}
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Guardar
-                        </Button>
-                        <Button
-                          onClick={() => setEditingFactor(null)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Cancelar
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        onClick={() => startEdit(tipo.value)}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {!factor && !editing && (
-                  <p className="text-xs text-amber-600 mt-2">
-                    ⚠️ No configurado - Los cálculos darán 0 hasta que configures este factor
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-900 font-medium mb-2">ℹ️ Información</p>
-          <ul className="text-xs text-blue-800 space-y-1">
-            <li>• Los factores se usan para calcular automáticamente CO₂ evitado y valor recuperado en registros de reciclaje</li>
-            <li>• Si un factor está inactivo, los cálculos para ese tipo darán 0</li>
-            <li>• Los registros existentes mantienen sus valores históricos aunque cambies los factores</li>
-            <li>• Valores sugeridos basados en estándares internacionales de reciclaje</li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

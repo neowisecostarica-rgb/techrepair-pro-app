@@ -79,6 +79,15 @@ function MiDiaContent() {
     enabled: !!user?.id,
   });
 
+  // Query para diagnósticos técnicos
+  const { data: diagnosticos = [] } = useQuery({
+    queryKey: ['diagnosticos', effectiveOrgId],
+    queryFn: () => base44.entities.DiagnosticoTecnico.filter({
+      organization_id: effectiveOrgId
+    }),
+    enabled: !!effectiveOrgId,
+  });
+
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes'],
     queryFn: () => base44.entities.Cliente.list(),
@@ -159,6 +168,17 @@ function MiDiaContent() {
   
   const ordenesEsperando = ordenes.filter(o => o.estado_atencion === 'ESPERANDO');
 
+  // Helper: verificar si OT tiene diagnóstico
+  const tieneDiagnostico = (otId) => {
+    return diagnosticos.some(d => d.orden_trabajo_id === otId);
+  };
+
+  // Helper: verificar si diagnóstico está listo
+  const diagnosticoListo = (otId) => {
+    const diag = diagnosticos.find(d => d.orden_trabajo_id === otId);
+    return diag?.estado === 'listo_aprobacion';
+  };
+
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
     return cliente?.nombre_completo || 'Cliente desconocido';
@@ -224,8 +244,15 @@ function MiDiaContent() {
   };
 
   const handleIniciarDiagnostico = async (orden) => {
-    if (orden.estado !== 'EN_REVISION') {
-      alert('Esta orden debe estar en estado EN_REVISION para iniciar el diagnóstico');
+    // Verificar que el usuario está asignado
+    if (orden.tecnico_asignado_id !== user?.id) {
+      alert('No estás asignado a esta orden de trabajo');
+      return;
+    }
+
+    // Verificar estado válido
+    if (!['EN_REVISION', 'DIAGNOSTICADA'].includes(orden.estado)) {
+      alert('Esta orden debe estar en estado EN_REVISION o DIAGNOSTICADA para el diagnóstico');
       return;
     }
     
@@ -449,13 +476,17 @@ function MiDiaContent() {
                     <FileText className="w-4 h-4 mr-2" />
                     Ver Detalle
                   </Button>
-                  {ordenActiva.estado === 'EN_REVISION' && (
+                  {(ordenActiva.estado === 'EN_REVISION' || ordenActiva.estado === 'DIAGNOSTICADA') && (
                     <Button
                       onClick={() => handleIniciarDiagnostico(ordenActiva)}
-                      variant="outline"
+                      className="bg-gradient-to-r from-purple-500 to-blue-500"
                     >
-                      <Play className="w-4 h-4 mr-2" />
-                      Continuar Diagnóstico
+                      <Wrench className="w-4 h-4 mr-2" />
+                      {tieneDiagnostico(ordenActiva.id) && !diagnosticoListo(ordenActiva.id)
+                        ? 'Continuar Diagnóstico'
+                        : diagnosticoListo(ordenActiva.id)
+                        ? 'Ver Diagnóstico'
+                        : 'Realizar Diagnóstico'}
                     </Button>
                   )}
                   <Button
@@ -558,6 +589,21 @@ function MiDiaContent() {
                       <FileText className="w-4 h-4 mr-2" />
                       Ver Detalle
                     </Button>
+                    {(orden.estado === 'EN_REVISION' || orden.estado === 'DIAGNOSTICADA') && (
+                      <Button
+                        onClick={() => handleIniciarDiagnostico(orden)}
+                        variant="outline"
+                        size="sm"
+                        className="border-purple-500 text-purple-700 hover:bg-purple-50"
+                      >
+                        <Wrench className="w-4 h-4 mr-2" />
+                        {tieneDiagnostico(orden.id) && !diagnosticoListo(orden.id)
+                          ? 'Continuar Diagnóstico'
+                          : diagnosticoListo(orden.id)
+                          ? 'Ver Diagnóstico'
+                          : 'Realizar Diagnóstico'}
+                      </Button>
+                    )}
                     <Button
                       onClick={() => handleRetomar(orden)}
                       className="bg-gradient-to-r from-emerald-500 to-blue-500"

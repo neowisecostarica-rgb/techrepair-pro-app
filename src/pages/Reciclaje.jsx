@@ -8,29 +8,30 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Recycle, Plus, Leaf, TrendingUp, Trash2, AlertCircle } from 'lucide-react';
+import { Recycle, Plus, Leaf, TrendingUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { useAuthContext } from '@/components/contexts/AuthContext';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
+
+// Factores ecológicos del sistema (hardcoded, siempre disponibles)
+const ECO_FACTORS = {
+  electronico: { co2_por_kg: 2.5, valor_por_kg: 5000 },
+  plastico: { co2_por_kg: 1.8, valor_por_kg: 800 },
+  metal: { co2_por_kg: 3.0, valor_por_kg: 1500 },
+  papel: { co2_por_kg: 0.9, valor_por_kg: 400 },
+  bateria: { co2_por_kg: 4.5, valor_por_kg: 3000 },
+  otro: { co2_por_kg: 1.0, valor_por_kg: 500 }
+};
 
 export default function Reciclaje() {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const queryClient = useQueryClient();
-  const { effectiveOrgId } = useAuthContext();
 
   const { data: registros = [] } = useQuery({
     queryKey: ['reciclaje'],
     queryFn: () => base44.entities.Reciclaje.list('-created_date'),
-  });
-
-  const { data: ecoFactors = [] } = useQuery({
-    queryKey: ['eco-factors', effectiveOrgId],
-    queryFn: () => base44.entities.EcoFactor.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId,
   });
 
   const createMutation = useMutation({
@@ -51,7 +52,7 @@ export default function Reciclaje() {
     },
   });
 
-  const handleSubmit = (e, data) => {
+  const handleSubmit = (data) => {
     if (editingItem) {
       updateMutation.mutate({ id: editingItem.id, data });
     } else {
@@ -237,156 +238,9 @@ export default function Reciclaje() {
 
           <ReciclajeForm 
             editingItem={editingItem}
-            ecoFactors={ecoFactors}
             onSubmit={handleSubmit}
             onCancel={() => setShowModal(false)}
           />
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="tipo_residuo">Tipo de Residuo *</Label>
-                <Select name="tipo_residuo" defaultValue={editingItem?.tipo_residuo} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="electronico">Electrónico</SelectItem>
-                    <SelectItem value="plastico">Plástico</SelectItem>
-                    <SelectItem value="metal">Metal</SelectItem>
-                    <SelectItem value="papel">Papel</SelectItem>
-                    <SelectItem value="bateria">Batería</SelectItem>
-                    <SelectItem value="otro">Otro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="accion">Acción *</Label>
-                <Select name="accion" defaultValue={editingItem?.accion || 'pendiente'} required>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="reciclado">Reciclado</SelectItem>
-                    <SelectItem value="reutilizado">Reutilizado</SelectItem>
-                    <SelectItem value="donado">Donado</SelectItem>
-                    <SelectItem value="desecho_seguro">Desecho Seguro</SelectItem>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="descripcion">Descripción *</Label>
-                <Textarea
-                  id="descripcion"
-                  name="descripcion"
-                  defaultValue={editingItem?.descripcion}
-                  placeholder="Descripción del residuo..."
-                  rows={2}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="peso_kg">Peso (kg)</Label>
-                <Input
-                  type="number"
-                  id="peso_kg"
-                  name="peso_kg"
-                  defaultValue={editingItem?.peso_kg}
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cantidad_unidades">Cantidad Unidades</Label>
-                <Input
-                  type="number"
-                  id="cantidad_unidades"
-                  name="cantidad_unidades"
-                  defaultValue={editingItem?.cantidad_unidades}
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="origen">Origen</Label>
-                <Select name="origen" defaultValue={editingItem?.origen}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="reparacion">Reparación</SelectItem>
-                    <SelectItem value="desecho_cliente">Desecho Cliente</SelectItem>
-                    <SelectItem value="equipo_obsoleto">Equipo Obsoleto</SelectItem>
-                    <SelectItem value="otros">Otros</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="destino">Destino</Label>
-                <Input
-                  id="destino"
-                  name="destino"
-                  defaultValue={editingItem?.destino}
-                  placeholder="Destino final..."
-                />
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="empresa_recicladora">Empresa Recicladora</Label>
-                <Input
-                  id="empresa_recicladora"
-                  name="empresa_recicladora"
-                  defaultValue={editingItem?.empresa_recicladora}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="huella_carbono_evitada_kg">CO₂ Evitado (kg)</Label>
-                <Input
-                  type="number"
-                  id="huella_carbono_evitada_kg"
-                  name="huella_carbono_evitada_kg"
-                  defaultValue={editingItem?.huella_carbono_evitada_kg}
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="valor_recuperado">Valor Recuperado (₡)</Label>
-                <Input
-                  type="number"
-                  id="valor_recuperado"
-                  name="valor_recuperado"
-                  defaultValue={editingItem?.valor_recuperado}
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="notas">Notas</Label>
-                <Textarea
-                  id="notas"
-                  name="notas"
-                  defaultValue={editingItem?.notas}
-                  rows={2}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-gradient-to-r from-green-600 to-emerald-500">
-                {editingItem ? 'Actualizar' : 'Crear'} Registro
-              </Button>
-            </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -396,7 +250,7 @@ export default function Reciclaje() {
 // =====================================================
 // COMPONENTE: Formulario de Reciclaje con cálculo automático
 // =====================================================
-function ReciclajeForm({ editingItem, ecoFactors, onSubmit, onCancel }) {
+function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
   const [tipoResiduo, setTipoResiduo] = useState(editingItem?.tipo_residuo || '');
   const [pesoKg, setPesoKg] = useState(editingItem?.peso_kg || 0);
   const [accion, setAccion] = useState(editingItem?.accion || 'pendiente');
@@ -419,31 +273,31 @@ function ReciclajeForm({ editingItem, ecoFactors, onSubmit, onCancel }) {
       return;
     }
 
-    // Buscar el factor ecológico activo para este tipo de residuo
-    const factor = ecoFactors.find(f => f.tipo_residuo === tipoResiduo && f.activo);
-    
-    if (!factor) {
-      setCalculatedValues({ co2_evitado: 0, valor_recuperado: 0 });
-      return;
-    }
+    // Obtener el factor ecológico (SIEMPRE existe, fallback a 'otro')
+    const factor = ECO_FACTORS[tipoResiduo] || ECO_FACTORS.otro;
 
     // Calcular valores
-    const co2 = pesoKg * (factor.factor_co2_por_kg || 0);
-    const valor = pesoKg * (factor.valor_por_kg || 0);
+    const co2 = pesoKg * factor.co2_por_kg;
+    const valor = pesoKg * factor.valor_por_kg;
 
     setCalculatedValues({
       co2_evitado: parseFloat(co2.toFixed(2)),
       valor_recuperado: parseFloat(valor.toFixed(2))
     });
-  }, [tipoResiduo, pesoKg, accion, ecoFactors]);
+  }, [tipoResiduo, pesoKg, accion]);
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    
+    // Normalizar peso (replace comas por puntos)
+    const pesoInput = formData.get('peso_kg');
+    const pesoNormalizado = pesoInput ? parseFloat(pesoInput.toString().replace(',', '.')) : 0;
+
     const data = {
       tipo_residuo: formData.get('tipo_residuo'),
       descripcion: formData.get('descripcion'),
-      peso_kg: parseFloat(formData.get('peso_kg')) || 0,
+      peso_kg: pesoNormalizado,
       cantidad_unidades: parseInt(formData.get('cantidad_unidades')) || 0,
       origen: formData.get('origen'),
       accion: formData.get('accion'),
@@ -454,39 +308,7 @@ function ReciclajeForm({ editingItem, ecoFactors, onSubmit, onCancel }) {
       notas: formData.get('notas'),
     };
 
-    onSubmit(e, data);
-  };
-
-  const mostrarWarning = () => {
-    if (!tipoResiduo || !pesoKg || pesoKg <= 0) return null;
-    
-    if (accion === 'desecho_seguro' || accion === 'pendiente') {
-      return (
-        <Alert className="bg-slate-50 border-slate-300">
-          <AlertCircle className="h-4 w-4 text-slate-600" />
-          <AlertDescription className="text-slate-700">
-            {accion === 'desecho_seguro' 
-              ? 'Este residuo fue desechado de forma segura (sin recuperación de valor ni CO₂)'
-              : 'Este residuo está pendiente de procesar (sin cálculo de valor ni CO₂)'}
-          </AlertDescription>
-        </Alert>
-      );
-    }
-
-    const factor = ecoFactors.find(f => f.tipo_residuo === tipoResiduo && f.activo);
-    
-    if (!factor && (accion === 'reciclado' || accion === 'reutilizado' || accion === 'donado')) {
-      return (
-        <Alert className="bg-yellow-50 border-yellow-300">
-          <AlertCircle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-700">
-            ⚠️ No hay factores ecológicos configurados para este tipo de residuo. Los cálculos darán 0.
-          </AlertDescription>
-        </Alert>
-      );
-    }
-
-    return null;
+    onSubmit(data);
   };
 
   const formatMoneda = (valor) => {
@@ -500,8 +322,6 @@ function ReciclajeForm({ editingItem, ecoFactors, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4 mt-4">
-      {mostrarWarning()}
-
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="tipo_residuo">Tipo de Residuo *</Label>
@@ -561,13 +381,15 @@ function ReciclajeForm({ editingItem, ecoFactors, onSubmit, onCancel }) {
         <div className="space-y-2">
           <Label htmlFor="peso_kg">Peso (kg)</Label>
           <Input
-            type="number"
+            type="text"
             id="peso_kg"
             name="peso_kg"
             value={pesoKg}
-            onChange={(e) => setPesoKg(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0"
+            onChange={(e) => {
+              const normalized = e.target.value.replace(',', '.');
+              setPesoKg(parseFloat(normalized) || 0);
+            }}
+            placeholder="0.0"
           />
         </div>
 
@@ -621,14 +443,15 @@ function ReciclajeForm({ editingItem, ecoFactors, onSubmit, onCancel }) {
           <Label htmlFor="huella_carbono_evitada_kg" className="text-slate-600">
             CO₂ Evitado (kg)
           </Label>
-          <Input
-            type="text"
-            id="huella_carbono_evitada_kg"
-            name="huella_carbono_evitada_kg"
-            value={calculatedValues.co2_evitado}
-            readOnly
-            className="bg-slate-50 text-slate-700 cursor-not-allowed font-medium"
-          />
+          <div className="relative">
+            <Input
+              type="text"
+              value={calculatedValues.co2_evitado}
+              readOnly
+              disabled
+              className="bg-slate-100 text-slate-700 font-semibold border-slate-300"
+            />
+          </div>
           <p className="text-xs text-slate-500 italic">
             ✨ Calculado automáticamente según tipo, peso y acción
           </p>
@@ -638,16 +461,17 @@ function ReciclajeForm({ editingItem, ecoFactors, onSubmit, onCancel }) {
           <Label htmlFor="valor_recuperado" className="text-slate-600">
             Valor Recuperado
           </Label>
-          <Input
-            type="text"
-            id="valor_recuperado"
-            name="valor_recuperado"
-            value={formatMoneda(calculatedValues.valor_recuperado)}
-            readOnly
-            className="bg-slate-50 text-slate-700 cursor-not-allowed font-medium"
-          />
+          <div className="relative">
+            <Input
+              type="text"
+              value={formatMoneda(calculatedValues.valor_recuperado)}
+              readOnly
+              disabled
+              className="bg-slate-100 text-slate-700 font-semibold border-slate-300"
+            />
+          </div>
           <p className="text-xs text-slate-500 italic">
-            💰 Calculado según factores configurables en Configuración
+            💰 Calculado automáticamente por el sistema
           </p>
         </div>
 

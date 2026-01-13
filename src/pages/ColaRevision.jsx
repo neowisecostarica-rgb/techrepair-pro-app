@@ -84,7 +84,7 @@ export default function ColaRevision() {
 
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nombre_completo || 'Cliente desconocido';
+    return cliente?.nombre_completo || 'Cliente sin identificar';
   };
 
   const getEquipoInfo = (equipoId) => {
@@ -137,9 +137,12 @@ export default function ColaRevision() {
                         <Clock className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-900 text-lg">{orden.motivo_ingreso}</h3>
-                        <p className="text-sm text-slate-500">
-                          {getClienteName(orden.cliente_id)} • {getEquipoInfo(orden.equipo_id)}
+                        <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
+                        <p className="text-sm text-slate-600 font-medium">
+                          {orden.motivo_ingreso}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {getEquipoInfo(orden.equipo_id)}
                         </p>
                         <p className="text-xs text-slate-400">
                           Ingreso: {format(new Date(orden.fecha_ingreso || orden.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
@@ -203,9 +206,12 @@ export default function ColaRevision() {
                         <UserPlus className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-900 text-lg">{orden.motivo_ingreso}</h3>
-                        <p className="text-sm text-slate-500">
-                          {getClienteName(orden.cliente_id)} • {getEquipoInfo(orden.equipo_id)}
+                        <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
+                        <p className="text-sm text-slate-600 font-medium">
+                          {orden.motivo_ingreso}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {getEquipoInfo(orden.equipo_id)}
                         </p>
                         <p className="text-xs text-emerald-600 font-medium">
                           Técnico: {getTecnicoName(orden.tecnico_asignado_id)}
@@ -251,9 +257,12 @@ export default function ColaRevision() {
           <div className="space-y-4 mt-4">
             {selectedOT && (
               <div className="p-4 bg-slate-50 rounded-lg">
-                <h4 className="font-semibold text-slate-900 mb-2">{selectedOT.motivo_ingreso}</h4>
+                <h4 className="font-semibold text-slate-900 mb-2">{getClienteName(selectedOT.cliente_id)}</h4>
                 <p className="text-sm text-slate-600">
-                  {getClienteName(selectedOT.cliente_id)} • {getEquipoInfo(selectedOT.equipo_id)}
+                  {selectedOT.motivo_ingreso}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {getEquipoInfo(selectedOT.equipo_id)}
                 </p>
               </div>
             )}

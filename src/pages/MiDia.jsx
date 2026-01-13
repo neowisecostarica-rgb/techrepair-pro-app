@@ -1137,6 +1137,7 @@ function MiDiaOrgAdmin({
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
@@ -1328,6 +1329,7 @@ function MiDiaSales({ user, leadsSeguimiento, cotizacionesPendientes, ventasProp
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

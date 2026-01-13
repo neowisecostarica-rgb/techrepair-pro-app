@@ -494,7 +494,9 @@ function MiDiaContent() {
                   {(ordenActiva.estado === 'EN_REVISION' || ordenActiva.estado === 'DIAGNOSTICADA') && (
                     <Button
                       onClick={() => handleIniciarDiagnostico(ordenActiva)}
+                      disabled={ordenActiva.estado_atencion !== 'ACTIVO'}
                       className="bg-gradient-to-r from-purple-500 to-blue-500"
+                      title={ordenActiva.estado_atencion !== 'ACTIVO' ? 'Debes retomar el trabajo antes de diagnosticar' : ''}
                     >
                       <Wrench className="w-4 h-4 mr-2" />
                       {tieneDiagnostico(ordenActiva.id) && !diagnosticoListo(ordenActiva.id)
@@ -611,9 +613,11 @@ function MiDiaContent() {
                     {(orden.estado === 'EN_REVISION' || orden.estado === 'DIAGNOSTICADA') && (
                       <Button
                         onClick={() => handleIniciarDiagnostico(orden)}
+                        disabled={orden.estado_atencion !== 'ACTIVO'}
                         variant="outline"
                         size="sm"
                         className="border-purple-500 text-purple-700 hover:bg-purple-50"
+                        title={orden.estado_atencion !== 'ACTIVO' ? 'Debes retomar el trabajo antes de diagnosticar' : ''}
                       >
                         <Wrench className="w-4 h-4 mr-2" />
                         {tieneDiagnostico(orden.id) && !diagnosticoListo(orden.id)
@@ -622,6 +626,11 @@ function MiDiaContent() {
                           ? 'Ver Diagnóstico'
                           : 'Realizar Diagnóstico'}
                       </Button>
+                    )}
+                    {(orden.estado === 'EN_REVISION' || orden.estado === 'DIAGNOSTICADA') && orden.estado_atencion !== 'ACTIVO' && (
+                      <p className="text-xs text-slate-500 italic">
+                        ⚠️ Retoma el trabajo para diagnosticar
+                      </p>
                     )}
                     <Button
                       onClick={() => handleRetomar(orden)}

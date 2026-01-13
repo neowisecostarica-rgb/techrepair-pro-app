@@ -238,6 +238,26 @@ export default function WizardDiagnosticoTecnico({
     setFormData({...formData, repuestos_requeridos: nuevos});
   };
 
+  // Guard: validar que el trabajo esté ACTIVO
+  if (ordenTrabajo.estado_atencion !== 'ACTIVO') {
+    return (
+      <div className="space-y-6">
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            <strong>Trabajo NO activo:</strong> No puedes diagnosticar un trabajo pausado o en espera. 
+            Por favor, retoma el trabajo desde "Mi Día" antes de continuar.
+          </AlertDescription>
+        </Alert>
+        <div className="flex justify-end pt-4">
+          <Button onClick={onClose} variant="outline">
+            Cerrar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

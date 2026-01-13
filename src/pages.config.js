@@ -20,9 +20,9 @@ import PortalGarantia from './pages/PortalGarantia';
 import ProductividadTecnicos from './pages/ProductividadTecnicos';
 import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
+import ResumenDiagnostico from './pages/ResumenDiagnostico';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import ResumenDiagnostico from './pages/ResumenDiagnostico';
 import __Layout from './Layout.jsx';
 
 
@@ -49,9 +49,9 @@ export const PAGES = {
     "ProductividadTecnicos": ProductividadTecnicos,
     "PuntoVenta": PuntoVenta,
     "Reciclaje": Reciclaje,
+    "ResumenDiagnostico": ResumenDiagnostico,
     "Saas": Saas,
     "Settings": Settings,
-    "ResumenDiagnostico": ResumenDiagnostico,
 }
 
 export const pagesConfig = {

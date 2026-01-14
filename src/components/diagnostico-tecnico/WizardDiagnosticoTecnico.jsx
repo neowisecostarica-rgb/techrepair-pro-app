@@ -141,6 +141,7 @@ export default function WizardDiagnosticoTecnico({
         fecha_inicio: diagnostico?.fecha_inicio || new Date().toISOString(),
         fecha_completado: new Date().toISOString(),
         bloqueado: true,
+        credito_consumido_finalizacion: true,
         ...formData
       };
 
@@ -641,7 +642,7 @@ export default function WizardDiagnosticoTecnico({
           ) : (
             <Button
               onClick={completarDiagnostico}
-              disabled={saving || !formData.trabajo_recomendado || !formData.tiempo_estimado_horas}
+              disabled={saving || diagnostico?.bloqueado || !formData.trabajo_recomendado || !formData.tiempo_estimado_horas}
               className="bg-gradient-to-r from-purple-500 to-blue-500"
             >
               {saving ? (
@@ -649,6 +650,8 @@ export default function WizardDiagnosticoTecnico({
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Completando...
                 </>
+              ) : diagnostico?.bloqueado ? (
+                'Diagnóstico ya completado'
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-2" />

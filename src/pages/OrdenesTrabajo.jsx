@@ -32,6 +32,7 @@ import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
 import { generarCodigoOT, calcularFechaEntregaEstimada } from '@/components/ot/utils/generarCodigoOT';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
+import EntregarOT from '@/components/ot/EntregarOT';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -1191,16 +1192,34 @@ function OrdenesTrabajoContent() {
                     💳 Cobrar Trabajo
                   </Button>
                 )}
-                <Button 
-                  onClick={() => {
-                    setEditingOT(selectedOT);
-                    setSelectedOT(null);
-                    setShowModal(true);
-                  }}
-                  className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                >
-                  Editar
-                </Button>
+                
+                {/* FASE 4: Entregar OT */}
+                {selectedOT.estado === 'FINALIZADA' && (
+                  <EntregarOT
+                    ordenTrabajo={selectedOT}
+                    effectiveOrgId={effectiveOrgId}
+                    userId={user?.id}
+                    userEmail={user?.email}
+                    effectiveRole={effectiveRole}
+                    onSuccess={() => {
+                      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+                      setSelectedOT(null);
+                    }}
+                  />
+                )}
+                
+                {selectedOT.estado !== 'ENTREGADA' && (
+                  <Button 
+                    onClick={() => {
+                      setEditingOT(selectedOT);
+                      setSelectedOT(null);
+                      setShowModal(true);
+                    }}
+                    className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                  >
+                    Editar
+                  </Button>
+                )}
               </div>
               </TabsContent>
 

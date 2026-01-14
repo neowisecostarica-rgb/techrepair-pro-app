@@ -76,6 +76,31 @@ export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
     }
   }
 
+  if (nuevoEstado === 'ENTREGADA') {
+    // FASE 4: Validaciones obligatorias pre-entrega
+    // 1. No debe haber actividades en progreso
+    const actividadesActivas = await base44.entities.ActividadTecnica.filter({
+      organization_id: ordenActual.organization_id,
+      orden_trabajo_id: otId,
+      estado: 'en_progreso',
+      soft_deleted: false
+    });
+
+    if (actividadesActivas.length > 0) {
+      throw new Error('No se puede entregar: hay actividades técnicas en progreso');
+    }
+
+    // 2. No debe estar ACTIVO el trabajo
+    if (ordenActual.estado_atencion === 'ACTIVO') {
+      throw new Error('No se puede entregar: el trabajo está activo. Debe pausarse o finalizarse primero');
+    }
+
+    // 3. Validar que viene de FINALIZADA (único estado permitido)
+    if (estadoActual !== 'FINALIZADA') {
+      throw new Error('Solo se pueden entregar OT que estén en estado FINALIZADA');
+    }
+  }
+
   // 5. Actualizar OT
   const ordenActualizada = await base44.entities.OrdenTrabajo.update(otId, {
     estado: nuevoEstado,

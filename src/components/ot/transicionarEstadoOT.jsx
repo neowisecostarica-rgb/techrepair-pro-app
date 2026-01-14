@@ -1,0 +1,101 @@
+import { base44 } from '@/api/base44Client';
+
+/**
+ * Helper centralizado para transiciones de estado de OrdenTrabajo
+ * Valida transiciones permitidas, evita inconsistencias y registra auditoría
+ */
+
+const TRANSICIONES_PERMITIDAS = {
+  EN_COLA_REVISION: ['ASIGNADA', 'CANCELADA'],
+  ASIGNADA: ['EN_REVISION', 'EN_COLA_REVISION', 'CANCELADA'],
+  EN_REVISION: ['DIAGNOSTICADA', 'ASIGNADA', 'CANCELADA'],
+  DIAGNOSTICADA: ['COTIZADA', 'EN_REVISION', 'CANCELADA'],
+  COTIZADA: ['EN_REPARACION', 'DIAGNOSTICADA', 'CANCELADA'],
+  EN_REPARACION: ['FINALIZADA', 'COTIZADA', 'CANCELADA'],
+  FINALIZADA: ['ENTREGADA'],
+  ENTREGADA: [],
+  CANCELADA: [],
+};
+
+/**
+ * Transicionar estado de una OrdenTrabajo
+ * @param {string} otId - ID de la orden de trabajo
+ * @param {string} nuevoEstado - Nuevo estado deseado
+ * @param {Object} context - Contexto adicional (userId, userEmail, organizationId, motivo)
+ * @returns {Promise<Object>} - Orden actualizada
+ */
+export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
+  const { userId, userEmail, organizationId, motivo = '' } = context;
+
+  // 1. Obtener OT actual
+  const ordenActual = await base44.entities.OrdenTrabajo.get(otId);
+  if (!ordenActual) {
+    throw new Error(`Orden de trabajo ${otId} no encontrada`);
+  }
+
+  const estadoActual = ordenActual.estado;
+
+  // 2. Idempotencia: si ya está en el estado deseado, no hacer nada
+  if (estadoActual === nuevoEstado) {
+    return ordenActual;
+  }
+
+  // 3. Validar transición permitida
+  const transicionesPermitidas = TRANSICIONES_PERMITIDAS[estadoActual];
+  if (!transicionesPermitidas || !transicionesPermitidas.includes(nuevoEstado)) {
+    throw new Error(
+      `Transición inválida: ${estadoActual} → ${nuevoEstado}. ` +
+      `Transiciones permitidas desde ${estadoActual}: ${transicionesPermitidas?.join(', ') || 'ninguna'}`
+    );
+  }
+
+  // 4. Validaciones adicionales según transición
+  if (nuevoEstado === 'DIAGNOSTICADA') {
+    // Verificar que existe diagnóstico técnico completo
+    const diagnosticos = await base44.entities.DiagnosticoTecnico.filter({
+      organization_id: ordenActual.organization_id,
+      orden_trabajo_id: otId,
+      estado: 'listo_aprobacion',
+      bloqueado: true
+    });
+
+    if (diagnosticos.length === 0) {
+      throw new Error('No se puede marcar como DIAGNOSTICADA sin un diagnóstico técnico completo y bloqueado');
+    }
+  }
+
+  if (nuevoEstado === 'COTIZADA') {
+    // Verificar que existe cotización
+    const cotizaciones = await base44.entities.Cotizacion.filter({
+      organization_id: ordenActual.organization_id,
+      orden_trabajo_id: otId,
+    });
+
+    if (cotizaciones.length === 0) {
+      throw new Error('No se puede marcar como COTIZADA sin al menos una cotización creada');
+    }
+  }
+
+  // 5. Actualizar OT
+  const ordenActualizada = await base44.entities.OrdenTrabajo.update(otId, {
+    estado: nuevoEstado,
+    ultima_actividad: motivo || `Transición: ${estadoActual} → ${nuevoEstado}`,
+    ultima_actividad_at: new Date().toISOString()
+  });
+
+  // 6. Registrar auditoría
+  try {
+    await base44.entities.SuperAdminAudit.create({
+      super_admin_id: userId || 'system',
+      super_admin_email: userEmail || 'system',
+      action: 'ot_state_transition',
+      target_organization_id: organizationId || ordenActual.organization_id,
+      context: `OT ${ordenActual.codigo_ot || otId}: ${estadoActual} → ${nuevoEstado}. Motivo: ${motivo || 'N/A'}`
+    });
+  } catch (auditError) {
+    // No fallar la transición si falla la auditoría, solo log
+    console.warn('Error al registrar auditoría de transición:', auditError);
+  }
+
+  return ordenActualizada;
+}

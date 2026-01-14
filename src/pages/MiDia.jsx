@@ -44,6 +44,7 @@ import ActividadActiva from '@/components/actividades/ActividadActiva';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { createPageUrl } from '../utils';
 import { Link } from 'react-router-dom';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function MiDia() {
   return (
@@ -194,53 +195,100 @@ function MiDiaContent() {
     setShowPauseModal(true);
   };
 
-  const confirmPausar = () => {
+  const confirmPausar = async () => {
     if (!ordenActiva) return;
     
-    updateOTMutation.mutate({
-      id: ordenActiva.id,
-      data: {
+    try {
+      // FASE 1: Finalizar ActividadTecnica activa si existe
+      if (actividadActiva) {
+        await base44.entities.ActividadTecnica.update(actividadActiva.id, {
+          estado: 'finalizada',
+          ended_at: new Date().toISOString(),
+          duracion_minutos: Math.round(
+            (new Date() - new Date(actividadActiva.started_at)) / 60000
+          ),
+          resultado: 'incompleto',
+          notas: `Actividad cerrada por pausa. Motivo: ${motivoPausa}`
+        });
+      }
+
+      // FASE 1: Actualizar estado_atencion (sin transición de estado principal)
+      await base44.entities.OrdenTrabajo.update(ordenActiva.id, {
         estado_atencion: 'PAUSADO',
         motivo_pausa: motivoPausa,
         ultima_actividad: observacionesPausa || 'Trabajo pausado',
         ultima_actividad_at: new Date().toISOString()
-      }
-    });
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
+      setShowPauseModal(false);
+      setObservacionesPausa('');
+    } catch (error) {
+      alert('Error al pausar: ' + error.message);
+    }
   };
 
-  const handleRetomar = (orden) => {
+  const handleRetomar = async (orden) => {
     if (ordenActiva && ordenActiva.id !== orden.id) {
       if (confirm('Ya tienes un trabajo activo. ¿Pausar el actual y retomar este?')) {
-        // Pausar actual primero
-        updateOTMutation.mutate({
-          id: ordenActiva.id,
-          data: {
+        try {
+          // FASE 1: Pausar actual (finalizar actividad si existe)
+          if (actividadActiva) {
+            await base44.entities.ActividadTecnica.update(actividadActiva.id, {
+              estado: 'finalizada',
+              ended_at: new Date().toISOString(),
+              duracion_minutos: Math.round(
+                (new Date() - new Date(actividadActiva.started_at)) / 60000
+              ),
+              resultado: 'incompleto',
+              notas: 'Actividad cerrada por cambio de trabajo'
+            });
+          }
+
+          await base44.entities.OrdenTrabajo.update(ordenActiva.id, {
             estado_atencion: 'PAUSADO',
             motivo_pausa: 'interrupcion',
             ultima_actividad: 'Trabajo pausado automáticamente',
             ultima_actividad_at: new Date().toISOString()
-          }
-        }, {
-          onSuccess: () => {
-            // Luego activar nuevo
-            activarOrden(orden);
-          }
-        });
+          });
+
+          // Activar nuevo
+          await activarOrden(orden);
+        } catch (error) {
+          alert('Error al cambiar de trabajo: ' + error.message);
+        }
       }
     } else {
-      activarOrden(orden);
+      await activarOrden(orden);
     }
   };
 
-  const activarOrden = (orden) => {
-    updateOTMutation.mutate({
-      id: orden.id,
-      data: {
+  const activarOrden = async (orden) => {
+    try {
+      // FASE 1: Actualizar estado_atencion a ACTIVO
+      await base44.entities.OrdenTrabajo.update(orden.id, {
         estado_atencion: 'ACTIVO',
         ultima_actividad: 'Trabajo retomado',
         ultima_actividad_at: new Date().toISOString()
-      }
-    });
+      });
+
+      // FASE 1: Crear nueva ActividadTecnica
+      await base44.entities.ActividadTecnica.create({
+        organization_id: effectiveOrgId,
+        orden_trabajo_id: orden.id,
+        tecnico_id: user.id,
+        tecnico_email: user.email,
+        tipo_actividad: 'diagnostico',
+        estado: 'en_progreso',
+        started_at: new Date().toISOString()
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
+    } catch (error) {
+      alert('Error al retomar trabajo: ' + error.message);
+    }
   };
 
   const handleIniciarDiagnostico = async (orden) => {

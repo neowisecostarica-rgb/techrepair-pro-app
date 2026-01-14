@@ -31,6 +31,7 @@ import ListaActividades from '@/components/actividades/ListaActividades';
 import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
 import { generarCodigoOT, calcularFechaEntregaEstimada } from '@/components/ot/utils/generarCodigoOT';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -179,11 +180,20 @@ function OrdenesTrabajoContent() {
       // Calcular fecha entrega estimada
       const fechaEstimada = calcularFechaEntregaEstimada(data.prioridad);
       
+      // FASE 1: Auto-asignación en Starter
+      const organization = await base44.entities.Organization.get(effectiveOrgId);
+      let tecnicoAsignadoId = data.tecnico_asignado_id;
+      
+      if (organization?.plan === 'Starter' && effectiveRole === 'ORG_ADMIN' && !tecnicoAsignadoId) {
+        tecnicoAsignadoId = userAccount.user_id;
+      }
+      
       return base44.entities.OrdenTrabajo.create(withOrgId({
         ...data,
         codigo_ot: codigoOT,
         fecha_entrega_estimada: fechaEstimada,
-        fecha_ingreso: new Date().toISOString()
+        fecha_ingreso: new Date().toISOString(),
+        tecnico_asignado_id: tecnicoAsignadoId
       }, userAccount));
     },
     onSuccess: () => {
@@ -918,17 +928,15 @@ function OrdenesTrabajoContent() {
 
             {editingOT && (
               <div className="space-y-2">
-                <Label htmlFor="estado">Estado</Label>
-                <Select name="estado" defaultValue={editingOT?.estado}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(estadoConfig).map(([key, value]) => (
-                      <SelectItem key={key} value={key}>{value.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="estado">Estado (solo lectura)</Label>
+                <Input 
+                  value={estadoConfig[editingOT?.estado]?.label || editingOT?.estado}
+                  disabled
+                  className="bg-slate-100 cursor-not-allowed"
+                />
+                <p className="text-xs text-slate-500">
+                  Los cambios de estado se gestionan automáticamente según el flujo de trabajo
+                </p>
               </div>
             )}
 

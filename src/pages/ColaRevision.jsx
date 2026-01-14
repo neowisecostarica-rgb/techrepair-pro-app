@@ -11,6 +11,7 @@ import { Inbox, UserPlus, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useUserAccount } from '@/components/hooks/useOrgData';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function ColaRevision() {
   const [showAsignarModal, setShowAsignarModal] = useState(false);
@@ -66,13 +67,22 @@ export default function ColaRevision() {
   });
 
   const asignarMutation = useMutation({
-    mutationFn: ({ id, tecnicoId }) => base44.entities.OrdenTrabajo.update(id, {
-      tecnico_asignado_id: tecnicoId,
-      estado: 'ASIGNADA',
-      estado_atencion: 'PAUSADO', // No activo automáticamente
-      ultima_actividad: 'Orden asignada',
-      ultima_actividad_at: new Date().toISOString()
-    }),
+    mutationFn: async ({ id, tecnicoId }) => {
+      // FASE 1: Asignar técnico
+      await base44.entities.OrdenTrabajo.update(id, {
+        tecnico_asignado_id: tecnicoId,
+        estado_atencion: 'PAUSADO'
+      });
+
+      // FASE 1: Transición centralizada de estado
+      const orden = await base44.entities.OrdenTrabajo.get(id);
+      await transicionarEstadoOT(id, 'ASIGNADA', {
+        userId: userAccount?.user_id,
+        userEmail: userAccount?.user_email,
+        organizationId: userAccount?.organization_id,
+        motivo: `Orden asignada a técnico ${tecnicoId}`
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes-cola'] });
       queryClient.invalidateQueries({ queryKey: ['ordenes-asignadas'] });

@@ -164,6 +164,18 @@ function PuntoVentaContent() {
   };
 
   const agregarAlCarrito = (item, tipo) => {
+    // P1: Validar stock disponible para productos
+    if (tipo === 'producto') {
+      const yaExiste = carrito.find(c => c.referencia_id === item.id);
+      const cantidadActualCarrito = yaExiste ? yaExiste.cantidad : 0;
+      const nuevaCantidad = cantidadActualCarrito + 1;
+
+      if (nuevaCantidad > item.cantidad_disponible) {
+        alert(`Stock insuficiente. Disponible: ${item.cantidad_disponible}`);
+        return;
+      }
+    }
+
     const yaExiste = carrito.find(c => c.referencia_id === item.id);
     if (yaExiste) {
       setCarrito(carrito.map(c =>
@@ -185,6 +197,16 @@ function PuntoVentaContent() {
   };
 
   const actualizarCantidad = (referenciaId, cantidad) => {
+    // P1: Validar stock al actualizar cantidad
+    const itemCarrito = carrito.find(c => c.referencia_id === referenciaId);
+    if (itemCarrito?.tipo === 'producto') {
+      const producto = inventario.find(p => p.id === referenciaId);
+      if (producto && cantidad > producto.cantidad_disponible) {
+        alert(`Stock insuficiente. Disponible: ${producto.cantidad_disponible}`);
+        return;
+      }
+    }
+
     setCarrito(carrito.map(c =>
       c.referencia_id === referenciaId
         ? { ...c, cantidad, subtotal: cantidad * c.precio_unitario }

@@ -131,6 +131,24 @@ export default function WizardDiagnosticoTecnico({
   };
 
   const completarDiagnostico = async () => {
+    // P0 IDEMPOTENCIA: Guard - si ya se consumió crédito, no reejecutar
+    if (diagnostico?.credito_consumido_finalizacion === true) {
+      console.warn('FINALIZAR_DIAG_SKIP', { 
+        otId: ordenTrabajo.id, 
+        diagnosticoId: diagnostico.id, 
+        motivo: 'credito_ya_consumido',
+        ts: new Date().toISOString() 
+      });
+      alert('Este diagnóstico ya fue finalizado previamente');
+      return;
+    }
+
+    console.log('FINALIZAR_DIAG_CLICK', { 
+      otId: ordenTrabajo.id, 
+      diagnosticoId: diagnostico?.id, 
+      ts: new Date().toISOString() 
+    });
+
     setSaving(true);
     try {
       const dataCompleta = {
@@ -217,6 +235,12 @@ export default function WizardDiagnosticoTecnico({
         impuesto: 0,
         total: 0,
         estado: 'borrador'
+      });
+
+      console.log('FINALIZAR_DIAG_DONE', { 
+        otId: ordenTrabajo.id, 
+        diagnosticoId: diagnosticoFinal.id || diagnostico?.id,
+        ts: new Date().toISOString() 
       });
 
       // Redirigir automáticamente al Resumen de Diagnóstico
@@ -642,7 +666,12 @@ export default function WizardDiagnosticoTecnico({
           ) : (
             <Button
               onClick={completarDiagnostico}
-              disabled={saving || diagnostico?.bloqueado || !formData.trabajo_recomendado || !formData.tiempo_estimado_horas}
+              disabled={
+                saving || 
+                diagnostico?.credito_consumido_finalizacion === true || 
+                !formData.trabajo_recomendado || 
+                !formData.tiempo_estimado_horas
+              }
               className="bg-gradient-to-r from-purple-500 to-blue-500"
             >
               {saving ? (
@@ -650,8 +679,8 @@ export default function WizardDiagnosticoTecnico({
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Completando...
                 </>
-              ) : diagnostico?.bloqueado ? (
-                'Diagnóstico ya completado'
+              ) : diagnostico?.credito_consumido_finalizacion === true ? (
+                '✓ Diagnóstico ya completado'
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-2" />

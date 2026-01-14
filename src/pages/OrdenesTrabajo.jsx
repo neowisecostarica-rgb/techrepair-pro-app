@@ -1224,7 +1224,7 @@ function OrdenesTrabajoContent() {
               </TabsContent>
 
               <TabsContent value="actividades" className="space-y-4">
-                {effectiveRole === 'TECHNICIAN' && (
+                {effectiveRole === 'TECHNICIAN' && selectedOT.estado !== 'ENTREGADA' && (
                   <div className="mb-4">
                     <IniciarActividad 
                       ordenTrabajoId={selectedOT.id}

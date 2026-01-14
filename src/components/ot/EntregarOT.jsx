@@ -32,7 +32,7 @@ export default function EntregarOT({
       organization_id: effectiveOrgId,
       referencia_ot_id: ordenTrabajo.id
     }),
-    enabled: showModal && !!efectiveOrgId,
+    enabled: showModal && !!effectiveOrgId,
   });
 
   const ventaPagada = ventas.some(v => v.estado === 'pagada');

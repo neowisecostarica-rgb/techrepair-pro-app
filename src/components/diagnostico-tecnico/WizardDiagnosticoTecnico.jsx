@@ -13,6 +13,7 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { COMPONENTES_DISPONIBLES, PRUEBAS_POR_COMPONENTE } from './pruebasPorComponente';
 import { generarResumenTecnico } from './generarResumenTecnico';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 const TIPOS_INTERVENCION = {
   diagnostico_tecnico: 'Diagnóstico técnico completo',
@@ -54,15 +55,36 @@ export default function WizardDiagnosticoTecnico({
 
   const cargarDiagnostico = async () => {
     try {
-      const existing = await base44.entities.DiagnosticoTecnico.filter({
+      // FASE 1: Inactivar diagnósticos previos activos (unicidad)
+      const diagnosticosActivos = await base44.entities.DiagnosticoTecnico.filter({
         organization_id: effectiveOrgId,
         orden_trabajo_id: ordenTrabajo.id,
-        tecnico_id: tecnicoId,
         bloqueado: false
       });
 
-      if (existing.length > 0) {
-        const diag = existing[0];
+      // Si hay múltiples activos, bloquear todos excepto el más reciente
+      if (diagnosticosActivos.length > 1) {
+        const ordenadosPorFecha = diagnosticosActivos.sort((a, b) => 
+          new Date(b.created_date || 0) - new Date(a.created_date || 0)
+        );
+        
+        // Bloquear todos excepto el primero (más reciente)
+        for (let i = 1; i < ordenadosPorFecha.length; i++) {
+          await base44.entities.DiagnosticoTecnico.update(ordenadosPorFecha[i].id, {
+            bloqueado: true
+          });
+        }
+      }
+
+      // Cargar el diagnóstico activo (solo debe haber uno ahora)
+      const diagnosticosActivosActualizados = await base44.entities.DiagnosticoTecnico.filter({
+        organization_id: effectiveOrgId,
+        orden_trabajo_id: ordenTrabajo.id,
+        bloqueado: false
+      });
+
+      if (diagnosticosActivosActualizados.length > 0) {
+        const diag = diagnosticosActivosActualizados[0];
         setDiagnostico(diag);
         setFormData({
           tipo_intervencion: diag.tipo_intervencion || '',
@@ -132,10 +154,17 @@ export default function WizardDiagnosticoTecnico({
       // Generar resumen técnico
       const resumenTecnico = generarResumenTecnico(dataCompleta);
 
-      // Actualizar OT: estado DIAGNOSTICADA + resumen
+      // Actualizar OT con resumen (sin mutar estado directamente)
       await base44.entities.OrdenTrabajo.update(ordenTrabajo.id, {
-        estado: 'DIAGNOSTICADA',
         diagnostico_resumido: resumenTecnico
+      });
+
+      // FASE 1: Transición centralizada de estado
+      await transicionarEstadoOT(ordenTrabajo.id, 'DIAGNOSTICADA', {
+        userId: tecnicoId,
+        userEmail: 'tecnico',
+        organizationId: effectiveOrgId,
+        motivo: 'Diagnóstico técnico completado'
       });
 
       // Crear cotización automática en borrador

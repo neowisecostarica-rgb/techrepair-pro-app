@@ -17,8 +17,8 @@ import { validarSolapamiento } from '@/components/calendario/validarSolapamiento
 import { createPageUrl } from '../utils';
 import PageGuard from '@/components/guards/PageGuard';
 
-// Componente inline para selector de OT (UX FIX)
-function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId }) {
+// Componente inline para selector de OT (UX FIX + BUG FIX: filtrado por cliente)
+function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId, clienteId, onOTChange }) {
   const requiereOT = ['diagnostico', 'reparacion', 'entrega'].includes(tipo);
 
   const { data: ordenesTrabajo = [] } = useQuery({
@@ -31,25 +31,47 @@ function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId }) {
 
   if (!requiereOT) return null;
 
+  // BUG FIX: Filtrar por cliente cuando está seleccionado
+  const otsFiltradas = ordenesTrabajo.filter(ot => {
+    // Excluir estados finales
+    if (['ENTREGADA', 'CANCELADA'].includes(ot.estado)) return false;
+    
+    // Si hay cliente seleccionado, SOLO mostrar OTs de ese cliente
+    if (clienteId && ot.cliente_id !== clienteId) return false;
+    
+    return true;
+  });
+
   return (
     <div className="space-y-2 col-span-2">
       <Label htmlFor="orden_trabajo_id">Orden de Trabajo asociada *</Label>
-      <Select name="orden_trabajo_id" defaultValue={defaultValue} required>
+      <Select 
+        name="orden_trabajo_id" 
+        value={defaultValue} 
+        onValueChange={onOTChange}
+        required
+      >
         <SelectTrigger>
           <SelectValue placeholder="Selecciona la OT correspondiente" />
         </SelectTrigger>
         <SelectContent>
-          {ordenesTrabajo
-            .filter(ot => !['ENTREGADA', 'CANCELADA'].includes(ot.estado))
-            .map((ot) => (
+          {otsFiltradas.length > 0 ? (
+            otsFiltradas.map((ot) => (
               <SelectItem key={ot.id} value={ot.id}>
                 {ot.codigo_ot} - {ot.motivo_ingreso}
               </SelectItem>
-            ))}
+            ))
+          ) : (
+            <SelectItem value={null} disabled>
+              {clienteId ? 'No hay OTs activas para este cliente' : 'No hay OTs activas'}
+            </SelectItem>
+          )}
         </SelectContent>
       </Select>
       <p className="text-xs text-slate-500">
-        Selecciona la OT correspondiente al diagnóstico o reparación.
+        {clienteId 
+          ? 'Mostrando solo OTs del cliente seleccionado' 
+          : 'Selecciona la OT correspondiente al diagnóstico o reparación.'}
       </p>
     </div>
   );
@@ -78,6 +100,8 @@ function AgendaContent() {
   const [fechaFiltro, setFechaFiltro] = useState(new Date().toISOString().split('T')[0]);
   const [validando, setValidando] = useState(false);
   const [tipoSeleccionado, setTipoSeleccionado] = useState('');
+  const [clienteSeleccionado, setClienteSeleccionado] = useState('');
+  const [otSeleccionada, setOtSeleccionada] = useState('');
   const queryClient = useQueryClient();
 
   const { effectiveOrgId, effectiveRole, user, userAccount } = useAuthContext();
@@ -207,6 +231,20 @@ function AgendaContent() {
     setValidando(true);
 
     const formData = new FormData(e.target);
+    
+    // BUG FIX: Validación defensiva - bloquear asociaciones cruzadas
+    const clienteId = clienteSeleccionado || formData.get('cliente_id');
+    const otId = otSeleccionada || formData.get('orden_trabajo_id');
+    
+    if (clienteId && otId) {
+      // Verificar que la OT pertenece al cliente
+      const { data: ot } = await base44.entities.OrdenTrabajo.filter({ id: otId });
+      if (ot && ot[0]?.cliente_id !== clienteId) {
+        alert('Error: La OT seleccionada no pertenece al cliente elegido');
+        setValidando(false);
+        return;
+      }
+    }
     
     // P0.3 RBAC: Técnico asignado
     let tecnicoAsignadoId;
@@ -456,7 +494,15 @@ function AgendaContent() {
 
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="cliente_id">Cliente (opcional)</Label>
-                <Select name="cliente_id" defaultValue={editingCita?.cliente_id}>
+                <Select 
+                  name="cliente_id" 
+                  value={clienteSeleccionado || editingCita?.cliente_id}
+                  onValueChange={(value) => {
+                    setClienteSeleccionado(value);
+                    // BUG FIX: Limpiar OT al cambiar cliente
+                    setOtSeleccionada('');
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sin cliente" />
                   </SelectTrigger>
@@ -471,11 +517,13 @@ function AgendaContent() {
                 </Select>
               </div>
 
-              {/* P0.4: Selector de OT (UX FIX APLICADO) */}
+              {/* P0.4: Selector de OT (UX FIX + BUG FIX APLICADO) */}
               <CitaSelectorOT
                 tipo={tipoSeleccionado || editingCita?.tipo}
-                defaultValue={editingCita?.orden_trabajo_id}
+                defaultValue={otSeleccionada || editingCita?.orden_trabajo_id}
                 effectiveOrgId={effectiveOrgId}
+                clienteId={clienteSeleccionado || editingCita?.cliente_id}
+                onOTChange={setOtSeleccionada}
               />
 
               <div className="space-y-2">

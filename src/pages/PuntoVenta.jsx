@@ -324,9 +324,29 @@ function PuntoVentaContent() {
       return;
     }
 
+    // P0.2: Resolver branch_id automáticamente si falta y hay una sola sucursal
+    let branchIdFinal = userAccount?.branch_id;
+
+    if (!branchIdFinal && effectiveOrgId) {
+      try {
+        const branches = await base44.entities.Branch.filter({
+          organization_id: effectiveOrgId
+        });
+
+        if (branches.length === 1) {
+          branchIdFinal = branches[0].id;
+        } else if (branches.length > 1) {
+          alert('Tu cuenta no tiene una sucursal asignada. Por favor, contacta a tu administrador para que te asigne una sucursal específica.');
+          return;
+        }
+      } catch (error) {
+        console.error('Error consultando sucursales:', error);
+      }
+    }
+
     // P0: Validar campos requeridos
-    if (!userAccount?.organization_id || !userAccount?.branch_id || !user?.id) {
-      alert('Error: Faltan datos de usuario u organización. No se puede completar la venta.');
+    if (!effectiveOrgId || !branchIdFinal || !user?.id) {
+      alert('Tu sesión ha expirado o hay un problema con tu contexto de organización. Por favor, cierra sesión y vuelve a iniciar para continuar.');
       return;
     }
 
@@ -364,8 +384,9 @@ function PuntoVentaContent() {
 
     const totales = calcularTotales();
 
-    const ventaData = withOrgId({
-      branch_id: userAccount.branch_id,
+    const ventaData = {
+      organization_id: effectiveOrgId,
+      branch_id: branchIdFinal,
       cliente_id: clienteSeleccionado || null,
       origen_venta: origenVenta,
       tipo_concepto: tipoConcepto,
@@ -376,7 +397,7 @@ function PuntoVentaContent() {
       metodo_pago: metodoPago,
       estado: 'pagada',
       created_by_user_id: user?.id,
-    }, userAccount);
+    };
 
     createVentaMutation.mutate(ventaData);
   };

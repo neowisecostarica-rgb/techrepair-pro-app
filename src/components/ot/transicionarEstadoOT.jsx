@@ -24,13 +24,43 @@ const ESTADOS_ATENCION_PERMITIDOS = ['ACTIVO', 'PAUSADO', 'ESPERANDO'];
 
 /**
  * Transicionar estado de una OrdenTrabajo
- * @param {string} otId - ID de la orden de trabajo
- * @param {string} nuevoEstado - Nuevo estado deseado
- * @param {Object} context - Contexto adicional (userId, userEmail, organizationId, motivo)
+ * 
+ * RETROCOMPATIBILIDAD (P0.1):
+ * - Firma A: transicionarEstadoOT(otId, nuevoEstado, context)
+ * - Firma B: transicionarEstadoOT({ ordenTrabajoId, nuevoEstado, effectiveOrgId, userId, userEmail, motivo })
+ * 
+ * @param {string|Object} otIdOrParams - ID de la orden de trabajo o objeto con parámetros
+ * @param {string} nuevoEstado - Nuevo estado deseado (si primer param es string)
+ * @param {Object} context - Contexto adicional (userId, userEmail, organizationId, motivo) (si primer param es string)
  * @returns {Promise<Object>} - Orden actualizada
  */
-export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
-  const { userId, userEmail, organizationId, motivo = '' } = context;
+export async function transicionarEstadoOT(otIdOrParams, nuevoEstado, context = {}) {
+  // P0.1: Detectar firma utilizada
+  let otId, estadoNuevo, ctx;
+
+  if (typeof otIdOrParams === 'object' && otIdOrParams !== null) {
+    // Firma B: objeto con parámetros
+    otId = otIdOrParams.ordenTrabajoId;
+    estadoNuevo = otIdOrParams.nuevoEstado;
+    ctx = {
+      userId: otIdOrParams.userId,
+      userEmail: otIdOrParams.userEmail,
+      organizationId: otIdOrParams.effectiveOrgId || otIdOrParams.organizationId,
+      motivo: otIdOrParams.motivo || ''
+    };
+  } else {
+    // Firma A: parámetros tradicionales
+    otId = otIdOrParams;
+    estadoNuevo = nuevoEstado;
+    ctx = context;
+  }
+
+  // Guard: validar que otId sea string válido
+  if (typeof otId !== 'string' || !otId) {
+    throw new Error(`ID de orden de trabajo inválido. Se esperaba un string, se recibió: ${typeof otId}`);
+  }
+
+  const { userId, userEmail, organizationId, motivo = '' } = ctx;
 
   // 1. Obtener OT actual
   const ordenActual = await base44.entities.OrdenTrabajo.get(otId);
@@ -41,21 +71,21 @@ export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
   const estadoActual = ordenActual.estado;
 
   // 2. Idempotencia: si ya está en el estado deseado, no hacer nada
-  if (estadoActual === nuevoEstado) {
+  if (estadoActual === estadoNuevo) {
     return ordenActual;
   }
 
   // 3. Validar transición permitida
   const transicionesPermitidas = TRANSICIONES_PERMITIDAS[estadoActual];
-  if (!transicionesPermitidas || !transicionesPermitidas.includes(nuevoEstado)) {
+  if (!transicionesPermitidas || !transicionesPermitidas.includes(estadoNuevo)) {
     throw new Error(
-      `Transición inválida: ${estadoActual} → ${nuevoEstado}. ` +
+      `Transición inválida: ${estadoActual} → ${estadoNuevo}. ` +
       `Transiciones permitidas desde ${estadoActual}: ${transicionesPermitidas?.join(', ') || 'ninguna'}`
     );
   }
 
   // 4. Validaciones adicionales según transición
-  if (nuevoEstado === 'DIAGNOSTICADA') {
+  if (estadoNuevo === 'DIAGNOSTICADA') {
     // Verificar que existe diagnóstico técnico completo
     const diagnosticos = await base44.entities.DiagnosticoTecnico.filter({
       organization_id: ordenActual.organization_id,
@@ -69,7 +99,7 @@ export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
     }
   }
 
-  if (nuevoEstado === 'COTIZADA') {
+  if (estadoNuevo === 'COTIZADA') {
     // Verificar que existe cotización
     const cotizaciones = await base44.entities.Cotizacion.filter({
       organization_id: ordenActual.organization_id,
@@ -81,7 +111,7 @@ export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
     }
   }
 
-  if (nuevoEstado === 'ENTREGADA') {
+  if (estadoNuevo === 'ENTREGADA') {
     // FASE 4: Validaciones obligatorias pre-entrega
     // 1. No debe haber actividades en progreso
     const actividadesActivas = await base44.entities.ActividadTecnica.filter({
@@ -108,8 +138,8 @@ export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
 
   // 5. Actualizar OT
   const ordenActualizada = await base44.entities.OrdenTrabajo.update(otId, {
-    estado: nuevoEstado,
-    ultima_actividad: motivo || `Transición: ${estadoActual} → ${nuevoEstado}`,
+    estado: estadoNuevo,
+    ultima_actividad: motivo || `Transición: ${estadoActual} → ${estadoNuevo}`,
     ultima_actividad_at: new Date().toISOString()
   });
 
@@ -120,7 +150,7 @@ export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
       super_admin_email: userEmail || 'system',
       action: 'ot_state_transition',
       target_organization_id: organizationId || ordenActual.organization_id,
-      context: `OT ${ordenActual.codigo_ot || otId}: ${estadoActual} → ${nuevoEstado}. Motivo: ${motivo || 'N/A'}`
+      context: `OT ${ordenActual.codigo_ot || otId}: ${estadoActual} → ${estadoNuevo}. Motivo: ${motivo || 'N/A'}`
     });
   } catch (auditError) {
     // No fallar la transición si falla la auditoría, solo log

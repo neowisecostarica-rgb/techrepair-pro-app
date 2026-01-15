@@ -101,6 +101,17 @@ function PuntoVentaContent() {
 
   const createVentaMutation = useMutation({
     mutationFn: async (ventaData) => {
+      // P0: Validar campos requeridos mínimos
+      if (!ventaData.total || ventaData.total <= 0) {
+        throw new Error('El total de la venta debe ser mayor a cero');
+      }
+      if (!ventaData.metodo_pago) {
+        throw new Error('Debe seleccionar un método de pago');
+      }
+      if (!ventaData.organization_id || !ventaData.branch_id || !ventaData.created_by_user_id) {
+        throw new Error('Faltan datos requeridos de organización o usuario');
+      }
+
       // VALIDACIONES CANÓNICAS POS
       const validacion = await validarVentaPOS({
         clienteId: ventaData.cliente_id,
@@ -144,6 +155,25 @@ function PuntoVentaContent() {
             subtotal: item.subtotal
           }, userAccount));
         }
+
+        // P0: Decrementar stock SOLO para productos físicos
+        for (const item of carrito) {
+          if (item.tipo === 'producto') {
+            const producto = inventario.find(p => p.id === item.referencia_id);
+            if (producto) {
+              const categorias = await base44.entities.CategoriaInventario.filter({ id: producto.categoria_id });
+              const categoria = categorias[0];
+              
+              // Solo decrementar si permite_stock = true
+              if (categoria?.permite_stock !== false) {
+                await base44.entities.Inventario.update(producto.id, {
+                  cantidad_disponible: producto.cantidad_disponible - item.cantidad,
+                  fecha_ultimo_movimiento: new Date().toISOString().split('T')[0]
+                });
+              }
+            }
+          }
+        }
       }
 
       // ✅ EMISIÓN AUTOMÁTICA DE GARANTÍA
@@ -159,6 +189,10 @@ function PuntoVentaContent() {
       setClienteSeleccionado('');
       setVentaId(null);
     },
+    onError: (error) => {
+      // P0: Mostrar error claro al usuario
+      alert(`No se pudo completar la venta: ${error.message || 'Error desconocido'}`);
+    }
   });
 
   const emitirGarantiaAutomatica = async (venta) => {
@@ -202,16 +236,23 @@ function PuntoVentaContent() {
     }
   };
 
-  const agregarAlCarrito = (item, tipo) => {
-    // P1: Validar stock disponible para productos
+  const agregarAlCarrito = async (item, tipo) => {
+    // P0: Validar stock SOLO para productos físicos (no servicios)
     if (tipo === 'producto') {
-      const yaExiste = carrito.find(c => c.referencia_id === item.id);
-      const cantidadActualCarrito = yaExiste ? yaExiste.cantidad : 0;
-      const nuevaCantidad = cantidadActualCarrito + 1;
+      // Cargar categoría para verificar si permite stock
+      const categorias = await base44.entities.CategoriaInventario.filter({ id: item.categoria_id });
+      const categoria = categorias[0];
+      
+      // Solo validar stock si permite_stock = true
+      if (categoria?.permite_stock !== false) {
+        const yaExiste = carrito.find(c => c.referencia_id === item.id);
+        const cantidadActualCarrito = yaExiste ? yaExiste.cantidad : 0;
+        const nuevaCantidad = cantidadActualCarrito + 1;
 
-      if (nuevaCantidad > item.cantidad_disponible) {
-        alert(`Stock insuficiente. Disponible: ${item.cantidad_disponible}`);
-        return;
+        if (nuevaCantidad > item.cantidad_disponible) {
+          alert(`Stock insuficiente para ${item.nombre}. Disponible: ${item.cantidad_disponible}`);
+          return;
+        }
       }
     }
 
@@ -240,14 +281,21 @@ function PuntoVentaContent() {
     setSearchTerm('');
   };
 
-  const actualizarCantidad = (referenciaId, cantidad) => {
-    // P1: Validar stock al actualizar cantidad
+  const actualizarCantidad = async (referenciaId, cantidad) => {
+    // P0: Validar stock SOLO para productos físicos (no servicios)
     const itemCarrito = carrito.find(c => c.referencia_id === referenciaId);
     if (itemCarrito?.tipo === 'producto') {
       const producto = inventario.find(p => p.id === referenciaId);
-      if (producto && cantidad > producto.cantidad_disponible) {
-        alert(`Stock insuficiente. Disponible: ${producto.cantidad_disponible}`);
-        return;
+      if (producto) {
+        // Cargar categoría para verificar si permite stock
+        const categorias = await base44.entities.CategoriaInventario.filter({ id: producto.categoria_id });
+        const categoria = categorias[0];
+        
+        // Solo validar stock si permite_stock = true
+        if (categoria?.permite_stock !== false && cantidad > producto.cantidad_disponible) {
+          alert(`Stock insuficiente para ${producto.nombre}. Disponible: ${producto.cantidad_disponible}`);
+          return;
+        }
       }
     }
 
@@ -275,6 +323,12 @@ function PuntoVentaContent() {
       return;
     }
 
+    // P0: Validar campos requeridos
+    if (!userAccount?.organization_id || !userAccount?.branch_id || !user?.id) {
+      alert('Error: Faltan datos de usuario u organización. No se puede completar la venta.');
+      return;
+    }
+
     // Validación previa de Cliente ↔ OT si aplica
     if (clienteSeleccionado && otSeleccionada) {
       const validacionPrevia = await validarVentaPOS({
@@ -287,6 +341,23 @@ function PuntoVentaContent() {
       if (!validacionPrevia.valido) {
         alert(validacionPrevia.mensaje);
         return;
+      }
+    }
+
+    // P0: Validar stock disponible para productos físicos antes de procesar
+    for (const item of carrito) {
+      if (item.tipo === 'producto') {
+        const producto = inventario.find(p => p.id === item.referencia_id);
+        if (producto) {
+          const categorias = await base44.entities.CategoriaInventario.filter({ id: producto.categoria_id });
+          const categoria = categorias[0];
+          
+          // Solo validar stock si permite_stock = true
+          if (categoria?.permite_stock !== false && item.cantidad > producto.cantidad_disponible) {
+            alert(`Stock insuficiente para ${producto.nombre}. Disponible: ${producto.cantidad_disponible}, Solicitado: ${item.cantidad}`);
+            return;
+          }
+        }
       }
     }
 

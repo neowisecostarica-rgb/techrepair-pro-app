@@ -184,6 +184,7 @@ export default function Inventario() {
       nombre: formData.get('nombre'),
       descripcion: formData.get('descripcion'),
       categoria_id: selectedCategoriaId,
+      tipo_item: formData.get('tipo_item') || 'producto',
       marca: formData.get('marca'),
       modelo: formData.get('modelo'),
       cantidad_disponible: categoriaSeleccionada?.permite_stock ? (parseFloat(formData.get('cantidad_disponible')) || 0) : 0,
@@ -257,7 +258,7 @@ export default function Inventario() {
           <p className="text-slate-500">Control de repuestos y productos</p>
         </div>
         <div className="flex gap-3">
-          {(effectiveRole === 'ORG_ADMIN' || effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN') && (
+          {effectiveRole === 'ORG_ADMIN' && (
             <>
               <ExportarInventario 
                 items={itemsFiltrados} 
@@ -281,6 +282,14 @@ export default function Inventario() {
                 Nuevo Item
               </Button>
             </>
+          )}
+          
+          {(effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN') && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+              <p className="text-sm text-blue-800">
+                👀 Vista de solo lectura - SALES no puede editar inventario
+              </p>
+            </div>
           )}
           
           {effectiveRole === 'TECHNICIAN' && (
@@ -446,7 +455,7 @@ export default function Inventario() {
                         </span>
                       </td>
                       <td className="p-4">
-                        {(effectiveRole === 'ORG_ADMIN' || effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN') ? (
+                        {effectiveRole === 'ORG_ADMIN' ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -552,6 +561,26 @@ export default function Inventario() {
                     Ej: Repuestos, Servicios, Reciclaje
                   </p>
                 )}
+              </div>
+
+              {/* TIPO DE ITEM */}
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="tipo_item">Tipo de Item *</Label>
+                <Select name="tipo_item" defaultValue={editingItem?.tipo_item || 'producto'} disabled={effectiveRole !== 'ORG_ADMIN'}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="producto">Producto</SelectItem>
+                    <SelectItem value="servicio_diagnostico">Servicio / Diagnóstico</SelectItem>
+                    <SelectItem value="servicio_estandar">Servicio Estándar</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  {effectiveRole === 'ORG_ADMIN' 
+                    ? 'Define el tipo de ítem (POS usará esto para inferir el concepto de venta)' 
+                    : '⚠️ Solo ORG_ADMIN puede modificar este campo'}
+                </p>
               </div>
 
               {/* CÓDIGO DE BARRAS Y SKU */}

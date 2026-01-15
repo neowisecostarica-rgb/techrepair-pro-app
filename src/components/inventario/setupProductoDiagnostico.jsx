@@ -53,6 +53,7 @@ export async function verificarOCrearProductoDiagnostico(organizationId) {
       nombre: 'Revisión / Diagnóstico',
       descripcion: 'Servicio de revisión y diagnóstico técnico',
       categoria_id: categoriaServicios.id,
+      tipo_item: 'servicio_diagnostico',
       marca: null,
       modelo: null,
       cantidad_disponible: 0,

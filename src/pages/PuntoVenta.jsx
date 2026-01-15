@@ -215,6 +215,11 @@ function PuntoVentaContent() {
       }
     }
 
+    // INFERENCIA AUTOMÁTICA DE TIPO DE CONCEPTO
+    if (tipo === 'producto' && item.tipo_item === 'servicio_diagnostico') {
+      setTipoConcepto('revision_diagnostico');
+    }
+
     const yaExiste = carrito.find(c => c.referencia_id === item.id);
     if (yaExiste) {
       setCarrito(carrito.map(c =>
@@ -545,6 +550,9 @@ function PuntoVentaContent() {
                     ⚡ Este pago habilitará el diagnóstico técnico
                   </p>
                 )}
+                <p className="text-xs text-slate-500">
+                  💡 Se infiere automáticamente al agregar items de diagnóstico al carrito
+                </p>
               </div>
 
               <div className="space-y-2">

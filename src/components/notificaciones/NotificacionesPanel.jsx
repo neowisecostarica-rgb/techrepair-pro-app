@@ -22,12 +22,35 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
         estado: 'pendiente'
       });
       
-      // Filtrar por usuario o rol
-      return all.filter(n => 
+      // P1.4: Filtrar por usuario o rol + alinear con rol efectivo
+      const filtered = all.filter(n => 
         (n.user_id && n.user_id === userAccount.user_id) ||
         (n.role_target && n.role_target === userAccount.role) ||
+        (n.role_target === 'ORG_ADMIN' && ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(userAccount.role)) ||
         (!n.user_id && !n.role_target)
       );
+
+      // P1.4: Agrupar notificaciones repetidas
+      const grouped = {};
+      filtered.forEach(n => {
+        if (n.mensaje.includes('pausada hace')) {
+          const key = 'pausadas';
+          if (!grouped[key]) {
+            grouped[key] = { ...n, mensaje: `${filtered.filter(x => x.mensaje.includes('pausada hace')).length} OTs pausadas requieren atención`, count: 0 };
+          }
+          grouped[key].count++;
+        } else if (n.mensaje.includes('sin movimiento')) {
+          const key = 'sin_movimiento';
+          if (!grouped[key]) {
+            grouped[key] = { ...n, mensaje: `${filtered.filter(x => x.mensaje.includes('sin movimiento')).length} OTs sin movimiento reciente`, count: 0 };
+          }
+          grouped[key].count++;
+        } else {
+          grouped[n.id] = n;
+        }
+      });
+
+      return Object.values(grouped);
     },
     enabled: !!userAccount?.organization_id,
     refetchInterval: 30000, // Refetch cada 30 segundos
@@ -54,7 +77,8 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
     marcarVistaMutation.mutate(notif.id);
   };
 
-  const criticas = notificaciones.filter(n => n.tipo === 'critica');
+  // P1.4: Clasificación con límite de críticas visibles (máx 5)
+  const criticas = notificaciones.filter(n => n.tipo === 'critica').slice(0, 5);
   const importantes = notificaciones.filter(n => n.tipo === 'importante');
   const info = notificaciones.filter(n => n.tipo === 'info');
 
@@ -114,9 +138,23 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
     <div className="space-y-4">
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b border-slate-100">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Bell className="w-5 h-5" />
-            Notificaciones ({notificaciones.length})
+          <CardTitle className="text-lg font-semibold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Notificaciones
+            </div>
+            <div className="flex items-center gap-2">
+              {criticas.length > 0 && (
+                <Badge className="bg-red-100 text-red-700 border-0">
+                  🔴 {criticas.length} Críticas
+                </Badge>
+              )}
+              {importantes.length > 0 && (
+                <Badge className="bg-orange-100 text-orange-700 border-0">
+                  🟡 {importantes.length} Operativas
+                </Badge>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-3">

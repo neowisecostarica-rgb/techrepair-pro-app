@@ -221,6 +221,15 @@ function OrdenesTrabajoContent() {
     });
   };
 
+  // P0.2: Hidratar cliente y equipo al editar
+  useEffect(() => {
+    if (editingOT && showModal) {
+      setSelectedClienteId(editingOT.cliente_id);
+      setSelectedEquipoId(editingOT.equipo_id);
+      setSelectedPrioridad(editingOT.prioridad || 'normal');
+    }
+  }, [editingOT, showModal]);
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const ordenAnterior = ordenes.find(o => o.id === id);
@@ -675,6 +684,7 @@ function OrdenesTrabajoContent() {
                     setSelectedEquipoId('');
                     setShowInlineEquipo(false);
                   }}
+                  disabled={!!editingOT}
                 >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Seleccionar cliente" />
@@ -692,16 +702,23 @@ function OrdenesTrabajoContent() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowQuickCreateCliente(true)}
-                  className="shrink-0"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Nuevo
-                </Button>
+                {!editingOT && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowQuickCreateCliente(true)}
+                    className="shrink-0"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Nuevo
+                  </Button>
+                )}
               </div>
+              {editingOT && (
+                <p className="text-xs text-slate-500">
+                  Cliente no editable para mantener integridad de datos
+                </p>
+              )}
             </div>
 
             {/* Equipo con Inline Create */}
@@ -713,7 +730,7 @@ function OrdenesTrabajoContent() {
                   <Select 
                     value={selectedEquipoId} 
                     onValueChange={setSelectedEquipoId}
-                    disabled={!selectedClienteId}
+                    disabled={!selectedClienteId || !!editingOT}
                   >
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder={selectedClienteId ? "Seleccionar equipo existente" : "Primero selecciona un cliente"} />
@@ -726,19 +743,21 @@ function OrdenesTrabajoContent() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowInlineEquipo(true);
-                      setSelectedEquipoId('');
-                    }}
-                    disabled={!selectedClienteId}
-                    className="shrink-0"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Nuevo Equipo
-                  </Button>
+                  {!editingOT && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowInlineEquipo(true);
+                        setSelectedEquipoId('');
+                      }}
+                      disabled={!selectedClienteId}
+                      className="shrink-0"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Nuevo Equipo
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-4 space-y-4">
@@ -857,6 +876,11 @@ function OrdenesTrabajoContent() {
               {!selectedClienteId && (
                 <p className="text-xs text-slate-500">
                   Debes seleccionar un cliente primero
+                </p>
+              )}
+              {editingOT && (
+                <p className="text-xs text-slate-500">
+                  Equipo no editable para mantener integridad de datos
                 </p>
               )}
             </div>
@@ -1108,6 +1132,14 @@ function OrdenesTrabajoContent() {
                     {format(new Date(selectedOT.fecha_ingreso || selectedOT.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
                   </p>
                 </div>
+                {/* P0.3: PIN visible para técnicos y admins */}
+                {selectedOT.contrasena_ingreso && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-500">🔒 Contraseña / PIN del Equipo</p>
+                    <p className="font-mono font-bold text-emerald-600 text-lg">{selectedOT.contrasena_ingreso}</p>
+                    <p className="text-xs text-slate-400 mt-1">Visible solo para personal autorizado</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -1120,6 +1152,33 @@ function OrdenesTrabajoContent() {
                   <div>
                     <Label className="text-slate-500">Observaciones</Label>
                     <p className="text-slate-700 mt-1">{selectedOT.observaciones_ingreso}</p>
+                  </div>
+                )}
+
+                {/* P0.3: Información adicional del equipo en recepción */}
+                {(selectedOT.serie_ingreso || selectedOT.accesorios_ingreso || selectedOT.estado_fisico_ingreso) && (
+                  <div className="border-t border-slate-200 pt-4">
+                    <Label className="text-slate-500 mb-3 block">Información de Recepción</Label>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      {selectedOT.serie_ingreso && (
+                        <div>
+                          <span className="text-slate-500">Serie/IMEI:</span>
+                          <p className="font-medium">{selectedOT.serie_ingreso}</p>
+                        </div>
+                      )}
+                      {selectedOT.estado_fisico_ingreso && (
+                        <div>
+                          <span className="text-slate-500">Estado físico:</span>
+                          <p className="font-medium capitalize">{selectedOT.estado_fisico_ingreso}</p>
+                        </div>
+                      )}
+                      {selectedOT.accesorios_ingreso && (
+                        <div className="col-span-2">
+                          <span className="text-slate-500">Accesorios:</span>
+                          <p className="font-medium">{selectedOT.accesorios_ingreso}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1349,9 +1408,11 @@ function OrdenesTrabajoContent() {
           <FormularioCliente
             efectiveOrgId={effectiveOrgId}
             onGuardar={(newCliente) => {
+              // P0.1: Cierre automático y feedback
               setShowQuickCreateCliente(false);
               queryClient.invalidateQueries({ queryKey: ['clientes'] });
               setSelectedClienteId(newCliente.id);
+              alert('✅ Cliente creado exitosamente');
             }}
             onCancelar={() => setShowQuickCreateCliente(false)}
           />

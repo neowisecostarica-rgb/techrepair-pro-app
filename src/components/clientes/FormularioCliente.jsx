@@ -21,6 +21,7 @@ export default function FormularioCliente({
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [clienteExistente, setClienteExistente] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
   const [formData, setFormData] = useState({
     nombre_completo: '',
     identificacion: '',
@@ -72,6 +73,7 @@ export default function FormularioCliente({
 
   const handleIdentificacionChange = (value) => {
     setFormData({ ...formData, identificacion: value });
+    setIsDirty(true);
     
     // Validar después de 500ms de inactividad
     const timer = setTimeout(() => {
@@ -79,6 +81,11 @@ export default function FormularioCliente({
     }, 500);
 
     return () => clearTimeout(timer);
+  };
+
+  const handleFieldChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    setIsDirty(true);
   };
 
   const handleSubmit = async (e) => {
@@ -108,6 +115,7 @@ export default function FormularioCliente({
         clienteGuardado = await base44.entities.Cliente.create(data);
       }
 
+      // P0.1: Feedback y cierre automático tras éxito
       onGuardar(clienteGuardado);
     } catch (error) {
       console.error('Error guardando cliente:', error);
@@ -138,7 +146,7 @@ export default function FormularioCliente({
           <Label>Nombre Completo *</Label>
           <Input
             value={formData.nombre_completo}
-            onChange={(e) => setFormData({ ...formData, nombre_completo: e.target.value })}
+            onChange={(e) => handleFieldChange('nombre_completo', e.target.value)}
             placeholder="Nombre completo del cliente"
             required
           />
@@ -194,7 +202,7 @@ export default function FormularioCliente({
           <Label>Tipo de Cliente *</Label>
           <Select
             value={formData.tipo_cliente}
-            onValueChange={(value) => setFormData({ ...formData, tipo_cliente: value })}
+            onValueChange={(value) => handleFieldChange('tipo_cliente', value)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -210,7 +218,7 @@ export default function FormularioCliente({
           <Label>Teléfono *</Label>
           <Input
             value={formData.telefono}
-            onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+            onChange={(e) => handleFieldChange('telefono', e.target.value)}
             placeholder="+56 9 1234 5678"
             required
           />
@@ -222,7 +230,7 @@ export default function FormularioCliente({
         <Input
           type="email"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          onChange={(e) => handleFieldChange('email', e.target.value)}
           placeholder="correo@ejemplo.com"
         />
       </div>
@@ -231,7 +239,7 @@ export default function FormularioCliente({
         <Label>Dirección</Label>
         <Input
           value={formData.direccion}
-          onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+          onChange={(e) => handleFieldChange('direccion', e.target.value)}
           placeholder="Dirección física del cliente"
         />
       </div>
@@ -240,14 +248,28 @@ export default function FormularioCliente({
         <Label>Notas</Label>
         <Textarea
           value={formData.notas}
-          onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
+          onChange={(e) => handleFieldChange('notas', e.target.value)}
           placeholder="Información adicional sobre el cliente"
           rows={3}
         />
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onCancelar} disabled={saving}>
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={() => {
+            // P0.1: Advertir si hay cambios sin guardar
+            if (isDirty && !saving) {
+              if (window.confirm('¿Descartar los cambios sin guardar?')) {
+                onCancelar();
+              }
+            } else {
+              onCancelar();
+            }
+          }} 
+          disabled={saving}
+        >
           Cancelar
         </Button>
         <Button type="submit" disabled={saving || !!clienteExistente} className="bg-emerald-600">

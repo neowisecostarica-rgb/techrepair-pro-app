@@ -67,6 +67,10 @@ function MiDiaContent() {
   const [observacionesPausa, setObservacionesPausa] = useState('');
   const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
   const queryClient = useQueryClient();
+  
+  // P0.1: Control de botones para evitar doble click y rate limit
+  const [botonesDeshabilitados, setBotonesDeshabilitados] = useState({});
+  const [transicionEnCurso, setTransicionEnCurso] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -233,9 +237,15 @@ function MiDiaContent() {
   };
 
   const handleRetomar = async (orden) => {
-    if (ordenActiva && ordenActiva.id !== orden.id) {
-      if (confirm('Ya tienes un trabajo activo. ¿Pausar el actual y retomar este?')) {
-        try {
+    // P0.1: Prevenir doble click
+    if (botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso) return;
+    
+    setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: true }));
+    setTransicionEnCurso(true);
+    
+    try {
+      if (ordenActiva && ordenActiva.id !== orden.id) {
+        if (confirm('Ya tienes un trabajo activo. ¿Pausar el actual y retomar este?')) {
           // FASE 1: Pausar actual (finalizar actividad si existe)
           if (actividadActiva) {
             await base44.entities.ActividadTecnica.update(actividadActiva.id, {
@@ -262,12 +272,19 @@ function MiDiaContent() {
 
           // Activar nuevo
           await activarOrden(orden);
-        } catch (error) {
-          alert('Error al cambiar de trabajo: ' + error.message);
+        } else {
+          // Usuario canceló
+          setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
+          setTransicionEnCurso(false);
         }
+      } else {
+        await activarOrden(orden);
       }
-    } else {
-      await activarOrden(orden);
+    } catch (error) {
+      alert('Error al retomar trabajo: ' + error.message);
+      // P0.1: Re-habilitar en caso de error
+      setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
+      setTransicionEnCurso(false);
     }
   };
 
@@ -294,10 +311,18 @@ function MiDiaContent() {
         started_at: new Date().toISOString()
       });
 
-      queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
-      queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
+      // P0.4: Refetch controlado ÚNICO
+      await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      await queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
+      
+      // P0.1: Re-habilitar botón solo después de refetch exitoso
+      setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
+      setTransicionEnCurso(false);
     } catch (error) {
-      alert('Error al retomar trabajo: ' + error.message);
+      alert('Error al activar orden: ' + error.message);
+      setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
+      setTransicionEnCurso(false);
+      throw error;
     }
   };
 
@@ -341,12 +366,18 @@ function MiDiaContent() {
     setShowWizard(true);
   };
 
-  // P0.1: Helper para iniciar revisión
+  // P0.1: Helper para iniciar revisión con bloqueo defensivo
   const handleIniciarRevision = async (orden) => {
+    // P0.1: Prevenir doble click
+    if (botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso) return;
+    
     if (orden.estado !== 'ASIGNADA') {
       alert('Solo se puede iniciar revisión desde estado ASIGNADA');
       return;
     }
+
+    setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: true }));
+    setTransicionEnCurso(true);
 
     try {
       await transicionarEstadoOT({
@@ -357,10 +388,18 @@ function MiDiaContent() {
         userEmail: user?.email
       });
 
-      queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      // P0.4: Refetch controlado ÚNICO
+      await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      
       alert('✅ Revisión iniciada correctamente');
+      
+      // P0.1: Mantener deshabilitado (estado cambió exitosamente)
+      setTransicionEnCurso(false);
     } catch (error) {
       alert('Error al iniciar revisión: ' + error.message);
+      // P0.1: Re-habilitar en caso de error
+      setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: false }));
+      setTransicionEnCurso(false);
     }
   };
 
@@ -386,8 +425,8 @@ function MiDiaContent() {
     otro: 'Otro'
   };
 
-  // Generar notificaciones automáticas
-  useNotificacionesAutomaticas(userAccount);
+  // P0.2: Notificaciones solo cuando NO hay transición en curso
+  useNotificacionesAutomaticas(transicionEnCurso ? null : userAccount);
 
   // Calcular fecha de hoy
   const hoy = new Date();
@@ -588,10 +627,20 @@ function MiDiaContent() {
                   {ordenActiva.estado === 'ASIGNADA' && (
                     <Button
                       onClick={() => handleIniciarRevision(ordenActiva)}
+                      disabled={botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] || transicionEnCurso}
                       className="bg-gradient-to-r from-blue-500 to-indigo-500"
                     >
-                      <Play className="w-4 h-4 mr-2" />
-                      Iniciar Revisión
+                      {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
+                        <>
+                          <Clock className="w-4 h-4 mr-2 animate-spin" />
+                          Iniciando...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 mr-2" />
+                          Iniciar Revisión
+                        </>
+                      )}
                     </Button>
                   )}
                   
@@ -738,12 +787,22 @@ function MiDiaContent() {
                     {orden.estado === 'ASIGNADA' && (
                       <Button
                         onClick={() => handleIniciarRevision(orden)}
+                        disabled={botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso}
                         variant="outline"
                         size="sm"
                         className="border-blue-500 text-blue-700 hover:bg-blue-50"
                       >
-                        <Play className="w-4 h-4 mr-2" />
-                        Iniciar Revisión
+                        {botonesDeshabilitados[`iniciar_revision_${orden.id}`] ? (
+                          <>
+                            <Clock className="w-4 h-4 mr-2 animate-spin" />
+                            Iniciando...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4 mr-2" />
+                            Iniciar Revisión
+                          </>
+                        )}
                       </Button>
                     )}
                     
@@ -780,10 +839,20 @@ function MiDiaContent() {
                     
                     <Button
                       onClick={() => handleRetomar(orden)}
+                      disabled={botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso}
                       className="bg-gradient-to-r from-emerald-500 to-blue-500"
                     >
-                      <Play className="w-4 h-4 mr-2" />
-                      Retomar
+                      {botonesDeshabilitados[`retomar_${orden.id}`] ? (
+                        <>
+                          <Clock className="w-4 h-4 mr-2 animate-spin" />
+                          Retomando...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 mr-2" />
+                          Retomar
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

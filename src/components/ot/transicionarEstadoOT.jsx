@@ -143,19 +143,17 @@ export async function transicionarEstadoOT(otIdOrParams, nuevoEstado, context = 
     ultima_actividad_at: new Date().toISOString()
   });
 
-  // 6. Registrar auditoría
-  try {
-    await base44.entities.SuperAdminAudit.create({
-      super_admin_id: userId || 'system',
-      super_admin_email: userEmail || 'system',
-      action: 'ot_state_transition',
-      target_organization_id: organizationId || ordenActual.organization_id,
-      context: `OT ${ordenActual.codigo_ot || otId}: ${estadoActual} → ${estadoNuevo}. Motivo: ${motivo || 'N/A'}`
-    });
-  } catch (auditError) {
-    // No fallar la transición si falla la auditoría, solo log
-    console.warn('Error al registrar auditoría de transición:', auditError);
-  }
+  // P0.3: Auditoría NO bloqueante (best-effort, asíncrona)
+  base44.entities.SuperAdminAudit.create({
+    super_admin_id: userId || 'system',
+    super_admin_email: userEmail || 'system',
+    action: 'ot_state_transition',
+    target_organization_id: organizationId || ordenActual.organization_id,
+    context: `OT ${ordenActual.codigo_ot || otId}: ${estadoActual} → ${estadoNuevo}. Motivo: ${motivo || 'N/A'}`
+  }).catch(auditError => {
+    // P0.3: Solo log, nunca bloquear la transición
+    console.warn('[AUDIT] Error no crítico al registrar auditoría de transición:', auditError.message);
+  });
 
   return ordenActualizada;
 }
@@ -203,18 +201,17 @@ export async function cambiarEstadoAtencionOT({
   // Actualizar OT
   const otActualizada = await base44.entities.OrdenTrabajo.update(ordenTrabajoId, updateData);
 
-  // Auditoría (no fatal)
-  try {
-    await base44.entities.SuperAdminAudit.create({
-      super_admin_id: userId || 'system',
-      super_admin_email: userEmail || 'system',
-      action: 'ot_estado_atencion_cambio',
-      target_organization_id: effectiveOrgId,
-      context: `OT ${ot.codigo_ot}: estado_atencion ${ot.estado_atencion || 'N/A'} → ${nuevoEstadoAtencion}. Motivo: ${motivoPausa || 'N/A'}`
-    });
-  } catch (auditError) {
-    console.warn('Error al registrar auditoría de cambio de estado_atencion:', auditError.message);
-  }
+  // P0.3: Auditoría NO bloqueante (best-effort, asíncrona)
+  base44.entities.SuperAdminAudit.create({
+    super_admin_id: userId || 'system',
+    super_admin_email: userEmail || 'system',
+    action: 'ot_estado_atencion_cambio',
+    target_organization_id: effectiveOrgId,
+    context: `OT ${ot.codigo_ot}: estado_atencion ${ot.estado_atencion || 'N/A'} → ${nuevoEstadoAtencion}. Motivo: ${motivoPausa || 'N/A'}`
+  }).catch(auditError => {
+    // P0.3: Solo log, nunca bloquear el cambio de estado
+    console.warn('[AUDIT] Error no crítico al registrar auditoría de estado_atencion:', auditError.message);
+  });
 
   return otActualizada;
 }

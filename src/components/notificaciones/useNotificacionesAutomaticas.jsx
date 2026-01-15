@@ -7,12 +7,19 @@ import { withOrgId } from '@/components/hooks/useOrgData';
 export function useNotificacionesAutomaticas(userAccount) {
   const queryClient = useQueryClient();
 
+  // P0.2: Si userAccount es null, congelar el sistema de notificaciones
+  const enabled = !!userAccount?.organization_id;
+
   const { data: ordenes = [] } = useQuery({
     queryKey: ['ordenes-notif', userAccount?.organization_id],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
       organization_id: userAccount.organization_id
     }),
-    enabled: !!userAccount?.organization_id,
+    enabled,
+    // P0.2: No refrescar automáticamente durante transiciones
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
   const { data: notificacionesExistentes = [] } = useQuery({
@@ -21,18 +28,26 @@ export function useNotificacionesAutomaticas(userAccount) {
       organization_id: userAccount.organization_id,
       estado: 'pendiente'
     }),
-    enabled: !!userAccount?.organization_id,
+    enabled,
+    // P0.2: No refrescar automáticamente durante transiciones
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
   const crearNotificacionMutation = useMutation({
     mutationFn: (data) => base44.entities.Notificacion.create(withOrgId(data, userAccount)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      // P0.2: No refrescar queries mientras el sistema está congelado
+      if (enabled) {
+        queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
+      }
     },
   });
 
   useEffect(() => {
-    if (!ordenes.length || !userAccount) return;
+    // P0.2: No ejecutar lógica si el sistema está congelado
+    if (!enabled || !ordenes.length || !userAccount) return;
 
     const ahora = new Date();
 

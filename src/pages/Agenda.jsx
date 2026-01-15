@@ -17,6 +17,44 @@ import { validarSolapamiento } from '@/components/calendario/validarSolapamiento
 import { createPageUrl } from '../utils';
 import PageGuard from '@/components/guards/PageGuard';
 
+// Componente inline para selector de OT (UX FIX)
+function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId }) {
+  const requiereOT = ['diagnostico', 'reparacion', 'entrega'].includes(tipo);
+
+  const { data: ordenesTrabajo = [] } = useQuery({
+    queryKey: ['ordenes-trabajo', effectiveOrgId],
+    queryFn: () => base44.entities.OrdenTrabajo.filter({
+      organization_id: effectiveOrgId
+    }),
+    enabled: !!effectiveOrgId && requiereOT,
+  });
+
+  if (!requiereOT) return null;
+
+  return (
+    <div className="space-y-2 col-span-2">
+      <Label htmlFor="orden_trabajo_id">Orden de Trabajo asociada *</Label>
+      <Select name="orden_trabajo_id" defaultValue={defaultValue} required>
+        <SelectTrigger>
+          <SelectValue placeholder="Selecciona la OT correspondiente" />
+        </SelectTrigger>
+        <SelectContent>
+          {ordenesTrabajo
+            .filter(ot => !['ENTREGADA', 'CANCELADA'].includes(ot.estado))
+            .map((ot) => (
+              <SelectItem key={ot.id} value={ot.id}>
+                {ot.codigo_ot} - {ot.motivo_ingreso}
+              </SelectItem>
+            ))}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-slate-500">
+        Selecciona la OT correspondiente al diagnóstico o reparación.
+      </p>
+    </div>
+  );
+}
+
 const estadoCitaConfig = {
   programada: { color: 'bg-blue-100 text-blue-700', label: 'Programada' },
   confirmada: { color: 'bg-green-100 text-green-700', label: 'Confirmada' },
@@ -39,6 +77,7 @@ function AgendaContent() {
   const [editingCita, setEditingCita] = useState(null);
   const [fechaFiltro, setFechaFiltro] = useState(new Date().toISOString().split('T')[0]);
   const [validando, setValidando] = useState(false);
+  const [tipoSeleccionado, setTipoSeleccionado] = useState('');
   const queryClient = useQueryClient();
 
   const { effectiveOrgId, effectiveRole, user, userAccount } = useAuthContext();
@@ -393,7 +432,12 @@ function AgendaContent() {
 
               <div className="space-y-2">
                 <Label htmlFor="tipo">Tipo de Evento *</Label>
-                <Select name="tipo" defaultValue={editingCita?.tipo} required>
+                <Select 
+                  name="tipo" 
+                  defaultValue={editingCita?.tipo} 
+                  onValueChange={setTipoSeleccionado}
+                  required
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
@@ -427,19 +471,12 @@ function AgendaContent() {
                 </Select>
               </div>
 
-              {/* P0.4: Campo OT */}
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="orden_trabajo_id">ID de Orden de Trabajo</Label>
-                <Input
-                  id="orden_trabajo_id"
-                  name="orden_trabajo_id"
-                  defaultValue={editingCita?.orden_trabajo_id}
-                  placeholder="ID de la OT (obligatorio para diagnóstico/reparación)"
-                />
-                <p className="text-xs text-slate-500">
-                  Obligatorio para eventos de diagnóstico y reparación
-                </p>
-              </div>
+              {/* P0.4: Selector de OT (UX FIX APLICADO) */}
+              <CitaSelectorOT
+                tipo={tipoSeleccionado || editingCita?.tipo}
+                defaultValue={editingCita?.orden_trabajo_id}
+                effectiveOrgId={effectiveOrgId}
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="estado">Estado</Label>

@@ -257,27 +257,39 @@ export default function Inventario() {
           <p className="text-slate-500">Control de repuestos y productos</p>
         </div>
         <div className="flex gap-3">
-          <ExportarInventario 
-            items={itemsFiltrados} 
-            organizationName={organization?.name}
-          />
-          
-          <ImportarInventario
-            effectiveOrgId={effectiveOrgId}
-            effectiveRole={effectiveRole}
-            userEmail={user?.email}
-            onImportSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ['inventario'] });
-            }}
-          />
+          {(effectiveRole === 'ORG_ADMIN' || effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN') && (
+            <>
+              <ExportarInventario 
+                items={itemsFiltrados} 
+                organizationName={organization?.name}
+              />
+              
+              <ImportarInventario
+                effectiveOrgId={effectiveOrgId}
+                effectiveRole={effectiveRole}
+                userEmail={user?.email}
+                onImportSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['inventario'] });
+                }}
+              />
 
-          <Button
-            onClick={() => { setEditingItem(null); setShowModal(true); }}
-            className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Nuevo Item
-          </Button>
+              <Button
+                onClick={() => { setEditingItem(null); setShowModal(true); }}
+                className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Nuevo Item
+              </Button>
+            </>
+          )}
+          
+          {effectiveRole === 'TECHNICIAN' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+              <p className="text-sm text-blue-800">
+                👀 Vista de solo lectura - Los técnicos no pueden editar inventario
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -434,13 +446,19 @@ export default function Inventario() {
                         </span>
                       </td>
                       <td className="p-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => { setEditingItem(item); setShowModal(true); }}
-                        >
-                          Editar
-                        </Button>
+                        {(effectiveRole === 'ORG_ADMIN' || effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN') ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setEditingItem(item); setShowModal(true); }}
+                          >
+                            Editar
+                          </Button>
+                        ) : (
+                          <Badge variant="outline" className="text-slate-400">
+                            Solo lectura
+                          </Badge>
+                        )}
                       </td>
                     </tr>
                   );

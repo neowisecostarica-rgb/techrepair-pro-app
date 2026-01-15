@@ -44,6 +44,15 @@ function PuntoVentaContent() {
   const { user, userAccount } = useUserAccount();
   const { effectiveRole, effectiveOrgId } = useAuthContext();
 
+  // Verificar/crear producto diagnóstico al montar
+  useEffect(() => {
+    if (effectiveOrgId) {
+      import('@/components/inventario/setupProductoDiagnostico').then(module => {
+        module.verificarOCrearProductoDiagnostico(effectiveOrgId);
+      });
+    }
+  }, [effectiveOrgId]);
+
   // Precargar venta si viene de taller
   useEffect(() => {
     if (preloadedVenta) {

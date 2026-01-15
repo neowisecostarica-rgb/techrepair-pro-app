@@ -32,6 +32,7 @@ import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
 import { generarCodigoOT, calcularFechaEntregaEstimada } from '@/components/ot/utils/generarCodigoOT';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
+import { Play } from 'lucide-react';
 import EntregarOT from '@/components/ot/EntregarOT';
 
 const estadoConfig = {
@@ -1213,6 +1214,34 @@ function OrdenesTrabajoContent() {
                   </Button>
                 )}
                 
+                {/* P0.1: Botón "Iniciar Revisión" para técnicos cuando OT está ASIGNADA */}
+                {effectiveRole === 'TECHNICIAN' && 
+                  selectedOT.estado === 'ASIGNADA' && 
+                  selectedOT.tecnico_asignado_id === user?.id && (
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        await transicionarEstadoOT({
+                          ordenTrabajoId: selectedOT.id,
+                          nuevoEstado: 'EN_REVISION',
+                          effectiveOrgId: effectiveOrgId,
+                          userId: user?.id,
+                          userEmail: user?.email
+                        });
+                        queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+                        setSelectedOT(null);
+                        alert('✅ Revisión iniciada correctamente');
+                      } catch (error) {
+                        alert('Error al iniciar revisión: ' + error.message);
+                      }
+                    }}
+                    className="bg-gradient-to-r from-blue-500 to-indigo-500"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Iniciar Revisión
+                  </Button>
+                )}
+
                 {/* Pre-Diagnóstico - Solo editable en EN_COLA_REVISION */}
                 {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && 
                   selectedOT.estado === 'EN_COLA_REVISION' && (

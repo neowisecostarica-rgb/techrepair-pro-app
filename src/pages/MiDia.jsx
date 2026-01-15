@@ -308,9 +308,9 @@ function MiDiaContent() {
       return;
     }
 
-    // Verificar estado válido
-    if (!['EN_REVISION', 'DIAGNOSTICADA'].includes(orden.estado)) {
-      alert('Esta orden debe estar en estado EN_REVISION o DIAGNOSTICADA para el diagnóstico');
+    // P0: Verificar estado válido SOLO EN_REVISION
+    if (orden.estado !== 'EN_REVISION') {
+      alert('Esta orden debe estar en estado EN_REVISION para realizar el diagnóstico');
       return;
     }
     
@@ -328,6 +328,29 @@ function MiDiaContent() {
     
     setSelectedOT(orden);
     setShowWizard(true);
+  };
+
+  // P0.1: Helper para iniciar revisión
+  const handleIniciarRevision = async (orden) => {
+    if (orden.estado !== 'ASIGNADA') {
+      alert('Solo se puede iniciar revisión desde estado ASIGNADA');
+      return;
+    }
+
+    try {
+      await transicionarEstadoOT({
+        ordenTrabajoId: orden.id,
+        nuevoEstado: 'EN_REVISION',
+        effectiveOrgId: effectiveOrgId,
+        userId: user?.id,
+        userEmail: user?.email
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      alert('✅ Revisión iniciada correctamente');
+    } catch (error) {
+      alert('Error al iniciar revisión: ' + error.message);
+    }
   };
 
   const handleVerDetalle = (orden) => {
@@ -549,7 +572,20 @@ function MiDiaContent() {
                     <FileText className="w-4 h-4 mr-2" />
                     Ver Detalle
                   </Button>
-                  {(ordenActiva.estado === 'EN_REVISION' || ordenActiva.estado === 'DIAGNOSTICADA') && (
+                  
+                  {/* P0.1: Botón "Iniciar Revisión" cuando está ASIGNADA */}
+                  {ordenActiva.estado === 'ASIGNADA' && (
+                    <Button
+                      onClick={() => handleIniciarRevision(ordenActiva)}
+                      className="bg-gradient-to-r from-blue-500 to-indigo-500"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Iniciar Revisión
+                    </Button>
+                  )}
+                  
+                  {/* P0.2: Botón "Realizar Diagnóstico" SOLO en EN_REVISION */}
+                  {ordenActiva.estado === 'EN_REVISION' && (
                     <Button
                       onClick={() => handleIniciarDiagnostico(ordenActiva)}
                       disabled={ordenActiva.estado_atencion !== 'ACTIVO'}
@@ -564,6 +600,24 @@ function MiDiaContent() {
                         : 'Realizar Diagnóstico'}
                     </Button>
                   )}
+
+                  {/* P0.3: Mensajes claros si no hay acción disponible */}
+                  {ordenActiva.estado === 'EN_COLA_REVISION' && (
+                    <div className="p-3 bg-slate-100 rounded-lg text-sm text-slate-600 text-center">
+                      ℹ️ Esta orden aún no ha sido asignada
+                    </div>
+                  )}
+                  {ordenActiva.estado === 'CANCELADA' && (
+                    <div className="p-3 bg-red-50 rounded-lg text-sm text-red-700 text-center">
+                      ⛔ Esta orden fue cancelada
+                    </div>
+                  )}
+                  {ordenActiva.estado === 'ENTREGADA' && (
+                    <div className="p-3 bg-green-50 rounded-lg text-sm text-green-700 text-center">
+                      ✅ Esta orden ya fue entregada
+                    </div>
+                  )}
+                  
                   <Button
                     onClick={handlePausar}
                     variant="outline"
@@ -668,7 +722,22 @@ function MiDiaContent() {
                       <FileText className="w-4 h-4 mr-2" />
                       Ver Detalle
                     </Button>
-                    {(orden.estado === 'EN_REVISION' || orden.estado === 'DIAGNOSTICADA') && (
+                    
+                    {/* P0.1: Botón "Iniciar Revisión" cuando está ASIGNADA */}
+                    {orden.estado === 'ASIGNADA' && (
+                      <Button
+                        onClick={() => handleIniciarRevision(orden)}
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-500 text-blue-700 hover:bg-blue-50"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Iniciar Revisión
+                      </Button>
+                    )}
+                    
+                    {/* P0.2: Botón "Realizar Diagnóstico" SOLO en EN_REVISION */}
+                    {orden.estado === 'EN_REVISION' && (
                       <Button
                         onClick={() => handleIniciarDiagnostico(orden)}
                         disabled={orden.estado_atencion !== 'ACTIVO'}
@@ -685,11 +754,19 @@ function MiDiaContent() {
                           : 'Realizar Diagnóstico'}
                       </Button>
                     )}
-                    {(orden.estado === 'EN_REVISION' || orden.estado === 'DIAGNOSTICADA') && orden.estado_atencion !== 'ACTIVO' && (
+                    {orden.estado === 'EN_REVISION' && orden.estado_atencion !== 'ACTIVO' && (
                       <p className="text-xs text-slate-500 italic">
                         ⚠️ Retoma el trabajo para diagnosticar
                       </p>
                     )}
+
+                    {/* P0.3: Mensajes claros para estados sin acción */}
+                    {orden.estado === 'EN_COLA_REVISION' && (
+                      <div className="p-2 bg-slate-100 rounded text-xs text-slate-600 text-center">
+                        ℹ️ No asignada aún
+                      </div>
+                    )}
+                    
                     <Button
                       onClick={() => handleRetomar(orden)}
                       className="bg-gradient-to-r from-emerald-500 to-blue-500"

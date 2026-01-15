@@ -292,6 +292,33 @@ export default function WizardDiagnosticoTecnico({
     setFormData({...formData, repuestos_requeridos: nuevos});
   };
 
+  // GATE OBLIGATORIO: Verificar pago de revisión (DECISIÓN CANÓNICA)
+  const diagnosticoHabilitado = ordenTrabajo?.diagnostico_habilitado === true;
+
+  if (!diagnosticoHabilitado) {
+    return (
+      <div className="space-y-6">
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <AlertDescription className="text-red-900">
+            <p className="font-semibold mb-2">🔒 Diagnóstico Bloqueado</p>
+            <p className="text-sm">
+              No se puede iniciar el diagnóstico técnico porque la revisión no ha sido pagada.
+            </p>
+            <p className="text-sm mt-2">
+              El cliente debe pagar la revisión en el <strong>Punto de Venta</strong> antes de continuar.
+            </p>
+          </AlertDescription>
+        </Alert>
+        <div className="flex justify-end pt-4">
+          <Button onClick={onClose} variant="outline">
+            Cerrar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Guard: validar que el trabajo esté ACTIVO
   if (ordenTrabajo.estado_atencion !== 'ACTIVO') {
     return (

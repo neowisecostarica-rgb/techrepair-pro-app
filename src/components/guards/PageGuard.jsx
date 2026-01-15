@@ -3,6 +3,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { createPageUrl } from '../../utils';
 import { base44 } from '@/api/base44Client';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 /**
  * Guard de página que verifica permisos por rol efectivo.

@@ -225,6 +225,18 @@ function OrdenesTrabajoContent() {
     mutationFn: async ({ id, data }) => {
       const ordenAnterior = ordenes.find(o => o.id === id);
       
+      // P0.3: Filtrar campo 'estado' si viene en data - debe usar transicionarEstadoOT
+      if ('estado' in data) {
+        console.warn('P0.3: Intento de cambio directo de estado bloqueado. Use transicionarEstadoOT.');
+        delete data.estado;
+      }
+
+      // P0.3: Filtrar campo 'estado_atencion' si viene en data - debe usar cambiarEstadoAtencionOT
+      if ('estado_atencion' in data) {
+        console.warn('P0.3: Intento de cambio directo de estado_atencion bloqueado. Use cambiarEstadoAtencionOT.');
+        delete data.estado_atencion;
+      }
+      
       // P0: Si se cierra/finaliza/entrega, validar actividades abiertas
       const estadosCierre = ['CERRADA', 'FINALIZADA', 'ENTREGADA'];
       const vaCerrar = !estadosCierre.includes(ordenAnterior?.estado) && estadosCierre.includes(data.estado);

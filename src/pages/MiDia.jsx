@@ -44,7 +44,7 @@ import ActividadActiva from '@/components/actividades/ActividadActiva';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { createPageUrl } from '../utils';
 import { Link } from 'react-router-dom';
-import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
+import { transicionarEstadoOT, cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function MiDia() {
   return (
@@ -212,12 +212,15 @@ function MiDiaContent() {
         });
       }
 
-      // FASE 1: Actualizar estado_atencion (sin transición de estado principal)
-      await base44.entities.OrdenTrabajo.update(ordenActiva.id, {
-        estado_atencion: 'PAUSADO',
-        motivo_pausa: motivoPausa,
-        ultima_actividad: observacionesPausa || 'Trabajo pausado',
-        ultima_actividad_at: new Date().toISOString()
+      // P0.2: Usar helper central para cambiar estado_atencion
+      await cambiarEstadoAtencionOT({
+        ordenTrabajoId: ordenActiva.id,
+        nuevoEstadoAtencion: 'PAUSADO',
+        motivoPausa: motivoPausa,
+        observaciones: observacionesPausa || 'Trabajo pausado',
+        effectiveOrgId: effectiveOrgId,
+        userId: user?.id,
+        userEmail: user?.email
       });
 
       queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
@@ -246,11 +249,15 @@ function MiDiaContent() {
             });
           }
 
-          await base44.entities.OrdenTrabajo.update(ordenActiva.id, {
-            estado_atencion: 'PAUSADO',
-            motivo_pausa: 'interrupcion',
-            ultima_actividad: 'Trabajo pausado automáticamente',
-            ultima_actividad_at: new Date().toISOString()
+          // P0.2: Usar helper central
+          await cambiarEstadoAtencionOT({
+            ordenTrabajoId: ordenActiva.id,
+            nuevoEstadoAtencion: 'PAUSADO',
+            motivoPausa: 'interrupcion',
+            observaciones: 'Trabajo pausado automáticamente',
+            effectiveOrgId: effectiveOrgId,
+            userId: user?.id,
+            userEmail: user?.email
           });
 
           // Activar nuevo
@@ -266,11 +273,14 @@ function MiDiaContent() {
 
   const activarOrden = async (orden) => {
     try {
-      // FASE 1: Actualizar estado_atencion a ACTIVO
-      await base44.entities.OrdenTrabajo.update(orden.id, {
-        estado_atencion: 'ACTIVO',
-        ultima_actividad: 'Trabajo retomado',
-        ultima_actividad_at: new Date().toISOString()
+      // P0.2: Usar helper central para cambiar estado_atencion
+      await cambiarEstadoAtencionOT({
+        ordenTrabajoId: orden.id,
+        nuevoEstadoAtencion: 'ACTIVO',
+        observaciones: 'Trabajo retomado',
+        effectiveOrgId: effectiveOrgId,
+        userId: user?.id,
+        userEmail: user?.email
       });
 
       // FASE 1: Crear nueva ActividadTecnica

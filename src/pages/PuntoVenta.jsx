@@ -15,6 +15,7 @@ import CrearProductoRapido from '../components/inventario/CrearProductoRapido';
 import TiqueteVenta from '../components/ventas/TiqueteVenta';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { validarVentaPOS, habilitarDiagnosticoTrasPago } from '@/components/pos/validacionesPOS';
 
 export default function PuntoVenta() {
   return (
@@ -37,9 +38,11 @@ function PuntoVentaContent() {
   const [showCrearRapido, setShowCrearRapido] = useState(false);
   const [codigoNoEncontrado, setCodigoNoEncontrado] = useState('');
   const [ventaCompletada, setVentaCompletada] = useState(null);
+  const [tipoConcepto, setTipoConcepto] = useState('venta_producto');
+  const [otSeleccionada, setOtSeleccionada] = useState('');
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
-  const { effectiveRole } = useAuthContext();
+  const { effectiveRole, effectiveOrgId } = useAuthContext();
 
   // Precargar venta si viene de taller
   useEffect(() => {
@@ -79,8 +82,28 @@ function PuntoVentaContent() {
     enabled: !!userAccount?.organization_id,
   });
 
+  const { data: ordenesTrabajo = [] } = useQuery({
+    queryKey: ['ordenes-trabajo', userAccount?.organization_id],
+    queryFn: () => base44.entities.OrdenTrabajo.filter({
+      organization_id: userAccount.organization_id
+    }),
+    enabled: !!userAccount?.organization_id,
+  });
+
   const createVentaMutation = useMutation({
     mutationFn: async (ventaData) => {
+      // VALIDACIONES CANÓNICAS POS
+      const validacion = await validarVentaPOS({
+        clienteId: ventaData.cliente_id,
+        otId: ventaData.referencia_ot_id,
+        tipoConcepto: ventaData.tipo_concepto,
+        organizationId: effectiveOrgId
+      });
+
+      if (!validacion.valido) {
+        throw new Error(validacion.mensaje);
+      }
+
       // Si ya existe venta (cobro de taller), solo actualizar
       if (ventaId) {
         return await base44.entities.Venta.update(ventaId, {
@@ -89,7 +112,14 @@ function PuntoVentaContent() {
         });
       }
       // Crear nueva venta
-      return await base44.entities.Venta.create(ventaData);
+      const venta = await base44.entities.Venta.create(ventaData);
+
+      // HABILITAR DIAGNÓSTICO si es revisión pagada
+      if (ventaData.tipo_concepto === 'revision_diagnostico' && ventaData.referencia_ot_id) {
+        await habilitarDiagnosticoTrasPago(ventaData.referencia_ot_id, venta.id);
+      }
+
+      return venta;
     },
     onSuccess: async (venta) => {
       // Crear items si es venta nueva
@@ -225,10 +255,25 @@ function PuntoVentaContent() {
     return { subtotal, impuesto, total };
   };
 
-  const procesarVenta = () => {
+  const procesarVenta = async () => {
     if (carrito.length === 0) {
       alert('El carrito está vacío');
       return;
+    }
+
+    // Validación previa de Cliente ↔ OT si aplica
+    if (clienteSeleccionado && otSeleccionada) {
+      const validacionPrevia = await validarVentaPOS({
+        clienteId: clienteSeleccionado,
+        otId: otSeleccionada,
+        tipoConcepto: tipoConcepto,
+        organizationId: effectiveOrgId
+      });
+
+      if (!validacionPrevia.valido) {
+        alert(validacionPrevia.mensaje);
+        return;
+      }
     }
 
     const totales = calcularTotales();
@@ -237,6 +282,8 @@ function PuntoVentaContent() {
       branch_id: userAccount.branch_id,
       cliente_id: clienteSeleccionado || null,
       origen_venta: origenVenta,
+      tipo_concepto: tipoConcepto,
+      referencia_ot_id: otSeleccionada || null,
       total: totales.total,
       subtotal: totales.subtotal,
       impuesto: totales.impuesto,
@@ -472,10 +519,34 @@ function PuntoVentaContent() {
               )}
 
               <div className="space-y-2">
+                <Label>Tipo de Concepto *</Label>
+                <Select value={tipoConcepto} onValueChange={setTipoConcepto}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="revision_diagnostico">Revisión / Diagnóstico</SelectItem>
+                    <SelectItem value="reparacion">Reparación</SelectItem>
+                    <SelectItem value="venta_producto">Venta de Producto</SelectItem>
+                    <SelectItem value="otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
+                {tipoConcepto === 'revision_diagnostico' && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    ⚡ Este pago habilitará el diagnóstico técnico
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label>Cliente {!ventaId && '(opcional)'}</Label>
                 <Select 
                   value={clienteSeleccionado} 
-                  onValueChange={setClienteSeleccionado}
+                  onValueChange={(value) => {
+                    setClienteSeleccionado(value);
+                    // Limpiar OT al cambiar cliente
+                    setOtSeleccionada('');
+                  }}
                   disabled={!!ventaId}
                 >
                   <SelectTrigger>
@@ -489,6 +560,40 @@ function PuntoVentaContent() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Orden de Trabajo (Opcional)</Label>
+                <Select 
+                  value={otSeleccionada} 
+                  onValueChange={setOtSeleccionada}
+                  disabled={!clienteSeleccionado}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={clienteSeleccionado ? "Selecciona OT del cliente" : "Primero selecciona un cliente"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>Sin OT</SelectItem>
+                    {ordenesTrabajo
+                      .filter(ot => {
+                        // Filtrar por cliente si está seleccionado
+                        if (clienteSeleccionado && ot.cliente_id !== clienteSeleccionado) return false;
+                        // Excluir OTs finalizadas
+                        if (['ENTREGADA', 'CANCELADA'].includes(ot.estado)) return false;
+                        return true;
+                      })
+                      .map(ot => (
+                        <SelectItem key={ot.id} value={ot.id}>
+                          {ot.codigo_ot} - {ot.motivo_ingreso}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {clienteSeleccionado && (
+                  <p className="text-xs text-slate-500">
+                    Mostrando solo OTs activas del cliente seleccionado
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

@@ -108,8 +108,9 @@ function PuntoVentaContent() {
       if (!ventaData.metodo_pago) {
         throw new Error('Debe seleccionar un método de pago');
       }
+      // P0.3: Error humanizado para contexto inválido
       if (!ventaData.organization_id || !ventaData.branch_id || !ventaData.created_by_user_id) {
-        throw new Error('Faltan datos requeridos de organización o usuario');
+        throw new Error('Tu sesión ha expirado o hay un problema con tu cuenta. Cierra sesión y vuelve a iniciar.');
       }
 
       // VALIDACIONES CANÓNICAS POS

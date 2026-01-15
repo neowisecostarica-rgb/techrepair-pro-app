@@ -313,6 +313,17 @@ function MiDiaContent() {
       alert('Esta orden debe estar en estado EN_REVISION para realizar el diagnóstico');
       return;
     }
+
+    // P0.2: Verificar pago de diagnóstico ANTES de abrir wizard
+    if (!orden.diagnostico_habilitado) {
+      const confirmar = window.confirm(
+        '🔒 El diagnóstico debe cobrarse antes de iniciar.\n\n¿Deseas ir al Punto de Venta para cobrar ahora?'
+      );
+      if (confirmar) {
+        window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;
+      }
+      return;
+    }
     
     // Cargar pre-diagnóstico como contexto (opcional)
     try {

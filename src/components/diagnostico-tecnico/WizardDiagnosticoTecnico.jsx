@@ -298,21 +298,29 @@ export default function WizardDiagnosticoTecnico({
   if (!diagnosticoHabilitado) {
     return (
       <div className="space-y-6">
-        <Alert className="bg-red-50 border-red-200">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <AlertDescription className="text-red-900">
+        <Alert className="bg-orange-50 border-orange-300">
+          <AlertCircle className="w-5 h-5 text-orange-600" />
+          <AlertDescription className="text-orange-900">
             <p className="font-semibold mb-2">🔒 Diagnóstico Bloqueado</p>
-            <p className="text-sm">
-              No se puede iniciar el diagnóstico técnico porque la revisión no ha sido pagada.
+            <p className="text-sm mb-3">
+              El diagnóstico debe cobrarse antes de iniciar la revisión técnica.
             </p>
-            <p className="text-sm mt-2">
-              El cliente debe pagar la revisión en el <strong>Punto de Venta</strong> antes de continuar.
+            <p className="text-sm font-medium">
+              Próximo paso: Ir al Punto de Venta para cobrar el diagnóstico.
             </p>
           </AlertDescription>
         </Alert>
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end gap-3 pt-4">
           <Button onClick={onClose} variant="outline">
             Cerrar
+          </Button>
+          <Button 
+            onClick={() => {
+              window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${ordenTrabajo.id}&concepto=revision_diagnostico`;
+            }}
+            className="bg-gradient-to-r from-green-500 to-emerald-500"
+          >
+            💳 Ir a Cobrar Diagnóstico
           </Button>
         </div>
       </div>

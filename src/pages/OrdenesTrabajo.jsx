@@ -854,11 +854,14 @@ function OrdenesTrabajoContent() {
                     <div className="space-y-2">
                       <Label className="text-sm">Contraseña / PIN</Label>
                       <Input
-                        type="password"
+                        type="text"
                         value={newEquipoData.contrasena_ingreso}
                         onChange={(e) => setNewEquipoData({...newEquipoData, contrasena_ingreso: e.target.value})}
                         placeholder="Si aplica"
                       />
+                      <p className="text-xs text-slate-500">
+                        El PIN se muestra sin enmascarar para validación rápida
+                      </p>
                     </div>
 
                     <div className="col-span-2 space-y-2">
@@ -1188,7 +1191,8 @@ function OrdenesTrabajoContent() {
                 <Button variant="outline" onClick={() => setSelectedOT(null)}>
                   Cerrar
                 </Button>
-                {selectedOT.public_access_token && (
+                {/* P0.4: Link cliente solo visible post-diagnóstico */}
+                {selectedOT.public_access_token && ['DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION', 'FINALIZADA'].includes(selectedOT.estado) && (
                   <Button 
                     onClick={() => handleCopiarLink(selectedOT)}
                     variant="outline"

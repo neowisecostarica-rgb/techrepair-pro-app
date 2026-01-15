@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 /**
  * Helper centralizado para transiciones de estado de OrdenTrabajo
  * Valida transiciones permitidas, evita inconsistencias y registra auditoría
+ * 
+ * P0.2: También gestiona cambios de estado_atencion para centralizar la lógica.
  */
 
 const TRANSICIONES_PERMITIDAS = {
@@ -16,6 +18,9 @@ const TRANSICIONES_PERMITIDAS = {
   ENTREGADA: [],
   CANCELADA: [],
 };
+
+// Estados de atención permitidos
+const ESTADOS_ATENCION_PERMITIDOS = ['ACTIVO', 'PAUSADO', 'ESPERANDO'];
 
 /**
  * Transicionar estado de una OrdenTrabajo
@@ -123,4 +128,63 @@ export async function transicionarEstadoOT(otId, nuevoEstado, context = {}) {
   }
 
   return ordenActualizada;
+}
+
+/**
+ * P0.2: Helper para cambiar estado_atencion
+ * Centraliza la lógica de cambios de estado de atención del técnico.
+ */
+export async function cambiarEstadoAtencionOT({
+  ordenTrabajoId,
+  nuevoEstadoAtencion,
+  motivoPausa = null,
+  observaciones = null,
+  effectiveOrgId,
+  userId,
+  userEmail
+}) {
+  // Validar estado de atención
+  if (!ESTADOS_ATENCION_PERMITIDOS.includes(nuevoEstadoAtencion)) {
+    throw new Error(`Estado de atención no válido: ${nuevoEstadoAtencion}`);
+  }
+
+  // Obtener OT actual
+  const ot = await base44.entities.OrdenTrabajo.get(ordenTrabajoId);
+  if (!ot) {
+    throw new Error(`Orden de trabajo ${ordenTrabajoId} no encontrada`);
+  }
+
+  // Validación: Si se va a pausar, motivo_pausa es obligatorio
+  if (nuevoEstadoAtencion === 'PAUSADO' && !motivoPausa) {
+    throw new Error('El motivo de pausa es obligatorio');
+  }
+
+  // Preparar datos de actualización
+  const updateData = {
+    estado_atencion: nuevoEstadoAtencion,
+    ultima_actividad: observaciones || `Estado de atención cambiado a ${nuevoEstadoAtencion}`,
+    ultima_actividad_at: new Date().toISOString()
+  };
+
+  if (nuevoEstadoAtencion === 'PAUSADO' && motivoPausa) {
+    updateData.motivo_pausa = motivoPausa;
+  }
+
+  // Actualizar OT
+  const otActualizada = await base44.entities.OrdenTrabajo.update(ordenTrabajoId, updateData);
+
+  // Auditoría (no fatal)
+  try {
+    await base44.entities.SuperAdminAudit.create({
+      super_admin_id: userId || 'system',
+      super_admin_email: userEmail || 'system',
+      action: 'ot_estado_atencion_cambio',
+      target_organization_id: effectiveOrgId,
+      context: `OT ${ot.codigo_ot}: estado_atencion ${ot.estado_atencion || 'N/A'} → ${nuevoEstadoAtencion}. Motivo: ${motivoPausa || 'N/A'}`
+    });
+  } catch (auditError) {
+    console.warn('Error al registrar auditoría de cambio de estado_atencion:', auditError.message);
+  }
+
+  return otActualizada;
 }

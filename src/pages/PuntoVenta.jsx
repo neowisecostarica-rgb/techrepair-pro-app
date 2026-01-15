@@ -331,7 +331,7 @@ function PuntoVentaContent() {
     }
 
     // Validación previa de Cliente ↔ OT si aplica
-    if (clienteSeleccionado && otSeleccionada) {
+    if (otSeleccionada) {
       const validacionPrevia = await validarVentaPOS({
         clienteId: clienteSeleccionado,
         otId: otSeleccionada,

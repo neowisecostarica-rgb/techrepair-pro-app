@@ -47,6 +47,7 @@ import { Link } from 'react-router-dom';
 import { transicionarEstadoOT, cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
 import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
+import { retomarOrdenTrabajo } from '@/components/ot/retomarOrdenTrabajo';
 
 export default function MiDia() {
   return (
@@ -263,92 +264,64 @@ function MiDiaContent() {
   };
 
   const handleRetomar = async (orden) => {
-    // P0.1: Prevenir doble click
+    // P0.4: Bloqueo inmediato anti-doble-click
     if (botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso) return;
     
     setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: true }));
     setTransicionEnCurso(true);
     
     try {
+      // Pausar trabajo activo si existe
       if (ordenActiva && ordenActiva.id !== orden.id) {
-        if (confirm('Ya tienes un trabajo activo. ¿Pausar el actual y retomar este?')) {
-          // FASE 1: Pausar actual (finalizar actividad si existe)
-          if (actividadActiva) {
-            await base44.entities.ActividadTecnica.update(actividadActiva.id, {
-              estado: 'finalizada',
-              ended_at: new Date().toISOString(),
-              duracion_minutos: Math.round(
-                (new Date() - new Date(actividadActiva.started_at)) / 60000
-              ),
-              resultado: 'incompleto',
-              notas: 'Actividad cerrada por cambio de trabajo'
-            });
-          }
-
-          // P0.2: Usar helper central
-          await cambiarEstadoAtencionOT({
-            ordenTrabajoId: ordenActiva.id,
-            nuevoEstadoAtencion: 'PAUSADO',
-            motivoPausa: 'interrupcion',
-            observaciones: 'Trabajo pausado automáticamente',
-            effectiveOrgId: effectiveOrgId,
-            userId: user?.id,
-            userEmail: user?.email
-          });
-
-          // Activar nuevo
-          await activarOrden(orden);
-        } else {
-          // Usuario canceló
+        if (!confirm('Ya tienes un trabajo activo. ¿Pausar el actual y retomar este?')) {
           setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
           setTransicionEnCurso(false);
+          return;
         }
-      } else {
-        await activarOrden(orden);
+
+        // Finalizar actividad activa
+        if (actividadActiva) {
+          await base44.entities.ActividadTecnica.update(actividadActiva.id, {
+            estado: 'finalizada',
+            ended_at: new Date().toISOString(),
+            duracion_minutos: Math.round(
+              (new Date() - new Date(actividadActiva.started_at)) / 60000
+            ),
+            resultado: 'incompleto',
+            notas: 'Actividad cerrada por cambio de trabajo'
+          });
+        }
+
+        // Pausar orden activa
+        await cambiarEstadoAtencionOT({
+          ordenTrabajoId: ordenActiva.id,
+          nuevoEstadoAtencion: 'PAUSADO',
+          motivoPausa: 'interrupcion',
+          observaciones: 'Trabajo pausado automáticamente',
+          effectiveOrgId: effectiveOrgId,
+          userId: user?.id,
+          userEmail: user?.email
+        });
       }
-    } catch (error) {
-      alert('Error al retomar trabajo: ' + error.message);
-      // P0.1: Re-habilitar en caso de error
-      setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
-      setTransicionEnCurso(false);
-    }
-  };
 
-  const activarOrden = async (orden) => {
-    try {
-      // P0.2: Usar helper central para cambiar estado_atencion
-      await cambiarEstadoAtencionOT({
+      // P0.4: Retomar usando helper atómico central
+      await retomarOrdenTrabajo({
         ordenTrabajoId: orden.id,
-        nuevoEstadoAtencion: 'ACTIVO',
-        observaciones: 'Trabajo retomado',
-        effectiveOrgId: effectiveOrgId,
-        userId: user?.id,
-        userEmail: user?.email
+        organizationId: effectiveOrgId,
+        tecnicoId: user.id,
+        tecnicoEmail: user.email
       });
 
-      // FASE 1: Crear nueva ActividadTecnica
-      await base44.entities.ActividadTecnica.create({
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: orden.id,
-        tecnico_id: user.id,
-        tecnico_email: user.email,
-        tipo_actividad: 'diagnostico',
-        estado: 'en_progreso',
-        started_at: new Date().toISOString()
-      });
-
-      // P0.4: Refetch controlado ÚNICO
+      // P0.4: Refetch ÚNICO al final
       await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
       await queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
       
-      // P0.1: Re-habilitar botón solo después de refetch exitoso
       setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
       setTransicionEnCurso(false);
     } catch (error) {
-      alert('Error al activar orden: ' + error.message);
+      alert('Error al retomar trabajo: ' + error.message);
       setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
       setTransicionEnCurso(false);
-      throw error;
     }
   };
 

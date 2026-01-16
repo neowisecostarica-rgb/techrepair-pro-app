@@ -77,6 +77,23 @@ export default function EntregarOT({
     mutationFn: async () => {
       const now = new Date().toISOString();
 
+      // P0.3: Finalizar cualquier ActividadTecnica activa de esta OT
+      const actividadesActivas = await base44.entities.ActividadTecnica.filter({
+        organization_id: effectiveOrgId,
+        orden_trabajo_id: ordenTrabajo.id,
+        estado: 'en_progreso'
+      });
+
+      for (const actividad of actividadesActivas) {
+        const duracion = Math.floor((new Date() - new Date(actividad.started_at)) / 60000);
+        await base44.entities.ActividadTecnica.update(actividad.id, {
+          estado: 'finalizada',
+          ended_at: now,
+          duracion_minutos: duracion,
+          resultado: 'ok'
+        });
+      }
+
       // 1. Transición a ENTREGADA vía helper centralizado
       await transicionarEstadoOT(ordenTrabajo.id, 'ENTREGADA', {
         userId,

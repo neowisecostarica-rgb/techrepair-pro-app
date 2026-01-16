@@ -620,20 +620,12 @@ function MiDiaContent() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Button
-                    onClick={() => handleVerDetalle(ordenActiva)}
-                    className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Ver Detalle
-                  </Button>
-                  
-                  {/* P0.1: Botón "Iniciar Revisión" cuando está ASIGNADA */}
+                  {/* P0.7: ACCIÓN PRIMARIA - Una sola acción visible según estado */}
                   {ordenActiva.estado === 'ASIGNADA' && (
                     <Button
                       onClick={() => handleIniciarRevision(ordenActiva)}
                       disabled={botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] || transicionEnCurso}
-                      className="bg-gradient-to-r from-blue-500 to-indigo-500"
+                      className="bg-gradient-to-r from-emerald-500 to-blue-500"
                     >
                       {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
                         <>
@@ -649,13 +641,10 @@ function MiDiaContent() {
                     </Button>
                   )}
                   
-                  {/* P0.2: Botón "Realizar Diagnóstico" SOLO en EN_REVISION */}
                   {ordenActiva.estado === 'EN_REVISION' && (
                     <Button
                       onClick={() => handleIniciarDiagnostico(ordenActiva)}
-                      disabled={ordenActiva.estado_atencion !== 'ACTIVO'}
-                      className="bg-gradient-to-r from-purple-500 to-blue-500"
-                      title={ordenActiva.estado_atencion !== 'ACTIVO' ? 'Debes retomar el trabajo antes de diagnosticar' : ''}
+                      className="bg-gradient-to-r from-emerald-500 to-blue-500"
                     >
                       <Wrench className="w-4 h-4 mr-2" />
                       {tieneDiagnostico(ordenActiva.id) && !diagnosticoListo(ordenActiva.id)
@@ -666,23 +655,18 @@ function MiDiaContent() {
                     </Button>
                   )}
 
-                  {/* P0.3: Mensajes claros si no hay acción disponible */}
-                  {ordenActiva.estado === 'EN_COLA_REVISION' && (
-                    <div className="p-3 bg-slate-100 rounded-lg text-sm text-slate-600 text-center">
-                      ℹ️ Esta orden aún no ha sido asignada
-                    </div>
-                  )}
-                  {ordenActiva.estado === 'CANCELADA' && (
-                    <div className="p-3 bg-red-50 rounded-lg text-sm text-red-700 text-center">
-                      ⛔ Esta orden fue cancelada
-                    </div>
-                  )}
-                  {ordenActiva.estado === 'ENTREGADA' && (
-                    <div className="p-3 bg-green-50 rounded-lg text-sm text-green-700 text-center">
-                      ✅ Esta orden ya fue entregada
+                  {/* P0.7: Mensajes informativos para estados sin acción */}
+                  {!['ASIGNADA', 'EN_REVISION'].includes(ordenActiva.estado) && (
+                    <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700 text-center">
+                      ℹ️ {ordenActiva.estado === 'DIAGNOSTICADA' ? 'Diagnóstico completado - esperando cotización' :
+                          ordenActiva.estado === 'COTIZADA' ? 'Esperando aprobación del cliente' :
+                          ordenActiva.estado === 'EN_REPARACION' ? 'En proceso de reparación' :
+                          ordenActiva.estado === 'FINALIZADA' ? 'Trabajo finalizado - esperando entrega' :
+                          'Sin acción disponible'}
                     </div>
                   )}
                   
+                  {/* P0.7: Acción secundaria - Pausar */}
                   <Button
                     onClick={handlePausar}
                     variant="outline"
@@ -690,6 +674,17 @@ function MiDiaContent() {
                   >
                     <Pause className="w-4 h-4 mr-2" />
                     Pausar
+                  </Button>
+                  
+                  {/* P0.7: Acción terciaria - Ver detalle */}
+                  <Button
+                    onClick={() => handleVerDetalle(ordenActiva)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-slate-600"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Ver Detalle
                   </Button>
                 </div>
               </div>
@@ -785,69 +780,7 @@ function MiDiaContent() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Button
-                      onClick={() => handleVerDetalle(orden)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Ver Detalle
-                    </Button>
-                    
-                    {/* P0.1: Botón "Iniciar Revisión" cuando está ASIGNADA */}
-                    {orden.estado === 'ASIGNADA' && (
-                      <Button
-                        onClick={() => handleIniciarRevision(orden)}
-                        disabled={botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso}
-                        variant="outline"
-                        size="sm"
-                        className="border-blue-500 text-blue-700 hover:bg-blue-50"
-                      >
-                        {botonesDeshabilitados[`iniciar_revision_${orden.id}`] ? (
-                          <>
-                            <Clock className="w-4 h-4 mr-2 animate-spin" />
-                            Iniciando...
-                          </>
-                        ) : (
-                          <>
-                            <Play className="w-4 h-4 mr-2" />
-                            Iniciar Revisión
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    
-                    {/* P0.2: Botón "Realizar Diagnóstico" SOLO en EN_REVISION */}
-                    {orden.estado === 'EN_REVISION' && (
-                      <Button
-                        onClick={() => handleIniciarDiagnostico(orden)}
-                        disabled={orden.estado_atencion !== 'ACTIVO'}
-                        variant="outline"
-                        size="sm"
-                        className="border-purple-500 text-purple-700 hover:bg-purple-50"
-                        title={orden.estado_atencion !== 'ACTIVO' ? 'Debes retomar el trabajo antes de diagnosticar' : ''}
-                      >
-                        <Wrench className="w-4 h-4 mr-2" />
-                        {tieneDiagnostico(orden.id) && !diagnosticoListo(orden.id)
-                          ? 'Continuar Diagnóstico'
-                          : diagnosticoListo(orden.id)
-                          ? 'Ver Diagnóstico'
-                          : 'Realizar Diagnóstico'}
-                      </Button>
-                    )}
-                    {orden.estado === 'EN_REVISION' && orden.estado_atencion !== 'ACTIVO' && (
-                      <p className="text-xs text-slate-500 italic">
-                        ⚠️ Retoma el trabajo para diagnosticar
-                      </p>
-                    )}
-
-                    {/* P0.3: Mensajes claros para estados sin acción */}
-                    {orden.estado === 'EN_COLA_REVISION' && (
-                      <div className="p-2 bg-slate-100 rounded text-xs text-slate-600 text-center">
-                        ℹ️ No asignada aún
-                      </div>
-                    )}
-                    
+                    {/* P0.7: ACCIÓN PRIMARIA - Retomar siempre visible y destacado */}
                     <Button
                       onClick={() => handleRetomar(orden)}
                       disabled={botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso}
@@ -864,6 +797,17 @@ function MiDiaContent() {
                           Retomar
                         </>
                       )}
+                    </Button>
+                    
+                    {/* P0.7: Acción secundaria - Ver detalle */}
+                    <Button
+                      onClick={() => handleVerDetalle(orden)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-600"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Ver Detalle
                     </Button>
                   </div>
                 </div>

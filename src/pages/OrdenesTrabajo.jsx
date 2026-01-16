@@ -34,6 +34,8 @@ import { generarCodigoOT, calcularFechaEntregaEstimada } from '@/components/ot/u
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { Play } from 'lucide-react';
 import EntregarOT from '@/components/ot/EntregarOT';
+import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
+import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -94,6 +96,9 @@ function OrdenesTrabajoContent() {
   const { user, userAccount } = useUserAccount();
   const { effectiveOrgId, effectiveRole } = useAuthContext();
   const navigate = useNavigate();
+  
+  // P0.1: Cache de estados de pago
+  const [estadosPago, setEstadosPago] = useState({});
 
   const { data: ordenes = [] } = useQuery({
     queryKey: ['ordenes', userAccount?.organization_id],
@@ -102,6 +107,27 @@ function OrdenesTrabajoContent() {
     }),
     enabled: !!userAccount?.organization_id,
   });
+
+  // P0.1: Cargar estados de pago para OTs visibles
+  useEffect(() => {
+    if (ordenes.length > 0 && effectiveOrgId) {
+      const cargarEstados = async () => {
+        const nuevosEstados = {};
+        for (const ot of ordenes.slice(0, 20)) {
+          try {
+            const estado = await obtenerEstadoPagoOT(ot.id, effectiveOrgId);
+            nuevosEstados[ot.id] = estado;
+          } catch (error) {
+            console.error(`Error cargando estado pago OT ${ot.id}:`, error);
+          }
+        }
+        setEstadosPago(nuevosEstados);
+      };
+      
+      const timer = setTimeout(cargarEstados, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [ordenes, effectiveOrgId]);
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes', userAccount?.organization_id],
@@ -637,6 +663,10 @@ function OrdenesTrabajoContent() {
                       } border-0 capitalize`}>
                         {orden.prioridad}
                       </Badge>
+                      {/* P0.1: Badge estado de pago */}
+                      {estadosPago[orden.id] && (
+                        <BadgeEstadoPago status={estadosPago[orden.id].status} />
+                      )}
                     </div>
                   </div>
                 </div>

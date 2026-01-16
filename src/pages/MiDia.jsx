@@ -769,9 +769,11 @@ function MiDiaContent() {
                         <Pause className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-900 text-lg">{orden.motivo_ingreso}</h3>
+                        <h3 className="font-bold text-slate-900 text-lg">
+                          {getClienteName(orden.cliente_id)} — {getEquipoInfo(orden.equipo_id)}
+                        </h3>
                         <p className="text-sm text-slate-500">
-                          {getClienteName(orden.cliente_id)} • {getEquipoInfo(orden.equipo_id)}
+                          {orden.codigo_ot} • {orden.motivo_ingreso}
                         </p>
                       </div>
                     </div>
@@ -930,9 +932,11 @@ function MiDiaContent() {
                         <AlertCircle className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-900 text-lg">{orden.motivo_ingreso}</h3>
+                        <h3 className="font-bold text-slate-900 text-lg">
+                          {getClienteName(orden.cliente_id)} — {getEquipoInfo(orden.equipo_id)}
+                        </h3>
                         <p className="text-sm text-slate-500">
-                          {getClienteName(orden.cliente_id)} • {getEquipoInfo(orden.equipo_id)}
+                          {orden.codigo_ot} • {orden.motivo_ingreso}
                         </p>
                       </div>
                     </div>

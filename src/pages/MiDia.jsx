@@ -338,15 +338,22 @@ function MiDiaContent() {
       return;
     }
 
-    // P0.2: Verificar pago de diagnóstico ANTES de abrir wizard
+    // P0.7.2: Verificar pago de diagnóstico con mensaje diferenciado por rol
     if (!orden.diagnostico_habilitado) {
-      const confirmar = window.confirm(
-        '🔒 El diagnóstico debe cobrarse antes de iniciar.\n\n¿Deseas ir al Punto de Venta para cobrar ahora?'
-      );
-      if (confirmar) {
-        window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;
+      if (effectiveRole === 'TECHNICIAN') {
+        // TECH: Solo mensaje informativo, sin redirección
+        alert('⏸️ Esta orden requiere pago de diagnóstico.\n\nPor favor, contacta a administración o ventas para procesar el pago.');
+        return;
+      } else {
+        // ORG_ADMIN / SALES: Mantener flujo actual con redirección
+        const confirmar = window.confirm(
+          '🔒 El diagnóstico debe cobrarse antes de iniciar.\n\n¿Deseas ir al Punto de Venta para cobrar ahora?'
+        );
+        if (confirmar) {
+          window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;
+        }
+        return;
       }
-      return;
     }
     
     // Cargar pre-diagnóstico como contexto (opcional)
@@ -620,50 +627,59 @@ function MiDiaContent() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  {/* P0.7: ACCIÓN PRIMARIA - Una sola acción visible según estado */}
-                  {ordenActiva.estado === 'ASIGNADA' && (
-                    <Button
-                      onClick={() => handleIniciarRevision(ordenActiva)}
-                      disabled={botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] || transicionEnCurso}
-                      className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                    >
-                      {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
-                        <>
-                          <Clock className="w-4 h-4 mr-2 animate-spin" />
-                          Iniciando...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-4 h-4 mr-2" />
-                          Iniciar Revisión
-                        </>
-                      )}
-                    </Button>
-                  )}
-                  
-                  {ordenActiva.estado === 'EN_REVISION' && (
-                    <Button
-                      onClick={() => handleIniciarDiagnostico(ordenActiva)}
-                      className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                    >
-                      <Wrench className="w-4 h-4 mr-2" />
-                      {tieneDiagnostico(ordenActiva.id) && !diagnosticoListo(ordenActiva.id)
-                        ? 'Continuar Diagnóstico'
-                        : diagnosticoListo(ordenActiva.id)
-                        ? 'Ver Diagnóstico'
-                        : 'Realizar Diagnóstico'}
-                    </Button>
-                  )}
-
-                  {/* P0.7: Mensajes informativos para estados sin acción */}
-                  {!['ASIGNADA', 'EN_REVISION'].includes(ordenActiva.estado) && (
-                    <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700 text-center">
-                      ℹ️ {ordenActiva.estado === 'DIAGNOSTICADA' ? 'Diagnóstico completado - esperando cotización' :
-                          ordenActiva.estado === 'COTIZADA' ? 'Esperando aprobación del cliente' :
-                          ordenActiva.estado === 'EN_REPARACION' ? 'En proceso de reparación' :
-                          ordenActiva.estado === 'FINALIZADA' ? 'Trabajo finalizado - esperando entrega' :
-                          'Sin acción disponible'}
+                  {/* P0.7.2: Verificar bloqueos antes de mostrar acción primaria */}
+                  {estadosPago[ordenActiva.id]?.status === 'sin_pago' && efectiveRole === 'TECHNICIAN' ? (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                      ⏸️ Pendiente de pago — Contacta a administración
                     </div>
+                  ) : (
+                    <>
+                      {/* P0.7: ACCIÓN PRIMARIA - Una sola acción visible según estado */}
+                      {ordenActiva.estado === 'ASIGNADA' && (
+                        <Button
+                          onClick={() => handleIniciarRevision(ordenActiva)}
+                          disabled={botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] || transicionEnCurso}
+                          className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                        >
+                          {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
+                            <>
+                              <Clock className="w-4 h-4 mr-2 animate-spin" />
+                              Iniciando...
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-4 h-4 mr-2" />
+                              Iniciar Revisión
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      
+                      {ordenActiva.estado === 'EN_REVISION' && (
+                        <Button
+                          onClick={() => handleIniciarDiagnostico(ordenActiva)}
+                          className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                        >
+                          <Wrench className="w-4 h-4 mr-2" />
+                          {tieneDiagnostico(ordenActiva.id) && !diagnosticoListo(ordenActiva.id)
+                            ? 'Continuar Diagnóstico'
+                            : diagnosticoListo(ordenActiva.id)
+                            ? 'Ver Diagnóstico'
+                            : 'Realizar Diagnóstico'}
+                        </Button>
+                      )}
+
+                      {/* P0.7: Mensajes informativos para estados sin acción */}
+                      {!['ASIGNADA', 'EN_REVISION'].includes(ordenActiva.estado) && (
+                        <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700 text-center">
+                          ℹ️ {ordenActiva.estado === 'DIAGNOSTICADA' ? 'Diagnóstico completado - esperando cotización' :
+                              ordenActiva.estado === 'COTIZADA' ? 'Esperando aprobación del cliente' :
+                              ordenActiva.estado === 'EN_REPARACION' ? 'En proceso de reparación' :
+                              ordenActiva.estado === 'FINALIZADA' ? 'Trabajo finalizado - esperando entrega' :
+                              'Sin acción disponible'}
+                        </div>
+                      )}
+                    </>
                   )}
                   
                   {/* P0.7: Acción secundaria - Pausar */}
@@ -780,24 +796,33 @@ function MiDiaContent() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {/* P0.7: ACCIÓN PRIMARIA - Retomar siempre visible y destacado */}
-                    <Button
-                      onClick={() => handleRetomar(orden)}
-                      disabled={botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso}
-                      className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                    >
-                      {botonesDeshabilitados[`retomar_${orden.id}`] ? (
-                        <>
-                          <Clock className="w-4 h-4 mr-2 animate-spin" />
-                          Retomando...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-4 h-4 mr-2" />
-                          Retomar
-                        </>
-                      )}
-                    </Button>
+                    {/* P0.7.2: Mensaje informativo si está bloqueada por pago (TECH) */}
+                    {estadosPago[orden.id]?.status === 'sin_pago' && effectiveRole === 'TECHNICIAN' ? (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                        ⏸️ Pendiente de pago — Contacta a administración
+                      </div>
+                    ) : (
+                      <>
+                        {/* P0.7: ACCIÓN PRIMARIA - Retomar siempre visible y destacado */}
+                        <Button
+                          onClick={() => handleRetomar(orden)}
+                          disabled={botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso}
+                          className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                        >
+                          {botonesDeshabilitados[`retomar_${orden.id}`] ? (
+                            <>
+                              <Clock className="w-4 h-4 mr-2 animate-spin" />
+                              Retomando...
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-4 h-4 mr-2" />
+                              Retomar
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    )}
                     
                     {/* P0.7: Acción secundaria - Ver detalle */}
                     <Button

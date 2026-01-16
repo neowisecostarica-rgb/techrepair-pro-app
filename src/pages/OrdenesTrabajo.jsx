@@ -36,7 +36,7 @@ import { Play } from 'lucide-react';
 import EntregarOT from '@/components/ot/EntregarOT';
 import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
-import { crearPreDiagnosticoAutomatico } from '@/components/prediagnostico/crearPreDiagnosticoAutomatico';
+import { crearOrdenTrabajo } from '@/components/ot/crearOrdenTrabajo';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -217,19 +217,14 @@ function OrdenesTrabajoContent() {
         tecnicoAsignadoId = userAccount.user_id;
       }
       
-      // Crear OT
-      const nuevaOT = await base44.entities.OrdenTrabajo.create(withOrgId({
+      // P0.2.b: Usar helper central (crea OT + PreDiagnostico automático)
+      return crearOrdenTrabajo(withOrgId({
         ...data,
         codigo_ot: codigoOT,
         fecha_entrega_estimada: fechaEstimada,
         fecha_ingreso: new Date().toISOString(),
         tecnico_asignado_id: tecnicoAsignadoId
       }, userAccount));
-
-      // P0.2: Crear PreDiagnostico automáticamente
-      await crearPreDiagnosticoAutomatico(nuevaOT.id, effectiveOrgId);
-
-      return nuevaOT;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });

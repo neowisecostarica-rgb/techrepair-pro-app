@@ -16,10 +16,12 @@ export function useNotificacionesAutomaticas(userAccount) {
       organization_id: userAccount.organization_id
     }),
     enabled,
-    // P0.2: No refrescar automáticamente durante transiciones
+    // P0.5: Control estricto de refetch para prevenir loops
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,
+    staleTime: 60000, // 1 minuto
+    retry: false, // No reintentar en caso de 429
   });
 
   const { data: notificacionesExistentes = [] } = useQuery({
@@ -29,20 +31,24 @@ export function useNotificacionesAutomaticas(userAccount) {
       estado: 'pendiente'
     }),
     enabled,
-    // P0.2: No refrescar automáticamente durante transiciones
+    // P0.5: Control estricto de refetch para prevenir loops
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,
+    staleTime: 60000, // 1 minuto
+    retry: false, // No reintentar en caso de 429
   });
 
   const crearNotificacionMutation = useMutation({
     mutationFn: (data) => base44.entities.Notificacion.create(withOrgId(data, userAccount)),
     onSuccess: () => {
-      // P0.2: No refrescar queries mientras el sistema está congelado
-      if (enabled) {
-        queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
-      }
+      // P0.5: No refrescar queries para evitar loops - el panel ya refetchea periódicamente
     },
+    onError: (error) => {
+      // P0.5: Defensivo - no propagar errores de notificaciones
+      console.warn('[NOTIF] Error no crítico al crear notificación:', error.message);
+    },
+    retry: false, // P0.5: No reintentar si falla
   });
 
   useEffect(() => {
@@ -59,13 +65,14 @@ export function useNotificacionesAutomaticas(userAccount) {
           n.mensaje.includes(tipo)
         );
 
-      // P1.4: Archivar automáticamente notificaciones resueltas
+      // P1.4 + P0.5: Archivar defensivo (no bloquear ni propagar errores)
       const archivarResuelta = (tipo, otId) => {
         const notifResuelta = notificacionesExistentes.find(n =>
           n.referencia_ot_id === otId && n.mensaje.includes(tipo)
         );
         if (notifResuelta) {
-          base44.entities.Notificacion.update(notifResuelta.id, { estado: 'resuelta' });
+          base44.entities.Notificacion.update(notifResuelta.id, { estado: 'resuelta' })
+            .catch(err => console.warn('[NOTIF] Error al archivar:', err.message));
         }
       };
 

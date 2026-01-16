@@ -54,6 +54,12 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
     },
     enabled: !!userAccount?.organization_id,
     refetchInterval: 30000, // Refetch cada 30 segundos
+    // P0.5: Defensas anti-loop
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: 25000, // 25 segundos (menor que interval)
+    retry: false, // No reintentar en caso de 429
   });
 
   const marcarVistaMutation = useMutation({
@@ -61,6 +67,7 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
     },
+    retry: false, // P0.5: No reintentar
   });
 
   const marcarResueltaMutation = useMutation({
@@ -68,6 +75,7 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
     },
+    retry: false, // P0.5: No reintentar
   });
 
   const handleNavegar = (notif) => {

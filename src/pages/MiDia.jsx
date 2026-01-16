@@ -609,9 +609,11 @@ function MiDiaContent() {
                       <Zap className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900 text-lg">{ordenActiva.motivo_ingreso}</h3>
+                      <h3 className="font-bold text-slate-900 text-lg">
+                        {getClienteName(ordenActiva.cliente_id)} — {getEquipoInfo(ordenActiva.equipo_id)}
+                      </h3>
                       <p className="text-sm text-slate-500">
-                        {getClienteName(ordenActiva.cliente_id)} • {getEquipoInfo(ordenActiva.equipo_id)}
+                        {ordenActiva.codigo_ot} • {ordenActiva.motivo_ingreso}
                       </p>
                     </div>
                   </div>

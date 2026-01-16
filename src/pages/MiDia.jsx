@@ -81,10 +81,12 @@ function MiDiaContent() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
+  // P0.3: Excluir ENTREGADA (estado terminal)
   const { data: ordenes = [] } = useQuery({
     queryKey: ['mis-ordenes', user?.id],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
-      tecnico_asignado_id: user.id
+      tecnico_asignado_id: user.id,
+      estado: { $nin: ['ENTREGADA', 'CANCELADA'] }
     }),
     enabled: !!user?.id,
   });

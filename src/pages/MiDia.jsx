@@ -45,6 +45,8 @@ import { useAuthContext } from '@/components/contexts/AuthContext';
 import { createPageUrl } from '../utils';
 import { Link } from 'react-router-dom';
 import { transicionarEstadoOT, cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
+import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
+import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 
 export default function MiDia() {
   return (
@@ -71,6 +73,9 @@ function MiDiaContent() {
   // P0.1: Control de botones para evitar doble click y rate limit
   const [botonesDeshabilitados, setBotonesDeshabilitados] = useState({});
   const [transicionEnCurso, setTransicionEnCurso] = useState(false);
+  
+  // P0.1: Cache de estados de pago
+  const [estadosPago, setEstadosPago] = useState({});
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
@@ -83,6 +88,25 @@ function MiDiaContent() {
     }),
     enabled: !!user?.id,
   });
+
+  // P0.1: Cargar estados de pago para OTs del técnico
+  useEffect(() => {
+    if (ordenes.length > 0 && effectiveOrgId) {
+      const cargarEstados = async () => {
+        const nuevosEstados = {};
+        for (const ot of ordenes) {
+          try {
+            const estado = await obtenerEstadoPagoOT(ot.id, effectiveOrgId);
+            nuevosEstados[ot.id] = estado;
+          } catch (error) {
+            console.error(`Error cargando estado pago OT ${ot.id}:`, error);
+          }
+        }
+        setEstadosPago(nuevosEstados);
+      };
+      cargarEstados();
+    }
+  }, [ordenes, effectiveOrgId]);
 
   // Query para diagnósticos técnicos
   const { data: diagnosticos = [] } = useQuery({
@@ -594,6 +618,10 @@ function MiDiaContent() {
                     <Badge className="bg-red-100 text-red-700 border-0">
                       {ordenActiva.estado}
                     </Badge>
+                    {/* P0.1: Badge estado de pago */}
+                    {estadosPago[ordenActiva.id] && (
+                      <BadgeEstadoPago status={estadosPago[ordenActiva.id].status} />
+                    )}
                     <Badge className={`${
                       ordenActiva.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
                       ordenActiva.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
@@ -748,6 +776,10 @@ function MiDiaContent() {
                       <Badge className="bg-slate-100 text-slate-700 border-0">
                         {orden.estado}
                       </Badge>
+                      {/* P0.1: Badge estado de pago */}
+                      {estadosPago[orden.id] && (
+                        <BadgeEstadoPago status={estadosPago[orden.id].status} />
+                      )}
                       <Badge className={`${
                         orden.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
                         orden.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :

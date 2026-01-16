@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Package, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { transicionarEstadoOT } from './transicionarEstadoOT';
+import { obtenerEstadoPagoOT } from './obtenerEstadoPagoOT';
+import BadgeEstadoPago from './BadgeEstadoPago';
 
 const TEXTO_LEGAL_CHECKBOX = "Confirmo que he recibido el equipo y el servicio descrito en esta orden de trabajo, y que el equipo ha sido entregado en las condiciones acordadas.";
 
@@ -23,7 +25,15 @@ export default function EntregarOT({
   const [showModal, setShowModal] = useState(false);
   const [checkboxAceptado, setCheckboxAceptado] = useState(false);
   const [notaEntrega, setNotaEntrega] = useState('');
+  const [estadoPago, setEstadoPago] = useState(null);
   const queryClient = useQueryClient();
+
+  // P0.1: Obtener estado de pago al abrir modal
+  React.useEffect(() => {
+    if (showModal && ordenTrabajo?.id && effectiveOrgId) {
+      obtenerEstadoPagoOT(ordenTrabajo.id, effectiveOrgId).then(setEstadoPago);
+    }
+  }, [showModal, ordenTrabajo?.id, effectiveOrgId]);
 
   // Verificar si hay saldo pendiente
   const { data: ventas = [] } = useQuery({
@@ -140,12 +150,26 @@ export default function EntregarOT({
     entregarMutation.mutate();
   };
 
-  // Solo mostrar si está FINALIZADA y roles permitidos
+  // P0.1: Solo mostrar si está FINALIZADA, roles permitidos Y PAGADO
   if (ordenTrabajo.estado !== 'FINALIZADA') {
     return null;
   }
 
   if (!['ORG_ADMIN', 'SALES'].includes(effectiveRole)) {
+    return null;
+  }
+
+  // P0.1: Obtener estado de pago para bloqueo (síncrono, solo para visibilidad inicial)
+  const [estadoPagoInicial, setEstadoPagoInicial] = React.useState(null);
+  
+  React.useEffect(() => {
+    if (ordenTrabajo?.id && effectiveOrgId) {
+      obtenerEstadoPagoOT(ordenTrabajo.id, effectiveOrgId).then(setEstadoPagoInicial);
+    }
+  }, [ordenTrabajo?.id, effectiveOrgId]);
+
+  // P0.1: Bloquear si no está pagado
+  if (estadoPagoInicial && estadoPagoInicial.status !== 'PAGADO') {
     return null;
   }
 
@@ -182,15 +206,22 @@ export default function EntregarOT({
                   <p className="font-semibold">{ordenTrabajo.motivo_ingreso}</p>
                 </div>
               </div>
+              {/* P0.1: Badge estado de pago */}
+              {estadoPago && (
+                <div className="mt-3 pt-3 border-t border-slate-200">
+                  <p className="text-slate-500 text-sm mb-2">Estado de Pago:</p>
+                  <BadgeEstadoPago status={estadoPago.status} />
+                </div>
+              )}
             </div>
 
-            {/* Warning saldo pendiente */}
-            {tieneSaldoPendiente && (
-              <Alert className="bg-amber-50 border-amber-200">
-                <AlertCircle className="w-4 h-4 text-amber-600" />
-                <AlertDescription className="text-amber-900">
-                  <strong>Advertencia:</strong> Esta OT no tiene una venta pagada asociada. 
-                  Se entregará con saldo pendiente.
+            {/* P0.1: Bloqueo hard si no está pagado */}
+            {estadoPago && estadoPago.status !== 'PAGADO' && (
+              <Alert className="bg-red-50 border-red-200">
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <AlertDescription className="text-red-900">
+                  <strong>No se puede entregar:</strong> Esta OT no tiene una venta pagada asociada. 
+                  Debe cobrar en el Punto de Venta antes de entregar.
                 </AlertDescription>
               </Alert>
             )}
@@ -261,7 +292,8 @@ export default function EntregarOT({
                 disabled={
                   !checkboxAceptado || 
                   entregarMutation.isPending ||
-                  (diagnostico && !config?.texto_reparaciones)
+                  (diagnostico && !config?.texto_reparaciones) ||
+                  (estadoPago && estadoPago.status !== 'PAGADO')
                 }
                 className="bg-gradient-to-r from-purple-500 to-indigo-500"
               >

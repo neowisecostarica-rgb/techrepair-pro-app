@@ -36,6 +36,7 @@ import { Play } from 'lucide-react';
 import EntregarOT from '@/components/ot/EntregarOT';
 import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
+import { crearPreDiagnosticoAutomatico } from '@/components/prediagnostico/crearPreDiagnosticoAutomatico';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
@@ -216,13 +217,19 @@ function OrdenesTrabajoContent() {
         tecnicoAsignadoId = userAccount.user_id;
       }
       
-      return base44.entities.OrdenTrabajo.create(withOrgId({
+      // Crear OT
+      const nuevaOT = await base44.entities.OrdenTrabajo.create(withOrgId({
         ...data,
         codigo_ot: codigoOT,
         fecha_entrega_estimada: fechaEstimada,
         fecha_ingreso: new Date().toISOString(),
         tecnico_asignado_id: tecnicoAsignadoId
       }, userAccount));
+
+      // P0.2: Crear PreDiagnostico automáticamente
+      await crearPreDiagnosticoAutomatico(nuevaOT.id, effectiveOrgId);
+
+      return nuevaOT;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
@@ -1276,7 +1283,7 @@ function OrdenesTrabajoContent() {
                   </Button>
                 )}
 
-                {/* Pre-Diagnóstico - Solo editable en EN_COLA_REVISION */}
+                {/* P0.2: Pre-Diagnóstico - Editar (ya existe siempre) */}
                 {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && 
                   selectedOT.estado === 'EN_COLA_REVISION' && (
                   <Button 
@@ -1287,7 +1294,7 @@ function OrdenesTrabajoContent() {
                     }}
                     className="bg-gradient-to-r from-blue-500 to-indigo-500"
                   >
-                    📋 Completar Pre-Diagnóstico
+                    📋 Editar Pre-Diagnóstico
                   </Button>
                 )}
 

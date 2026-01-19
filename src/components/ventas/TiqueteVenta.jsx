@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Shield, QrCode } from 'lucide-react';
+import { Shield, QrCode, Printer, FileText } from 'lucide-react';
+import DiagnosticoTiquete80mm from '@/components/diagnostico/DiagnosticoTiquete80mm';
+import DiagnosticoDocumentoA4 from '@/components/diagnostico/DiagnosticoDocumentoA4';
 
 export default function TiqueteVenta({ venta, onClose }) {
+  const [vistaActiva, setVistaActiva] = useState('tiquete'); // 'tiquete' | '80mm' | 'a4'
   const { data: cliente } = useQuery({
     queryKey: ['cliente-tiquete', venta?.cliente_id],
     queryFn: () => base44.entities.Cliente.list(),
@@ -42,8 +45,60 @@ export default function TiqueteVenta({ venta, onClose }) {
     enabled: !!venta?.id,
   });
 
+  // Detectar si es venta de diagnóstico
+  const esDiagnostico = venta?.tipo_concepto === 'revision_diagnostico';
+
+  // Queries adicionales para diagnóstico
+  const { data: ordenTrabajo } = useQuery({
+    queryKey: ['ot-venta', venta?.referencia_ot_id],
+    queryFn: async () => {
+      const ots = await base44.entities.OrdenTrabajo.filter({ id: venta.referencia_ot_id });
+      return ots[0];
+    },
+    enabled: !!venta?.referencia_ot_id && esDiagnostico,
+  });
+
+  const { data: diagnostico } = useQuery({
+    queryKey: ['diagnostico-venta', venta?.referencia_diagnostico_id],
+    queryFn: async () => {
+      const diags = await base44.entities.DiagnosticoTecnico.filter({ id: venta.referencia_diagnostico_id });
+      return diags[0];
+    },
+    enabled: !!venta?.referencia_diagnostico_id && esDiagnostico,
+  });
+
+  const { data: equipo } = useQuery({
+    queryKey: ['equipo-ot-venta', ordenTrabajo?.equipo_id],
+    queryFn: async () => {
+      const equipos = await base44.entities.Equipo.filter({ id: ordenTrabajo.equipo_id });
+      return equipos[0];
+    },
+    enabled: !!ordenTrabajo?.equipo_id && esDiagnostico,
+  });
+
+  const { data: tecnico } = useQuery({
+    queryKey: ['tecnico-diag-venta', diagnostico?.tecnico_id],
+    queryFn: async () => {
+      const accounts = await base44.entities.UserAccount.filter({ user_id: diagnostico.tecnico_id });
+      return accounts[0];
+    },
+    enabled: !!diagnostico?.tecnico_id && esDiagnostico,
+  });
+
   const handleImprimir = () => {
-    window.print();
+    if (esDiagnostico && ordenTrabajo && diagnostico) {
+      setVistaActiva('80mm');
+    } else {
+      window.print();
+    }
+  };
+
+  const handleExportarA4 = () => {
+    setVistaActiva('a4');
+  };
+
+  const handleVolverTiquete = () => {
+    setVistaActiva('tiquete');
   };
 
   if (!venta) return null;
@@ -52,6 +107,53 @@ export default function TiqueteVenta({ venta, onClose }) {
     ? `${window.location.origin}/PortalGarantia?token=${garantia.public_access_token}`
     : null;
 
+  // Renderizar template de diagnóstico 80mm
+  if (vistaActiva === '80mm' && esDiagnostico && ordenTrabajo && diagnostico) {
+    return (
+      <div className="max-w-md mx-auto p-6 bg-white">
+        <div className="mb-4">
+          <button
+            onClick={handleVolverTiquete}
+            className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+          >
+            ← Volver
+          </button>
+        </div>
+        <DiagnosticoTiquete80mm
+          ordenTrabajo={ordenTrabajo}
+          diagnostico={diagnostico}
+          cliente={cliente}
+          equipo={equipo}
+          tecnico={tecnico}
+        />
+      </div>
+    );
+  }
+
+  // Renderizar template de diagnóstico A4
+  if (vistaActiva === 'a4' && esDiagnostico && ordenTrabajo && diagnostico) {
+    return (
+      <div className="max-w-5xl mx-auto p-6 bg-white">
+        <div className="mb-4">
+          <button
+            onClick={handleVolverTiquete}
+            className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+          >
+            ← Volver
+          </button>
+        </div>
+        <DiagnosticoDocumentoA4
+          ordenTrabajo={ordenTrabajo}
+          diagnostico={diagnostico}
+          cliente={cliente}
+          equipo={equipo}
+          tecnico={tecnico}
+        />
+      </div>
+    );
+  }
+
+  // Tiquete de venta normal
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white">
       <div className="print:block">
@@ -163,12 +265,31 @@ export default function TiqueteVenta({ venta, onClose }) {
 
       {/* Botones (no imprimir) */}
       <div className="print:hidden flex gap-3 mt-6">
-        <button
-          onClick={handleImprimir}
-          className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
-        >
-          Imprimir
-        </button>
+        {esDiagnostico && ordenTrabajo && diagnostico ? (
+          <>
+            <button
+              onClick={handleImprimir}
+              className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center justify-center gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              Imprimir 80mm
+            </button>
+            <button
+              onClick={handleExportarA4}
+              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center justify-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Exportar A4
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={handleImprimir}
+            className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+          >
+            Imprimir
+          </button>
+        )}
         <button
           onClick={onClose}
           className="flex-1 px-4 py-2 bg-slate-600 text-white rounded hover:bg-slate-700"

@@ -1,47 +1,347 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useUserAccount } from '@/components/hooks/useOrgData';
-import PageGuard from '@/components/guards/PageGuard';
-import { useAuthContext } from '@/components/contexts/AuthContext';
-import MiDiaTech from '@/components/midia/MiDiaTech';
-import MiDiaAdmin from '@/components/midia/MiDiaAdmin';
-import MiDiaSales from '@/components/midia/MiDiaSales';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Play, 
+  Pause, 
+  Clock, 
+  AlertCircle, 
+  CheckCircle,
+  Zap,
+  Package,
+  FileText,
+  MessageSquare,
+  Shield,
+  Wrench
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
+import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';
+import NotificacionesPanel from '@/components/notificaciones/NotificacionesPanel';
+import { useNotificacionesAutomaticas } from '@/components/notificaciones/useNotificacionesAutomaticas';
+import SolicitudesTecnicas from '@/components/tecnico/SolicitudesTecnicas';
+import BloqueosTecnicos from '@/components/tecnico/BloqueosTecnicos';
+import PruebasTecnicas from '@/components/tecnico/PruebasTecnicas';
+import NotasInternas from '@/components/tecnico/NotasInternas';
+import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
+import ActividadActiva from '@/components/actividades/ActividadActiva';
+import { createPageUrl } from '../../utils';
+import { transicionarEstadoOT, cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
+import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
+import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
+import { retomarOrdenTrabajo } from '@/components/ot/retomarOrdenTrabajo';
 
-export default function MiDia() {
-  return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'TECHNICIAN', 'SALES', 'BRANCH_ADMIN']}>
-      <MiDiaContent />
-    </PageGuard>
-  );
-}
+export default function MiDiaTech({ user, userAccount, effectiveOrgId, effectiveRole }) {
+  const [showPauseModal, setShowPauseModal] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [showDetalleOT, setShowDetalleOT] = useState(false);
+  const [selectedOT, setSelectedOT] = useState(null);
+  const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
+  const [motivoPausa, setMotivoPausa] = useState('interrupcion');
+  const [observacionesPausa, setObservacionesPausa] = useState('');
+  const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
+  const queryClient = useQueryClient();
+  
+  const [botonesDeshabilitados, setBotonesDeshabilitados] = useState({});
+  const [transicionEnCurso, setTransicionEnCurso] = useState(false);
+  const [estadosPago, setEstadosPago] = useState({});
 
-function MiDiaContent() {
-  const [user, setUser] = useState(null);
-  const { userAccount } = useUserAccount();
-  const { effectiveRole, effectiveOrgId } = useAuthContext();
+  const { data: ordenes = [] } = useQuery({
+    queryKey: ['mis-ordenes', user?.id, effectiveOrgId],
+    queryFn: () => base44.entities.OrdenTrabajo.filter({
+      organization_id: effectiveOrgId,
+      tecnico_asignado_id: user.id,
+      estado: { $nin: ['ENTREGADA', 'CANCELADA'] }
+    }),
+    enabled: !!user?.id && !!effectiveOrgId,
+  });
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
+    if (ordenes.length > 0 && effectiveOrgId) {
+      const cargarEstados = async () => {
+        const nuevosEstados = {};
+        const otsLimitadas = ordenes.slice(0, 10);
+        for (const ot of otsLimitadas) {
+          try {
+            const estado = await obtenerEstadoPagoOT(ot.id, effectiveOrgId);
+            nuevosEstados[ot.id] = estado;
+          } catch (error) {
+            console.error(`Error cargando estado pago OT ${ot.id}:`, error);
+          }
+        }
+        setEstadosPago(nuevosEstados);
+      };
+      
+      const timer = setTimeout(cargarEstados, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [ordenes, effectiveOrgId]);
 
-  if (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN') {
-    return <MiDiaAdmin user={user} effectiveOrgId={effectiveOrgId} effectiveRole={effectiveRole} />;
-  }
+  const { data: diagnosticos = [] } = useQuery({
+    queryKey: ['diagnosticos', effectiveOrgId],
+    queryFn: () => base44.entities.DiagnosticoTecnico.filter({
+      organization_id: effectiveOrgId
+    }),
+    enabled: !!effectiveOrgId,
+  });
 
-  if (effectiveRole === 'SALES') {
-    return <MiDiaSales user={user} effectiveOrgId={effectiveOrgId} />;
-  }
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes', effectiveOrgId],
+    queryFn: () => base44.entities.Cliente.filter({
+      organization_id: effectiveOrgId
+    }),
+    enabled: !!effectiveOrgId,
+  });
+
+  const { data: equipos = [] } = useQuery({
+    queryKey: ['equipos', effectiveOrgId],
+    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
+  });
+
+  const { data: actividadActiva } = useQuery({
+    queryKey: ['actividad_activa', user?.id, effectiveOrgId],
+    queryFn: () => base44.entities.ActividadTecnica.filter({
+      organization_id: effectiveOrgId,
+      tecnico_id: user.id,
+      estado: 'en_progreso',
+      soft_deleted: false
+    }),
+    enabled: !!user?.id && !!effectiveOrgId,
+    select: (data) => data[0] || null
+  });
+
+  const ordenActiva = ordenes.find(o => o.estado_atencion === 'ACTIVO');
+  const ordenesPausadas = ordenes
+    .filter(o => o.estado_atencion === 'PAUSADO')
+    .sort((a, b) => {
+      const prioridadOrden = { urgente: 4, high: 3, normal: 2, low: 1 };
+      const prioA = prioridadOrden[a.prioridad] || 0;
+      const prioB = prioridadOrden[b.prioridad] || 0;
+      
+      if (prioA !== prioB) return prioB - prioA;
+      
+      return new Date(a.ultima_actividad_at || a.created_date) - new Date(b.ultima_actividad_at || b.created_date);
+    });
+  
+  const ordenesEsperando = ordenes.filter(o => o.estado_atencion === 'ESPERANDO');
+
+  const tieneDiagnostico = (otId) => {
+    return diagnosticos.some(d => d.orden_trabajo_id === otId);
+  };
+
+  const diagnosticoListo = (otId) => {
+    const diag = diagnosticos.find(d => d.orden_trabajo_id === otId);
+    return diag?.estado === 'listo_aprobacion';
+  };
+
+  const getClienteName = (clienteId) => {
+    const cliente = clientes.find(c => c.id === clienteId);
+    return cliente?.nombre_completo || 'Cliente sin identificar';
+  };
+
+  const getEquipoInfo = (equipoId) => {
+    const equipo = equipos.find(e => e.id === equipoId);
+    return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';
+  };
+
+  const handlePausar = () => {
+    if (!ordenActiva) return;
+    setShowPauseModal(true);
+  };
+
+  const confirmPausar = async () => {
+    if (!ordenActiva) return;
+    
+    try {
+      if (actividadActiva) {
+        await base44.entities.ActividadTecnica.update(actividadActiva.id, {
+          estado: 'finalizada',
+          ended_at: new Date().toISOString(),
+          duracion_minutos: Math.round(
+            (new Date() - new Date(actividadActiva.started_at)) / 60000
+          ),
+          resultado: 'incompleto',
+          notas: `Actividad cerrada por pausa. Motivo: ${motivoPausa}`
+        });
+      }
+
+      await cambiarEstadoAtencionOT({
+        ordenTrabajoId: ordenActiva.id,
+        nuevoEstadoAtencion: 'PAUSADO',
+        motivoPausa: motivoPausa,
+        observaciones: observacionesPausa || 'Trabajo pausado',
+        effectiveOrgId: effectiveOrgId,
+        userId: user?.id,
+        userEmail: user?.email
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
+      setShowPauseModal(false);
+      setObservacionesPausa('');
+    } catch (error) {
+      alert('Error al pausar: ' + error.message);
+    }
+  };
+
+  const handleRetomar = async (orden) => {
+    if (botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso) return;
+    
+    setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: true }));
+    setTransicionEnCurso(true);
+    
+    try {
+      if (ordenActiva && ordenActiva.id !== orden.id) {
+        if (!confirm('Ya tienes un trabajo activo. ¿Pausar el actual y retomar este?')) {
+          setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
+          setTransicionEnCurso(false);
+          return;
+        }
+
+        if (actividadActiva) {
+          await base44.entities.ActividadTecnica.update(actividadActiva.id, {
+            estado: 'finalizada',
+            ended_at: new Date().toISOString(),
+            duracion_minutos: Math.round(
+              (new Date() - new Date(actividadActiva.started_at)) / 60000
+            ),
+            resultado: 'incompleto',
+            notas: 'Actividad cerrada por cambio de trabajo'
+          });
+        }
+
+        await cambiarEstadoAtencionOT({
+          ordenTrabajoId: ordenActiva.id,
+          nuevoEstadoAtencion: 'PAUSADO',
+          motivoPausa: 'interrupcion',
+          observaciones: 'Trabajo pausado automáticamente',
+          effectiveOrgId: effectiveOrgId,
+          userId: user?.id,
+          userEmail: user?.email
+        });
+      }
+
+      await retomarOrdenTrabajo({
+        ordenTrabajoId: orden.id,
+        organizationId: effectiveOrgId,
+        tecnicoId: user.id,
+        tecnicoEmail: user.email
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      await queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
+      
+      setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
+      setTransicionEnCurso(false);
+    } catch (error) {
+      alert('Error al retomar trabajo: ' + error.message);
+      setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
+      setTransicionEnCurso(false);
+    }
+  };
+
+  const handleIniciarDiagnostico = async (orden) => {
+    if (orden.tecnico_asignado_id !== user?.id) {
+      alert('No estás asignado a esta orden de trabajo');
+      return;
+    }
+
+    if (orden.estado !== 'EN_REVISION') {
+      alert('Esta orden debe estar en estado EN_REVISION para realizar el diagnóstico');
+      return;
+    }
+
+    if (!orden.diagnostico_habilitado) {
+      if (effectiveRole === 'TECHNICIAN') {
+        alert('⏸️ Esta orden requiere pago de diagnóstico.\n\nPor favor, contacta a administración o ventas para procesar el pago.');
+        return;
+      } else {
+        const confirmar = window.confirm(
+          '🔒 El diagnóstico debe cobrarse antes de iniciar.\n\n¿Deseas ir al Punto de Venta para cobrar ahora?'
+        );
+        if (confirmar) {
+          window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;
+        }
+        return;
+      }
+    }
+    
+    try {
+      const preDiag = await base44.entities.PreDiagnostico.filter({
+        organization_id: effectiveOrgId,
+        orden_trabajo_id: orden.id
+      });
+      setPreDiagnosticoData(preDiag[0] || null);
+    } catch (error) {
+      console.error('Error cargando pre-diagnóstico:', error);
+      setPreDiagnosticoData(null);
+    }
+    
+    setSelectedOT(orden);
+    setShowWizard(true);
+  };
+
+  const handleIniciarRevision = async (orden) => {
+    if (botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso) return;
+    
+    if (orden.estado !== 'ASIGNADA') {
+      alert('Solo se puede iniciar revisión desde estado ASIGNADA');
+      return;
+    }
+
+    setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: true }));
+    setTransicionEnCurso(true);
+
+    try {
+      await transicionarEstadoOT({
+        ordenTrabajoId: orden.id,
+        nuevoEstado: 'EN_REVISION',
+        effectiveOrgId: effectiveOrgId,
+        userId: user?.id,
+        userEmail: user?.email
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      
+      alert('✅ Revisión iniciada correctamente');
+      
+      setTransicionEnCurso(false);
+    } catch (error) {
+      alert('Error al iniciar revisión: ' + error.message);
+      setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: false }));
+      setTransicionEnCurso(false);
+    }
+  };
+
+  const handleVerDetalle = (orden) => {
+    setSelectedOT(orden);
+    setShowDetalleOT(true);
+  };
+
+  const mostrarMensajeAgradecimiento = (contexto) => {
+    setMensajeMotivacion({ tipo: 'agradecimiento', contexto });
+    setTimeout(() => setMensajeMotivacion(null), 8000);
+  };
+
+  const motivoPausaLabels = {
+    esperando_repuesto: 'Esperando Repuesto',
+    esperando_cliente: 'Esperando Cliente',
+    interrupcion: 'Interrupción',
+    otro: 'Otro'
+  };
+
+  useNotificacionesAutomaticas(transicionEnCurso ? null : userAccount);
 
   return (
-    <MiDiaTech 
-      user={user} 
-      userAccount={userAccount} 
-      effectiveOrgId={effectiveOrgId} 
-      effectiveRole={effectiveRole} 
-    />
-  );
-}
-
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="mb-6">
@@ -56,18 +356,14 @@ function MiDiaContent() {
         </div>
       </div>
 
-      {/* Mensaje de Motivación Diario */}
       <MensajesMotivacion tipo="diaria" role="TECHNICIAN" />
 
-      {/* Mensajes contextuales (agradecimiento/protección) */}
       {mensajeMotivacion && (
         <MensajesMotivacion tipo={mensajeMotivacion.tipo} contexto={mensajeMotivacion.contexto} />
       )}
 
-      {/* Notificaciones */}
       <NotificacionesPanel userAccount={userAccount} />
 
-      {/* Actividad Actual */}
       {actividadActiva && (
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-purple-200">
@@ -117,7 +413,6 @@ function MiDiaContent() {
                     <Badge className="bg-red-100 text-red-700 border-0">
                       {ordenActiva.estado}
                     </Badge>
-                    {/* P0.1: Badge estado de pago */}
                     {estadosPago[ordenActiva.id] && (
                       <BadgeEstadoPago status={estadosPago[ordenActiva.id].status} />
                     )}
@@ -142,14 +437,12 @@ function MiDiaContent() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  {/* P0.7.2: Verificar bloqueos antes de mostrar acción primaria */}
-                  {estadosPago[ordenActiva.id]?.status === 'sin_pago' && efectiveRole === 'TECHNICIAN' ? (
+                  {estadosPago[ordenActiva.id]?.status === 'sin_pago' && effectiveRole === 'TECHNICIAN' ? (
                     <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
                       ⏸️ Pendiente de pago — Contacta a administración
                     </div>
                   ) : (
                     <>
-                      {/* P0.7: ACCIÓN PRIMARIA - Una sola acción visible según estado */}
                       {ordenActiva.estado === 'ASIGNADA' && (
                         <Button
                           onClick={() => handleIniciarRevision(ordenActiva)}
@@ -184,7 +477,6 @@ function MiDiaContent() {
                         </Button>
                       )}
 
-                      {/* P0.7: Mensajes informativos para estados sin acción */}
                       {!['ASIGNADA', 'EN_REVISION'].includes(ordenActiva.estado) && (
                         <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700 text-center">
                           ℹ️ {ordenActiva.estado === 'DIAGNOSTICADA' ? 'Diagnóstico completado - esperando cotización' :
@@ -197,7 +489,6 @@ function MiDiaContent() {
                     </>
                   )}
                   
-                  {/* P0.7: Acción secundaria - Pausar */}
                   <Button
                     onClick={handlePausar}
                     variant="outline"
@@ -207,7 +498,6 @@ function MiDiaContent() {
                     Pausar
                   </Button>
                   
-                  {/* P0.7: Acción terciaria - Ver detalle */}
                   <Button
                     onClick={() => handleVerDetalle(ordenActiva)}
                     variant="ghost"
@@ -281,7 +571,6 @@ function MiDiaContent() {
                       <Badge className="bg-slate-100 text-slate-700 border-0">
                         {orden.estado}
                       </Badge>
-                      {/* P0.1: Badge estado de pago */}
                       {estadosPago[orden.id] && (
                         <BadgeEstadoPago status={estadosPago[orden.id].status} />
                       )}
@@ -311,14 +600,12 @@ function MiDiaContent() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {/* P0.7.2: Mensaje informativo si está bloqueada por pago (TECH) */}
                     {estadosPago[orden.id]?.status === 'sin_pago' && effectiveRole === 'TECHNICIAN' ? (
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
                         ⏸️ Pendiente de pago — Contacta a administración
                       </div>
                     ) : (
                       <>
-                        {/* P0.7: ACCIÓN PRIMARIA - Retomar siempre visible y destacado */}
                         <Button
                           onClick={() => handleRetomar(orden)}
                           disabled={botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso}
@@ -339,7 +626,6 @@ function MiDiaContent() {
                       </>
                     )}
                     
-                    {/* P0.7: Acción secundaria - Ver detalle */}
                     <Button
                       onClick={() => handleVerDetalle(orden)}
                       variant="ghost"
@@ -588,469 +874,6 @@ function MiDiaContent() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-// =====================================================
-// COMPONENTE: Mi Día ORG_ADMIN
-// =====================================================
-function MiDiaOrgAdmin({ 
-  user, 
-  otsVencidas, 
-  cotizacionesPorVencer, 
-  ventasSinCobrar,
-  otsColaRevision,
-  otsCriticas,
-  otsPropias,
-  ventasHoy,
-  citasHoy,
-  clientes,
-  equipos,
-  effectiveRole
-}) {
-  const getClienteName = (clienteId) => {
-    const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nombre_completo || 'Cliente sin identificar';
-  };
-
-  const getEquipoInfo = (equipoId) => {
-    const equipo = equipos.find(e => e.id === equipoId);
-    return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';
-  };
-
-  return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
-            <TrendingUp className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-4xl font-bold text-slate-900">Mi Día</h1>
-            <p className="text-slate-600">Vista operativa del día</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Mensaje de Motivación Diario */}
-      <MensajesMotivacion tipo="diaria" role={effectiveRole} />
-
-      {/* 🚨 Prioridades del Día */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-red-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
-            <AlertCircle className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Prioridades del Día</h2>
-        </div>
-      <Card className="border-2 border-red-200 bg-red-50/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-red-800">
-            Atención Urgente Requerida
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {otsVencidas.length === 0 && cotizacionesPorVencer.length === 0 && ventasSinCobrar.length === 0 ? (
-            <p className="text-sm text-slate-500">✅ No hay prioridades urgentes</p>
-          ) : (
-            <>
-              {otsVencidas.slice(0, 3).map(ot => (
-                <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
-                  <div className="flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-500" />
-                      <div>
-                        <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
-                        <p className="text-sm text-slate-500">{getClienteName(ot.cliente_id)} - Vencida</p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline">Ver OT</Button>
-                  </div>
-                </Link>
-              ))}
-
-              {cotizacionesPorVencer.slice(0, 2).map(cot => (
-                <Link key={cot.id} to={createPageUrl('OrdenesTrabajo')}>
-                  <div className="flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-orange-500" />
-                      <div>
-                        <p className="font-medium text-slate-900">Cotización pendiente</p>
-                        <p className="text-sm text-slate-500">
-                          Vence: {cot.valida_hasta ? format(new Date(cot.valida_hasta), 'dd/MM/yyyy') : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline">Seguimiento</Button>
-                  </div>
-                </Link>
-              ))}
-            </>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-
-      {/* 🛠 Taller Hoy */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center">
-            <Wrench className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Taller Hoy</h2>
-        </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-slate-800">
-            Operaciones Activas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {otsColaRevision.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-slate-700 mb-2">Cola de Revisión ({otsColaRevision.length})</p>
-              <div className="space-y-2">
-                {otsColaRevision.slice(0, 3).map(ot => (
-                  <Link key={ot.id} to={createPageUrl('ColaRevision')}>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
-                      <div>
-                        <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
-                        <p className="text-sm text-slate-500">{getClienteName(ot.cliente_id)}</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {otsCriticas.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-slate-700 mb-2">OTs Críticas ({otsCriticas.length})</p>
-              <div className="space-y-2">
-                {otsCriticas.slice(0, 3).map(ot => (
-                  <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
-                    <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors cursor-pointer">
-                      <div>
-                        <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
-                        <p className="text-sm text-slate-500">{ot.estado_atencion}</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {otsPropias.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-slate-700 mb-2">Mis OTs ({otsPropias.length})</p>
-              <div className="space-y-2">
-                {otsPropias.slice(0, 3).map(ot => (
-                  <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
-                    <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer">
-                      <div>
-                        <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
-                        <p className="text-sm text-slate-500">{getClienteName(ot.cliente_id)}</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {otsColaRevision.length === 0 && otsCriticas.length === 0 && otsPropias.length === 0 && (
-            <p className="text-sm text-slate-500">No hay OTs pendientes</p>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-
-      {/* 💰 Ventas Hoy */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-green-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-            <DollarSign className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Ventas Hoy</h2>
-        </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-slate-800">
-            Registro de Ventas del Día
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {ventasHoy.length > 0 ? (
-            <div className="space-y-2">
-              {ventasHoy.slice(0, 5).map(venta => (
-                <Link key={venta.id} to={createPageUrl('PuntoVenta')}>
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        ${venta.total?.toFixed(2) || '0.00'}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {format(new Date(venta.created_date), 'HH:mm')}
-                      </p>
-                    </div>
-                    <Badge variant={venta.estado_pago === 'pagada' ? 'default' : 'outline'}>
-                      {venta.estado_pago}
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
-              <Link to={createPageUrl('PuntoVenta')}>
-                <Button variant="outline" className="w-full mt-2">
-                  Ir a Punto de Venta
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No hay ventas registradas hoy</p>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-
-      {/* 📅 Agenda Hoy */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-blue-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Agenda Hoy</h2>
-        </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-slate-800">
-            Citas y Eventos Programados
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {citasHoy.length > 0 ? (
-            <div className="space-y-2">
-              {citasHoy.slice(0, 5).map(cita => (
-                <div key={cita.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-slate-900">{cita.motivo || cita.tipo}</p>
-                    <p className="text-sm text-slate-500">
-                      {cita.hora_inicio} - {cita.hora_fin}
-                    </p>
-                  </div>
-                  <Badge>{cita.estado}</Badge>
-                </div>
-              ))}
-              <Link to={createPageUrl('Agenda')}>
-                <Button variant="outline" className="w-full mt-2">
-                  Ver Agenda Completa
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No hay citas programadas hoy</p>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-    </div>
-  );
-}
-
-// =====================================================
-// COMPONENTE: Mi Día SALES
-// =====================================================
-function MiDiaSales({ user, leadsSeguimiento, cotizacionesPendientes, ventasPropias, citasPropias }) {
-  return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
-            <TrendingUp className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-4xl font-bold text-slate-900">Mi Día</h1>
-            <p className="text-slate-600">Seguimiento y cierres</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Mensaje de Motivación Diario */}
-      <MensajesMotivacion tipo="diaria" role="SALES" />
-
-      {/* 📞 Seguimientos CRM */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-blue-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-            <Phone className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Seguimientos CRM</h2>
-        </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-slate-800">
-            Leads Pendientes de Contacto
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {leadsSeguimiento.length > 0 ? (
-            <div className="space-y-2">
-              {leadsSeguimiento.slice(0, 5).map(lead => (
-                <Link key={lead.id} to={createPageUrl('CRM')}>
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div>
-                      <p className="font-medium text-slate-900">{lead.name}</p>
-                      <p className="text-sm text-slate-500">{lead.phone}</p>
-                    </div>
-                    <Badge>{lead.status}</Badge>
-                  </div>
-                </Link>
-              ))}
-              <Link to={createPageUrl('CRM')}>
-                <Button variant="outline" className="w-full mt-2">
-                  Abrir CRM
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No hay leads pendientes de seguimiento</p>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-
-      {/* 🧾 Cotizaciones Pendientes */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-orange-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
-            <FileText className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Cotizaciones Pendientes</h2>
-        </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-slate-800">
-            Propuestas en Espera de Respuesta
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {cotizacionesPendientes.length > 0 ? (
-            <div className="space-y-2">
-              {cotizacionesPendientes.slice(0, 5).map(cot => (
-                <Link key={cot.id} to={createPageUrl('OrdenesTrabajo')}>
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        ${cot.total?.toFixed(2) || '0.00'}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        Vence: {cot.valida_hasta ? format(new Date(cot.valida_hasta), 'dd/MM/yyyy') : 'N/A'}
-                      </p>
-                    </div>
-                    <Button size="sm" variant="outline">Dar Seguimiento</Button>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No hay cotizaciones pendientes</p>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-
-      {/* 💵 Ventas del Día */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
-            <DollarSign className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Mis Ventas del Día</h2>
-        </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-slate-800">
-            Registro de Ventas Personales
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {ventasPropias.length > 0 ? (
-            <div className="space-y-2">
-              {ventasPropias.map(venta => (
-                <div key={venta.id} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      ${venta.total?.toFixed(2) || '0.00'}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {format(new Date(venta.created_date), 'HH:mm')}
-                    </p>
-                  </div>
-                  <Badge variant={venta.estado_pago === 'pagada' ? 'default' : 'outline'}>
-                    {venta.estado_pago}
-                  </Badge>
-                </div>
-              ))}
-              <Link to={createPageUrl('PuntoVenta')}>
-                <Button variant="outline" className="w-full mt-2">
-                  Ir a Punto de Venta
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No hay ventas registradas hoy</p>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-
-      {/* 📅 Agenda Comercial */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-purple-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Mi Agenda Hoy</h2>
-        </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-slate-800">
-            Reuniones y Visitas Programadas
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {citasPropias.length > 0 ? (
-            <div className="space-y-2">
-              {citasPropias.map(cita => (
-                <div key={cita.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-slate-900">{cita.motivo || cita.tipo}</p>
-                    <p className="text-sm text-slate-500">
-                      {cita.hora_inicio} - {cita.hora_fin}
-                    </p>
-                  </div>
-                  <Badge>{cita.estado}</Badge>
-                </div>
-              ))}
-              <Link to={createPageUrl('Agenda')}>
-                <Button variant="outline" className="w-full mt-2">
-                  Ver Agenda Completa
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No hay citas programadas hoy</p>
-          )}
-        </CardContent>
-      </Card>
-      </div>
     </div>
   );
 }

@@ -85,7 +85,29 @@ export default function TiqueteVenta({ venta, onClose }) {
     enabled: !!diagnostico?.tecnico_id && esDiagnostico,
   });
 
-  const handleImprimir = () => {
+  const handleImprimir = async () => {
+    // Registrar acción de impresión (solo si es reimpresión, no primera vez)
+    if (venta.estado === 'pagada') {
+      try {
+        const { user, effectiveOrgId } = await base44.auth.me().then(u => ({ 
+          user: u, 
+          effectiveOrgId: venta.organization_id 
+        }));
+        await base44.entities.ComprobanteVentaLog.create({
+          organization_id: effectiveOrgId,
+          venta_id: venta.id,
+          accion: 'reimpresion',
+          canal: 'impresion',
+          formato: esDiagnostico ? '80mm' : 'normal',
+          user_id: user?.id || 'system',
+          user_email: user?.email || 'system'
+        });
+      } catch (e) {
+        // No bloquear impresión por error de log
+        console.warn('Error registrando log de impresión:', e);
+      }
+    }
+    
     if (esDiagnostico && ordenTrabajo && diagnostico) {
       setVistaActiva('80mm');
     } else {

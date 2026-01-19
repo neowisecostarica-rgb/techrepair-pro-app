@@ -84,20 +84,22 @@ function MiDiaContent() {
 
   // P0.3: Excluir ENTREGADA (estado terminal)
   const { data: ordenes = [] } = useQuery({
-    queryKey: ['mis-ordenes', user?.id],
+    queryKey: ['mis-ordenes', user?.id, effectiveOrgId],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
+      organization_id: effectiveOrgId,
       tecnico_asignado_id: user.id,
       estado: { $nin: ['ENTREGADA', 'CANCELADA'] }
     }),
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!effectiveOrgId,
   });
 
-  // P0.1: Cargar estados de pago para OTs del técnico
+  // P0.1: Cargar estados de pago LIMITADO (solo primeras 10 OTs)
   useEffect(() => {
     if (ordenes.length > 0 && effectiveOrgId) {
       const cargarEstados = async () => {
         const nuevosEstados = {};
-        for (const ot of ordenes) {
+        const otsLimitadas = ordenes.slice(0, 10);
+        for (const ot of otsLimitadas) {
           try {
             const estado = await obtenerEstadoPagoOT(ot.id, effectiveOrgId);
             nuevosEstados[ot.id] = estado;
@@ -107,7 +109,9 @@ function MiDiaContent() {
         }
         setEstadosPago(nuevosEstados);
       };
-      cargarEstados();
+      
+      const timer = setTimeout(cargarEstados, 300);
+      return () => clearTimeout(timer);
     }
   }, [ordenes, effectiveOrgId]);
 
@@ -121,8 +125,11 @@ function MiDiaContent() {
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes'],
-    queryFn: () => base44.entities.Cliente.list(),
+    queryKey: ['clientes', effectiveOrgId],
+    queryFn: () => base44.entities.Cliente.filter({
+      organization_id: effectiveOrgId
+    }),
+    enabled: !!effectiveOrgId,
   });
 
   const { data: equipos = [] } = useQuery({
@@ -131,35 +138,79 @@ function MiDiaContent() {
     enabled: !!effectiveOrgId,
   });
 
-  // Queries adicionales para ORG_ADMIN y SALES
+  // Queries adicionales para ORG_ADMIN y SALES (limitado a 100 registros iniciales)
   const { data: todasOrdenes = [] } = useQuery({
     queryKey: ['todas-ordenes', effectiveOrgId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
+    queryFn: async () => {
+      const ots = await base44.entities.OrdenTrabajo.filter(
+        { organization_id: effectiveOrgId },
+        '-created_date',
+        100
+      );
+      return ots;
+    },
     enabled: !!effectiveOrgId && (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN'),
+    staleTime: 30000,
   });
 
   const { data: ventas = [] } = useQuery({
     queryKey: ['ventas', effectiveOrgId],
-    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId }),
+    queryFn: async () => {
+      const ventas = await base44.entities.Venta.filter(
+        { organization_id: effectiveOrgId },
+        '-created_date',
+        50
+      );
+      return ventas;
+    },
     enabled: !!effectiveOrgId && (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN'),
+    staleTime: 30000,
   });
 
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['cotizaciones', effectiveOrgId],
-    queryFn: () => base44.entities.Cotizacion.filter({ organization_id: effectiveOrgId }),
+    queryFn: async () => {
+      const cots = await base44.entities.Cotizacion.filter(
+        { organization_id: effectiveOrgId },
+        '-created_date',
+        50
+      );
+      return cots;
+    },
     enabled: !!effectiveOrgId && (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN'),
+    staleTime: 30000,
   });
 
   const { data: leads = [] } = useQuery({
     queryKey: ['leads', effectiveOrgId],
-    queryFn: () => base44.entities.Lead.filter({ organization_id: effectiveOrgId }),
+    queryFn: async () => {
+      const leads = await base44.entities.Lead.filter(
+        { organization_id: effectiveOrgId },
+        '-created_date',
+        50
+      );
+      return leads;
+    },
     enabled: !!effectiveOrgId && (effectiveRole === 'SALES' || effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN'),
+    staleTime: 30000,
   });
 
   const { data: citas = [] } = useQuery({
     queryKey: ['citas-hoy', effectiveOrgId],
-    queryFn: () => base44.entities.Cita.filter({ organization_id: effectiveOrgId }),
+    queryFn: async () => {
+      const hoy = new Date().toISOString().split('T')[0];
+      const citas = await base44.entities.Cita.filter(
+        { 
+          organization_id: effectiveOrgId,
+          fecha: hoy
+        },
+        'hora_inicio',
+        50
+      );
+      return citas;
+    },
     enabled: !!effectiveOrgId,
+    staleTime: 60000,
   });
 
   // Query para actividad en progreso del técnico

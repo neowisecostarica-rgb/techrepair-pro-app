@@ -92,6 +92,17 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
     return cliente?.nombre_completo || 'Cliente sin identificar';
   };
 
+  const { data: equipos = [] } = useQuery({
+    queryKey: ['equipos', effectiveOrgId],
+    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
+  });
+
+  const getEquipoInfo = (equipoId) => {
+    const equipo = equipos.find(e => e.id === equipoId);
+    return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';
+  };
+
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 

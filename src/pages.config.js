@@ -24,9 +24,10 @@ import Reciclaje from './pages/Reciclaje';
 import ResumenDiagnostico from './pages/ResumenDiagnostico';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import VentasHistorial from './pages/VentasHistorial';
 import VentasCotizaciones from './pages/VentasCotizaciones';
 import VentasGarantias from './pages/VentasGarantias';
+import VentasHistorial from './pages/VentasHistorial';
+import VentasMetricas from './pages/VentasMetricas';
 import __Layout from './Layout.jsx';
 
 
@@ -57,9 +58,10 @@ export const PAGES = {
     "ResumenDiagnostico": ResumenDiagnostico,
     "Saas": Saas,
     "Settings": Settings,
-    "VentasHistorial": VentasHistorial,
     "VentasCotizaciones": VentasCotizaciones,
     "VentasGarantias": VentasGarantias,
+    "VentasHistorial": VentasHistorial,
+    "VentasMetricas": VentasMetricas,
 }
 
 export const pagesConfig = {

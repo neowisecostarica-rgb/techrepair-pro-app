@@ -246,6 +246,7 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
      { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
      { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
+     { label: 'Métricas', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VENTAS' },
 
      // CLIENTES
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
@@ -275,6 +276,7 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
      { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
      { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
+     { label: 'Métricas', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VENTAS' },
      { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
 
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
@@ -291,6 +293,7 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
      { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
      { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
+     { label: 'Métricas', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VENTAS' },
 
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
      { label: 'CRM', path: 'CRM', icon: Users, category: 'CLIENTES' },

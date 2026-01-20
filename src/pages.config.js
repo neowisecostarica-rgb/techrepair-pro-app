@@ -23,6 +23,7 @@ import Reciclaje from './pages/Reciclaje';
 import ResumenDiagnostico from './pages/ResumenDiagnostico';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
+import PortalComprobante from './pages/PortalComprobante';
 import __Layout from './Layout.jsx';
 
 
@@ -52,6 +53,7 @@ export const PAGES = {
     "ResumenDiagnostico": ResumenDiagnostico,
     "Saas": Saas,
     "Settings": Settings,
+    "PortalComprobante": PortalComprobante,
 }
 
 export const pagesConfig = {

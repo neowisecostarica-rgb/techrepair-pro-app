@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 
 function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, refreshAuth } = useAuthContext();
+  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth } = useAuthContext();
 
   // Estado de secciones colapsables
   const [sectionsOpen, setSectionsOpen] = useState(() => {
@@ -80,8 +80,73 @@ function LayoutContent({ children, currentPageName }) {
 
   // FASE 3: ONBOARDING ORCHESTRATION
   // Wait for auth to be ready before making any routing decisions
-  if (status !== 'ready') {
-    return null;
+  if (status === 'loading' || status === 'idle') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Cargando plataforma...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error 429: Mostrar pantalla de cooldown sin loops
+  if (status === 'error' && errorCode === 429) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Servicio Temporalmente Saturado</h2>
+          <p className="text-slate-600 mb-6">
+            El sistema está procesando múltiples solicitudes. Por favor, espera un momento e intenta nuevamente.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button
+              onClick={reloadAuth}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Reintentar
+            </Button>
+            <Button
+              onClick={() => base44.auth.logout()}
+              variant="outline"
+            >
+              Cerrar Sesión
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Otros errores de auth
+  if (status === 'error') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Error de Autenticación</h2>
+          <p className="text-slate-600 mb-6">
+            No se pudo cargar la información de tu sesión. Intenta nuevamente o cierra sesión.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button
+              onClick={reloadAuth}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Reintentar
+            </Button>
+            <Button
+              onClick={() => base44.auth.logout()}
+              variant="outline"
+            >
+              Cerrar Sesión
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // 1. SUPER_ADMIN (non-impersonating) → must access SaaS panel only

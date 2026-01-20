@@ -7,10 +7,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userAccount, setUserAccount] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
+  const [errorCode, setErrorCode] = useState(null); // Para capturar 429
 
   // 1️⃣ Prevent double initialization
   const hasInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
+  const last429Timestamp = useRef(null);
 
   useEffect(() => {
     if (hasInitializedRef.current) return;
@@ -22,12 +24,20 @@ export function AuthProvider({ children }) {
     // Prevent concurrent executions
     if (isLoadingRef.current) return;
     
+    // Anti-loop: Si hay error 429 reciente (< 10 segundos), no reintentar
+    if (last429Timestamp.current && Date.now() - last429Timestamp.current < 10000) {
+      console.warn('AuthContext: Rate limit cooldown activo, no reintentar');
+      return;
+    }
+    
     isLoadingRef.current = true;
     setStatus('loading');
+    setErrorCode(null);
 
     try {
       const u = await base44.auth.me();
       setUser(u);
+      last429Timestamp.current = null; // Reset 429 timestamp en success
 
       // Si es Super Admin sin impersonación, no cargar UserAccount
       if (u.is_super_admin && !u.impersonating_org_id) {
@@ -63,6 +73,14 @@ export function AuthProvider({ children }) {
       isLoadingRef.current = false;
     } catch (error) {
       console.error('AuthContext: Error loading auth data', error);
+      
+      // Detectar 429 específicamente
+      if (error?.response?.status === 429 || error?.status === 429) {
+        setErrorCode(429);
+        last429Timestamp.current = Date.now();
+        console.warn('AuthContext: Rate limit (429) detectado, bloqueando reintentos por 10s');
+      }
+      
       setStatus('error');
       isLoadingRef.current = false;
     }
@@ -73,11 +91,16 @@ export function AuthProvider({ children }) {
     hasInitializedRef.current = false;
     isLoadingRef.current = false;
     setStatus('idle');
+    setErrorCode(null);
+    last429Timestamp.current = null; // Reset 429 cooldown
     
     // Re-run initialization
     hasInitializedRef.current = true;
     await loadAuthData();
   };
+
+  // Alias para compatibilidad
+  const reloadAuth = refreshAuth;
 
   // 5️⃣ Memoize derived values
   const isImpersonating = useMemo(() => {
@@ -89,11 +112,12 @@ export function AuthProvider({ children }) {
   }, [user?.impersonating_org_id, userAccount?.organization_id]);
 
   const effectiveRole = useMemo(() => {
+    // Priorizar SUPER_ADMIN puro ANTES de impersonation/userAccount
+    if (user?.is_super_admin && !user?.impersonating_org_id) return 'SUPER_ADMIN';
     if (isImpersonating) return 'ORG_ADMIN';
     if (userAccount?.role) return userAccount.role;
-    if (user?.is_super_admin) return 'SUPER_ADMIN';
     return null;
-  }, [isImpersonating, userAccount?.role, user?.is_super_admin]);
+  }, [user?.is_super_admin, user?.impersonating_org_id, isImpersonating, userAccount?.role]);
 
   // Maintain backward compatibility with 'loading' boolean
   const loading = status === 'idle' || status === 'loading';
@@ -106,8 +130,10 @@ export function AuthProvider({ children }) {
     isImpersonating,
     loading,
     status,
+    errorCode,
     refreshAuth,
-  }), [user, userAccount, effectiveRole, effectiveOrgId, isImpersonating, loading, status]);
+    reloadAuth,
+  }), [user, userAccount, effectiveRole, effectiveOrgId, isImpersonating, loading, status, errorCode]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

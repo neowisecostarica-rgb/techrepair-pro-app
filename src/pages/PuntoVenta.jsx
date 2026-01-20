@@ -6,13 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingCart, Plus, Trash2, Search, DollarSign, Package, Wrench } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ShoppingCart, Plus, Trash2, Search, DollarSign, Package, Wrench, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { useLocation } from 'react-router-dom';
 import PageGuard from '../components/guards/PageGuard';
 import CrearProductoRapido from '../components/inventario/CrearProductoRapido';
 import TiqueteVenta from '../components/ventas/TiqueteVenta';
+import PanelContextoVenta from '../components/ventas/PanelContextoVenta';
+import EnviarWhatsApp from '../components/ventas/EnviarWhatsApp';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { validarVentaPOS, habilitarDiagnosticoTrasPago } from '@/components/pos/validacionesPOS';
@@ -40,6 +43,8 @@ function PuntoVentaContent() {
   const [ventaCompletada, setVentaCompletada] = useState(null);
   const [tipoConcepto, setTipoConcepto] = useState('venta_producto');
   const [otSeleccionada, setOtSeleccionada] = useState('');
+  const [validacionesPendientes, setValidacionesPendientes] = useState([]);
+  const [ordenTrabajoObj, setOrdenTrabajoObj] = useState(null);
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
   const { effectiveRole, effectiveOrgId } = useAuthContext();
@@ -99,6 +104,55 @@ function PuntoVentaContent() {
     enabled: !!userAccount?.organization_id,
   });
 
+  // Validar contexto OT cuando se selecciona
+  useEffect(() => {
+    if (otSeleccionada && effectiveOrgId) {
+      validarContextoOT();
+    } else {
+      setValidacionesPendientes([]);
+      setOrdenTrabajoObj(null);
+    }
+  }, [otSeleccionada, effectiveOrgId]);
+
+  const validarContextoOT = async () => {
+    const validaciones = [];
+    
+    try {
+      const ot = ordenesTrabajo.find(o => o.id === otSeleccionada);
+      if (!ot) return;
+
+      setOrdenTrabajoObj(ot);
+
+      // Validar OT no cancelada
+      if (ot.estado === 'CANCELADA') {
+        validaciones.push('❌ La orden de trabajo está CANCELADA');
+      }
+
+      // Validar OT no entregada
+      if (ot.estado === 'ENTREGADA') {
+        validaciones.push('❌ La orden de trabajo ya fue ENTREGADA');
+      }
+
+      // Validar cotización aprobada si es reparación
+      if (tipoConcepto === 'reparacion') {
+        const cotizaciones = await base44.entities.Cotizacion.filter({
+          organization_id: effectiveOrgId,
+          orden_trabajo_id: ot.id
+        });
+
+        const aprobada = cotizaciones.find(c => c.estado === 'aprobada');
+        
+        if (!aprobada) {
+          validaciones.push('❌ Requiere cotización APROBADA para cobrar reparación');
+        }
+      }
+
+      setValidacionesPendientes(validaciones);
+    } catch (error) {
+      console.error('Error validando contexto OT:', error);
+    }
+  };
+
   const createVentaMutation = useMutation({
     mutationFn: async (ventaData) => {
       // P0: Validar campos requeridos mínimos
@@ -108,7 +162,6 @@ function PuntoVentaContent() {
       if (!ventaData.metodo_pago) {
         throw new Error('Debe seleccionar un método de pago');
       }
-      // P0.3: Error humanizado para contexto inválido
       if (!ventaData.organization_id || !ventaData.branch_id || !ventaData.created_by_user_id) {
         throw new Error('Tu sesión ha expirado o hay un problema con tu cuenta. Cierra sesión y vuelve a iniciar.');
       }
@@ -125,19 +178,35 @@ function PuntoVentaContent() {
         throw new Error(validacion.mensaje);
       }
 
+      // Generar public_access_token único
+      const publicToken = `vta_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
       // Si ya existe venta (cobro de taller), solo actualizar
       if (ventaId) {
         return await base44.entities.Venta.update(ventaId, {
           estado: 'pagada',
-          metodo_pago: ventaData.metodo_pago
+          metodo_pago: ventaData.metodo_pago,
+          public_access_token: publicToken
         });
       }
-      // Crear nueva venta
-      const venta = await base44.entities.Venta.create(ventaData);
+      
+      // Crear nueva venta con token
+      const venta = await base44.entities.Venta.create({
+        ...ventaData,
+        public_access_token: publicToken
+      });
 
       // HABILITAR DIAGNÓSTICO si es revisión pagada
       if (ventaData.tipo_concepto === 'revision_diagnostico' && ventaData.referencia_ot_id) {
         await habilitarDiagnosticoTrasPago(ventaData.referencia_ot_id, venta.id);
+      }
+
+      // Si es reparación, cambiar estado OT a FINALIZADA
+      if (ventaData.tipo_concepto === 'reparacion' && ventaData.referencia_ot_id) {
+        await base44.entities.OrdenTrabajo.update(ventaData.referencia_ot_id, {
+          estado: 'FINALIZADA',
+          fecha_cierre: new Date().toISOString()
+        });
       }
 
       return venta;
@@ -189,6 +258,8 @@ function PuntoVentaContent() {
       setCarrito([]);
       setClienteSeleccionado('');
       setVentaId(null);
+      setOtSeleccionada('');
+      setOrdenTrabajoObj(null);
     },
     onError: (error) => {
       // P0: Mostrar error claro al usuario
@@ -198,42 +269,50 @@ function PuntoVentaContent() {
 
   const emitirGarantiaAutomatica = async (venta) => {
     try {
-      // Solo emitir si hay cliente
       if (!venta.cliente_id) return;
 
-      // Cargar config de garantía
       const orgs = await base44.entities.Organization.list();
       const org = orgs.find(o => o.id === venta.organization_id);
       const config = org?.garantia_config;
 
-      if (!config || !config.texto_ventas) return;
+      if (!config) return;
 
-      // Generar token único
-      const token = `GRTV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const esReparacion = venta.tipo_concepto === 'reparacion';
+      const textoGarantia = esReparacion ? config.texto_reparaciones : config.texto_ventas;
+      const mesesVigencia = esReparacion ? config.meses_vigencia_reparaciones : config.meses_vigencia_ventas;
 
-      // Calcular fechas
+      if (!textoGarantia || !mesesVigencia) return;
+
+      // Verificar si ya existe garantía
+      const garantiasExistentes = await base44.entities.Garantia.filter({
+        organization_id: venta.organization_id,
+        origen_tipo: esReparacion ? 'OT' : 'VENTA',
+        origen_id: esReparacion ? venta.referencia_ot_id : venta.id
+      });
+
+      if (garantiasExistentes.length > 0) return;
+
+      const token = `gar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const fechaEmision = new Date();
       const fechaInicio = new Date();
       const fechaFin = new Date();
-      fechaFin.setMonth(fechaFin.getMonth() + (config.meses_vigencia_ventas || 12));
+      fechaFin.setMonth(fechaFin.getMonth() + mesesVigencia);
 
-      // Crear garantía
       await base44.entities.Garantia.create({
         organization_id: venta.organization_id,
         cliente_id: venta.cliente_id,
-        origen_tipo: 'VENTA',
-        origen_id: venta.id,
+        origen_tipo: esReparacion ? 'OT' : 'VENTA',
+        origen_id: esReparacion ? venta.referencia_ot_id : venta.id,
         public_access_token: token,
         fecha_emision: fechaEmision.toISOString().split('T')[0],
         fecha_inicio: fechaInicio.toISOString().split('T')[0],
         fecha_fin: fechaFin.toISOString().split('T')[0],
         estado: 'ACTIVA',
-        texto_snapshot: config.texto_ventas,
+        texto_snapshot: textoGarantia,
         creado_por: user?.id
       });
     } catch (error) {
       console.error('Error emitiendo garantía:', error);
-      // No bloquear la venta si falla la garantía
     }
   };
 
@@ -321,6 +400,12 @@ function PuntoVentaContent() {
   const procesarVenta = async () => {
     if (carrito.length === 0) {
       alert('El carrito está vacío');
+      return;
+    }
+
+    // Validaciones P0
+    if (validacionesPendientes.length > 0) {
+      alert('No se puede procesar la venta:\n\n' + validacionesPendientes.join('\n'));
       return;
     }
 
@@ -437,6 +522,29 @@ function PuntoVentaContent() {
           {ventaId ? '💳 Cobrar trabajo de taller' : 'Venta directa de productos y servicios'}
         </p>
       </div>
+
+      {/* Panel de Contexto OT */}
+      {ordenTrabajoObj && (
+        <PanelContextoVenta 
+          ordenTrabajo={ordenTrabajoObj} 
+          effectiveOrgId={effectiveOrgId}
+        />
+      )}
+
+      {/* Validaciones Pendientes */}
+      {validacionesPendientes.length > 0 && (
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            <div className="font-semibold mb-2">No se puede procesar la venta:</div>
+            <ul className="list-disc list-inside space-y-1">
+              {validacionesPendientes.map((val, idx) => (
+                <li key={idx}>{val}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Panel Izquierdo - Búsqueda */}
@@ -749,8 +857,12 @@ function PuntoVentaContent() {
 
               <Button
                 onClick={procesarVenta}
-                disabled={carrito.length === 0 || createVentaMutation.isPending}
-                className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all h-14 text-lg"
+                disabled={
+                  carrito.length === 0 || 
+                  createVentaMutation.isPending || 
+                  validacionesPendientes.length > 0
+                }
+                className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all h-14 text-lg disabled:opacity-50"
               >
                 <DollarSign className="w-5 h-5 mr-2" />
                 {createVentaMutation.isPending ? 'Procesando...' : ventaId ? 'Confirmar Cobro' : 'Procesar Venta'}
@@ -778,10 +890,44 @@ function PuntoVentaContent() {
           <DialogHeader>
             <DialogTitle>Comprobante de Venta</DialogTitle>
           </DialogHeader>
-          <TiqueteVenta 
-            venta={ventaCompletada} 
-            onClose={() => setVentaCompletada(null)}
-          />
+          
+          {ventaCompletada && (
+            <div className="space-y-6">
+              <TiqueteVenta 
+                venta={ventaCompletada} 
+                onClose={() => setVentaCompletada(null)}
+              />
+              
+              <div className="pt-4 border-t">
+                <EnviarWhatsApp
+                  venta={ventaCompletada}
+                  cliente={clientes.find(c => c.id === ventaCompletada.cliente_id)}
+                  equipo={null}
+                  ordenTrabajo={ordenTrabajoObj}
+                  diagnostico={null}
+                  cotizacion={null}
+                  garantia={null}
+                  organization={null}
+                  onSent={async () => {
+                    try {
+                      await base44.entities.ComprobanteVentaLog.create({
+                        organization_id: effectiveOrgId,
+                        venta_id: ventaCompletada.id,
+                        accion: 'envio_original',
+                        canal: 'whatsapp',
+                        formato: 'normal',
+                        user_id: user?.id,
+                        user_email: user?.email,
+                        destinatario: clientes.find(c => c.id === ventaCompletada.cliente_id)?.telefono
+                      });
+                    } catch (e) {
+                      console.warn('Error logging WhatsApp:', e);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

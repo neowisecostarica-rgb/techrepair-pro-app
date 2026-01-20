@@ -4,8 +4,10 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Shield, QrCode, Printer, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import DiagnosticoTiquete80mm from '@/components/diagnostico/DiagnosticoTiquete80mm';
 import DiagnosticoDocumentoA4 from '@/components/diagnostico/DiagnosticoDocumentoA4';
+import { generarResumenTrabajo } from './utils/generarResumenTrabajo';
 
 export default function TiqueteVenta({ venta, onClose }) {
   const [vistaActiva, setVistaActiva] = useState('tiquete'); // 'tiquete' | '80mm' | 'a4'
@@ -84,6 +86,22 @@ export default function TiqueteVenta({ venta, onClose }) {
     },
     enabled: !!diagnostico?.tecnico_id && esDiagnostico,
   });
+
+  const { data: cotizacion } = useQuery({
+    queryKey: ['cotizacion-tiquete', venta?.referencia_ot_id],
+    queryFn: async () => {
+      const cots = await base44.entities.Cotizacion.filter({
+        orden_trabajo_id: venta.referencia_ot_id,
+        estado: 'aprobada'
+      });
+      return cots[0];
+    },
+    enabled: !!venta?.referencia_ot_id,
+  });
+
+  const resumenTrabajo = diagnostico && cotizacion
+    ? generarResumenTrabajo(diagnostico, cotizacion)
+    : null;
 
   const handleImprimir = async () => {
     // Registrar acción de impresión (solo si es reimpresión, no primera vez)
@@ -181,7 +199,13 @@ export default function TiqueteVenta({ venta, onClose }) {
       <div className="print:block">
         {/* Header */}
         <div className="text-center border-b-2 border-slate-900 pb-4 mb-6">
+          {organization?.logo_url && (
+            <img src={organization.logo_url} alt="Logo" className="h-16 mx-auto mb-2" />
+          )}
           <h1 className="text-2xl font-bold">{organization?.name || 'TALLER DE REPARACIONES'}</h1>
+          {organization?.telefono_negocio && (
+            <p className="text-sm text-slate-600">📞 {organization.telefono_negocio}</p>
+          )}
           <p className="text-sm text-slate-600 mt-1">Comprobante de Venta</p>
         </div>
 
@@ -195,6 +219,12 @@ export default function TiqueteVenta({ venta, onClose }) {
             <p className="font-semibold">Método de Pago:</p>
             <p className="capitalize">{venta.metodo_pago}</p>
           </div>
+          {ordenTrabajo && (
+            <div className="col-span-2">
+              <p className="font-semibold">Orden de Trabajo:</p>
+              <p>{ordenTrabajo.codigo_ot}</p>
+            </div>
+          )}
         </div>
 
         {/* Cliente */}
@@ -203,6 +233,14 @@ export default function TiqueteVenta({ venta, onClose }) {
             <p className="font-semibold text-sm mb-1">Cliente:</p>
             <p className="text-sm">{cliente.nombre_completo}</p>
             <p className="text-sm text-slate-600">{cliente.telefono}</p>
+          </div>
+        )}
+
+        {/* Resumen de Trabajo Realizado */}
+        {resumenTrabajo && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
+            <p className="font-semibold text-sm mb-2">Servicio Realizado:</p>
+            <pre className="text-xs whitespace-pre-wrap font-sans text-slate-700">{resumenTrabajo}</pre>
           </div>
         )}
 
@@ -289,35 +327,37 @@ export default function TiqueteVenta({ venta, onClose }) {
       <div className="print:hidden flex gap-3 mt-6">
         {esDiagnostico && ordenTrabajo && diagnostico ? (
           <>
-            <button
+            <Button
               onClick={handleImprimir}
-              className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center justify-center gap-2"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-4 h-4 mr-2" />
               Imprimir 80mm
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleExportarA4}
-              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center justify-center gap-2"
+              className="flex-1 bg-purple-600 hover:bg-purple-700"
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-4 h-4 mr-2" />
               Exportar A4
-            </button>
+            </Button>
           </>
         ) : (
-          <button
+          <Button
             onClick={handleImprimir}
-            className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700"
           >
+            <Printer className="w-4 h-4 mr-2" />
             Imprimir
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           onClick={onClose}
-          className="flex-1 px-4 py-2 bg-slate-600 text-white rounded hover:bg-slate-700"
+          variant="outline"
+          className="flex-1"
         >
           Cerrar
-        </button>
+        </Button>
       </div>
 
       <style jsx>{`

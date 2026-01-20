@@ -243,6 +243,9 @@ function LayoutContent({ children, currentPageName }) {
 
      // VENTAS
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
+     { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
+     { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
 
      // CLIENTES
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
@@ -269,6 +272,9 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
 
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
+     { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
+     { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
      { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
 
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
@@ -282,6 +288,9 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
 
      { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
+     { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
+     { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
 
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
      { label: 'CRM', path: 'CRM', icon: Users, category: 'CLIENTES' },

@@ -30,27 +30,7 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
         (!n.user_id && !n.role_target)
       );
 
-      // P1.4: Agrupar notificaciones repetidas
-      const grouped = {};
-      filtered.forEach(n => {
-        if (n.mensaje.includes('pausada hace')) {
-          const key = 'pausadas';
-          if (!grouped[key]) {
-            grouped[key] = { ...n, mensaje: `${filtered.filter(x => x.mensaje.includes('pausada hace')).length} OTs pausadas requieren atención`, count: 0 };
-          }
-          grouped[key].count++;
-        } else if (n.mensaje.includes('sin movimiento')) {
-          const key = 'sin_movimiento';
-          if (!grouped[key]) {
-            grouped[key] = { ...n, mensaje: `${filtered.filter(x => x.mensaje.includes('sin movimiento')).length} OTs sin movimiento reciente`, count: 0 };
-          }
-          grouped[key].count++;
-        } else {
-          grouped[n.id] = n;
-        }
-      });
-
-      return Object.values(grouped);
+      return filtered;
     },
     enabled: !!userAccount?.organization_id,
     refetchInterval: 30000, // Refetch cada 30 segundos

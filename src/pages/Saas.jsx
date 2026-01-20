@@ -57,11 +57,13 @@ function SaasContent() {
   const { data: allUserAccounts = [] } = useQuery({
     queryKey: ['all-user-accounts'],
     queryFn: () => base44.entities.UserAccount.list(),
+    enabled: !authIsImpersonating, // Solo cargar si NO está impersonando
   });
 
   const { data: allOrders = [] } = useQuery({
     queryKey: ['all-orders'],
     queryFn: () => base44.entities.OrdenTrabajo.list(),
+    enabled: !authIsImpersonating, // Solo cargar si NO está impersonando
   });
 
   const { data: partners = [] } = useQuery({

@@ -47,9 +47,11 @@ export default function PortalComprobante() {
 
   const { data: cliente } = useQuery({
     queryKey: ['cliente-comprobante', venta?.cliente_id],
-    queryFn: () => base44.entities.Cliente.list(),
+    queryFn: async () => {
+      const clientes = await base44.entities.Cliente.filter({ id: venta.cliente_id });
+      return clientes[0];
+    },
     enabled: !!venta?.cliente_id,
-    select: (data) => data.find(c => c.id === venta.cliente_id),
   });
 
   const { data: items = [] } = useQuery({
@@ -63,20 +65,29 @@ export default function PortalComprobante() {
   const { data: organization } = useQuery({
     queryKey: ['org-comprobante', venta?.organization_id],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.list();
-      return orgs.find(o => o.id === venta.organization_id);
+      const orgs = await base44.entities.Organization.filter({ id: venta.organization_id });
+      return orgs[0];
     },
     enabled: !!venta?.organization_id,
   });
 
   const { data: garantia } = useQuery({
-    queryKey: ['garantia-comprobante', venta?.id],
+    queryKey: ['garantia-comprobante', venta?.id, venta?.referencia_ot_id],
     queryFn: async () => {
-      const garantias = await base44.entities.Garantia.filter({
+      // P0-002: Buscar garantía por OT si existe, sino por VENTA
+      if (venta.referencia_ot_id) {
+        const garantiasOT = await base44.entities.Garantia.filter({
+          origen_tipo: 'OT',
+          origen_id: venta.referencia_ot_id
+        });
+        if (garantiasOT.length > 0) return garantiasOT[0];
+      }
+      
+      const garantiasVenta = await base44.entities.Garantia.filter({
         origen_tipo: 'VENTA',
         origen_id: venta.id
       });
-      return garantias[0];
+      return garantiasVenta[0];
     },
     enabled: !!venta?.id,
   });

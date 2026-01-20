@@ -15,6 +15,7 @@ import MigrationAdmin from './pages/MigrationAdmin';
 import Onboarding from './pages/Onboarding';
 import OrdenesTrabajo from './pages/OrdenesTrabajo';
 import PortalCliente from './pages/PortalCliente';
+import PortalComprobante from './pages/PortalComprobante';
 import PortalCotizacion from './pages/PortalCotizacion';
 import PortalGarantia from './pages/PortalGarantia';
 import ProductividadTecnicos from './pages/ProductividadTecnicos';
@@ -23,7 +24,6 @@ import Reciclaje from './pages/Reciclaje';
 import ResumenDiagnostico from './pages/ResumenDiagnostico';
 import Saas from './pages/Saas';
 import Settings from './pages/Settings';
-import PortalComprobante from './pages/PortalComprobante';
 import __Layout from './Layout.jsx';
 
 
@@ -45,6 +45,7 @@ export const PAGES = {
     "Onboarding": Onboarding,
     "OrdenesTrabajo": OrdenesTrabajo,
     "PortalCliente": PortalCliente,
+    "PortalComprobante": PortalComprobante,
     "PortalCotizacion": PortalCotizacion,
     "PortalGarantia": PortalGarantia,
     "ProductividadTecnicos": ProductividadTecnicos,
@@ -53,7 +54,6 @@ export const PAGES = {
     "ResumenDiagnostico": ResumenDiagnostico,
     "Saas": Saas,
     "Settings": Settings,
-    "PortalComprobante": PortalComprobante,
 }
 
 export const pagesConfig = {

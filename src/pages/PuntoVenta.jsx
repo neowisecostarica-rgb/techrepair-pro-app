@@ -104,6 +104,43 @@ function PuntoVentaContent() {
     enabled: !!userAccount?.organization_id,
   });
 
+  const { data: equipos = [] } = useQuery({
+    queryKey: ['equipos-venta', userAccount?.organization_id],
+    queryFn: () => base44.entities.Equipo.filter({
+      organization_id: userAccount.organization_id
+    }),
+    enabled: !!userAccount?.organization_id,
+  });
+
+  const { data: diagnosticos = [] } = useQuery({
+    queryKey: ['diagnosticos-venta', effectiveOrgId],
+    queryFn: () => base44.entities.DiagnosticoTecnico.filter({
+      organization_id: effectiveOrgId
+    }),
+    enabled: !!effectiveOrgId,
+  });
+
+  const { data: cotizaciones = [] } = useQuery({
+    queryKey: ['cotizaciones-venta', effectiveOrgId],
+    queryFn: () => base44.entities.Cotizacion.filter({
+      organization_id: effectiveOrgId
+    }),
+    enabled: !!effectiveOrgId,
+  });
+
+  const { data: garantias = [] } = useQuery({
+    queryKey: ['garantias-venta', effectiveOrgId],
+    queryFn: () => base44.entities.Garantia.filter({
+      organization_id: effectiveOrgId
+    }),
+    enabled: !!effectiveOrgId,
+  });
+
+  const { data: organizations = [] } = useQuery({
+    queryKey: ['organizations-venta'],
+    queryFn: () => base44.entities.Organization.list(),
+  });
+
   // Validar contexto OT cuando se selecciona
   useEffect(() => {
     if (otSeleccionada && effectiveOrgId) {
@@ -135,15 +172,21 @@ function PuntoVentaContent() {
 
       // Validar cotización aprobada si es reparación
       if (tipoConcepto === 'reparacion') {
-        const cotizaciones = await base44.entities.Cotizacion.filter({
+        const cots = await base44.entities.Cotizacion.filter({
           organization_id: effectiveOrgId,
           orden_trabajo_id: ot.id
         });
 
-        const aprobada = cotizaciones.find(c => c.estado === 'aprobada');
+        const aprobada = cots.find(c => c.estado === 'aprobada');
         
         if (!aprobada) {
           validaciones.push('❌ Requiere cotización APROBADA para cobrar reparación');
+        } else {
+          // RIESGO-001: Validar total venta >= total cotización
+          const totales = calcularTotales();
+          if (totales.total < aprobada.total) {
+            validaciones.push('❌ El total de venta debe ser igual o mayor al total aprobado en cotización');
+          }
         }
       }
 
@@ -891,43 +934,57 @@ function PuntoVentaContent() {
             <DialogTitle>Comprobante de Venta</DialogTitle>
           </DialogHeader>
           
-          {ventaCompletada && (
-            <div className="space-y-6">
-              <TiqueteVenta 
-                venta={ventaCompletada} 
-                onClose={() => setVentaCompletada(null)}
-              />
-              
-              <div className="pt-4 border-t">
-                <EnviarWhatsApp
-                  venta={ventaCompletada}
-                  cliente={clientes.find(c => c.id === ventaCompletada.cliente_id)}
-                  equipo={null}
-                  ordenTrabajo={ordenTrabajoObj}
-                  diagnostico={null}
-                  cotizacion={null}
-                  garantia={null}
-                  organization={null}
-                  onSent={async () => {
-                    try {
-                      await base44.entities.ComprobanteVentaLog.create({
-                        organization_id: effectiveOrgId,
-                        venta_id: ventaCompletada.id,
-                        accion: 'envio_original',
-                        canal: 'whatsapp',
-                        formato: 'normal',
-                        user_id: user?.id,
-                        user_email: user?.email,
-                        destinatario: clientes.find(c => c.id === ventaCompletada.cliente_id)?.telefono
-                      });
-                    } catch (e) {
-                      console.warn('Error logging WhatsApp:', e);
-                    }
-                  }}
+          {ventaCompletada && (() => {
+            // P0-001: Cargar datos relacionados para EnviarWhatsApp
+            const equipo = ordenTrabajoObj ? equipos.find(e => e.id === ordenTrabajoObj.equipo_id) : null;
+            const diagnostico = ordenTrabajoObj ? diagnosticos.find(d => d.orden_trabajo_id === ordenTrabajoObj.id) : null;
+            const cotizacion = ordenTrabajoObj ? cotizaciones.find(c => c.orden_trabajo_id === ordenTrabajoObj.id && c.estado === 'aprobada') : null;
+            
+            // Buscar garantía (OT o Venta)
+            const garantia = ventaCompletada.referencia_ot_id
+              ? garantias.find(g => g.origen_tipo === 'OT' && g.origen_id === ventaCompletada.referencia_ot_id)
+              : garantias.find(g => g.origen_tipo === 'VENTA' && g.origen_id === ventaCompletada.id);
+            
+            const organization = organizations.find(o => o.id === ventaCompletada.organization_id);
+
+            return (
+              <div className="space-y-6">
+                <TiqueteVenta 
+                  venta={ventaCompletada} 
+                  onClose={() => setVentaCompletada(null)}
                 />
+                
+                <div className="pt-4 border-t">
+                  <EnviarWhatsApp
+                    venta={ventaCompletada}
+                    cliente={clientes.find(c => c.id === ventaCompletada.cliente_id)}
+                    equipo={equipo}
+                    ordenTrabajo={ordenTrabajoObj}
+                    diagnostico={diagnostico}
+                    cotizacion={cotizacion}
+                    garantia={garantia}
+                    organization={organization}
+                    onSent={async () => {
+                      try {
+                        await base44.entities.ComprobanteVentaLog.create({
+                          organization_id: effectiveOrgId,
+                          venta_id: ventaCompletada.id,
+                          accion: 'envio_original',
+                          canal: 'whatsapp',
+                          formato: 'normal',
+                          user_id: user?.id,
+                          user_email: user?.email,
+                          destinatario: clientes.find(c => c.id === ventaCompletada.cliente_id)?.telefono
+                        });
+                      } catch (e) {
+                        console.warn('Error logging WhatsApp:', e);
+                      }
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

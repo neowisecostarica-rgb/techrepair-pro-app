@@ -44,6 +44,7 @@ function LayoutContent({ children, currentPageName }) {
       CLIENTES: true,
       INVENTARIO: true,
       ANÁLISIS: true,
+      FINANZAS: true,
       CONFIGURACIÓN: true,
     };
   });
@@ -287,6 +288,8 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
 
      { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
+
+     { label: 'Finanzas', path: 'Finanzas', icon: LayoutDashboard, category: 'FINANZAS' },
    ];
  } else if (effectiveRole === 'SALES') {
    menuItems = [

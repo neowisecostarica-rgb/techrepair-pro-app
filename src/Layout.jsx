@@ -85,11 +85,28 @@ function LayoutContent({ children, currentPageName }) {
   }
 
   // 1. SUPER_ADMIN (non-impersonating) → must access SaaS panel only
-  if (effectiveRole === 'SUPER_ADMIN' && !isImpersonating && currentPageName !== 'Saas') {
-    if (typeof window !== 'undefined') {
-      window.location.href = createPageUrl('Saas');
+  if (effectiveRole === 'SUPER_ADMIN' && !isImpersonating) {
+    if (currentPageName !== 'Saas') {
+      if (typeof window !== 'undefined') {
+        window.location.href = createPageUrl('Saas');
+      }
+      return null;
     }
-    return null;
+    
+    // SUPER_ADMIN in Saas page: Render minimal layout
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+        <style>{`
+          :root {
+            --primary: 142 71% 45%;
+            --primary-foreground: 0 0% 100%;
+            --secondary: 200 70% 50%;
+            --accent: 142 71% 95%;
+          }
+        `}</style>
+        <div className="p-8">{children}</div>
+      </div>
+    );
   }
 
   // 2. No UserAccount → send to Onboarding

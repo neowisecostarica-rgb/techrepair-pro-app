@@ -35,6 +35,11 @@ export default function PageGuard({ allowedRoles, children }) {
     return null;
   }
 
+  // SUPER_ADMIN bypass: Allow access to Saas without effectiveOrgId
+  if (effectiveRole === 'SUPER_ADMIN' && allowedRoles.includes('SUPER_ADMIN')) {
+    return <>{children}</>;
+  }
+
   // P0.2 TENANT ZERO: Block access without valid tenant
   // This is a second layer of defense beyond Layout
   if (!effectiveOrgId) {

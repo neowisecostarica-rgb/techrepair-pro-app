@@ -28,6 +28,7 @@ import VentasCotizaciones from './pages/VentasCotizaciones';
 import VentasGarantias from './pages/VentasGarantias';
 import VentasHistorial from './pages/VentasHistorial';
 import VentasMetricas from './pages/VentasMetricas';
+import Finanzas from './pages/Finanzas';
 import __Layout from './Layout.jsx';
 
 
@@ -62,6 +63,7 @@ export const PAGES = {
     "VentasGarantias": VentasGarantias,
     "VentasHistorial": VentasHistorial,
     "VentasMetricas": VentasMetricas,
+    "Finanzas": Finanzas,
 }
 
 export const pagesConfig = {

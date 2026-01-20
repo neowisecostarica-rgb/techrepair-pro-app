@@ -260,6 +260,9 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Productividad', path: 'ProductividadTecnicos', icon: Users, category: 'ANÁLISIS' },
      { label: 'Análisis', path: 'AnalisisTrabajo', icon: FileText, category: 'ANÁLISIS' },
 
+     // FINANZAS
+     { label: 'Dashboard', path: 'Finanzas', icon: LayoutDashboard, category: 'FINANZAS' },
+
      // CONFIGURACIÓN (SIEMPRE AL FINAL)
      { label: 'Configuración', path: 'Settings', icon: Settings, category: 'CONFIGURACIÓN' },
    ];

@@ -101,12 +101,13 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     setBusquedaProductos(prev => ({ ...prev, [index]: texto }));
   };
 
-  const seleccionarProducto = (producto, index) => {
+  const seleccionarItem = (item, index) => {
     const newItems = [...items];
-    newItems[index].descripcion = producto.nombre;
-    newItems[index].precio_unitario = producto.precio_venta || 0;
-    newItems[index].tipo = 'producto';
-    newItems[index].producto_inventario_id = producto.id;
+    newItems[index].descripcion = item.nombre;
+    newItems[index].precio_unitario = item.precio_venta || 0;
+    newItems[index].tipo = item.tipo_sugerido;
+    newItems[index].item_id = item.id;
+    newItems[index].origen = item.origen;
     
     // Recalcular subtotal
     const cantidad = parseFloat(newItems[index].cantidad) || 0;
@@ -116,20 +117,45 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     newItems[index].subtotal = subtotalSinDescuento - (subtotalSinDescuento * descuento / 100);
     
     setItems(newItems);
-    setProductoSeleccionado(prev => ({ ...prev, [index]: producto }));
+    setProductoSeleccionado(prev => ({ ...prev, [index]: item }));
     setBusquedaProductos(prev => ({ ...prev, [index]: '' }));
   };
 
-  const getProductosFiltrados = (index) => {
+  const getItemsDisponibles = (index) => {
     const busqueda = busquedaProductos[index] || '';
     if (!busqueda || busqueda.length < 2) return [];
     
     const textoLower = busqueda.toLowerCase();
-    return inventario.filter(p => 
-      p.nombre?.toLowerCase().includes(textoLower) ||
-      p.codigo_interno?.toLowerCase().includes(textoLower) ||
-      p.marca?.toLowerCase().includes(textoLower)
-    ).slice(0, 5);
+    
+    // Buscar en inventario
+    const productosInventario = inventario
+      .filter(p => 
+        p.nombre?.toLowerCase().includes(textoLower) ||
+        p.codigo_interno?.toLowerCase().includes(textoLower) ||
+        p.marca?.toLowerCase().includes(textoLower)
+      )
+      .map(p => ({ 
+        ...p, 
+        origen: 'inventario',
+        tipo_sugerido: 'producto' 
+      }));
+    
+    // Buscar en servicios
+    const serviciosDisponibles = servicios
+      .filter(s => 
+        s.nombre?.toLowerCase().includes(textoLower) ||
+        s.descripcion?.toLowerCase().includes(textoLower)
+      )
+      .map(s => ({ 
+        ...s, 
+        nombre: s.nombre,
+        precio_venta: s.precio || 0,
+        cantidad_disponible: null,
+        origen: 'servicio',
+        tipo_sugerido: 'servicio'
+      }));
+    
+    return [...productosInventario, ...serviciosDisponibles].slice(0, 8);
   };
 
   const addItem = () => {
@@ -339,7 +365,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
               {items.map((item, idx) => {
                 const productoActual = productoSeleccionado[idx];
-                const resultados = getProductosFiltrados(idx);
+                const resultados = getItemsDisponibles(idx);
                 
                 return (
                 <Card key={idx} className="border-0 shadow-sm">
@@ -377,23 +403,32 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                               className="h-9 pl-8"
                             />
                           </div>
-                          {item.tipo === 'producto' && resultados.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                              {resultados.map(producto => (
+                          {resultados.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {resultados.map(item => (
                                 <button
-                                  key={producto.id}
+                                  key={item.id}
                                   type="button"
-                                  onClick={() => seleccionarProducto(producto, idx)}
+                                  onClick={() => seleccionarItem(item, idx)}
                                   className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
                                 >
                                   <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-900">{producto.nombre}</p>
-                                      <p className="text-xs text-slate-500">{producto.codigo_interno}</p>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <p className="text-sm font-medium text-slate-900">{item.nombre}</p>
+                                        <Badge className={item.origen === 'inventario' ? 'bg-blue-100 text-blue-700 border-0' : 'bg-purple-100 text-purple-700 border-0'}>
+                                          {item.origen === 'inventario' ? 'Producto' : 'Servicio'}
+                                        </Badge>
+                                      </div>
+                                      {item.codigo_interno && (
+                                        <p className="text-xs text-slate-500">{item.codigo_interno}</p>
+                                      )}
                                     </div>
                                     <div className="text-right">
-                                      <p className="text-sm font-medium text-emerald-600">₡{producto.precio_venta?.toLocaleString()}</p>
-                                      <p className="text-xs text-slate-500">Stock: {producto.cantidad_disponible}</p>
+                                      <p className="text-sm font-medium text-emerald-600">₡{item.precio_venta?.toLocaleString()}</p>
+                                      {item.cantidad_disponible !== null && (
+                                        <p className="text-xs text-slate-500">Stock: {item.cantidad_disponible}</p>
+                                      )}
                                     </div>
                                   </div>
                                 </button>

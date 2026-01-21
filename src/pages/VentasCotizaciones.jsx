@@ -371,14 +371,19 @@ function VentasCotizacionesContent() {
       }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nueva Cotización</DialogTitle>
+            <DialogTitle>
+              {!clienteSeleccionado 
+                ? 'Paso 1: Seleccionar Cliente' 
+                : `Nueva Cotización - ${clientes.find(c => c.id === clienteSeleccionado)?.nombre_completo || ''}`
+              }
+            </DialogTitle>
           </DialogHeader>
           
           {!clienteSeleccionado ? (
             <div className="space-y-4 py-6">
               <div className="text-center mb-6">
                 <FileText className="w-12 h-12 mx-auto mb-3 text-emerald-500" />
-                <p className="text-slate-600">Selecciona un cliente para crear la cotización</p>
+                <p className="text-slate-600">Para comenzar, selecciona el cliente para esta cotización</p>
               </div>
               
               <div className="space-y-2">

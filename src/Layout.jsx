@@ -260,6 +260,7 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
      { label: 'Productividad', path: 'ProductividadTecnicos', icon: Users, category: 'ANÁLISIS' },
      { label: 'Análisis', path: 'AnalisisTrabajo', icon: FileText, category: 'ANÁLISIS' },
+     { label: 'Operación', path: 'Operacion', icon: Wrench, category: 'ANÁLISIS' },
 
      // FINANZAS
      { label: 'Dashboard', path: 'Finanzas', icon: LayoutDashboard, category: 'FINANZAS' },
@@ -288,6 +289,8 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
 
      { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
+
+     { label: 'Operación', path: 'Operacion', icon: Wrench, category: 'ANÁLISIS' },
 
      { label: 'Finanzas', path: 'Finanzas', icon: LayoutDashboard, category: 'FINANZAS' },
    ];

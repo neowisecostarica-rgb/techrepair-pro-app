@@ -8,6 +8,7 @@ import Clientes from './pages/Clientes';
 import ColaRevision from './pages/ColaRevision';
 import CrearUsuariosPrueba from './pages/CrearUsuariosPrueba';
 import Dashboard from './pages/Dashboard';
+import Finanzas from './pages/Finanzas';
 import Home from './pages/Home';
 import Inventario from './pages/Inventario';
 import MiDia from './pages/MiDia';
@@ -28,7 +29,7 @@ import VentasCotizaciones from './pages/VentasCotizaciones';
 import VentasGarantias from './pages/VentasGarantias';
 import VentasHistorial from './pages/VentasHistorial';
 import VentasMetricas from './pages/VentasMetricas';
-import Finanzas from './pages/Finanzas';
+import Operacion from './pages/Operacion';
 import __Layout from './Layout.jsx';
 
 
@@ -43,6 +44,7 @@ export const PAGES = {
     "ColaRevision": ColaRevision,
     "CrearUsuariosPrueba": CrearUsuariosPrueba,
     "Dashboard": Dashboard,
+    "Finanzas": Finanzas,
     "Home": Home,
     "Inventario": Inventario,
     "MiDia": MiDia,
@@ -63,7 +65,7 @@ export const PAGES = {
     "VentasGarantias": VentasGarantias,
     "VentasHistorial": VentasHistorial,
     "VentasMetricas": VentasMetricas,
-    "Finanzas": Finanzas,
+    "Operacion": Operacion,
 }
 
 export const pagesConfig = {

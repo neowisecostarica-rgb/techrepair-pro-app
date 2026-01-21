@@ -45,6 +45,7 @@ function PuntoVentaContent() {
   const [otSeleccionada, setOtSeleccionada] = useState('');
   const [validacionesPendientes, setValidacionesPendientes] = useState([]);
   const [ordenTrabajoObj, setOrdenTrabajoObj] = useState(null);
+  const [showConfirmacionVenta, setShowConfirmacionVenta] = useState(false);
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
   const { effectiveRole, effectiveOrgId } = useAuthContext();
@@ -452,6 +453,13 @@ function PuntoVentaContent() {
       return;
     }
 
+    // Mostrar confirmación explícita
+    setShowConfirmacionVenta(true);
+  };
+
+  const confirmarYProcesarVenta = async () => {
+    setShowConfirmacionVenta(false);
+
     // P0.2: Resolver branch_id automáticamente si falta y hay una sola sucursal
     let branchIdFinal = userAccount?.branch_id;
 
@@ -560,10 +568,20 @@ function PuntoVentaContent() {
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Punto de Venta</h1>
-        <p className="text-slate-500">
-          {ventaId ? '💳 Cobrar trabajo de taller' : 'Venta directa de productos y servicios'}
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">
+          Punto de Venta - Caja Directa
+        </h1>
+        <p className="text-slate-600 mb-4">
+          {ventaId ? '💳 Cobrar trabajo de taller' : 'Registra ventas que impactan caja e inventario inmediatamente'}
         </p>
+        {!ventaId && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertCircle className="w-4 h-4 text-blue-600" />
+            <AlertDescription className="text-blue-800">
+              💡 <strong>¿Necesitas cotizar primero?</strong> Usa el módulo "Cotizaciones" en el menú lateral para crear propuestas sin impactar inventario.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {/* Panel de Contexto OT */}
@@ -908,7 +926,7 @@ function PuntoVentaContent() {
                 className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all h-14 text-lg disabled:opacity-50"
               >
                 <DollarSign className="w-5 h-5 mr-2" />
-                {createVentaMutation.isPending ? 'Procesando...' : ventaId ? 'Confirmar Cobro' : 'Procesar Venta'}
+                {createVentaMutation.isPending ? 'Procesando...' : ventaId ? 'Confirmar Cobro' : 'Registrar Venta'}
               </Button>
             </CardContent>
           </Card>

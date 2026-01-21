@@ -43,7 +43,7 @@ function LayoutContent({ children, currentPageName }) {
       VENTAS: true,
       CLIENTES: true,
       INVENTARIO: true,
-      ANÁLISIS: true,
+      'VISIÓN DEL NEGOCIO': true,
       FINANZAS: true,
       CONFIGURACIÓN: true,
     };
@@ -235,35 +235,33 @@ function LayoutContent({ children, currentPageName }) {
      // ⭐ HOME OPERATIVA (sin categoría)
      { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
 
+     // VISIÓN DEL NEGOCIO
+     { label: 'Resumen del Negocio', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard' },
+     { label: 'Estado Financiero', path: 'Finanzas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard (Finanzas)' },
+     { label: 'Ventas y Ganancias', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Métricas' },
+     { label: 'Rendimiento del Equipo', path: 'ProductividadTecnicos', icon: Users, category: 'VISIÓN DEL NEGOCIO' },
+     { label: 'Análisis de Operaciones', path: 'AnalisisTrabajo', icon: FileText, category: 'VISIÓN DEL NEGOCIO' },
+     { label: 'Supervisión en Vivo', path: 'Operacion', icon: Wrench, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Operación' },
+
      // TALLER
      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
      { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
      { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
      { label: 'Reciclaje', path: 'Reciclaje', icon: Recycle, category: 'TALLER' },
-     { label: 'Calidad', path: 'Calidad', icon: AlertCircle, category: 'TALLER' },
+     { label: 'No Conformidades', path: 'Calidad', icon: AlertCircle, category: 'TALLER' },
 
      // VENTAS
-     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'Caja y Cobros', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS', tooltip: 'Antes: Punto de Venta' },
      { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
      { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
      { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
-     { label: 'Métricas', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VENTAS' },
 
      // CLIENTES
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
-     { label: 'CRM', path: 'CRM', icon: Users, category: 'CLIENTES' },
+     { label: 'Gestión de Leads', path: 'CRM', icon: Users, category: 'CLIENTES', tooltip: 'Antes: CRM' },
 
      // INVENTARIO
      { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
-
-     // ANÁLISIS
-     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
-     { label: 'Productividad', path: 'ProductividadTecnicos', icon: Users, category: 'ANÁLISIS' },
-     { label: 'Análisis', path: 'AnalisisTrabajo', icon: FileText, category: 'ANÁLISIS' },
-     { label: 'Operación', path: 'Operacion', icon: Wrench, category: 'ANÁLISIS' },
-
-     // FINANZAS
-     { label: 'Dashboard', path: 'Finanzas', icon: LayoutDashboard, category: 'FINANZAS' },
 
      // CONFIGURACIÓN (SIEMPRE AL FINAL)
      { label: 'Configuración', path: 'Settings', icon: Settings, category: 'CONFIGURACIÓN' },
@@ -273,55 +271,53 @@ function LayoutContent({ children, currentPageName }) {
    menuItems = [
      { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
 
+     { label: 'Resumen del Negocio', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard' },
+     { label: 'Estado Financiero', path: 'Finanzas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard (Finanzas)' },
+     { label: 'Supervisión en Vivo', path: 'Operacion', icon: Wrench, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Operación' },
+
      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
      { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
      { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
 
-     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'Caja y Cobros', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS', tooltip: 'Antes: Punto de Venta' },
      { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
      { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
      { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
-     { label: 'Métricas', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VENTAS' },
-     { label: 'CRM', path: 'CRM', icon: Users, category: 'VENTAS' },
+     { label: 'Ventas y Ganancias', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VENTAS', tooltip: 'Antes: Métricas' },
 
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
+     { label: 'Gestión de Leads', path: 'CRM', icon: Users, category: 'CLIENTES', tooltip: 'Antes: CRM' },
 
      { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
-
-     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
-
-     { label: 'Operación', path: 'Operacion', icon: Wrench, category: 'ANÁLISIS' },
-
-     { label: 'Finanzas', path: 'Finanzas', icon: LayoutDashboard, category: 'FINANZAS' },
    ];
  } else if (effectiveRole === 'SALES') {
    menuItems = [
      { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
 
-     { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS' },
+     { label: 'Resumen del Negocio', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard' },
+     { label: 'Ventas y Ganancias', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Métricas' },
+
+     { label: 'Caja y Cobros', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS', tooltip: 'Antes: Punto de Venta' },
      { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
      { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
      { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
-     { label: 'Métricas', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VENTAS' },
 
      { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
-     { label: 'CRM', path: 'CRM', icon: Users, category: 'CLIENTES' },
+     { label: 'Gestión de Leads', path: 'CRM', icon: Users, category: 'CLIENTES', tooltip: 'Antes: CRM' },
 
      { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
      { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
-
-     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
    ];
  } else if (effectiveRole === 'TECHNICIAN') {
    menuItems = [
      { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
 
-     { label: 'Cola Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
+     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
      { label: 'Mi Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
 
      { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
 
-     { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, category: 'ANÁLISIS' },
+     { label: 'Mis Estadísticas', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO' },
    ];
  }
 
@@ -417,6 +413,7 @@ return (
                                 ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg shadow-emerald-500/30'
                                 : 'text-slate-600 hover:bg-slate-100'
                             }`}
+                            title={sidebarOpen && item.tooltip ? item.tooltip : undefined}
                           >
                             <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-500'}`} />
                             {sidebarOpen && (

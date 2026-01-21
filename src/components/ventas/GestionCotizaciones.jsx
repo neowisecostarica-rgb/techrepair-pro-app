@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Send, FileText, Trash2, AlertCircle, MessageSquare } from 'lucide-react';
+import { Plus, Send, FileText, Trash2, AlertCircle, MessageSquare, Search, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { withOrgId } from '@/components/hooks/useOrgData';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const DESCUENTO_MAXIMO_SIN_APROBACION = 15; // 15%
 
@@ -20,6 +21,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const [showModal, setShowModal] = useState(false);
   const [editingCotizacion, setEditingCotizacion] = useState(null);
   const [items, setItems] = useState([{ tipo: 'servicio', descripcion: '', cantidad: 1, precio_unitario: 0, descuento_porcentaje: 0, subtotal: 0 }]);
+  const [busquedaProductos, setBusquedaProductos] = useState({});
+  const [productoSeleccionado, setProductoSeleccionado] = useState({});
   const queryClient = useQueryClient();
 
   const { data: cotizaciones = [] } = useQuery({
@@ -90,6 +93,43 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const resetForm = () => {
     setItems([{ tipo: 'servicio', descripcion: '', cantidad: 1, precio_unitario: 0, descuento_porcentaje: 0, subtotal: 0 }]);
     setEditingCotizacion(null);
+    setBusquedaProductos({});
+    setProductoSeleccionado({});
+  };
+
+  const buscarProducto = (texto, index) => {
+    setBusquedaProductos(prev => ({ ...prev, [index]: texto }));
+  };
+
+  const seleccionarProducto = (producto, index) => {
+    const newItems = [...items];
+    newItems[index].descripcion = producto.nombre;
+    newItems[index].precio_unitario = producto.precio_venta || 0;
+    newItems[index].tipo = 'producto';
+    newItems[index].producto_inventario_id = producto.id;
+    
+    // Recalcular subtotal
+    const cantidad = parseFloat(newItems[index].cantidad) || 0;
+    const precio = parseFloat(newItems[index].precio_unitario) || 0;
+    const descuento = parseFloat(newItems[index].descuento_porcentaje) || 0;
+    const subtotalSinDescuento = cantidad * precio;
+    newItems[index].subtotal = subtotalSinDescuento - (subtotalSinDescuento * descuento / 100);
+    
+    setItems(newItems);
+    setProductoSeleccionado(prev => ({ ...prev, [index]: producto }));
+    setBusquedaProductos(prev => ({ ...prev, [index]: '' }));
+  };
+
+  const getProductosFiltrados = (index) => {
+    const busqueda = busquedaProductos[index] || '';
+    if (!busqueda || busqueda.length < 2) return [];
+    
+    const textoLower = busqueda.toLowerCase();
+    return inventario.filter(p => 
+      p.nombre?.toLowerCase().includes(textoLower) ||
+      p.codigo_interno?.toLowerCase().includes(textoLower) ||
+      p.marca?.toLowerCase().includes(textoLower)
+    ).slice(0, 5);
   };
 
   const addItem = () => {
@@ -281,6 +321,13 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
             <DialogTitle>{editingCotizacion ? 'Editar' : 'Nueva'} Cotización</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <Alert className="bg-blue-50 border-blue-200">
+              <Package className="w-4 h-4 text-blue-600" />
+              <AlertDescription className="text-blue-800 text-sm">
+                💡 <strong>Inventario informativo:</strong> El stock mostrado es referencial. Al facturar se validará disponibilidad real.
+              </AlertDescription>
+            </Alert>
+
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>Items de la Cotización</Label>
@@ -290,65 +337,130 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                 </Button>
               </div>
 
-              {items.map((item, idx) => (
+              {items.map((item, idx) => {
+                const productoActual = productoSeleccionado[idx];
+                const resultados = getProductosFiltrados(idx);
+                
+                return (
                 <Card key={idx} className="border-0 shadow-sm">
                   <CardContent className="p-4">
-                    <div className="grid grid-cols-6 gap-3">
-                      <div>
-                        <Label className="text-xs">Tipo</Label>
-                        <Select
-                          value={item.tipo}
-                          onValueChange={(value) => updateItem(idx, 'tipo', value)}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="producto">Producto</SelectItem>
-                            <SelectItem value="servicio">Servicio</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-6 gap-3">
+                        <div>
+                          <Label className="text-xs">Tipo</Label>
+                          <Select
+                            value={item.tipo}
+                            onValueChange={(value) => {
+                              updateItem(idx, 'tipo', value);
+                              if (value === 'servicio') {
+                                setProductoSeleccionado(prev => ({ ...prev, [idx]: null }));
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="producto">Producto</SelectItem>
+                              <SelectItem value="servicio">Servicio</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2 relative">
+                          <Label className="text-xs">Buscar Producto / Descripción</Label>
+                          <div className="relative">
+                            <Search className="absolute left-2 top-2 w-4 h-4 text-slate-400" />
+                            <Input
+                              value={busquedaProductos[idx] || ''}
+                              onChange={(e) => buscarProducto(e.target.value, idx)}
+                              placeholder={item.tipo === 'producto' ? 'Buscar en inventario...' : 'Descripción del servicio...'}
+                              className="h-9 pl-8"
+                            />
+                          </div>
+                          {item.tipo === 'producto' && resultados.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                              {resultados.map(producto => (
+                                <button
+                                  key={producto.id}
+                                  type="button"
+                                  onClick={() => seleccionarProducto(producto, idx)}
+                                  className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-900">{producto.nombre}</p>
+                                      <p className="text-xs text-slate-500">{producto.codigo_interno}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-medium text-emerald-600">₡{producto.precio_venta?.toLocaleString()}</p>
+                                      <p className="text-xs text-slate-500">Stock: {producto.cantidad_disponible}</p>
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="col-span-3">
+                          <Label className="text-xs">Descripción Final</Label>
+                          <Input
+                            value={item.descripcion}
+                            onChange={(e) => updateItem(idx, 'descripcion', e.target.value)}
+                            placeholder="Descripción que aparecerá en la cotización"
+                            className="h-9"
+                          />
+                        </div>
                       </div>
-                      <div className="col-span-2">
-                        <Label className="text-xs">Descripción</Label>
-                        <Input
-                          value={item.descripcion}
-                          onChange={(e) => updateItem(idx, 'descripcion', e.target.value)}
-                          placeholder="Descripción"
-                          className="h-9"
-                        />
+                      <div className="grid grid-cols-6 gap-3">
+                        <div>
+                          <Label className="text-xs">Cant.</Label>
+                          <Input
+                            type="number"
+                            value={item.cantidad}
+                            onChange={(e) => updateItem(idx, 'cantidad', e.target.value)}
+                            min="1"
+                            className="h-9"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Precio</Label>
+                          <Input
+                            type="number"
+                            value={item.precio_unitario}
+                            onChange={(e) => updateItem(idx, 'precio_unitario', e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Desc. %</Label>
+                          <Input
+                            type="number"
+                            value={item.descuento_porcentaje}
+                            onChange={(e) => updateItem(idx, 'descuento_porcentaje', e.target.value)}
+                            min="0"
+                            max="100"
+                            className="h-9"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <Label className="text-xs">Cant.</Label>
-                        <Input
-                          type="number"
-                          value={item.cantidad}
-                          onChange={(e) => updateItem(idx, 'cantidad', e.target.value)}
-                          min="1"
-                          className="h-9"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Precio</Label>
-                        <Input
-                          type="number"
-                          value={item.precio_unitario}
-                          onChange={(e) => updateItem(idx, 'precio_unitario', e.target.value)}
-                          className="h-9"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Desc. %</Label>
-                        <Input
-                          type="number"
-                          value={item.descuento_porcentaje}
-                          onChange={(e) => updateItem(idx, 'descuento_porcentaje', e.target.value)}
-                          min="0"
-                          max="100"
-                          className="h-9"
-                        />
-                      </div>
+
+                      {productoActual && (
+                        <Alert className="bg-blue-50 border-blue-200">
+                          <Package className="w-4 h-4 text-blue-600" />
+                          <AlertDescription className="text-blue-800">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">
+                                📦 Stock disponible: {productoActual.cantidad_disponible} unidades
+                              </span>
+                            </div>
+                            <p className="text-xs mt-1 text-blue-600">
+                              ⚠️ Stock no reservado - Se valida al facturar
+                            </p>
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     </div>
+
                     <div className="flex items-center justify-between mt-2">
                       <p className="text-sm font-medium text-slate-700">
                         Subtotal: ₡{item.subtotal.toLocaleString()}
@@ -366,7 +478,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </div>
 
             <div className="bg-slate-50 p-4 rounded-lg space-y-2">

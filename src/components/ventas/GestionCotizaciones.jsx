@@ -17,18 +17,21 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const DESCUENTO_MAXIMO_SIN_APROBACION = 15; // 15%
 
-export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount }) {
+export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [] }) {
   const [showModal, setShowModal] = useState(false);
   const [editingCotizacion, setEditingCotizacion] = useState(null);
   const [items, setItems] = useState([{ tipo: 'servicio', descripcion: '', cantidad: 1, precio_unitario: 0, descuento_porcentaje: 0, subtotal: 0 }]);
   const [busquedaProductos, setBusquedaProductos] = useState({});
   const [productoSeleccionado, setProductoSeleccionado] = useState({});
+  const [clienteSeleccionadoInterno, setClienteSeleccionadoInterno] = useState(clienteId || '');
   const queryClient = useQueryClient();
 
+  const clienteActual = clienteId || clienteSeleccionadoInterno;
+
   const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones', clienteId],
-    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
+    queryKey: ['cotizaciones', clienteActual],
+    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteActual }),
+    enabled: !!clienteActual,
   });
 
   const { data: inventario = [] } = useQuery({
@@ -65,7 +68,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       const mensaje = `Hola ${cliente.nombre_completo}, te escribo para dar seguimiento a la cotización que te compartimos. Quedo atento(a) si tienes alguna duda. — ${user.full_name || 'El equipo'}`;
       
       return await base44.entities.MensajeCliente.create(withOrgId({
-        cliente_id: clienteId,
+        cliente_id: clienteActual,
         orden_trabajo_id: ordenTrabajoId || null,
         remitente_id: user.id,
         remitente_nombre: user.full_name || user.email,
@@ -85,9 +88,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const { data: cliente } = useQuery({
-    queryKey: ['cliente', clienteId],
-    queryFn: () => base44.entities.Cliente.filter({ id: clienteId }).then(res => res[0]),
-    enabled: !!clienteId,
+    queryKey: ['cliente', clienteActual],
+    queryFn: () => base44.entities.Cliente.filter({ id: clienteActual }).then(res => res[0]),
+    enabled: !!clienteActual,
   });
 
   const resetForm = () => {
@@ -200,11 +203,17 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!clienteActual) {
+      alert('Por favor selecciona un cliente antes de guardar la cotización');
+      return;
+    }
+
     const formData = new FormData(e.target);
     const totales = calcularTotales();
 
     const cotizacionData = {
-      cliente_id: clienteId,
+      cliente_id: clienteActual,
       vendedor_id: user.id,
       vendedor_nombre: user.full_name || user.email,
       orden_trabajo_id: ordenTrabajoId || null,
@@ -227,6 +236,11 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   };
 
   const handleEnviar = (cotizacion) => {
+    if (!clienteActual) {
+      alert('Por favor selecciona un cliente antes de enviar la cotización');
+      return;
+    }
+
     if (cotizacion.requiere_aprobacion && !cotizacion.aprobada_por) {
       alert('Esta cotización requiere aprobación por el descuento aplicado.');
       return;
@@ -347,6 +361,36 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
             <DialogTitle>{editingCotizacion ? 'Editar' : 'Nueva'} Cotización</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {!clienteId && (
+              <div className="space-y-2">
+                <Label>Cliente *</Label>
+                <Select 
+                  value={clienteSeleccionadoInterno} 
+                  onValueChange={setClienteSeleccionadoInterno}
+                  disabled={!!editingCotizacion}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un cliente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nombre_completo} - {c.telefono}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!clienteSeleccionadoInterno && (
+                  <Alert className="bg-amber-50 border-amber-200">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800 text-sm">
+                      Selecciona un cliente antes de guardar o enviar la cotización
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
             <Alert className="bg-blue-50 border-blue-200">
               <Package className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-800 text-sm">

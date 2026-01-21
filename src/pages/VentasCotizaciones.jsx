@@ -363,62 +363,19 @@ function VentasCotizacionesContent() {
       </Dialog>
 
       {/* Modal Nueva Cotización */}
-      <Dialog open={showNuevaCotizacion} onOpenChange={(open) => {
-        setShowNuevaCotizacion(open);
-        if (!open) {
-          setClienteSeleccionado('');
-        }
-      }}>
+      <Dialog open={showNuevaCotizacion} onOpenChange={setShowNuevaCotizacion}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {!clienteSeleccionado 
-                ? 'Paso 1: Seleccionar Cliente' 
-                : `Nueva Cotización - ${clientes.find(c => c.id === clienteSeleccionado)?.nombre_completo || ''}`
-              }
-            </DialogTitle>
+            <DialogTitle>Nueva Cotización</DialogTitle>
           </DialogHeader>
           
-          {!clienteSeleccionado ? (
-            <div className="space-y-4 py-6">
-              <div className="text-center mb-6">
-                <FileText className="w-12 h-12 mx-auto mb-3 text-emerald-500" />
-                <p className="text-slate-600">Para comenzar, selecciona el cliente para esta cotización</p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Cliente *</Label>
-                <Select value={clienteSeleccionado} onValueChange={setClienteSeleccionado}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cliente..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.nombre_completo} - {c.telefono}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowNuevaCotizacion(false)}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <GestionCotizaciones
-              clienteId={clienteSeleccionado}
-              ordenTrabajoId={null}
-              user={user}
-              userAccount={userAccount}
-            />
-          )}
+          <GestionCotizaciones
+            clienteId={null}
+            ordenTrabajoId={null}
+            user={user}
+            userAccount={userAccount}
+            clientes={clientes}
+          />
         </DialogContent>
       </Dialog>
     </div>

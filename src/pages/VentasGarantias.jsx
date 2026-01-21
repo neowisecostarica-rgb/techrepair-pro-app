@@ -27,6 +27,10 @@ function VentasGarantiasContent() {
   const [filtroEstado, setFiltroEstado] = useState('ACTIVA');
   const [copiedToken, setCopiedToken] = useState(null);
 
+  // Detectar filtro "porVencer" desde query params
+  const urlParams = new URLSearchParams(window.location.search);
+  const filtroPorVencer = urlParams.get('porVencer') === 'true';
+
   const { data: garantias = [], isLoading } = useQuery({
     queryKey: ['garantias-ventas', effectiveOrgId],
     queryFn: () => base44.entities.Garantia.filter({
@@ -74,6 +78,14 @@ function VentasGarantiasContent() {
     }
   };
 
+  const calcularDiasParaVencer = (fechaFin) => {
+    const hoy = new Date();
+    const fin = new Date(fechaFin);
+    const diffTime = fin - hoy;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   const garantiasFiltradas = garantias.filter(g => {
     if (busqueda) {
       const cliente = getClienteName(g.cliente_id).toLowerCase();
@@ -85,6 +97,14 @@ function VentasGarantiasContent() {
 
     if (filtroEstado !== 'todas' && g.estado !== filtroEstado) {
       return false;
+    }
+
+    // Filtro "Por Vencer" (≤15 días)
+    if (filtroPorVencer) {
+      const dias = calcularDiasParaVencer(g.fecha_fin);
+      if (g.estado !== 'ACTIVA' || dias <= 0 || dias > 15) {
+        return false;
+      }
     }
 
     return true;
@@ -166,6 +186,8 @@ function VentasGarantiasContent() {
               const config = estadoConfig[gar.estado];
               const origen = getOrigen(gar);
               const telefono = getClienteTelefono(gar.cliente_id);
+              const diasRestantes = calcularDiasParaVencer(gar.fecha_fin);
+              const porVencer = gar.estado === 'ACTIVA' && diasRestantes > 0 && diasRestantes <= 15;
 
               return (
                 <div
@@ -180,6 +202,11 @@ function VentasGarantiasContent() {
                       <Badge variant="outline" className="capitalize">
                         {gar.origen_tipo === 'OT' ? 'Reparación' : 'Venta'}
                       </Badge>
+                      {porVencer && (
+                        <Badge className="bg-amber-100 text-amber-700 border-0">
+                          Vence en {diasRestantes} día{diasRestantes !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
                     </div>
                     <p className="font-semibold text-slate-900">
                       {getClienteName(gar.cliente_id)}
@@ -300,7 +327,56 @@ function VentasGarantiasContent() {
                 </div>
               </div>
 
-              {/* Acciones */}
+              {/* Acciones Comerciales */}
+              <div className="pt-4 border-t space-y-4">
+                <h4 className="font-semibold text-slate-900">Acciones de Postventa</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const cliente = clientes.find(c => c.id === garantiaSeleccionada.cliente_id);
+                      if (cliente?.telefono) {
+                        const mensaje = `Hola ${cliente.nombre_completo}, tu garantía vence el ${format(new Date(garantiaSeleccionada.fecha_fin), 'dd/MM/yyyy')}. ¿Te gustaría renovarla o programar un mantenimiento preventivo?`;
+                        const url = `https://wa.me/${cliente.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
+                        window.open(url, '_blank');
+                      } else {
+                        alert('Cliente sin teléfono registrado');
+                      }
+                    }}
+                  >
+                    📱 Contactar Cliente
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.location.href = `/VentasCotizaciones?clienteId=${garantiaSeleccionada.cliente_id}&prefill=renovacion`;
+                    }}
+                  >
+                    🔄 Ofrecer Renovación
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.location.href = `/VentasCotizaciones?clienteId=${garantiaSeleccionada.cliente_id}&prefill=mantenimiento`;
+                    }}
+                  >
+                    🔧 Ofrecer Mantenimiento
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.location.href = `/Clientes?clienteId=${garantiaSeleccionada.cliente_id}`;
+                    }}
+                  >
+                    👤 Ver Historial Cliente
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 italic">
+                  💡 Las acciones comerciales crearán cotizaciones. El proceso de venta debe completarse desde POS.
+                </p>
+              </div>
+
+              {/* Acciones Portal */}
               <div className="flex gap-3 pt-4 border-t">
                 <Button
                   onClick={() => copiarLink(garantiaSeleccionada.public_access_token)}

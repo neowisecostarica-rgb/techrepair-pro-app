@@ -21,6 +21,12 @@ export default function DashboardSales({ effectiveOrgId }) {
     enabled: !!effectiveOrgId,
   });
 
+  const { data: garantias = [] } = useQuery({
+    queryKey: ['garantias', effectiveOrgId],
+    queryFn: () => base44.entities.Garantia.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
+  });
+
   if (loadingVentas || loadingClientes) {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
@@ -55,6 +61,15 @@ export default function DashboardSales({ effectiveOrgId }) {
   // Active clients
   const clientesActivos = clientes.length;
 
+  // Garantías por vencer (≤15 días)
+  const garantiasPorVencer = garantias.filter(g => {
+    if (g.estado !== 'ACTIVA') return false;
+    const hoy = new Date();
+    const fin = new Date(g.fecha_fin);
+    const diffDays = Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
+    return diffDays > 0 && diffDays <= 15;
+  });
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="mb-8">
@@ -85,6 +100,26 @@ export default function DashboardSales({ effectiveOrgId }) {
           bgColor="bg-purple-500"
         />
       </div>
+
+      {/* KPI Garantías por Vencer */}
+      {garantiasPorVencer.length > 0 && (
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-1">⚠️ Oportunidad de Postventa</h3>
+                <p className="text-3xl font-bold text-amber-600 mb-2">{garantiasPorVencer.length}</p>
+                <p className="text-sm text-slate-600">Garantía{garantiasPorVencer.length !== 1 ? 's' : ''} por vencer en ≤15 días</p>
+              </div>
+              <Link to={createPageUrl('VentasGarantias') + '?porVencer=true'}>
+                <Button className="bg-amber-600 hover:bg-amber-700">
+                  Ver Garantías
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Clients */}
       <Card className="border-0 shadow-lg">

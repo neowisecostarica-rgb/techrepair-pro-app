@@ -98,6 +98,12 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
     enabled: !!effectiveOrgId,
   });
 
+  const { data: garantias = [] } = useQuery({
+    queryKey: ['garantias-midia', effectiveOrgId],
+    queryFn: () => base44.entities.Garantia.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
+  });
+
   const getEquipoInfo = (equipoId) => {
     const equipo = equipos.find(e => e.id === equipoId);
     return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';

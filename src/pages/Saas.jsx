@@ -27,10 +27,18 @@ export default function Saas() {
 function SaasContent() {
   const [user, setUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showChangePlanModal, setShowChangePlanModal] = useState(false);
+  const [showImpersonateModal, setShowImpersonateModal] = useState(false);
+  const [selectedOrg, setSelectedOrg] = useState(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [newPlan, setNewPlan] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [impersonatedOrg, setImpersonatedOrg] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [planFilter, setPlanFilter] = useState('all');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -57,13 +65,31 @@ function SaasContent() {
   const { data: allUserAccounts = [] } = useQuery({
     queryKey: ['all-user-accounts'],
     queryFn: () => base44.entities.UserAccount.list(),
-    enabled: !authIsImpersonating, // Solo cargar si NO está impersonando
+    enabled: !authIsImpersonating,
+  });
+
+  const { data: allBranches = [] } = useQuery({
+    queryKey: ['all-branches'],
+    queryFn: () => base44.entities.Branch.list(),
+    enabled: !authIsImpersonating,
   });
 
   const { data: allOrders = [] } = useQuery({
     queryKey: ['all-orders'],
     queryFn: () => base44.entities.OrdenTrabajo.list(),
-    enabled: !authIsImpersonating, // Solo cargar si NO está impersonando
+    enabled: !authIsImpersonating,
+  });
+
+  const { data: allGarantias = [] } = useQuery({
+    queryKey: ['all-garantias'],
+    queryFn: () => base44.entities.Garantia.list(),
+    enabled: !authIsImpersonating,
+  });
+
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ['audit-logs'],
+    queryFn: () => base44.entities.SuperAdminAudit.list('-created_date', 10),
+    enabled: !authIsImpersonating,
   });
 
   const { data: partners = [] } = useQuery({
@@ -107,25 +133,31 @@ function SaasContent() {
   const handleImpersonate = async (organization) => {
     if (!user) return;
 
-    // Actualizar user con impersonation
-    await base44.auth.updateMe({
-      impersonating_org_id: organization.id,
-      impersonating_started_at: new Date().toISOString()
-    });
+    try {
+      // Actualizar user con impersonation
+      await base44.auth.updateMe({
+        impersonating_org_id: organization.id,
+        impersonating_started_at: new Date().toISOString()
+      });
 
-    // Registrar auditoría
-    await recordAudit(
-      'impersonate_start',
-      organization.id,
-      organization.name,
-      `Impersonando como Admin`
-    );
+      // Registrar auditoría
+      await recordAudit(
+        'impersonate_start',
+        organization.id,
+        organization.name,
+        `Impersonación iniciada`
+      );
 
-    setIsImpersonating(true);
-    setImpersonatedOrg(organization);
+      setIsImpersonating(true);
+      setImpersonatedOrg(organization);
+      setShowImpersonateModal(false);
 
-    // Redirigir al Dashboard de la organización
-    window.location.reload(); // Recargar para actualizar contexto
+      // Redirigir al Dashboard de la organización
+      window.location.href = createPageUrl('Dashboard');
+    } catch (error) {
+      console.error('Error impersonando:', error);
+      alert('Error al iniciar impersonación');
+    }
   };
 
   const handleEndImpersonation = async () => {
@@ -152,26 +184,105 @@ function SaasContent() {
     window.location.reload();
   };
 
-  const handleToggleStatus = async (organization) => {
-    const newStatus = organization.status === 'active' ? 'suspended' : 'active';
-    const confirmMsg = newStatus === 'suspended'
-      ? `¿Suspender organización "${organization.name}"?\n\nLos usuarios no podrán acceder.`
-      : `¿Reactivar organización "${organization.name}"?`;
+  const handleSuspendOrg = async () => {
+    if (!selectedOrg || !suspendReason.trim()) {
+      alert('Debes proporcionar un motivo de suspensión');
+      return;
+    }
 
-    if (confirm(confirmMsg)) {
-      toggleOrgStatusMutation.mutate({ orgId: organization.id, newStatus });
+    try {
+      await toggleOrgStatusMutation.mutateAsync({ 
+        orgId: selectedOrg.id, 
+        newStatus: 'suspended' 
+      });
+      
+      await recordAudit(
+        'suspend_org',
+        selectedOrg.id,
+        selectedOrg.name,
+        `Suspendida. Motivo: ${suspendReason}`
+      );
+
+      setShowSuspendModal(false);
+      setSuspendReason('');
+      setSelectedOrg(null);
+    } catch (error) {
+      console.error('Error suspendiendo org:', error);
+      alert('Error al suspender organización');
+    }
+  };
+
+  const handleReactivateOrg = async (organization) => {
+    if (!confirm(`¿Reactivar organización "${organization.name}"?`)) return;
+
+    try {
+      await toggleOrgStatusMutation.mutateAsync({ 
+        orgId: organization.id, 
+        newStatus: 'active' 
+      });
+      
+      await recordAudit(
+        'reactivate_org',
+        organization.id,
+        organization.name,
+        'Organización reactivada'
+      );
+    } catch (error) {
+      console.error('Error reactivando org:', error);
+      alert('Error al reactivar organización');
+    }
+  };
+
+  const handleChangePlan = async () => {
+    if (!selectedOrg || !newPlan) {
+      alert('Debes seleccionar un plan');
+      return;
+    }
+
+    if (!confirm(`¿Cambiar plan de "${selectedOrg.name}" a ${newPlan.toUpperCase()}?`)) {
+      return;
+    }
+
+    try {
+      await base44.entities.Organization.update(selectedOrg.id, { plan: newPlan });
+      
+      await recordAudit(
+        'change_plan',
+        selectedOrg.id,
+        selectedOrg.name,
+        `Plan cambiado de ${selectedOrg.plan} a ${newPlan}`
+      );
+
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      setShowChangePlanModal(false);
+      setNewPlan('');
+      setSelectedOrg(null);
+    } catch (error) {
+      console.error('Error cambiando plan:', error);
+      alert('Error al cambiar plan');
     }
   };
 
   const getOrgStats = (orgId) => {
     const users = allUserAccounts.filter(u => u.organization_id === orgId && u.active).length;
-    const activeOrders = allOrders.filter(o => 
-      o.organization_id === orgId && 
-      !['ENTREGADA', 'CANCELADA'].includes(o.estado)
-    ).length;
+    const branches = allBranches.filter(b => b.organization_id === orgId).length;
 
-    return { users, activeOrders };
+    return { users, branches };
   };
+
+  // Health Checks (integridad de datos)
+  const healthChecks = {
+    orgsWithoutBranches: organizations.filter(org => 
+      org.status === 'active' && !allBranches.some(b => b.organization_id === org.id)
+    ).length,
+    usersWithoutOrg: allUserAccounts.filter(u => !u.organization_id).length,
+    otsWithoutCliente: allOrders.filter(ot => !ot.cliente_id).length,
+    expiredActiveWarranties: allGarantias.filter(g => 
+      g.estado === 'ACTIVA' && new Date(g.fecha_fin) < new Date()
+    ).length,
+  };
+
+  const totalHealthIssues = Object.values(healthChecks).reduce((a, b) => a + b, 0);
 
   const createOrgMutation = useMutation({
     mutationFn: async (data) => {
@@ -222,9 +333,24 @@ function SaasContent() {
     });
   };
 
-  const filteredOrgs = organizations.filter(org => 
-    org.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOrgs = organizations.filter(org => {
+    const matchesSearch = org.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || org.status === statusFilter;
+    const matchesPlan = planFilter === 'all' || org.plan === planFilter;
+    return matchesSearch && matchesStatus && matchesPlan;
+  });
+
+  // Métricas por plan
+  const planDistribution = {
+    basic: organizations.filter(o => o.plan === 'basic').length,
+    pro: organizations.filter(o => o.plan === 'pro').length,
+    premium: organizations.filter(o => o.plan === 'premium').length,
+  };
+
+  const totalActiveUsers = allUserAccounts.filter(u => {
+    const org = organizations.find(o => o.id === u.organization_id);
+    return u.active && org?.status === 'active';
+  }).length;
 
   if (!user) {
     return (
@@ -260,123 +386,490 @@ function SaasContent() {
         />
       )}
       
-      <div className={`max-w-7xl mx-auto space-y-6 ${isImpersonating ? 'pt-20' : ''}`}>
+      <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 p-8 ${isImpersonating ? 'pt-24' : ''}`}>
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <ShieldAlert className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold text-slate-900">Panel Super Admin</h1>
-                <p className="text-slate-500">Gobierno y soporte de plataforma</p>
-              </div>
-            </div>
+            <h1 className="text-4xl font-bold text-slate-900 mb-2">Platform Administration</h1>
+            <p className="text-slate-600">Multi-tenant SaaS Management & System Health</p>
             {user && (
-              <div className="flex items-center gap-2 mt-2">
-                <Badge className="bg-purple-100 text-purple-700 border-0">
-                  👑 Super Admin
+              <div className="flex items-center gap-2 mt-3">
+                <Badge className="bg-slate-800 text-white border-0">
+                  🔒 SUPER_ADMIN
                 </Badge>
-                <span className="text-sm text-slate-600">{user.email}</span>
+                <span className="text-sm text-slate-600 font-mono">{user.email}</span>
               </div>
             )}
           </div>
-          <Button
-            onClick={() => setShowModal(true)}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:shadow-lg transition-all"
-            disabled={isImpersonating}
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Nueva Organización
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => base44.auth.logout()}
+              variant="outline"
+              className="border-slate-300"
+            >
+              Cerrar Sesión
+            </Button>
+            <Button
+              onClick={() => setShowModal(true)}
+              className="bg-slate-800 hover:bg-slate-900"
+              disabled={isImpersonating}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create Organization
+            </Button>
+          </div>
         </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Total Empresas</p>
-                <h3 className="text-3xl font-bold text-slate-900">{organizations.length}</h3>
-              </div>
-              <Building2 className="w-10 h-10 text-emerald-500" />
+      {/* Platform Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-50 to-blue-100">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Building2 className="w-5 h-5 text-blue-600" />
+              <p className="text-xs font-semibold text-slate-600">Active Orgs</p>
+            </div>
+            <p className="text-3xl font-bold text-slate-900">
+              {organizations.filter(o => o.status === 'active').length}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-red-100">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-xs font-semibold text-slate-600">Suspended</p>
+            </div>
+            <p className="text-3xl font-bold text-slate-900">
+              {organizations.filter(o => o.status === 'suspended').length}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-50 to-purple-100">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldAlert className="w-5 h-5 text-purple-600" />
+              <p className="text-xs font-semibold text-slate-600">Plan Distribution</p>
+            </div>
+            <div className="text-xs space-y-1 mt-2">
+              <p className="text-slate-700">Basic: <span className="font-bold">{planDistribution.basic}</span></p>
+              <p className="text-slate-700">Pro: <span className="font-bold">{planDistribution.pro}</span></p>
+              <p className="text-slate-700">Premium: <span className="font-bold">{planDistribution.premium}</span></p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Activas</p>
-                <h3 className="text-3xl font-bold text-emerald-600">
-                  {organizations.filter(o => o.status === 'active').length}
-                </h3>
-              </div>
+
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-green-100">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldAlert className="w-5 h-5 text-green-600" />
+              <p className="text-xs font-semibold text-slate-600">Total Users</p>
             </div>
+            <p className="text-3xl font-bold text-slate-900">{totalActiveUsers}</p>
+            <p className="text-xs text-slate-600 mt-1">In active orgs</p>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Suspendidas</p>
-                <h3 className="text-3xl font-bold text-red-600">
-                  {organizations.filter(o => o.status === 'suspended').length}
-                </h3>
-              </div>
+
+        <Card className={`border-0 shadow-xl ${totalHealthIssues > 0 ? 'bg-gradient-to-br from-amber-50 to-amber-100' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className={`w-5 h-5 ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-slate-600'}`} />
+              <p className="text-xs font-semibold text-slate-600">Health Issues</p>
             </div>
+            <p className={`text-3xl font-bold ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+              {totalHealthIssues}
+            </p>
+            <p className="text-xs text-slate-600 mt-1">Data integrity</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search */}
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <Input
-              placeholder="Buscar empresa..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Grid de organizaciones */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredOrgs.map(org => (
-          <OrganizationCard
-            key={org.id}
-            organization={org}
-            stats={getOrgStats(org.id)}
-            onViewDetails={(org) => {
-              recordAudit('view_org_detail', org.id, org.name);
-              alert('Vista de detalles (no implementado en MVP)');
-            }}
-            onImpersonate={handleImpersonate}
-            onToggleStatus={handleToggleStatus}
-          />
-        ))}
-      </div>
-
-      {filteredOrgs.length === 0 && (
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-12 text-center">
-            <Building2 className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-            <p className="text-slate-400">No se encontraron organizaciones</p>
+      {/* System Health */}
+      {totalHealthIssues > 0 && (
+        <Card className="border-0 shadow-xl border-l-4 border-l-amber-500">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              System Health — Data Integrity Issues
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {healthChecks.orgsWithoutBranches > 0 && (
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                  <span className="text-sm text-slate-700">Organizations without branches</span>
+                  <Badge className="bg-amber-200 text-amber-800 border-0">{healthChecks.orgsWithoutBranches}</Badge>
+                </div>
+              )}
+              {healthChecks.usersWithoutOrg > 0 && (
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                  <span className="text-sm text-slate-700">UserAccounts without organization_id</span>
+                  <Badge className="bg-amber-200 text-amber-800 border-0">{healthChecks.usersWithoutOrg}</Badge>
+                </div>
+              )}
+              {healthChecks.otsWithoutCliente > 0 && (
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <span className="text-sm text-slate-700">Work Orders without cliente_id</span>
+                  <Badge className="bg-slate-200 text-slate-800 border-0">{healthChecks.otsWithoutCliente}</Badge>
+                </div>
+              )}
+              {healthChecks.expiredActiveWarranties > 0 && (
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <span className="text-sm text-slate-700">Expired warranties still active</span>
+                  <Badge className="bg-slate-200 text-slate-800 border-0">{healthChecks.expiredActiveWarranties}</Badge>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Modal Crear Empresa */}
+      {/* Audit Log */}
+      {auditLogs.length > 0 && (
+        <Card className="border-0 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-lg">Platform Audit Log (Last 10 Actions)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Date/Time</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Admin</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Action</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Target Org</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLogs.map((log) => (
+                    <tr key={log.id} className="border-t hover:bg-slate-50">
+                      <td className="p-3 text-xs text-slate-600">
+                        {new Date(log.created_date).toLocaleString('es-ES', { 
+                          dateStyle: 'short', 
+                          timeStyle: 'short' 
+                        })}
+                      </td>
+                      <td className="p-3 text-xs font-mono text-slate-700">{log.super_admin_email}</td>
+                      <td className="p-3">
+                        <Badge variant="outline" className="text-xs">{log.action}</Badge>
+                      </td>
+                      <td className="p-3 text-xs text-slate-700">{log.target_organization_name || 'N/A'}</td>
+                      <td className="p-3 text-xs text-slate-600">{log.context || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Filters & Search */}
+      <Card className="border-0 shadow-xl">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <Input
+                placeholder="Search organization..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-slate-200 rounded-md"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+            <select
+              value={planFilter}
+              onChange={(e) => setPlanFilter(e.target.value)}
+              className="px-4 py-2 border border-slate-200 rounded-md"
+            >
+              <option value="all">All Plans</option>
+              <option value="basic">Basic</option>
+              <option value="pro">Pro</option>
+              <option value="premium">Premium</option>
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tenant Management Table */}
+      <Card className="border-0 shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-lg">Tenant Management ({filteredOrgs.length} organizations)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredOrgs.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Name</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Plan</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Created</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Users</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Branches</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrgs.map((org) => {
+                    const stats = getOrgStats(org.id);
+                    return (
+                      <tr key={org.id} className="border-t hover:bg-slate-50">
+                        <td className="p-3">
+                          <p className="font-semibold text-slate-900">{org.name}</p>
+                          {org.legal_name && <p className="text-xs text-slate-500">{org.legal_name}</p>}
+                        </td>
+                        <td className="p-3">
+                          <Badge className="bg-indigo-100 text-indigo-700 border-0 uppercase text-xs">
+                            {org.plan}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <Badge className={org.status === 'active' 
+                            ? 'bg-green-100 text-green-700 border-0' 
+                            : 'bg-red-100 text-red-700 border-0'}>
+                            {org.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-xs text-slate-600">
+                          {new Date(org.created_date).toLocaleDateString('es-ES')}
+                        </td>
+                        <td className="p-3 text-sm text-slate-700">{stats.users}</td>
+                        <td className="p-3 text-sm text-slate-700">{stats.branches}</td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedOrg(org);
+                                setNewPlan(org.plan);
+                                setShowChangePlanModal(true);
+                              }}
+                              disabled={isImpersonating}
+                              className="text-xs"
+                            >
+                              Change Plan
+                            </Button>
+                            {org.status === 'active' ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedOrg(org);
+                                  setShowSuspendModal(true);
+                                }}
+                                disabled={isImpersonating}
+                                className="text-xs border-red-300 text-red-600 hover:bg-red-50"
+                              >
+                                Suspend
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleReactivateOrg(org)}
+                                disabled={isImpersonating}
+                                className="text-xs border-green-300 text-green-600 hover:bg-green-50"
+                              >
+                                Reactivate
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-xs"
+                              onClick={() => {
+                                setSelectedOrg(org);
+                                setShowImpersonateModal(true);
+                              }}
+                              disabled={isImpersonating || org.status === 'suspended'}
+                            >
+                              Impersonate
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500">No organizations found</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
+
+      {/* Modal Suspend Organization */}
+      <Dialog open={showSuspendModal} onOpenChange={setShowSuspendModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-red-600">Suspend Organization</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800">
+                <strong>Warning:</strong> Suspending this organization will immediately block access for all users.
+              </p>
+            </div>
+            {selectedOrg && (
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm text-slate-600">Organization:</p>
+                <p className="font-semibold text-slate-900">{selectedOrg.name}</p>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="suspend-reason">Suspension Reason (required)</Label>
+              <Input
+                id="suspend-reason"
+                value={suspendReason}
+                onChange={(e) => setSuspendReason(e.target.value)}
+                placeholder="e.g., Payment overdue, Terms violation..."
+                className="mt-1"
+              />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowSuspendModal(false);
+                  setSuspendReason('');
+                  setSelectedOrg(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSuspendOrg}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={!suspendReason.trim()}
+              >
+                Confirm Suspension
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Change Plan */}
+      <Dialog open={showChangePlanModal} onOpenChange={setShowChangePlanModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Change Organization Plan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {selectedOrg && (
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm text-slate-600">Organization:</p>
+                <p className="font-semibold text-slate-900">{selectedOrg.name}</p>
+                <p className="text-xs text-slate-600 mt-1">Current Plan: <span className="font-semibold">{selectedOrg.plan.toUpperCase()}</span></p>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="new-plan">New Plan</Label>
+              <select
+                id="new-plan"
+                value={newPlan}
+                onChange={(e) => setNewPlan(e.target.value)}
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md"
+              >
+                <option value="basic">Basic</option>
+                <option value="pro">Pro</option>
+                <option value="premium">Premium</option>
+              </select>
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowChangePlanModal(false);
+                  setNewPlan('');
+                  setSelectedOrg(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleChangePlan}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                Change Plan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Impersonate */}
+      <Dialog open={showImpersonateModal} onOpenChange={setShowImpersonateModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-blue-600">Impersonate Tenant</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Important:</strong> You are about to access this tenant as ORG_ADMIN. All your actions will be audited and logged.
+              </p>
+            </div>
+            {selectedOrg && (
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm text-slate-600">Target Organization:</p>
+                <p className="font-semibold text-slate-900">{selectedOrg.name}</p>
+              </div>
+            )}
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-800">
+                • Impersonation will expire automatically after 2 hours<br/>
+                • A red banner will be visible at all times<br/>
+                • Audit log will record start and end of impersonation
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowImpersonateModal(false);
+                  setSelectedOrg(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleImpersonate(selectedOrg)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Start Impersonation
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Create Organization */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Crear Nueva Empresa</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">Create New Organization</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -430,23 +923,24 @@ function SaasContent() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="admin_email">Email del Administrador *</Label>
+                <Label htmlFor="admin_email">Administrator Email *</Label>
                 <Input id="admin_email" name="admin_email" type="email" required />
-                <p className="text-xs text-slate-500">Se invitará a este usuario como ORG_ADMIN</p>
+                <p className="text-xs text-slate-500">This user will be invited and assigned as ORG_ADMIN</p>
               </div>
             </div>
 
             <div className="flex gap-3 justify-end pt-4">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)} disabled={creating}>
-                Cancelar
+                Cancel
               </Button>
-              <Button type="submit" className="bg-gradient-to-r from-emerald-500 to-blue-500" disabled={creating}>
-                {creating ? 'Creando...' : 'Crear Empresa'}
+              <Button type="submit" className="bg-slate-800 hover:bg-slate-900" disabled={creating}>
+                {creating ? 'Creating...' : 'Create Organization'}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
+      </div>
       </div>
     </>
   );

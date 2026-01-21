@@ -14,6 +14,7 @@ import Inventario from './pages/Inventario';
 import MiDia from './pages/MiDia';
 import MigrationAdmin from './pages/MigrationAdmin';
 import Onboarding from './pages/Onboarding';
+import Operacion from './pages/Operacion';
 import OrdenesTrabajo from './pages/OrdenesTrabajo';
 import PortalCliente from './pages/PortalCliente';
 import PortalComprobante from './pages/PortalComprobante';
@@ -29,7 +30,6 @@ import VentasCotizaciones from './pages/VentasCotizaciones';
 import VentasGarantias from './pages/VentasGarantias';
 import VentasHistorial from './pages/VentasHistorial';
 import VentasMetricas from './pages/VentasMetricas';
-import Operacion from './pages/Operacion';
 import __Layout from './Layout.jsx';
 
 
@@ -50,6 +50,7 @@ export const PAGES = {
     "MiDia": MiDia,
     "MigrationAdmin": MigrationAdmin,
     "Onboarding": Onboarding,
+    "Operacion": Operacion,
     "OrdenesTrabajo": OrdenesTrabajo,
     "PortalCliente": PortalCliente,
     "PortalComprobante": PortalComprobante,
@@ -65,7 +66,6 @@ export const PAGES = {
     "VentasGarantias": VentasGarantias,
     "VentasHistorial": VentasHistorial,
     "VentasMetricas": VentasMetricas,
-    "Operacion": Operacion,
 }
 
 export const pagesConfig = {

@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight } from 'lucide-react';
+import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
@@ -24,6 +25,7 @@ export default function VentasCotizaciones() {
 
 function VentasCotizacionesContent() {
   const { effectiveOrgId } = useAuthContext();
+  const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState('');
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
@@ -57,6 +59,34 @@ function VentasCotizacionesContent() {
   const getOT = (otId) => {
     if (!otId) return null;
     return ordenesTrabajo.find(o => o.id === otId);
+  };
+
+  const convertirAVenta = (cotizacion) => {
+    // Verificar que la cotización está aprobada
+    if (cotizacion.estado !== 'aprobada') {
+      alert('Solo se pueden convertir cotizaciones aprobadas a ventas');
+      return;
+    }
+
+    // Preparar carrito desde items de cotización
+    const carrito = cotizacion.items?.map(item => ({
+      tipo: item.tipo || 'producto',
+      referencia_id: item.referencia_id || null,
+      descripcion: item.descripcion,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio_unitario,
+      subtotal: item.subtotal
+    })) || [];
+
+    // Navegar a POS con datos precargados
+    navigate(createPageUrl('PuntoVenta'), {
+      state: {
+        cotizacion_origen: cotizacion,
+        carrito: carrito,
+        cliente_id: cotizacion.cliente_id,
+        orden_trabajo_id: cotizacion.orden_trabajo_id
+      }
+    });
   };
 
   const cotizacionesFiltradas = cotizaciones.filter(c => {
@@ -204,13 +234,12 @@ function VentasCotizacionesContent() {
                     )}
                     {cot.estado === 'aprobada' && (
                       <Button
-                        asChild
+                        onClick={() => convertirAVenta(cot)}
                         size="sm"
                         className="bg-emerald-600 hover:bg-emerald-700"
                       >
-                        <Link to={createPageUrl('PuntoVenta')}>
-                          Cobrar
-                        </Link>
+                        <ShoppingCart className="w-3 h-3 mr-1" />
+                        Convertir a Venta
                       </Button>
                     )}
                   </div>

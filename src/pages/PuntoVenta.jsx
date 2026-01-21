@@ -31,10 +31,12 @@ export default function PuntoVenta() {
 function PuntoVentaContent() {
   const location = useLocation();
   const preloadedVenta = location.state?.venta;
+  const cotizacionOrigen = location.state?.cotizacion_origen;
+  const carritoPreload = location.state?.carrito;
   
-  const [carrito, setCarrito] = useState([]);
+  const [carrito, setCarrito] = useState(carritoPreload || []);
   const [searchTerm, setSearchTerm] = useState('');
-  const [clienteSeleccionado, setClienteSeleccionado] = useState('');
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(location.state?.cliente_id || '');
   const [origenVenta, setOrigenVenta] = useState('tienda');
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [ventaId, setVentaId] = useState(null);
@@ -42,7 +44,7 @@ function PuntoVentaContent() {
   const [codigoNoEncontrado, setCodigoNoEncontrado] = useState('');
   const [ventaCompletada, setVentaCompletada] = useState(null);
   const [tipoConcepto, setTipoConcepto] = useState('venta_producto');
-  const [otSeleccionada, setOtSeleccionada] = useState('');
+  const [otSeleccionada, setOtSeleccionada] = useState(location.state?.orden_trabajo_id || '');
   const [validacionesPendientes, setValidacionesPendientes] = useState([]);
   const [ordenTrabajoObj, setOrdenTrabajoObj] = useState(null);
   const [showConfirmacionVenta, setShowConfirmacionVenta] = useState(false);
@@ -1003,6 +1005,55 @@ function PuntoVentaContent() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmación de Venta */}
+      <Dialog open={showConfirmacionVenta} onOpenChange={setShowConfirmacionVenta}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <AlertCircle className="w-6 h-6" />
+              ⚠️ Confirmar Venta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-slate-700">
+              Estás a punto de <strong>REGISTRAR UNA VENTA</strong> por un total de:
+            </p>
+            <p className="text-4xl font-bold text-emerald-600 text-center py-4">
+              ₡{totales.total.toLocaleString()}
+            </p>
+            <Alert className="bg-amber-50 border-amber-200">
+              <AlertCircle className="w-4 h-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                <strong>Esta acción:</strong>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Impactará la caja y reportes financieros</li>
+                  <li>Descontará inventario de stock</li>
+                  <li>Generará comprobante fiscal</li>
+                  <li><strong>NO puede deshacerse</strong></li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+            <p className="text-sm text-slate-600 text-center">
+              ¿Deseas continuar con la venta?
+            </p>
+          </div>
+          <div className="flex gap-3 justify-end pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowConfirmacionVenta(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={confirmarYProcesarVenta}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Sí, Procesar Venta
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

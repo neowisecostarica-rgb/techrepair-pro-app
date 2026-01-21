@@ -32,14 +32,9 @@ function ClientesContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
-  const [user, setUser] = useState(null);
   const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
   const queryClient = useQueryClient();
-  const { effectiveOrgId } = useAuthContext();
-
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
+  const { user, effectiveOrgId } = useAuthContext();
 
   const mostrarMensajeReconocimiento = (contexto) => {
     setMensajeMotivacion({ tipo: 'reconocimiento', contexto });

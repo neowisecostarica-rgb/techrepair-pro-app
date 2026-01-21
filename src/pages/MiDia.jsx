@@ -16,13 +16,8 @@ export default function MiDia() {
 }
 
 function MiDiaContent() {
-  const [user, setUser] = useState(null);
   const { userAccount } = useUserAccount();
-  const { effectiveRole, effectiveOrgId } = useAuthContext();
-
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
+  const { user, effectiveRole, effectiveOrgId } = useAuthContext();
 
   if (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN') {
     return <MiDiaAdmin user={user} effectiveOrgId={effectiveOrgId} effectiveRole={effectiveRole} />;

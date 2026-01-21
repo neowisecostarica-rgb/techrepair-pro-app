@@ -9,8 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart } from 'lucide-react';
+import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import GestionCotizaciones from '@/components/ventas/GestionCotizaciones';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
@@ -24,11 +27,13 @@ export default function VentasCotizaciones() {
 }
 
 function VentasCotizacionesContent() {
-  const { effectiveOrgId } = useAuthContext();
+  const { effectiveOrgId, user, userAccount } = useAuthContext();
   const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState('');
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
+  const [showNuevaCotizacion, setShowNuevaCotizacion] = useState(false);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState('');
 
   const { data: cotizaciones = [], isLoading } = useQuery({
     queryKey: ['cotizaciones-ventas', effectiveOrgId],
@@ -134,8 +139,15 @@ function VentasCotizacionesContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Cotizaciones</h1>
-          <p className="text-slate-600">Consulta de cotizaciones emitidas (solo lectura)</p>
+          <p className="text-slate-600">Gestión de cotizaciones comerciales</p>
         </div>
+        <Button
+          onClick={() => setShowNuevaCotizacion(true)}
+          className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          Nueva Cotización
+        </Button>
       </div>
 
       <Card className="border-0 shadow-xl">
@@ -346,6 +358,61 @@ function VentasCotizacionesContent() {
                 </div>
               )}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Nueva Cotización */}
+      <Dialog open={showNuevaCotizacion} onOpenChange={(open) => {
+        setShowNuevaCotizacion(open);
+        if (!open) {
+          setClienteSeleccionado('');
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nueva Cotización</DialogTitle>
+          </DialogHeader>
+          
+          {!clienteSeleccionado ? (
+            <div className="space-y-4 py-6">
+              <div className="text-center mb-6">
+                <FileText className="w-12 h-12 mx-auto mb-3 text-emerald-500" />
+                <p className="text-slate-600">Selecciona un cliente para crear la cotización</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Cliente *</Label>
+                <Select value={clienteSeleccionado} onValueChange={setClienteSeleccionado}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar cliente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nombre_completo} - {c.telefono}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowNuevaCotizacion(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <GestionCotizaciones
+              clienteId={clienteSeleccionado}
+              ordenTrabajoId={null}
+              user={user}
+              userAccount={userAccount}
+            />
           )}
         </DialogContent>
       </Dialog>

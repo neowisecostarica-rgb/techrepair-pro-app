@@ -20,7 +20,8 @@ import {
   Settings,
   FileText,
   Sun,
-  ChevronDown
+  ChevronDown,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -293,9 +294,7 @@ function LayoutContent({ children, currentPageName }) {
  } else if (effectiveRole === 'SALES') {
    menuItems = [
      { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
-
-     { label: 'Resumen del Negocio', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard' },
-     { label: 'Ventas y Ganancias', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Métricas' },
+     { label: 'Mis Ventas', path: 'MisVentas', icon: TrendingUp, category: null },
 
      { label: 'Caja y Cobros', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS', tooltip: 'Antes: Punto de Venta' },
      { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },

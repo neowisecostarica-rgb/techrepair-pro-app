@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign, Leaf } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign, Leaf, Shield, CheckCircle2, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { useAuthContext } from '@/components/contexts/AuthContext';
@@ -80,11 +80,21 @@ export default function Inventario() {
 
       // Auto-generar codigo_interno
       const codigoInterno = generarCodigoInterno(effectiveOrgId);
+
+      // Calcular garantia_proveedor_vence si hay fecha_compra y meses
+      let garantiaVence = null;
+      if (data.fecha_compra && data.garantia_proveedor_meses > 0) {
+        const fechaCompra = new Date(data.fecha_compra);
+        garantiaVence = new Date(fechaCompra);
+        garantiaVence.setMonth(garantiaVence.getMonth() + data.garantia_proveedor_meses);
+        garantiaVence = garantiaVence.toISOString().split('T')[0];
+      }
       
       return base44.entities.Inventario.create({
         ...data,
         codigo_interno: codigoInterno,
-        organization_id: effectiveOrgId
+        organization_id: effectiveOrgId,
+        garantia_proveedor_vence: garantiaVence
       });
     },
     onSuccess: () => {
@@ -146,7 +156,16 @@ export default function Inventario() {
         }
       }
 
-      return base44.entities.Inventario.update(id, data);
+      // Calcular garantia_proveedor_vence si hay fecha_compra y meses
+      let garantiaVence = null;
+      if (data.fecha_compra && data.garantia_proveedor_meses > 0) {
+        const fechaCompra = new Date(data.fecha_compra);
+        garantiaVence = new Date(fechaCompra);
+        garantiaVence.setMonth(garantiaVence.getMonth() + data.garantia_proveedor_meses);
+        garantiaVence = garantiaVence.toISOString().split('T')[0];
+      }
+
+      return base44.entities.Inventario.update(id, { ...data, garantia_proveedor_vence: garantiaVence });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
@@ -193,6 +212,9 @@ export default function Inventario() {
       precio_venta: categoriaSeleccionada?.es_vendible ? (parseFloat(formData.get('precio_venta')) || 0) : 0,
       punto_reorden: parseFloat(formData.get('punto_reorden')) || 5,
       proveedor: formData.get('proveedor'),
+      fecha_compra: formData.get('fecha_compra') || undefined,
+      documento_compra: formData.get('documento_compra') || undefined,
+      garantia_proveedor_meses: parseFloat(formData.get('garantia_proveedor_meses')) || undefined,
       estado: formData.get('estado') || 'activo',
       // Campos de reciclaje (opcionales)
       co2_evitado: parseFloat(formData.get('co2_evitado')) || 0,
@@ -390,6 +412,7 @@ export default function Inventario() {
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Ubicación</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Precio</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Margen</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Garantía Prov.</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Acciones</th>
                 </tr>
               </thead>
@@ -398,6 +421,14 @@ export default function Inventario() {
                   const margen = ((item.precio_venta - item.costo_unitario) / item.precio_venta * 100) || 0;
                   const bajoStock = item.cantidad_disponible <= item.punto_reorden;
                   const categoria = categorias.find(c => c.id === item.categoria_id);
+
+                  // Calcular estado de garantía del proveedor
+                  let estadoGarantiaProveedor = null;
+                  if (item.garantia_proveedor_vence) {
+                    const hoy = new Date();
+                    const vence = new Date(item.garantia_proveedor_vence);
+                    estadoGarantiaProveedor = vence >= hoy ? 'ACTIVA' : 'VENCIDA';
+                  }
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
@@ -453,6 +484,24 @@ export default function Inventario() {
                         <span className={`font-semibold ${margen > 30 ? 'text-green-600' : 'text-slate-600'}`}>
                           {margen.toFixed(1)}%
                         </span>
+                      </td>
+                      <td className="p-4">
+                        {estadoGarantiaProveedor ? (
+                          <Badge className={`${
+                            estadoGarantiaProveedor === 'ACTIVA'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-600'
+                          } border-0 flex items-center gap-1 w-fit`}>
+                            {estadoGarantiaProveedor === 'ACTIVA' ? (
+                              <CheckCircle2 className="w-3 h-3" />
+                            ) : (
+                              <XCircle className="w-3 h-3" />
+                            )}
+                            {estadoGarantiaProveedor === 'ACTIVA' ? 'Activa' : 'Vencida'}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
                       </td>
                       <td className="p-4">
                         {effectiveRole === 'ORG_ADMIN' ? (
@@ -784,6 +833,77 @@ export default function Inventario() {
                   name="proveedor"
                   defaultValue={editingItem?.proveedor}
                 />
+              </div>
+
+              {/* SECCIÓN COMPRA Y GARANTÍA DEL PROVEEDOR */}
+              <div className="col-span-2 space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-5 h-5 text-blue-600" />
+                  <h4 className="font-semibold text-slate-900">
+                    Información de Compra y Garantía del Proveedor
+                  </h4>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fecha_compra">Fecha de Compra</Label>
+                    <Input
+                      type="date"
+                      id="fecha_compra"
+                      name="fecha_compra"
+                      defaultValue={editingItem?.fecha_compra}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="documento_compra">Documento de Compra (opcional)</Label>
+                    <Input
+                      id="documento_compra"
+                      name="documento_compra"
+                      defaultValue={editingItem?.documento_compra}
+                      placeholder="Ej: FAC-12345"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="garantia_proveedor_meses">Garantía del Proveedor (meses)</Label>
+                    <Input
+                      type="number"
+                      id="garantia_proveedor_meses"
+                      name="garantia_proveedor_meses"
+                      defaultValue={editingItem?.garantia_proveedor_meses}
+                      min="0"
+                      placeholder="Ej: 12"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Duración en meses de la garantía del proveedor
+                    </p>
+                  </div>
+
+                  {editingItem?.garantia_proveedor_vence && (
+                    <div className="space-y-2">
+                      <Label>Estado de Garantía</Label>
+                      <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-slate-200">
+                        <Badge className={`${
+                          new Date(editingItem.garantia_proveedor_vence) >= new Date()
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600'
+                        } border-0`}>
+                          {new Date(editingItem.garantia_proveedor_vence) >= new Date() ? '✅ ACTIVA' : '❌ VENCIDA'}
+                        </Badge>
+                        <span className="text-sm text-slate-600">
+                          Vence: {new Date(editingItem.garantia_proveedor_vence).toLocaleDateString('es-ES')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-white rounded-lg p-3 border border-blue-100">
+                  <p className="text-xs text-slate-600">
+                    ⚠️ <strong>Importante:</strong> Esta garantía es del proveedor hacia tu negocio, <strong>NO</strong> la garantía al cliente final.
+                  </p>
+                </div>
               </div>
             </div>
 

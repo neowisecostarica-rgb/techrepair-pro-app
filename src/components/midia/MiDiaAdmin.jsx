@@ -135,6 +135,15 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
     v.estado_pago !== 'pagada' && v.estado_pago !== 'anulada'
   ).slice(0, 5);
 
+  // Garantías por vencer (≤15 días)
+  const garantiasPorVencer = garantias.filter(g => {
+    if (g.estado !== 'ACTIVA') return false;
+    const hoy = new Date();
+    const fin = new Date(g.fecha_fin);
+    const diffDays = Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
+    return diffDays > 0 && diffDays <= 15;
+  });
+
   const otsColaRevision = todasOrdenes.filter(o => 
     o.estado === 'EN_COLA_REVISION'
   );
@@ -209,13 +218,30 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
                     </div>
                     <Button size="sm" variant="outline">Seguimiento</Button>
                   </div>
-                </Link>
-              ))}
-            </>
-          )}
-        </CardContent>
-      </Card>
-      </div>
+                  </Link>
+                  ))}
+
+                  {garantiasPorVencer.slice(0, 2).map(g => (
+                  <Link key={g.id} to={createPageUrl('VentasGarantias') + '?porVencer=true'}>
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-amber-500" />
+                      <div>
+                        <p className="font-medium text-slate-900">Garantía por vencer</p>
+                        <p className="text-sm text-slate-500">
+                          Cliente: {getClienteName(g.cliente_id)} - Vence: {format(new Date(g.fecha_fin), 'dd/MM/yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline">Ver Garantías</Button>
+                  </div>
+                  </Link>
+                  ))}
+                  </>
+                  )}
+                  </CardContent>
+                  </Card>
+                  </div>
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">

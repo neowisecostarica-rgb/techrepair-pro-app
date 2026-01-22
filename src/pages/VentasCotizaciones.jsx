@@ -9,11 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus, Pencil, Send, LinkIcon, Printer, Circle, MessageCircle } from 'lucide-react';
+import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus, Pencil, Send, LinkIcon, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import GestionCotizaciones from '@/components/ventas/GestionCotizaciones';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
@@ -35,7 +33,6 @@ function VentasCotizacionesContent() {
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showNuevaCotizacion, setShowNuevaCotizacion] = useState(false);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState('');
 
   // Escuchar eventos de cotización creada/actualizada
   React.useEffect(() => {
@@ -87,13 +84,11 @@ function VentasCotizacionesContent() {
   };
 
   const convertirAVenta = (cotizacion) => {
-    // Verificar que la cotización está aprobada
     if (cotizacion.estado !== 'aprobada') {
       alert('Solo se pueden convertir cotizaciones aprobadas a ventas');
       return;
     }
 
-    // Preparar carrito desde items de cotización
     const carrito = cotizacion.items?.map(item => ({
       tipo: item.tipo || 'producto',
       referencia_id: item.referencia_id || null,
@@ -103,7 +98,6 @@ function VentasCotizacionesContent() {
       subtotal: item.subtotal
     })) || [];
 
-    // Navegar a POS con datos precargados
     navigate(createPageUrl('PuntoVenta'), {
       state: {
         cotizacion_origen: cotizacion,
@@ -223,24 +217,30 @@ function VentasCotizacionesContent() {
                           <Icon className="w-3 h-3 mr-1" />
                           {config.label}
                         </Badge>
-                      {cot.requiere_aprobacion && !cot.aprobada_por && (
-                        <Badge className="bg-yellow-100 text-yellow-700 border-0 text-xs">
-                          Requiere Aprobación
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="font-semibold text-slate-900">
-                      {getClienteName(cot.cliente_id)} - ₡{cot.total.toLocaleString()}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 flex-wrap">
-                      <span>{cot.items?.length || 0} ítems</span>
-                      {ot && (
-                        <Badge variant="outline" className="text-xs">
-                          {ot.codigo_ot}
-                        </Badge>
-                      )}
-                      {cot.valida_hasta && (
-                        <span>Válida hasta: {format(new Date(cot.valida_hasta), 'dd/MM/yyyy', { locale: es })}</span>
+                        {cot.requiere_aprobacion && !cot.aprobada_por && (
+                          <Badge className="bg-yellow-100 text-yellow-700 border-0 text-xs">
+                            Requiere Aprobación
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="font-semibold text-slate-900">
+                        {getClienteName(cot.cliente_id)} - ₡{cot.total.toLocaleString()}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 flex-wrap">
+                        <span>{cot.items?.length || 0} ítems</span>
+                        {ot && (
+                          <Badge variant="outline" className="text-xs">
+                            {ot.codigo_ot}
+                          </Badge>
+                        )}
+                        {cot.valida_hasta && (
+                          <span>Válida hasta: {format(new Date(cot.valida_hasta), 'dd/MM/yyyy', { locale: es })}</span>
+                        )}
+                      </div>
+                      {cot.ultimo_envio && (
+                        <p className="text-xs text-slate-500">
+                          📤 Enviada por {cot.ultimo_envio.canal === 'whatsapp' ? 'WhatsApp' : cot.ultimo_envio.canal === 'correo' ? 'Email' : 'Link'} - {format(new Date(cot.ultimo_envio.fecha), 'dd/MM/yyyy HH:mm', { locale: es })}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -297,14 +297,15 @@ function VentasCotizacionesContent() {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Detalle de Cotización</span>
-              <Badge className={estadoConfig[cotizacionSeleccionada?.estado]?.color}>
-                {estadoConfig[cotizacionSeleccionada?.estado]?.label}
-              </Badge>
+              {cotizacionSeleccionada && (
+                <Badge className={estadoConfig[cotizacionSeleccionada.estado].color}>
+                  {estadoConfig[cotizacionSeleccionada.estado].label}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           {cotizacionSeleccionada && (
             <div className="space-y-6 mt-4">
-
               <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
                 <div>
                   <p className="text-xs text-slate-500">Cliente</p>
@@ -401,7 +402,6 @@ function VentasCotizacionesContent() {
                     <>
                       <Button
                         onClick={() => {
-                          // TODO: Implementar edición inline
                           alert('Función de edición en desarrollo');
                         }}
                         variant="outline"
@@ -512,13 +512,17 @@ function VentasCotizacionesContent() {
             <DialogTitle>Nueva Cotización</DialogTitle>
           </DialogHeader>
           
-          <GestionCotizaciones
+          <FormularioCotizacion
             clienteId={null}
             ordenTrabajoId={null}
             user={user}
             userAccount={userAccount}
             clientes={clientes}
-            openDirectly={true}
+            onGuardar={(cot) => {
+              setShowNuevaCotizacion(false);
+              setCotizacionSeleccionada(cot);
+            }}
+            onCancelar={() => setShowNuevaCotizacion(false)}
           />
         </DialogContent>
       </Dialog>

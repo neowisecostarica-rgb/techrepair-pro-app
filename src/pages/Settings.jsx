@@ -102,36 +102,9 @@ function SettingsContent() {
     return <div className="p-8 text-center">Cargando configuración...</div>;
   }
 
-  // UI MÍNIMA: Plan suspendido
-  if (organization.status === 'suspended') {
-    return (
-      <div className="max-w-2xl mx-auto mt-12">
-        <Card className="border-0 shadow-xl border-2 border-red-300">
-          <CardContent className="p-12 text-center">
-            <AlertCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">Cuenta Suspendida</h2>
-            <p className="text-slate-600 mb-6">
-              Tu cuenta se encuentra temporalmente suspendida. Contacta a soporte para reactivarla.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <Button
-                onClick={() => base44.auth.logout()}
-                variant="outline"
-              >
-                Cerrar Sesión
-              </Button>
-              <Button
-                onClick={() => window.open('mailto:soporte@techrepair.com', '_blank')}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Contactar Soporte
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // NOTA: Suspensión ahora se maneja globalmente en Layout.js
+  // Este bloque ya no es necesario pero se mantiene como fallback defensivo
+  // En teoría, si Layout detecta suspensión, Settings nunca se monta
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

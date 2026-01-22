@@ -4,6 +4,8 @@ import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
 import { AuthProvider, useAuthContext } from './components/contexts/AuthContext';
 import ImpersonationBanner from './components/superadmin/ImpersonationBanner';
+import SuspendedScreen from './components/suspended/SuspendedScreen';
+import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   Wrench,
@@ -200,6 +202,63 @@ function LayoutContent({ children, currentPageName }) {
   // 4. User is in Onboarding page → allow access without further checks
   if (currentPageName === 'Onboarding') {
     return <>{children}</>;
+  }
+
+  // GATE GLOBAL: Verificar suspensión de Organization (P0 - Bloqueo Total)
+  const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({
+    queryKey: ['org-status', effectiveOrgId],
+    queryFn: async () => {
+      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
+      return orgs[0];
+    },
+    enabled: !!effectiveOrgId && effectiveRole !== 'SUPER_ADMIN',
+    staleTime: 60000, // Cache 1min (status no cambia frecuente)
+  });
+
+  // Esperar a que cargue org antes de decidir
+  if (effectiveOrgId && effectiveRole !== 'SUPER_ADMIN' && isLoadingOrg) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Verificando estado de tu cuenta...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error al cargar Organization → Fallback (RIESGO 1)
+  if (effectiveOrgId && isErrorOrg && effectiveRole !== 'SUPER_ADMIN') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-red-50 to-orange-50">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Error al Cargar Cuenta</h2>
+          <p className="text-slate-600 mb-6">
+            No se pudo cargar la información de tu organización. Por favor, intenta cerrar sesión o contactar a soporte.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button
+              onClick={() => window.open('mailto:soporte@techrepair-platform.com', '_blank')}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Contactar Soporte
+            </Button>
+            <Button
+              onClick={() => base44.auth.logout()}
+              variant="outline"
+            >
+              Cerrar Sesión
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // BLOQUEO TOTAL: Si Organization está suspendida → SuspendedScreen (sin sidebar, sin children)
+  if (organization?.status === 'suspended') {
+    return <SuspendedScreen orgName={organization?.name} orgId={organization?.id} />;
   }
 
   // Menús según role

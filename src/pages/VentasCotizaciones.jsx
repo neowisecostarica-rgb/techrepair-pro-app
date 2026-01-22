@@ -375,6 +375,7 @@ function VentasCotizacionesContent() {
             user={user}
             userAccount={userAccount}
             clientes={clientes}
+            openDirectly={true}
           />
         </DialogContent>
       </Dialog>

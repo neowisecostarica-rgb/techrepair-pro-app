@@ -47,19 +47,29 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const createCotizacionMutation = useMutation({
     mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data, userAccount)),
-    onSuccess: () => {
+    onSuccess: (nuevaCotizacion) => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
       setShowModal(false);
       resetForm();
+      if (openDirectly && nuevaCotizacion) {
+        // Comunicar al padre que debe abrir el detalle
+        window.dispatchEvent(new CustomEvent('cotizacion-creada', { detail: nuevaCotizacion }));
+      }
     },
   });
 
   const updateCotizacionMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Cotizacion.update(id, data),
-    onSuccess: () => {
+    onSuccess: (cotizacionActualizada) => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
       setShowModal(false);
       resetForm();
+      if (openDirectly && cotizacionActualizada) {
+        // Comunicar al padre que debe abrir el detalle
+        window.dispatchEvent(new CustomEvent('cotizacion-actualizada', { detail: cotizacionActualizada }));
+      }
     },
   });
 

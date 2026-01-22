@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus } from 'lucide-react';
+import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus, Pencil, Send, LinkIcon, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GestionCotizaciones from '@/components/ventas/GestionCotizaciones';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function VentasCotizaciones() {
   return (
@@ -29,11 +30,30 @@ export default function VentasCotizaciones() {
 function VentasCotizacionesContent() {
   const { effectiveOrgId, user, userAccount } = useAuthContext();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [busqueda, setBusqueda] = useState('');
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showNuevaCotizacion, setShowNuevaCotizacion] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState('');
+
+  // Escuchar eventos de cotización creada/actualizada
+  React.useEffect(() => {
+    const handleCotizacionCreada = (e) => {
+      setShowNuevaCotizacion(false);
+      setCotizacionSeleccionada(e.detail);
+    };
+    const handleCotizacionActualizada = (e) => {
+      setShowNuevaCotizacion(false);
+      setCotizacionSeleccionada(e.detail);
+    };
+    window.addEventListener('cotizacion-creada', handleCotizacionCreada);
+    window.addEventListener('cotizacion-actualizada', handleCotizacionActualizada);
+    return () => {
+      window.removeEventListener('cotizacion-creada', handleCotizacionCreada);
+      window.removeEventListener('cotizacion-actualizada', handleCotizacionActualizada);
+    };
+  }, []);
 
   const { data: cotizaciones = [], isLoading } = useQuery({
     queryKey: ['cotizaciones-ventas', effectiveOrgId],
@@ -273,13 +293,15 @@ function VentasCotizacionesContent() {
       <Dialog open={!!cotizacionSeleccionada} onOpenChange={() => setCotizacionSeleccionada(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalle de Cotización</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Detalle de Cotización</span>
+              <Badge className={estadoConfig[cotizacionSeleccionada?.estado]?.color}>
+                {estadoConfig[cotizacionSeleccionada?.estado]?.label}
+              </Badge>
+            </DialogTitle>
           </DialogHeader>
           {cotizacionSeleccionada && (
             <div className="space-y-6 mt-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs text-blue-800 font-medium">📋 Solo lectura - No puede editar cotizaciones desde esta vista</p>
-              </div>
 
               <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
                 <div>
@@ -357,6 +379,105 @@ function VentasCotizacionesContent() {
                   <p className="text-sm text-slate-600">{cotizacionSeleccionada.notas}</p>
                 </div>
               )}
+
+              {/* Acciones según estado */}
+              <div className="border-t pt-6">
+                <h4 className="font-semibold text-slate-900 mb-4">Acciones Disponibles</h4>
+                <div className="flex flex-wrap gap-3">
+                  {cotizacionSeleccionada.estado === 'borrador' && (
+                    <>
+                      <Button
+                        onClick={() => {
+                          const ot = getOT(cotizacionSeleccionada.orden_trabajo_id);
+                          navigate(createPageUrl('OrdenesTrabajo'), {
+                            state: {
+                              editarCotizacion: cotizacionSeleccionada,
+                              clienteId: cotizacionSeleccionada.cliente_id,
+                              ordenTrabajoId: cotizacionSeleccionada.orden_trabajo_id
+                            }
+                          });
+                        }}
+                        variant="outline"
+                        className="border-slate-300"
+                      >
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Editar Cotización
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (cotizacionSeleccionada.requiere_aprobacion && !cotizacionSeleccionada.aprobada_por) {
+                            alert('Esta cotización requiere aprobación por el descuento aplicado.');
+                            return;
+                          }
+                          const token = cotizacionSeleccionada.public_access_token || `cot_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+                          base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
+                            estado: 'enviada',
+                            enviada_at: new Date().toISOString(),
+                            public_access_token: token
+                          }).then(() => {
+                            queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+                            setCotizacionSeleccionada({ ...cotizacionSeleccionada, estado: 'enviada', public_access_token: token });
+                            alert('Cotización enviada correctamente');
+                          });
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Enviar Cotización
+                      </Button>
+                    </>
+                  )}
+                  {(cotizacionSeleccionada.estado === 'enviada' || cotizacionSeleccionada.estado === 'aprobada') && (
+                    <>
+                      <Button
+                        onClick={() => {
+                          if (!cotizacionSeleccionada.public_access_token) {
+                            alert('Primero debes enviar la cotización para generar el link');
+                            return;
+                          }
+                          const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          navigator.clipboard.writeText(link);
+                          alert('Link copiado al portapapeles');
+                        }}
+                        variant="outline"
+                        className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                      >
+                        <LinkIcon className="w-4 h-4 mr-2" />
+                        Copiar Link Público
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (cotizacionSeleccionada.public_access_token) {
+                            const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                            window.open(link, '_blank');
+                          } else {
+                            alert('Primero debes enviar la cotización');
+                          }
+                        }}
+                        variant="outline"
+                      >
+                        <Printer className="w-4 h-4 mr-2" />
+                        Imprimir
+                      </Button>
+                    </>
+                  )}
+                  {cotizacionSeleccionada.estado === 'aprobada' && (
+                    <Button
+                      onClick={() => convertirAVenta(cotizacionSeleccionada)}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      Convertir a Venta
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => setCotizacionSeleccionada(null)}
+                    variant="outline"
+                  >
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>

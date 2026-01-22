@@ -265,7 +265,7 @@ export default function PortalCotizacion() {
                   <FileText className="w-8 h-8" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold">Cotización Comercial</h1>
+                  <h1 className="text-3xl font-bold">{organization?.name || 'Cotización Comercial'}</h1>
                   <p className="text-blue-100">Propuesta de servicio/producto</p>
                 </div>
               </div>

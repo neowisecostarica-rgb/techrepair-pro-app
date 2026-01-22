@@ -1,33 +1,22 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Send, FileText, Trash2, AlertCircle, MessageSquare, Search, Package, Link as LinkIcon, Download, Printer } from 'lucide-react';
+import { Plus, Send, FileText, AlertCircle, MessageSquare, Link as LinkIcon, Download, Printer } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { withOrgId } from '@/components/hooks/useOrgData';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-
-const DESCUENTO_MAXIMO_SIN_APROBACION = 15; // 15%
+import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
 
 export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [], openDirectly = false }) {
   const [showModal, setShowModal] = useState(openDirectly);
   const [editingCotizacion, setEditingCotizacion] = useState(null);
-  const [items, setItems] = useState([{ tipo: 'servicio', descripcion: '', cantidad: 1, precio_unitario: 0, descuento_porcentaje: 0, subtotal: 0 }]);
-  const [busquedaProductos, setBusquedaProductos] = useState({});
-  const [productoSeleccionado, setProductoSeleccionado] = useState({});
-  const [clienteSeleccionadoInterno, setClienteSeleccionadoInterno] = useState(clienteId || '');
   const queryClient = useQueryClient();
 
-  const clienteActual = clienteId || clienteSeleccionadoInterno;
+  const clienteActual = clienteId;
 
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['cotizaciones', clienteActual],
@@ -45,33 +34,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     queryFn: () => base44.entities.Servicio.filter({ activo: true }),
   });
 
-  const createCotizacionMutation = useMutation({
-    mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data, userAccount)),
-    onSuccess: (nuevaCotizacion) => {
-      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
-      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-      setShowModal(false);
-      resetForm();
-      if (openDirectly && nuevaCotizacion) {
-        // Comunicar al padre que debe abrir el detalle
-        window.dispatchEvent(new CustomEvent('cotizacion-creada', { detail: nuevaCotizacion }));
-      }
-    },
-  });
-
-  const updateCotizacionMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Cotizacion.update(id, data),
-    onSuccess: (cotizacionActualizada) => {
-      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
-      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-      setShowModal(false);
-      resetForm();
-      if (openDirectly && cotizacionActualizada) {
-        // Comunicar al padre que debe abrir el detalle
-        window.dispatchEvent(new CustomEvent('cotizacion-actualizada', { detail: cotizacionActualizada }));
-      }
-    },
-  });
+  const handleGuardar = (nuevaCotizacion) => {
+    setShowModal(false);
+    queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+    queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+    if (openDirectly && nuevaCotizacion) {
+      window.dispatchEvent(new CustomEvent('cotizacion-creada', { detail: nuevaCotizacion }));
+    }
+  };
 
   const enviarSeguimientoMutation = useMutation({
     mutationFn: async ({ cotizacion, cliente }) => {
@@ -431,8 +401,27 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const totales = calcularTotales();
 
-  // Si openDirectly es true, no mostrar la lista de cotizaciones
+  // Si openDirectly es true, solo renderizar el formulario sin wrapper dialog
   if (openDirectly) {
+    return (
+      <FormularioCotizacion
+        clienteId={clienteId}
+        ordenTrabajoId={ordenTrabajoId}
+        user={user}
+        userAccount={userAccount}
+        clientes={clientes}
+        cotizacionEditar={editingCotizacion}
+        onGuardar={handleGuardar}
+        onCancelar={() => {
+          setShowModal(false);
+          setEditingCotizacion(null);
+        }}
+      />
+    );
+  }
+
+  // Si openDirectly es false, mostrar wrapper dialog completo (nunca debería llegar aquí en flujo normal)
+  if (false) {
     return (
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

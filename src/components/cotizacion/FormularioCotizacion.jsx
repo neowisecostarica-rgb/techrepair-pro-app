@@ -1,423 +1,490 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Trash2, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, Trash2, Search, Package, AlertCircle, UserPlus } from 'lucide-react';
+import { withOrgId } from '@/components/hooks/useOrgData';
+import CrearClienteRapido from './CrearClienteRapido';
+
+const DESCUENTO_MAXIMO_SIN_APROBACION = 15;
 
 export default function FormularioCotizacion({ 
-  ordenTrabajo, 
-  efectiveOrgId, 
-  userId, 
-  userRole,
-  onClose, 
-  onComplete 
+  clienteId, 
+  ordenTrabajoId, 
+  user, 
+  userAccount, 
+  clientes = [],
+  cotizacionEditar = null,
+  onGuardar,
+  onCancelar
 }) {
+  const [items, setItems] = useState(cotizacionEditar?.items || [{ 
+    tipo: 'servicio', 
+    descripcion: '', 
+    cantidad: 1, 
+    precio_unitario: 0, 
+    descuento_porcentaje: 0, 
+    subtotal: 0 
+  }]);
+  const [busquedaProductos, setBusquedaProductos] = useState({});
+  const [productoSeleccionado, setProductoSeleccionado] = useState({});
+  const [clienteSeleccionadoInterno, setClienteSeleccionadoInterno] = useState(clienteId || cotizacionEditar?.cliente_id || '');
+  const [showCrearCliente, setShowCrearCliente] = useState(false);
   const queryClient = useQueryClient();
-  const [saving, setSaving] = useState(false);
-  const [cotizacion, setCotizacion] = useState(null);
-  const [formData, setFormData] = useState({
-    items: [],
-    subtotal: 0,
-    descuento_total: 0,
-    impuesto: 0,
-    total: 0,
-    notas: '',
-    valida_hasta: ''
+
+  const clienteActual = clienteId || clienteSeleccionadoInterno;
+
+  const { data: inventario = [] } = useQuery({
+    queryKey: ['inventario-disponible'],
+    queryFn: () => base44.entities.Inventario.filter({ estado: 'activo' }),
   });
 
-  // Cargar cotización borrador o enviada existente
-  useEffect(() => {
-    cargarCotizacion();
-  }, []);
+  const { data: servicios = [] } = useQuery({
+    queryKey: ['servicios-disponibles'],
+    queryFn: () => base44.entities.Servicio.filter({ activo: true }),
+  });
 
-  const cargarCotizacion = async () => {
-    try {
-      const existentes = await base44.entities.Cotizacion.filter({
-        organization_id: efectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id,
-        estado: ['borrador', 'enviada']
-      });
+  const createCotizacionMutation = useMutation({
+    mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data, userAccount)),
+    onSuccess: (nuevaCotizacion) => {
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+      if (onGuardar) onGuardar(nuevaCotizacion);
+    },
+  });
 
-      if (existentes.length > 0) {
-        const cot = existentes[0];
-        setCotizacion(cot);
-        setFormData({
-          items: cot.items || [],
-          subtotal: cot.subtotal || 0,
-          descuento_total: cot.descuento_total || 0,
-          impuesto: cot.impuesto || 0,
-          total: cot.total || 0,
-          notas: cot.notas || '',
-          valida_hasta: cot.valida_hasta || ''
-        });
-      }
-    } catch (error) {
-      console.error('Error cargando cotización:', error);
-    }
+  const updateCotizacionMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Cotizacion.update(id, data),
+    onSuccess: (cotizacionActualizada) => {
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+      if (onGuardar) onGuardar(cotizacionActualizada);
+    },
+  });
+
+  const buscarProducto = (texto, index) => {
+    setBusquedaProductos(prev => ({ ...prev, [index]: texto }));
   };
 
-  const calcularTotales = (items, descuento) => {
+  const seleccionarItem = (item, index) => {
+    const newItems = [...items];
+    newItems[index].descripcion = item.nombre;
+    newItems[index].precio_unitario = item.precio_venta || 0;
+    newItems[index].tipo = item.tipo_sugerido;
+    newItems[index].item_id = item.id;
+    newItems[index].origen = item.origen;
+    
+    const cantidad = parseFloat(newItems[index].cantidad) || 0;
+    const precio = parseFloat(newItems[index].precio_unitario) || 0;
+    const descuento = parseFloat(newItems[index].descuento_porcentaje) || 0;
+    const subtotalSinDescuento = cantidad * precio;
+    newItems[index].subtotal = subtotalSinDescuento - (subtotalSinDescuento * descuento / 100);
+    
+    setItems(newItems);
+    setProductoSeleccionado(prev => ({ ...prev, [index]: item }));
+    setBusquedaProductos(prev => ({ ...prev, [index]: '' }));
+  };
+
+  const getItemsDisponibles = (index) => {
+    const busqueda = busquedaProductos[index] || '';
+    if (!busqueda || busqueda.length < 2) return [];
+    
+    const textoLower = busqueda.toLowerCase();
+    
+    const productosInventario = inventario
+      .filter(p => 
+        p.nombre?.toLowerCase().includes(textoLower) ||
+        p.codigo_interno?.toLowerCase().includes(textoLower) ||
+        p.marca?.toLowerCase().includes(textoLower)
+      )
+      .map(p => ({ 
+        ...p, 
+        origen: 'inventario',
+        tipo_sugerido: 'producto' 
+      }));
+    
+    const serviciosDisponibles = servicios
+      .filter(s => 
+        s.nombre?.toLowerCase().includes(textoLower) ||
+        s.descripcion?.toLowerCase().includes(textoLower)
+      )
+      .map(s => ({ 
+        ...s, 
+        nombre: s.nombre,
+        precio_venta: s.precio || 0,
+        cantidad_disponible: null,
+        origen: 'servicio',
+        tipo_sugerido: 'servicio'
+      }));
+    
+    return [...productosInventario, ...serviciosDisponibles].slice(0, 8);
+  };
+
+  const addItem = () => {
+    setItems([...items, { tipo: 'servicio', descripcion: '', cantidad: 1, precio_unitario: 0, descuento_porcentaje: 0, subtotal: 0 }]);
+  };
+
+  const removeItem = (index) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (index, field, value) => {
+    const newItems = [...items];
+    newItems[index][field] = value;
+
+    if (field === 'cantidad' || field === 'precio_unitario' || field === 'descuento_porcentaje') {
+      const cantidad = parseFloat(newItems[index].cantidad) || 0;
+      const precio = parseFloat(newItems[index].precio_unitario) || 0;
+      const descuento = parseFloat(newItems[index].descuento_porcentaje) || 0;
+      const subtotalSinDescuento = cantidad * precio;
+      newItems[index].subtotal = subtotalSinDescuento - (subtotalSinDescuento * descuento / 100);
+    }
+
+    setItems(newItems);
+  };
+
+  const calcularTotales = () => {
     const subtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-    const descuentoAplicado = descuento || 0;
-    const baseImponible = subtotal - descuentoAplicado;
-    const impuesto = baseImponible * 0.19; // IVA 19% (configurable por org)
-    const total = baseImponible + impuesto;
+    const descuentoTotal = items.reduce((sum, item) => {
+      const cantidad = parseFloat(item.cantidad) || 0;
+      const precio = parseFloat(item.precio_unitario) || 0;
+      const descuento = parseFloat(item.descuento_porcentaje) || 0;
+      return sum + (cantidad * precio * descuento / 100);
+    }, 0);
+    const impuesto = subtotal * 0.13;
+    const total = subtotal + impuesto;
 
-    return { subtotal, descuento: descuentoAplicado, impuesto, total };
+    const descuentoPromedio = subtotal > 0 ? (descuentoTotal / subtotal) * 100 : 0;
+    const requiereAprobacion = descuentoPromedio > DESCUENTO_MAXIMO_SIN_APROBACION;
+
+    return { subtotal, descuentoTotal, impuesto, total, requiereAprobacion };
   };
 
-  const agregarItem = () => {
-    setFormData({
-      ...formData,
-      items: [
-        ...formData.items,
-        {
-          tipo: 'servicio',
-          descripcion: '',
-          cantidad: 1,
-          precio_unitario: 0,
-          subtotal: 0
-        }
-      ]
-    });
-  };
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
-  const actualizarItem = (index, campo, valor) => {
-    const nuevosItems = [...formData.items];
-    nuevosItems[index][campo] = valor;
-
-    // Recalcular subtotal del item
-    if (campo === 'cantidad' || campo === 'precio_unitario') {
-      nuevosItems[index].subtotal = 
-        (nuevosItems[index].cantidad || 0) * (nuevosItems[index].precio_unitario || 0);
-    }
-
-    const totales = calcularTotales(nuevosItems, formData.descuento_total);
-    setFormData({
-      ...formData,
-      items: nuevosItems,
-      ...totales
-    });
-  };
-
-  const eliminarItem = (index) => {
-    const nuevosItems = formData.items.filter((_, i) => i !== index);
-    const totales = calcularTotales(nuevosItems, formData.descuento_total);
-    setFormData({
-      ...formData,
-      items: nuevosItems,
-      ...totales
-    });
-  };
-
-  const aplicarDescuento = (valor) => {
-    const totales = calcularTotales(formData.items, valor);
-    setFormData({
-      ...formData,
-      descuento_total: valor,
-      ...totales
-    });
-  };
-
-  const guardarBorrador = async () => {
-    setSaving(true);
-    try {
-      const data = {
-        organization_id: efectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id,
-        cliente_id: ordenTrabajo.cliente_id,
-        vendedor_id: userId,
-        vendedor_nombre: 'Usuario', // TODO: obtener nombre real
-        estado: 'borrador',
-        ...formData
-      };
-
-      if (cotizacion) {
-        await base44.entities.Cotizacion.update(cotizacion.id, data);
-      } else {
-        const nueva = await base44.entities.Cotizacion.create(data);
-        setCotizacion(nueva);
-      }
-
-      alert('Cotización guardada como borrador');
-    } catch (error) {
-      console.error('Error guardando cotización:', error);
-      alert('Error al guardar: ' + error.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const enviarCotizacion = async () => {
-    if (formData.items.length === 0) {
-      alert('Agrega al menos un item a la cotización');
+    if (!clienteActual) {
+      alert('Por favor selecciona un cliente antes de guardar la cotización');
       return;
     }
 
-    if (!formData.valida_hasta) {
-      alert('Define la fecha de validez de la cotización');
-      return;
-    }
+    const formData = new FormData(e.target);
+    const totales = calcularTotales();
 
-    setSaving(true);
-    try {
-      // Validar descuentos altos
-      const porcentajeDescuento = (formData.descuento_total / formData.subtotal) * 100;
-      const requiereAprobacion = porcentajeDescuento > 15;
+    const cotizacionData = {
+      cliente_id: clienteActual,
+      vendedor_id: user.id,
+      vendedor_nombre: user.full_name || user.email,
+      orden_trabajo_id: ordenTrabajoId || null,
+      items: items,
+      subtotal: totales.subtotal,
+      descuento_total: totales.descuentoTotal,
+      impuesto: totales.impuesto,
+      total: totales.total,
+      estado: 'borrador',
+      requiere_aprobacion: totales.requiereAprobacion,
+      valida_hasta: formData.get('valida_hasta'),
+      notas: formData.get('notas'),
+    };
 
-      const data = {
-        organization_id: efectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id,
-        cliente_id: ordenTrabajo.cliente_id,
-        vendedor_id: userId,
-        vendedor_nombre: 'Usuario',
-        estado: 'enviada',
-        enviada_at: new Date().toISOString(),
-        requiere_aprobacion: requiereAprobacion,
-        ...formData
-      };
-
-      if (cotizacion) {
-        await base44.entities.Cotizacion.update(cotizacion.id, data);
-      } else {
-        await base44.entities.Cotizacion.create(data);
-      }
-
-      // Cambiar estado de OT
-      await base44.entities.OrdenTrabajo.update(ordenTrabajo.id, {
-        estado: 'COTIZADA'
-      });
-
-      onComplete();
-    } catch (error) {
-      console.error('Error enviando cotización:', error);
-      alert('Error al enviar: ' + error.message);
-    } finally {
-      setSaving(false);
+    if (cotizacionEditar) {
+      updateCotizacionMutation.mutate({ id: cotizacionEditar.id, data: cotizacionData });
+    } else {
+      createCotizacionMutation.mutate(cotizacionData);
     }
   };
+
+  const totales = calcularTotales();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Cotización</h2>
-          <p className="text-sm text-slate-500">
-            {ordenTrabajo.codigo_ot}
-          </p>
-        </div>
-        {cotizacion && (
-          <Badge variant={cotizacion.estado === 'enviada' ? 'default' : 'secondary'}>
-            {cotizacion.estado}
-          </Badge>
-        )}
-      </div>
-
-      <Tabs defaultValue="items" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="items">Servicios y Repuestos</TabsTrigger>
-          <TabsTrigger value="resumen">Resumen y Envío</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="items" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Items de la Cotización</CardTitle>
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {!clienteId && (
+          <div className="space-y-2">
+            <Label>Cliente *</Label>
+            <div className="flex gap-2">
+              <Select 
+                value={clienteSeleccionadoInterno} 
+                onValueChange={setClienteSeleccionadoInterno}
+                disabled={!!cotizacionEditar}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Selecciona un cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientes.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nombre_completo} - {c.telefono}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!cotizacionEditar && (
                 <Button
                   type="button"
+                  onClick={() => setShowCrearCliente(true)}
                   variant="outline"
-                  size="sm"
-                  onClick={agregarItem}
-                  disabled={cotizacion?.estado === 'enviada'}
+                  className="shrink-0 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Agregar Item
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Crear Cliente
                 </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {formData.items.length === 0 ? (
-                <Alert>
-                  <AlertCircle className="w-4 h-4" />
-                  <AlertDescription>
-                    No hay items. Agrega servicios, repuestos o mano de obra.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                formData.items.map((item, index) => (
-                  <div key={index} className="border rounded-lg p-4 space-y-3">
-                    <div className="grid grid-cols-4 gap-3">
-                      <div>
-                        <Label className="text-xs">Tipo</Label>
-                        <select
-                          className="w-full border rounded px-3 py-2 text-sm"
-                          value={item.tipo}
-                          onChange={(e) => actualizarItem(index, 'tipo', e.target.value)}
-                          disabled={cotizacion?.estado === 'enviada'}
-                        >
-                          <option value="servicio">Servicio</option>
-                          <option value="repuesto">Repuesto</option>
-                          <option value="mano_obra">Mano de Obra</option>
-                          <option value="otro">Otro</option>
-                        </select>
-                      </div>
-                      <div className="col-span-2">
-                        <Label className="text-xs">Descripción</Label>
-                        <Input
-                          value={item.descripcion}
-                          onChange={(e) => actualizarItem(index, 'descripcion', e.target.value)}
-                          placeholder="Describe el item"
-                          disabled={cotizacion?.estado === 'enviada'}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Cantidad</Label>
-                        <Input
-                          type="number"
-                          value={item.cantidad}
-                          onChange={(e) => actualizarItem(index, 'cantidad', parseFloat(e.target.value) || 0)}
-                          disabled={cotizacion?.estado === 'enviada'}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 items-end">
-                      <div>
-                        <Label className="text-xs">Precio Unitario</Label>
-                        <Input
-                          type="number"
-                          value={item.precio_unitario}
-                          onChange={(e) => actualizarItem(index, 'precio_unitario', parseFloat(e.target.value) || 0)}
-                          placeholder="0"
-                          disabled={cotizacion?.estado === 'enviada'}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Subtotal</Label>
-                        <Input
-                          type="number"
-                          value={item.subtotal}
-                          disabled
-                          className="bg-slate-50"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => eliminarItem(index)}
-                        disabled={cotizacion?.estado === 'enviada'}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
               )}
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={guardarBorrador} 
-              disabled={saving || cotizacion?.estado === 'enviada'}
-            >
-              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Guardar Borrador
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="resumen" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Resumen de Cotización</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Subtotal:</span>
-                  <span className="font-medium">${formData.subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm items-center gap-2">
-                  <span className="text-slate-600">Descuento:</span>
-                  <Input
-                    type="number"
-                    value={formData.descuento_total}
-                    onChange={(e) => aplicarDescuento(parseFloat(e.target.value) || 0)}
-                    className="w-32 text-right"
-                    disabled={cotizacion?.estado === 'enviada'}
-                  />
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Impuestos (19%):</span>
-                  <span className="font-medium">${formData.impuesto.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-bold border-t pt-2">
-                  <span>Total:</span>
-                  <span className="text-emerald-600">${formData.total.toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Válida hasta</Label>
-                <Input
-                  type="date"
-                  value={formData.valida_hasta}
-                  onChange={(e) => setFormData({...formData, valida_hasta: e.target.value})}
-                  disabled={cotizacion?.estado === 'enviada'}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Notas adicionales</Label>
-                <Textarea
-                  value={formData.notas}
-                  onChange={(e) => setFormData({...formData, notas: e.target.value})}
-                  placeholder="Condiciones, garantías, etc."
-                  rows={3}
-                  disabled={cotizacion?.estado === 'enviada'}
-                />
-              </div>
-
-              {cotizacion?.estado === 'enviada' && (
-                <Alert className="bg-emerald-50 border-emerald-200">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <AlertDescription className="text-emerald-800">
-                    Esta cotización ya fue enviada al cliente y está esperando aprobación.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            {cotizacion?.estado !== 'enviada' && (
-              <Button 
-                onClick={enviarCotizacion} 
-                disabled={saving}
-                className="bg-gradient-to-r from-emerald-500 to-blue-500"
-              >
-                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                Enviar Cotización
-              </Button>
+            </div>
+            {!clienteSeleccionadoInterno && (
+              <Alert className="bg-amber-50 border-amber-200">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 text-sm">
+                  Selecciona un cliente o crea uno nuevo antes de guardar
+                </AlertDescription>
+              </Alert>
             )}
           </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+        )}
+
+        <Alert className="bg-blue-50 border-blue-200">
+          <Package className="w-4 h-4 text-blue-600" />
+          <AlertDescription className="text-blue-800 text-sm">
+            💡 <strong>Inventario informativo:</strong> El stock mostrado es referencial. Al facturar se validará disponibilidad real.
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>Items de la Cotización</Label>
+            <Button type="button" size="sm" variant="outline" onClick={addItem}>
+              <Plus className="w-4 h-4 mr-2" />
+              Agregar Item
+            </Button>
+          </div>
+
+          {items.map((item, idx) => {
+            const productoActual = productoSeleccionado[idx];
+            const resultados = getItemsDisponibles(idx);
+            
+            return (
+            <Card key={idx} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-6 gap-3">
+                    <div>
+                      <Label className="text-xs">Tipo</Label>
+                      <Select
+                        value={item.tipo}
+                        onValueChange={(value) => {
+                          updateItem(idx, 'tipo', value);
+                          if (value === 'servicio') {
+                            setProductoSeleccionado(prev => ({ ...prev, [idx]: null }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="producto">Producto</SelectItem>
+                          <SelectItem value="servicio">Servicio</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 relative">
+                      <Label className="text-xs">Buscar / Descripción</Label>
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2 w-4 h-4 text-slate-400" />
+                        <Input
+                          value={busquedaProductos[idx] || ''}
+                          onChange={(e) => buscarProducto(e.target.value, idx)}
+                          placeholder={item.tipo === 'producto' ? 'Buscar producto...' : 'Descripción...'}
+                          className="h-9 pl-8"
+                        />
+                      </div>
+                      {resultados.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {resultados.map(item => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => seleccionarItem(item, idx)}
+                              className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="text-sm font-medium text-slate-900">{item.nombre}</p>
+                                    <Badge className={item.origen === 'inventario' ? 'bg-blue-100 text-blue-700 border-0' : 'bg-purple-100 text-purple-700 border-0'}>
+                                      {item.origen === 'inventario' ? 'Producto' : 'Servicio'}
+                                    </Badge>
+                                  </div>
+                                  {item.codigo_interno && (
+                                    <p className="text-xs text-slate-500">{item.codigo_interno}</p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-medium text-emerald-600">₡{item.precio_venta?.toLocaleString()}</p>
+                                  {item.cantidad_disponible !== null && (
+                                    <p className="text-xs text-slate-500">Stock: {item.cantidad_disponible}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-span-3">
+                      <Label className="text-xs">Descripción Final</Label>
+                      <Input
+                        value={item.descripcion}
+                        onChange={(e) => updateItem(idx, 'descripcion', e.target.value)}
+                        placeholder="Lo que aparecerá en la cotización"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-6 gap-3">
+                    <div>
+                      <Label className="text-xs">Cant.</Label>
+                      <Input
+                        type="number"
+                        value={item.cantidad}
+                        onChange={(e) => updateItem(idx, 'cantidad', e.target.value)}
+                        min="1"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Precio</Label>
+                      <Input
+                        type="number"
+                        value={item.precio_unitario}
+                        onChange={(e) => updateItem(idx, 'precio_unitario', e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Desc. %</Label>
+                      <Input
+                        type="number"
+                        value={item.descuento_porcentaje}
+                        onChange={(e) => updateItem(idx, 'descuento_porcentaje', e.target.value)}
+                        min="0"
+                        max="100"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+
+                  {productoActual && (
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <Package className="w-4 h-4 text-blue-600" />
+                      <AlertDescription className="text-blue-800">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">
+                            📦 Stock: {productoActual.cantidad_disponible} unidades
+                          </span>
+                        </div>
+                        <p className="text-xs mt-1 text-blue-600">
+                          ⚠️ No reservado - Se valida al facturar
+                        </p>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-sm font-medium text-slate-700">
+                    Subtotal: ₡{item.subtotal.toLocaleString()}
+                  </p>
+                  {items.length > 1 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeItem(idx)}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            );
+          })}
+        </div>
+
+        <div className="bg-slate-50 p-4 rounded-lg space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Subtotal:</span>
+            <span className="font-medium">₡{totales.subtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>Descuento:</span>
+            <span className="font-medium text-emerald-600">-₡{totales.descuentoTotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>IVA (13%):</span>
+            <span className="font-medium">₡{totales.impuesto.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-lg font-bold border-t pt-2">
+            <span>Total:</span>
+            <span className="text-emerald-600">₡{totales.total.toLocaleString()}</span>
+          </div>
+          {totales.requiereAprobacion && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-xs text-yellow-800 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Requiere aprobación (descuento &gt; {DESCUENTO_MAXIMO_SIN_APROBACION}%)
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Válida hasta</Label>
+          <Input
+            name="valida_hasta"
+            type="date"
+            defaultValue={cotizacionEditar?.valida_hasta}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Notas</Label>
+          <Textarea
+            name="notas"
+            placeholder="Notas adicionales..."
+            defaultValue={cotizacionEditar?.notas}
+            rows={2}
+          />
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <Button type="button" variant="outline" onClick={onCancelar}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={createCotizacionMutation.isPending || updateCotizacionMutation.isPending}>
+            {createCotizacionMutation.isPending || updateCotizacionMutation.isPending ? 'Guardando...' : 'Guardar Cotización'}
+          </Button>
+        </div>
+      </form>
+
+      <CrearClienteRapido
+        open={showCrearCliente}
+        onClose={() => setShowCrearCliente(false)}
+        onClienteCreado={(cliente) => {
+          setClienteSeleccionadoInterno(cliente.id);
+          setShowCrearCliente(false);
+        }}
+        userAccount={userAccount}
+        clientes={clientes}
+      />
+    </>
   );
 }

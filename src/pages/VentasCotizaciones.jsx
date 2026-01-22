@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus, Pencil, Send, LinkIcon, Printer } from 'lucide-react';
+import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus, Pencil, Send, LinkIcon, Printer, Circle, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GestionCotizaciones from '@/components/ventas/GestionCotizaciones';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -135,11 +135,11 @@ function VentasCotizacionesContent() {
   });
 
   const estadoConfig = {
-    borrador: { color: 'bg-slate-100 text-slate-700', icon: FileText, label: 'Borrador' },
-    enviada: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Enviada' },
-    aprobada: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2, label: 'Aprobada' },
-    rechazada: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rechazada' },
-    vencida: { color: 'bg-orange-100 text-orange-700', icon: XCircle, label: 'Vencida' },
+    borrador: { color: 'bg-slate-100 text-slate-700', icon: FileText, label: 'Borrador', indicador: '⚪' },
+    enviada: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Enviada', indicador: '🟢' },
+    aprobada: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2, label: 'Aprobada', indicador: '🟢' },
+    rechazada: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rechazada', indicador: '🔴' },
+    vencida: { color: 'bg-orange-100 text-orange-700', icon: XCircle, label: 'Vencida', indicador: '🔴' },
   };
 
   if (isLoading) {
@@ -215,12 +215,14 @@ function VentasCotizacionesContent() {
                   key={cot.id}
                   className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className={`${config.color} border-0`}>
-                        <Icon className="w-3 h-3 mr-1" />
-                        {config.label}
-                      </Badge>
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="text-2xl">{config.indicador}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className={`${config.color} border-0`}>
+                          <Icon className="w-3 h-3 mr-1" />
+                          {config.label}
+                        </Badge>
                       {cot.requiere_aprobacion && !cot.aprobada_por && (
                         <Badge className="bg-yellow-100 text-yellow-700 border-0 text-xs">
                           Requiere Aprobación
@@ -380,6 +382,17 @@ function VentasCotizacionesContent() {
                 </div>
               )}
 
+              {cotizacionSeleccionada.ultimo_envio && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Último envío:</strong> {cotizacionSeleccionada.ultimo_envio.canal === 'whatsapp' ? 'WhatsApp' : cotizacionSeleccionada.ultimo_envio.canal === 'correo' ? 'Correo Electrónico' : 'Link Compartido'}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {format(new Date(cotizacionSeleccionada.ultimo_envio.fecha), "dd/MM/yyyy 'a las' HH:mm", { locale: es })} por {cotizacionSeleccionada.ultimo_envio.enviado_por_nombre}
+                  </p>
+                </div>
+              )}
+
               {/* Acciones según estado */}
               <div className="border-t pt-6">
                 <h4 className="font-semibold text-slate-900 mb-4">Acciones Disponibles</h4>
@@ -388,14 +401,8 @@ function VentasCotizacionesContent() {
                     <>
                       <Button
                         onClick={() => {
-                          const ot = getOT(cotizacionSeleccionada.orden_trabajo_id);
-                          navigate(createPageUrl('OrdenesTrabajo'), {
-                            state: {
-                              editarCotizacion: cotizacionSeleccionada,
-                              clienteId: cotizacionSeleccionada.cliente_id,
-                              ordenTrabajoId: cotizacionSeleccionada.orden_trabajo_id
-                            }
-                          });
+                          // TODO: Implementar edición inline
+                          alert('Función de edición en desarrollo');
                         }}
                         variant="outline"
                         className="border-slate-300"
@@ -404,21 +411,30 @@ function VentasCotizacionesContent() {
                         Editar Cotización
                       </Button>
                       <Button
-                        onClick={() => {
+                        onClick={async () => {
                           if (cotizacionSeleccionada.requiere_aprobacion && !cotizacionSeleccionada.aprobada_por) {
                             alert('Esta cotización requiere aprobación por el descuento aplicado.');
                             return;
                           }
                           const token = cotizacionSeleccionada.public_access_token || `cot_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-                          base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
+                          const envio = {
+                            canal: 'link',
+                            fecha: new Date().toISOString(),
+                            enviado_por: user.id,
+                            enviado_por_nombre: user.full_name || user.email
+                          };
+                          await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
                             estado: 'enviada',
                             enviada_at: new Date().toISOString(),
-                            public_access_token: token
-                          }).then(() => {
-                            queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                            setCotizacionSeleccionada({ ...cotizacionSeleccionada, estado: 'enviada', public_access_token: token });
-                            alert('Cotización enviada correctamente');
+                            public_access_token: token,
+                            ultimo_envio: envio,
+                            historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
                           });
+                          queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+                          const link = `${window.location.origin}/cotizacion?token=${token}`;
+                          navigator.clipboard.writeText(link);
+                          alert('✅ Cotización enviada. Link copiado al portapapeles.');
+                          setCotizacionSeleccionada({ ...cotizacionSeleccionada, estado: 'enviada', public_access_token: token, ultimo_envio: envio });
                         }}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
@@ -430,11 +446,30 @@ function VentasCotizacionesContent() {
                   {(cotizacionSeleccionada.estado === 'enviada' || cotizacionSeleccionada.estado === 'aprobada') && (
                     <>
                       <Button
+                        onClick={async () => {
+                          const envio = {
+                            canal: 'link',
+                            fecha: new Date().toISOString(),
+                            enviado_por: user.id,
+                            enviado_por_nombre: user.full_name || user.email
+                          };
+                          await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
+                            ultimo_envio: envio,
+                            historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
+                          });
+                          queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+                          const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          navigator.clipboard.writeText(link);
+                          alert('✅ Link copiado. Reenvío registrado.');
+                          setCotizacionSeleccionada({ ...cotizacionSeleccionada, ultimo_envio: envio });
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Reenviar Cotización
+                      </Button>
+                      <Button
                         onClick={() => {
-                          if (!cotizacionSeleccionada.public_access_token) {
-                            alert('Primero debes enviar la cotización para generar el link');
-                            return;
-                          }
                           const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
                           navigator.clipboard.writeText(link);
                           alert('Link copiado al portapapeles');
@@ -443,16 +478,12 @@ function VentasCotizacionesContent() {
                         className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                       >
                         <LinkIcon className="w-4 h-4 mr-2" />
-                        Copiar Link Público
+                        Copiar Link
                       </Button>
                       <Button
                         onClick={() => {
-                          if (cotizacionSeleccionada.public_access_token) {
-                            const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
-                            window.open(link, '_blank');
-                          } else {
-                            alert('Primero debes enviar la cotización');
-                          }
+                          const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          window.open(link, '_blank');
                         }}
                         variant="outline"
                       >
@@ -460,15 +491,6 @@ function VentasCotizacionesContent() {
                         Imprimir
                       </Button>
                     </>
-                  )}
-                  {cotizacionSeleccionada.estado === 'aprobada' && (
-                    <Button
-                      onClick={() => convertirAVenta(cotizacionSeleccionada)}
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      <ShoppingCart className="w-4 h-4 mr-2" />
-                      Convertir a Venta
-                    </Button>
                   )}
                   <Button
                     onClick={() => setCotizacionSeleccionada(null)}

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, MapPin, Users, Plus, Trash2 } from 'lucide-react';
+import { Building2, MapPin, Users, Plus, Trash2, AlertCircle } from 'lucide-react';
 import PageGuard from '../components/guards/PageGuard';
 import UserManagementPanel from '../components/settings/UserManagementPanel';
 import SenalesNegocio from '../components/admin/SenalesNegocio';
@@ -70,8 +70,67 @@ function SettingsContent() {
     });
   };
 
-  if (!userAccount || !organization) {
-    return <div className="p-8 text-center">Cargando...</div>;
+  // Fallback explícito para org no encontrada (NO loading infinito)
+  if (!userAccount) {
+    return <div className="p-8 text-center">Cargando información de usuario...</div>;
+  }
+
+  if (!organization && !effectiveOrgId) {
+    return (
+      <div className="max-w-2xl mx-auto mt-12">
+        <Card className="border-0 shadow-xl">
+          <CardContent className="p-12 text-center">
+            <Building2 className="w-16 h-16 mx-auto mb-6 text-slate-400" />
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">No se encontró tu empresa</h2>
+            <p className="text-slate-600 mb-6">
+              Parece que no tienes una organización configurada. Crea tu empresa para comenzar.
+            </p>
+            <Button
+              onClick={() => window.location.href = createPageUrl('Onboarding')}
+              className="bg-gradient-to-r from-emerald-500 to-blue-500"
+            >
+              <Building2 className="w-4 h-4 mr-2" />
+              Crear Empresa
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!organization) {
+    return <div className="p-8 text-center">Cargando configuración...</div>;
+  }
+
+  // UI MÍNIMA: Plan suspendido
+  if (organization.status === 'suspended') {
+    return (
+      <div className="max-w-2xl mx-auto mt-12">
+        <Card className="border-0 shadow-xl border-2 border-red-300">
+          <CardContent className="p-12 text-center">
+            <AlertCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">Cuenta Suspendida</h2>
+            <p className="text-slate-600 mb-6">
+              Tu cuenta se encuentra temporalmente suspendida. Contacta a soporte para reactivarla.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button
+                onClick={() => base44.auth.logout()}
+                variant="outline"
+              >
+                Cerrar Sesión
+              </Button>
+              <Button
+                onClick={() => window.open('mailto:soporte@techrepair.com', '_blank')}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Contactar Soporte
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

@@ -93,6 +93,10 @@ function LayoutContent({ children, currentPageName }) {
     );
   }
 
+  // DEFENSIVO: Si estamos en Settings u Onboarding, no forzar redirect prematuro
+  const protectedPages = ['Settings', 'Onboarding'];
+  const isProtectedPage = protectedPages.includes(currentPageName);
+
   // Error 429: Mostrar pantalla de cooldown sin loops
   if (status === 'error' && errorCode === 429) {
     return (
@@ -176,8 +180,8 @@ function LayoutContent({ children, currentPageName }) {
     );
   }
 
-  // 2. No UserAccount → send to Onboarding
-  if (!userAccount && currentPageName !== 'Onboarding') {
+  // 2. No UserAccount → send to Onboarding (con excepción de páginas protegidas)
+  if (!userAccount && !isProtectedPage) {
     if (typeof window !== 'undefined') {
       window.location.href = createPageUrl('Onboarding');
     }
@@ -186,7 +190,7 @@ function LayoutContent({ children, currentPageName }) {
 
   // 3. UserAccount exists but incomplete setup → send to Onboarding
   // Check if organization_id is missing (indicates incomplete setup)
-  if (userAccount && !userAccount.organization_id && currentPageName !== 'Onboarding') {
+  if (userAccount && !userAccount.organization_id && !isProtectedPage) {
     if (typeof window !== 'undefined') {
       window.location.href = createPageUrl('Onboarding');
     }

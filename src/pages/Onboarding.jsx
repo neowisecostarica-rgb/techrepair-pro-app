@@ -85,6 +85,21 @@ export default function Onboarding() {
     setCreating(true);
 
     try {
+      // IDEMPOTENCIA: Verificar si ya existe org antes de crear
+      const existingAccounts = await base44.entities.UserAccount.filter({
+        user_id: user.id
+      });
+
+      if (existingAccounts.length > 0 && existingAccounts[0].organization_id) {
+        // Ya tiene org configurada
+        const existingOrgId = existingAccounts[0].organization_id;
+        setMode('success');
+        setTimeout(() => {
+          window.location.href = createPageUrl('Settings');
+        }, 1500);
+        return;
+      }
+
       const formData = new FormData(e.target);
       
       // 1. Crear Organization
@@ -129,13 +144,32 @@ export default function Onboarding() {
       }
 
       // 4. Crear UserAccount como ORG_ADMIN (owner)
-      await base44.entities.UserAccount.create({
-        user_id: user.id,
-        user_email: user.email,
-        organization_id: org.id,
-        role: 'ORG_ADMIN',
-        active: true,
-      });
+      try {
+        await base44.entities.UserAccount.create({
+          user_id: user.id,
+          user_email: user.email,
+          organization_id: org.id,
+          role: 'ORG_ADMIN',
+          active: true,
+        });
+      } catch (userAccountError) {
+        // Reintentar una vez si falló (race condition)
+        console.warn('Retry UserAccount creation:', userAccountError);
+        const retryAccounts = await base44.entities.UserAccount.filter({
+          user_id: user.id,
+          organization_id: org.id
+        });
+        if (retryAccounts.length === 0) {
+          // No existe, reintentar
+          await base44.entities.UserAccount.create({
+            user_id: user.id,
+            user_email: user.email,
+            organization_id: org.id,
+            role: 'ORG_ADMIN',
+            active: true,
+          });
+        }
+      }
 
       setMode('success');
       setTimeout(() => {
@@ -143,7 +177,17 @@ export default function Onboarding() {
       }, 1500);
     } catch (err) {
       console.error('Error creating company:', err);
-      alert('Error al crear la empresa: ' + err.message);
+      
+      // Mensaje de error más específico
+      if (err.message?.includes('duplicate') || err.message?.includes('already exists')) {
+        alert('Ya tienes una empresa configurada. Redirigiendo...');
+        setTimeout(() => {
+          window.location.href = createPageUrl('Settings');
+        }, 1000);
+      } else {
+        alert('Error al crear la empresa: ' + err.message);
+      }
+      
       setCreating(false);
     }
   };
@@ -287,6 +331,10 @@ export default function Onboarding() {
                 </>
               )}
             </Button>
+            
+            <p className="text-xs text-center text-slate-500 mt-2">
+              Si refrescas la página, no se duplicará tu empresa
+            </p>
           </form>
         </CardContent>
       </Card>

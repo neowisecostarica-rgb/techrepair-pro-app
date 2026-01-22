@@ -64,7 +64,9 @@ export function AuthProvider({ children }) {
       // Cargar UserAccount normal
       const accounts = await base44.entities.UserAccount.filter({ user_id: u.id });
       if (accounts.length > 0) {
-        setUserAccount(accounts[0]);
+        // Priorizar cuenta activa y con org válida
+        const activeAccount = accounts.find(a => a.active && a.organization_id);
+        setUserAccount(activeAccount || accounts[0]);
       } else {
         setUserAccount(null);
       }

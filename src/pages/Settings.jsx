@@ -14,6 +14,7 @@ import UserManagementPanel from '../components/settings/UserManagementPanel';
 import SenalesNegocio from '../components/admin/SenalesNegocio';
 import AprobacionesPanel from '../components/admin/AprobacionesPanel';
 import ConfiguracionPanel from '../components/admin/ConfiguracionPanel';
+import ConfiguracionNegocio from '../components/settings/ConfiguracionNegocio';
 import { useAuthContext } from '../components/contexts/AuthContext';
 
 export default function Settings() {
@@ -80,8 +81,12 @@ function SettingsContent() {
         <p className="text-slate-500">Gestión de empresa, sucursales y usuarios</p>
       </div>
 
-      <Tabs defaultValue="empresa" className="space-y-6">
-        <TabsList className="bg-white border border-slate-200 p-1 grid grid-cols-6">
+      <Tabs defaultValue="negocio" className="space-y-6">
+        <TabsList className="bg-white border border-slate-200 p-1 grid grid-cols-7">
+          <TabsTrigger value="negocio" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+            <Building2 className="w-4 h-4 mr-2" />
+            Negocio
+          </TabsTrigger>
           <TabsTrigger value="empresa" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
             <Building2 className="w-4 h-4 mr-2" />
             Empresa
@@ -104,6 +109,11 @@ function SettingsContent() {
             ⚙️ Config
           </TabsTrigger>
         </TabsList>
+
+        {/* Tab Negocio */}
+        <TabsContent value="negocio">
+          <ConfiguracionNegocio />
+        </TabsContent>
 
         {/* Tab Empresa */}
         <TabsContent value="empresa">

@@ -404,6 +404,12 @@ export default function PortalCotizacion() {
               {organization?.telefono_negocio && (
                 <p>Teléfono: {organization.telefono_negocio}</p>
               )}
+              {organization?.email && (
+                <p>Email: {organization.email}</p>
+              )}
+              {organization?.direccion_comercial && (
+                <p className="mt-2">{organization.direccion_comercial}</p>
+              )}
               <p className="text-xs text-slate-500 mt-3">
                 Este documento es una cotización comercial válida
               </p>

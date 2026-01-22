@@ -8,7 +8,7 @@ import DashboardSuperAdmin from '../components/dashboard/DashboardSuperAdmin';
 
 export default function Dashboard() {
   return (
-    <PageGuard allowedRoles={['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'AUDITOR', 'CFO', 'CEO']}>
+    <PageGuard allowedRoles={['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'AUDITOR', 'CFO', 'CEO']}>
       <DashboardContent />
     </PageGuard>
   );
@@ -33,10 +33,6 @@ function DashboardContent() {
 
   if (effectiveRole === 'TECHNICIAN') {
     return <DashboardTechnician effectiveOrgId={effectiveOrgId} userId={user?.id} />;
-  }
-
-  if (effectiveRole === 'SALES') {
-    return <DashboardSales effectiveOrgId={effectiveOrgId} />;
   }
 
   // Default: ORG_ADMIN, BRANCH_ADMIN, AUDITOR, CFO, CEO

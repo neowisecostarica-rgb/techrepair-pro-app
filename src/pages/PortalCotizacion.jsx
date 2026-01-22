@@ -1,419 +1,424 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  Loader2, 
-  CheckCircle2, 
-  XCircle, 
-  FileText, 
-  Clock,
-  AlertCircle,
-  Package,
-  Wrench
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  FileText, 
+  XCircle, 
+  CheckCircle2, 
+  Clock, 
+  Calendar,
+  AlertCircle,
+  Download
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
+import jsPDF from 'jspdf';
+
+const estadoConfig = {
+  borrador: { 
+    color: 'bg-slate-100 text-slate-700 border-slate-200', 
+    label: 'Borrador', 
+    icon: FileText,
+    alertClass: 'bg-slate-50 border-slate-200'
+  },
+  enviada: { 
+    color: 'bg-blue-100 text-blue-700 border-blue-200', 
+    label: 'Enviada', 
+    icon: Clock,
+    alertClass: 'bg-blue-50 border-blue-200'
+  },
+  aprobada: { 
+    color: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
+    label: 'Aprobada', 
+    icon: CheckCircle2,
+    alertClass: 'bg-emerald-50 border-emerald-200'
+  },
+  rechazada: { 
+    color: 'bg-red-100 text-red-700 border-red-200', 
+    label: 'Rechazada', 
+    icon: XCircle,
+    alertClass: 'bg-red-50 border-red-200'
+  },
+  vencida: { 
+    color: 'bg-orange-100 text-orange-700 border-orange-200', 
+    label: 'Vencida', 
+    icon: Clock,
+    alertClass: 'bg-orange-50 border-orange-200'
+  },
+};
 
 export default function PortalCotizacion() {
-  const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
-  const [cotizacion, setCotizacion] = useState(null);
-  const [ordenTrabajo, setOrdenTrabajo] = useState(null);
-  const [terminosCondiciones, setTerminosCondiciones] = useState(null);
-  const [aceptaTerminos, setAceptaTerminos] = useState(false);
-  const [motivoRechazo, setMotivoRechazo] = useState('');
-  const [showRechazo, setShowRechazo] = useState(false);
-  const [error, setError] = useState(null);
+  const [token, setToken] = useState('');
 
   useEffect(() => {
-    cargarDatos();
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    if (urlToken) {
+      setToken(urlToken);
+    }
   }, []);
 
-  const cargarDatos = async () => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get('token');
-
-      if (!token) {
-        setError('Token de acceso no válido');
-        setLoading(false);
-        return;
-      }
-
-      // Buscar OT por token
-      const ots = await base44.entities.OrdenTrabajo.filter({
+  const { data: cotizacion, isLoading, error } = useQuery({
+    queryKey: ['cotizacion-publica', token],
+    queryFn: async () => {
+      const cotizaciones = await base44.entities.Cotizacion.filter({
         public_access_token: token
       });
-
-      if (ots.length === 0) {
-        setError('No se encontró la orden de trabajo');
-        setLoading(false);
-        return;
-      }
-
-      const ot = ots[0];
-      setOrdenTrabajo(ot);
-
-      // Buscar cotización enviada
-      const cotizaciones = await base44.entities.Cotizacion.filter({
-        orden_trabajo_id: ot.id,
-        estado: 'enviada'
-      });
-
+      
       if (cotizaciones.length === 0) {
-        setError('No hay cotización disponible para aprobar');
-        setLoading(false);
-        return;
+        throw new Error('Cotización no encontrada');
       }
 
-      setCotizacion(cotizaciones[0]);
+      return cotizaciones[0];
+    },
+    enabled: !!token,
+    retry: false,
+  });
 
-      // Cargar términos activos
-      const terminos = await base44.entities.TerminosYCondiciones.filter({
-        organization_id: ot.organization_id,
-        activo: true
-      });
+  const { data: cliente } = useQuery({
+    queryKey: ['cliente-cotizacion', cotizacion?.cliente_id],
+    queryFn: () => base44.entities.Cliente.list(),
+    enabled: !!cotizacion?.cliente_id,
+    select: (data) => data.find(c => c.id === cotizacion.cliente_id),
+  });
 
-      if (terminos.length > 0) {
-        setTerminosCondiciones(terminos[0]);
+  const { data: organization } = useQuery({
+    queryKey: ['org-cotizacion', cotizacion?.organization_id],
+    queryFn: async () => {
+      const orgs = await base44.entities.Organization.list();
+      return orgs.find(o => o.id === cotizacion.organization_id);
+    },
+    enabled: !!cotizacion?.organization_id,
+  });
+
+  const descargarPDF = () => {
+    if (!cotizacion) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    let y = 20;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COTIZACIÓN COMERCIAL', pageWidth / 2, y, { align: 'center' });
+    
+    y += 10;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(200, 0, 0);
+    doc.text('Este documento NO es una factura ni comprobante fiscal', pageWidth / 2, y, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+
+    y += 15;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${organization?.name || 'Negocio'}`, 14, y);
+    y += 6;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    if (organization?.telefono_negocio) {
+      doc.text(`Tel: ${organization.telefono_negocio}`, 14, y);
+      y += 6;
+    }
+
+    y += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cliente:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(cliente?.nombre_completo || 'N/A', 40, y);
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Estado:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(estadoConfig[cotizacion.estado]?.label || cotizacion.estado, 40, y);
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fecha:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(format(new Date(cotizacion.created_date), 'dd/MM/yyyy', { locale: es }), 40, y);
+    
+    if (cotizacion.valida_hasta) {
+      y += 6;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Válida hasta:', 14, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(format(new Date(cotizacion.valida_hasta), 'dd/MM/yyyy', { locale: es }), 40, y);
+    }
+
+    y += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.text('ÍTEMS', 14, y);
+    y += 8;
+
+    // Items
+    cotizacion.items?.forEach((item, idx) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
       }
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${idx + 1}. ${item.descripcion}`, 14, y);
+      y += 5;
+      doc.setFontSize(9);
+      doc.text(`${item.cantidad} x ₡${item.precio_unitario?.toLocaleString()} ${item.descuento_porcentaje > 0 ? `(-${item.descuento_porcentaje}%)` : ''}`, 20, y);
+      doc.text(`₡${item.subtotal?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+      doc.setFontSize(10);
+      y += 7;
+    });
 
-      setLoading(false);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-      setError('Error al cargar la cotización');
-      setLoading(false);
+    y += 5;
+    doc.line(14, y, pageWidth - 14, y);
+    y += 7;
+
+    // Totales
+    doc.text('Subtotal:', 14, y);
+    doc.text(`₡${cotizacion.subtotal?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+    y += 6;
+    if (cotizacion.descuento_total > 0) {
+      doc.text('Descuento:', 14, y);
+      doc.text(`-₡${cotizacion.descuento_total?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+      y += 6;
     }
+    doc.text('IVA (13%):', 14, y);
+    doc.text(`₡${cotizacion.impuesto?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+    y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('TOTAL:', 14, y);
+    doc.text(`₡${cotizacion.total?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+
+    if (cotizacion.notas) {
+      y += 15;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Notas:', 14, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      const splitNotas = doc.splitTextToSize(cotizacion.notas, pageWidth - 28);
+      doc.text(splitNotas, 14, y);
+    }
+
+    doc.save(`Cotizacion_${cotizacion.id}.pdf`);
   };
 
-  const aprobarCotizacion = async () => {
-    if (!aceptaTerminos) {
-      alert('Debes aceptar los términos y condiciones');
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      // Snapshot completo de la cotización
-      const snapshot = {
-        ...cotizacion,
-        fecha_aprobacion: new Date().toISOString()
-      };
-
-      // Actualizar cotización
-      await base44.entities.Cotizacion.update(cotizacion.id, {
-        estado: 'aprobada',
-        aprobada_at: new Date().toISOString(),
-        contenido_aprobado_snapshot: snapshot,
-        terminos_version_aceptada: terminosCondiciones?.version || 'v1.0',
-        ip_aprobacion: 'client-ip' // TODO: capturar IP real si es posible
-      });
-
-      // Actualizar OT
-      await base44.entities.OrdenTrabajo.update(ordenTrabajo.id, {
-        estado: 'EN_REPARACION',
-        cliente_aprobado: true,
-        cliente_aprobado_at: new Date().toISOString()
-      });
-
-      // Recargar para mostrar estado actualizado
-      await cargarDatos();
-      alert('¡Cotización aprobada! El trabajo iniciará pronto.');
-    } catch (error) {
-      console.error('Error aprobando cotización:', error);
-      alert('Error al aprobar: ' + error.message);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const rechazarCotizacion = async () => {
-    if (!motivoRechazo.trim()) {
-      alert('Por favor indica el motivo del rechazo');
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      // Actualizar cotización
-      await base44.entities.Cotizacion.update(cotizacion.id, {
-        estado: 'rechazada',
-        cliente_rechazo_motivo: motivoRechazo
-      });
-
-      // Actualizar OT
-      await base44.entities.OrdenTrabajo.update(ordenTrabajo.id, {
-        estado: 'DIAGNOSTICADA',
-        cliente_aprobado: false,
-        cliente_rechazo_motivo: motivoRechazo
-      });
-
-      // Recargar para mostrar estado actualizado
-      await cargarDatos();
-      alert('Cotización rechazada. Nos pondremos en contacto contigo.');
-    } catch (error) {
-      console.error('Error rechazando cotización:', error);
-      alert('Error al rechazar: ' + error.message);
-    } finally {
-      setProcessing(false);
-      setShowRechazo(false);
-    }
-  };
-
-  if (loading) {
+  if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Error</h2>
-            <p className="text-slate-600">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (cotizacion.estado === 'aprobada') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Cotización Aprobada!</h2>
-            <p className="text-slate-600 mb-4">
-              Tu reparación ha sido aprobada y el trabajo iniciará pronto.
-            </p>
-            <Badge className="bg-emerald-100 text-emerald-800 text-lg px-4 py-2">
-              Aprobada el {new Date(cotizacion.aprobada_at).toLocaleDateString()}
-            </Badge>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (cotizacion.estado === 'rechazada') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Cotización Rechazada</h2>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border-0 shadow-2xl">
+          <CardContent className="p-12 text-center">
+            <FileText className="w-16 h-16 mx-auto mb-6 text-slate-400" />
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">Acceso Restringido</h1>
             <p className="text-slate-600">
-              Hemos recibido tu respuesta. Nos pondremos en contacto contigo.
+              Por favor, utilice el enlace único enviado para acceder a su cotización.
             </p>
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Cargando cotización...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !cotizacion) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border-0 shadow-2xl">
+          <CardContent className="p-12 text-center">
+            <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">Cotización No Encontrada</h1>
+            <p className="text-slate-600">
+              El enlace puede haber expirado o no es válido. Contacte al negocio para obtener una nueva cotización.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const config = estadoConfig[cotizacion.estado] || estadoConfig.enviada;
+  const Icon = config.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl">Cotización de Reparación</CardTitle>
-                <p className="text-sm text-slate-500 mt-1">
-                  Orden: {ordenTrabajo.codigo_ot}
-                </p>
-              </div>
-              <Badge variant="outline" className="text-lg">
-                <Clock className="w-4 h-4 mr-2" />
-                Esperando aprobación
-              </Badge>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Detalle de Items */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalle de Servicios y Repuestos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {cotizacion.items.map((item, index) => (
-              <div key={index} className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg">
-                {item.tipo === 'repuesto' ? (
-                  <Package className="w-5 h-5 text-blue-600 mt-1" />
-                ) : (
-                  <Wrench className="w-5 h-5 text-emerald-600 mt-1" />
-                )}
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-1">
-                    <h4 className="font-medium text-slate-900">{item.descripcion}</h4>
-                    <span className="font-bold text-slate-900">
-                      ${item.subtotal.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="text-sm text-slate-600">
-                    {item.cantidad} × ${item.precio_unitario.toFixed(2)}
-                  </div>
-                  <Badge variant="outline" className="mt-2">
-                    {item.tipo}
-                  </Badge>
+        <Card className="border-0 shadow-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                  <FileText className="w-8 h-8" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold">Cotización Comercial</h1>
+                  <p className="text-blue-100">Propuesta de servicio/producto</p>
                 </div>
               </div>
-            ))}
+              <Button
+                onClick={descargarPDF}
+                variant="secondary"
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Descargar PDF
+              </Button>
+            </div>
+            <div className="flex items-center gap-3 pt-4 border-t border-white/20">
+              <Icon className="w-6 h-6" />
+              <span className="text-xl font-semibold">{config.label}</span>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Resumen de Costos */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Resumen de Costos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between text-slate-600">
-              <span>Subtotal:</span>
-              <span>${cotizacion.subtotal.toFixed(2)}</span>
-            </div>
-            {cotizacion.descuento_total > 0 && (
-              <div className="flex justify-between text-emerald-600">
-                <span>Descuento:</span>
-                <span>-${cotizacion.descuento_total.toFixed(2)}</span>
+        {/* Disclaimer Legal */}
+        <Alert className="border-2 border-red-300 bg-red-50">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <AlertDescription className="text-base font-semibold text-red-800">
+            Este documento NO es una factura ni comprobante fiscal. Es una propuesta comercial.
+          </AlertDescription>
+        </Alert>
+
+        {/* Información del Cliente y Cotización */}
+        <Card className="border-0 shadow-xl">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label className="text-slate-500 text-sm">Cliente</Label>
+                <p className="font-bold text-lg text-slate-900">{cliente?.nombre_completo || 'Cargando...'}</p>
+                {cliente?.telefono && <p className="text-sm text-slate-600">{cliente.telefono}</p>}
               </div>
-            )}
-            <div className="flex justify-between text-slate-600">
-              <span>Impuestos:</span>
-              <span>${cotizacion.impuesto.toFixed(2)}</span>
+              <div>
+                <Label className="text-slate-500 text-sm">Vendedor</Label>
+                <p className="font-medium text-slate-900">{cotizacion.vendedor_nombre}</p>
+              </div>
+              <div>
+                <Label className="text-slate-500 text-sm">Fecha de Emisión</Label>
+                <p className="text-slate-900 flex items-center gap-2 mt-1">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  {format(new Date(cotizacion.created_date), "dd 'de' MMMM, yyyy", { locale: es })}
+                </p>
+              </div>
+              {cotizacion.valida_hasta && (
+                <div>
+                  <Label className="text-slate-500 text-sm">Válida Hasta</Label>
+                  <p className="text-slate-900 flex items-center gap-2 mt-1">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                    {format(new Date(cotizacion.valida_hasta), "dd 'de' MMMM, yyyy", { locale: es })}
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="flex justify-between text-2xl font-bold text-slate-900 border-t pt-3">
-              <span>Total:</span>
-              <span className="text-emerald-600">${cotizacion.total.toFixed(2)}</span>
-            </div>
-            {cotizacion.valida_hasta && (
-              <Alert className="mt-4">
-                <Clock className="w-4 h-4" />
-                <AlertDescription>
-                  Esta cotización es válida hasta el{' '}
-                  <strong>{new Date(cotizacion.valida_hasta).toLocaleDateString()}</strong>
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
 
-        {/* Términos y Condiciones */}
-        {terminosCondiciones && (
-          <Card>
+        {/* Items */}
+        <Card className="border-0 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-lg">Ítems de la Cotización</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {cotizacion.items?.map((item, idx) => (
+                <div key={idx} className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-900">{item.descripcion}</p>
+                      <p className="text-sm text-slate-600 mt-1">
+                        {item.cantidad} x ₡{item.precio_unitario?.toLocaleString()}
+                        {item.descuento_porcentaje > 0 && (
+                          <span className="text-emerald-600 ml-2">
+                            (-{item.descuento_porcentaje}% descuento)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <p className="font-semibold text-lg text-slate-900">
+                      ₡{item.subtotal?.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Totales */}
+        <Card className="border-0 shadow-xl">
+          <CardContent className="p-6">
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Subtotal:</span>
+                <span className="font-medium">₡{cotizacion.subtotal?.toLocaleString()}</span>
+              </div>
+              {cotizacion.descuento_total > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Descuento:</span>
+                  <span className="font-medium text-emerald-600">-₡{cotizacion.descuento_total?.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">IVA (13%):</span>
+                <span className="font-medium">₡{cotizacion.impuesto?.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xl font-bold border-t pt-3">
+                <span>TOTAL:</span>
+                <span className="text-emerald-600">₡{cotizacion.total?.toLocaleString()}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {cotizacion.notas && (
+          <Card className="border-0 shadow-xl">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Términos y Condiciones
-              </CardTitle>
+              <CardTitle className="text-lg">Notas Adicionales</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="max-h-60 overflow-y-auto p-4 bg-slate-50 rounded-lg text-sm whitespace-pre-wrap">
-                {terminosCondiciones.texto}
-              </div>
+              <p className="text-slate-700 whitespace-pre-wrap">{cotizacion.notas}</p>
             </CardContent>
           </Card>
         )}
 
-        {/* Aprobación */}
-        {!showRechazo ? (
-          <Card className="border-emerald-200 bg-emerald-50">
-            <CardContent className="pt-6 space-y-4">
-              <div className="flex items-start space-x-3">
-                <Checkbox
-                  id="acepta-terminos"
-                  checked={aceptaTerminos}
-                  onCheckedChange={setAceptaTerminos}
-                  disabled={processing}
-                />
-                <Label htmlFor="acepta-terminos" className="cursor-pointer text-slate-900 leading-relaxed">
-                  Acepto la cotización y los términos y condiciones. Autorizo el inicio de los trabajos detallados.
-                </Label>
-              </div>
+        {/* Footer - Información del Negocio */}
+        <Card className="border-0 shadow-xl bg-slate-50">
+          <CardContent className="p-6 text-center">
+            <div className="text-sm text-slate-600 space-y-2">
+              <p className="font-semibold text-slate-900 text-base">
+                {organization?.name || 'Negocio'}
+              </p>
+              {organization?.telefono_negocio && (
+                <p>Teléfono: {organization.telefono_negocio}</p>
+              )}
+              <p className="text-xs text-slate-500 mt-3">
+                Este documento es una cotización comercial válida
+              </p>
+              <p className="text-xs text-slate-500">
+                Conserve este enlace para consultas futuras
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="flex gap-3">
-                <Button
-                  onClick={aprobarCotizacion}
-                  disabled={!aceptaTerminos || processing}
-                  className="flex-1 bg-gradient-to-r from-emerald-500 to-blue-500 text-lg py-6"
-                >
-                  {processing ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-5 h-5 mr-2" />
-                  )}
-                  Aprobar Cotización
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowRechazo(true)}
-                  disabled={processing}
-                  className="border-red-300 text-red-600 hover:bg-red-50"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Rechazar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-red-200 bg-red-50">
-            <CardHeader>
-              <CardTitle className="text-red-900">Rechazar Cotización</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert>
-                <AlertCircle className="w-4 h-4" />
-                <AlertDescription>
-                  Lamentamos que no estés de acuerdo con la cotización. Por favor indícanos el motivo.
-                </AlertDescription>
-              </Alert>
-              <div className="space-y-2">
-                <Label>Motivo del rechazo</Label>
-                <Textarea
-                  value={motivoRechazo}
-                  onChange={(e) => setMotivoRechazo(e.target.value)}
-                  placeholder="Explica por qué rechazas esta cotización..."
-                  rows={4}
-                />
-              </div>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowRechazo(false)}
-                  disabled={processing}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={rechazarCotizacion}
-                  disabled={processing || !motivoRechazo.trim()}
-                  className="flex-1 bg-red-600 hover:bg-red-700"
-                >
-                  {processing ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <XCircle className="w-4 h-4 mr-2" />
-                  )}
-                  Confirmar Rechazo
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Footer Legal */}
+        <div className="text-center text-xs text-slate-500 py-4">
+          <p>Este enlace es privado y único para su cotización</p>
+          <p>Documento generado el {format(new Date(cotizacion.created_date), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}</p>
+        </div>
       </div>
     </div>
   );

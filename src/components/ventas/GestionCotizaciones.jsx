@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Send, FileText, Trash2, AlertCircle, MessageSquare, Search, Package } from 'lucide-react';
+import { Plus, Send, FileText, Trash2, AlertCircle, MessageSquare, Search, Package, Link as LinkIcon, Download, Printer } from 'lucide-react';
+import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { withOrgId } from '@/components/hooks/useOrgData';
@@ -91,6 +92,15 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     queryKey: ['cliente', clienteActual],
     queryFn: () => base44.entities.Cliente.filter({ id: clienteActual }).then(res => res[0]),
     enabled: !!clienteActual,
+  });
+
+  const { data: organization } = useQuery({
+    queryKey: ['organization', userAccount?.organization_id],
+    queryFn: async () => {
+      const orgs = await base44.entities.Organization.list();
+      return orgs.find(o => o.id === userAccount.organization_id);
+    },
+    enabled: !!userAccount?.organization_id,
   });
 
   const resetForm = () => {
@@ -235,6 +245,10 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     }
   };
 
+  const generarToken = () => {
+    return `cot_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  };
+
   const handleEnviar = (cotizacion) => {
     if (!clienteActual) {
       alert('Por favor selecciona un cliente antes de enviar la cotización');
@@ -246,10 +260,145 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       return;
     }
 
+    const token = cotizacion.public_access_token || generarToken();
+    
     updateCotizacionMutation.mutate({
       id: cotizacion.id,
-      data: { estado: 'enviada', enviada_at: new Date().toISOString() }
+      data: { 
+        estado: 'enviada', 
+        enviada_at: new Date().toISOString(),
+        public_access_token: token
+      }
     });
+  };
+
+  const copiarLink = (cotizacion) => {
+    if (!cotizacion.public_access_token) {
+      alert('Primero debes enviar la cotización para generar el link');
+      return;
+    }
+
+    const link = `${window.location.origin}/cotizacion?token=${cotizacion.public_access_token}`;
+    navigator.clipboard.writeText(link);
+    alert('Link copiado al portapapeles');
+  };
+
+  const descargarPDF = (cotizacion, cliente, organization) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    let y = 20;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COTIZACIÓN COMERCIAL', pageWidth / 2, y, { align: 'center' });
+    
+    y += 10;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(200, 0, 0);
+    doc.text('Este documento NO es una factura ni comprobante fiscal', pageWidth / 2, y, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+
+    y += 15;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${organization?.name || 'Negocio'}`, 14, y);
+    y += 6;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    if (organization?.telefono_negocio) {
+      doc.text(`Tel: ${organization.telefono_negocio}`, 14, y);
+      y += 6;
+    }
+
+    y += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cliente:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(cliente?.nombre_completo || 'N/A', 40, y);
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Estado:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(estadoConfig[cotizacion.estado]?.label || cotizacion.estado, 40, y);
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fecha:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(format(new Date(cotizacion.created_date), 'dd/MM/yyyy'), 40, y);
+    
+    if (cotizacion.valida_hasta) {
+      y += 6;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Válida hasta:', 14, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(format(new Date(cotizacion.valida_hasta), 'dd/MM/yyyy'), 40, y);
+    }
+
+    y += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.text('ÍTEMS', 14, y);
+    y += 8;
+
+    // Items
+    cotizacion.items?.forEach((item, idx) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${idx + 1}. ${item.descripcion}`, 14, y);
+      y += 5;
+      doc.setFontSize(9);
+      doc.text(`${item.cantidad} x ₡${item.precio_unitario?.toLocaleString()} ${item.descuento_porcentaje > 0 ? `(-${item.descuento_porcentaje}%)` : ''}`, 20, y);
+      doc.text(`₡${item.subtotal?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+      doc.setFontSize(10);
+      y += 7;
+    });
+
+    y += 5;
+    doc.line(14, y, pageWidth - 14, y);
+    y += 7;
+
+    // Totales
+    doc.text('Subtotal:', 14, y);
+    doc.text(`₡${cotizacion.subtotal?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+    y += 6;
+    if (cotizacion.descuento_total > 0) {
+      doc.text('Descuento:', 14, y);
+      doc.text(`-₡${cotizacion.descuento_total?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+      y += 6;
+    }
+    doc.text('IVA (13%):', 14, y);
+    doc.text(`₡${cotizacion.impuesto?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+    y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('TOTAL:', 14, y);
+    doc.text(`₡${cotizacion.total?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
+
+    if (cotizacion.notas) {
+      y += 15;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Notas:', 14, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      const splitNotas = doc.splitTextToSize(cotizacion.notas, pageWidth - 28);
+      doc.text(splitNotas, 14, y);
+    }
+
+    doc.save(`Cotizacion_${cotizacion.id}.pdf`);
+  };
+
+  const imprimirCotizacion = (cotizacion) => {
+    if (cotizacion.public_access_token) {
+      const link = `${window.location.origin}/cotizacion?token=${cotizacion.public_access_token}`;
+      window.open(link, '_blank');
+    } else {
+      alert('Primero debes enviar la cotización para poder imprimirla');
+    }
   };
 
   const handleEditar = (cotizacion) => {
@@ -321,7 +470,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                           </p>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         {cot.estado === 'borrador' && (
                           <>
                             <Button size="sm" variant="outline" onClick={() => handleEditar(cot)}>
@@ -333,16 +482,45 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                             </Button>
                           </>
                         )}
+                        {(cot.estado === 'enviada' || cot.estado === 'aprobada') && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => copiarLink(cot)}
+                              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            >
+                              <LinkIcon className="w-4 h-4 mr-2" />
+                              Copiar Link
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => descargarPDF(cot, cliente, organization)}
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              PDF
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => imprimirCotizacion(cot)}
+                            >
+                              <Printer className="w-4 h-4 mr-2" />
+                              Imprimir
+                            </Button>
+                          </>
+                        )}
                         {cot.estado === 'enviada' && cliente && (
                           <Button 
                             size="sm" 
                             variant="outline"
                             onClick={() => enviarSeguimientoMutation.mutate({ cotizacion: cot, cliente })}
                             disabled={enviarSeguimientoMutation.isPending}
-                            className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
                           >
                             <MessageSquare className="w-4 h-4 mr-2" />
-                            Dar seguimiento
+                            Seguimiento
                           </Button>
                         )}
                       </div>

@@ -1387,6 +1387,8 @@ function OrdenesTrabajoContent() {
               </TabsContent>
             </Tabs>
           )}
+        </DialogContent>
+      </Dialog>
 
       {/* Wizard Pre-Diagnóstico */}
       <Dialog open={showPreDiagnostico} onOpenChange={setShowPreDiagnostico}>

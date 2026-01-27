@@ -21,6 +21,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola de Revisión', icon: Clock },
@@ -109,11 +110,21 @@ export default function PortalCliente() {
   });
 
   const aprobarMutation = useMutation({
-    mutationFn: () => base44.entities.OrdenTrabajo.update(orden.id, {
-      cliente_aprobado: true,
-      cliente_aprobado_at: new Date().toISOString(),
-      estado: 'EN_REPARACION'
-    }),
+    mutationFn: async () => {
+      // P0-003: usar helper centralizado para transición de estado
+      await transicionarEstadoOT(orden.id, 'EN_REPARACION', {
+        userId: 'portal_cliente',
+        userEmail: 'portal_publico',
+        organizationId: orden.organization_id,
+        motivo: 'Cliente aprobó reparación desde portal público'
+      });
+      
+      // Actualizar campos de aprobación del cliente (no gestionados por helper)
+      await base44.entities.OrdenTrabajo.update(orden.id, {
+        cliente_aprobado: true,
+        cliente_aprobado_at: new Date().toISOString()
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orden-publica'] });
       setShowAprobarModal(false);
@@ -121,11 +132,21 @@ export default function PortalCliente() {
   });
 
   const rechazarMutation = useMutation({
-    mutationFn: () => base44.entities.OrdenTrabajo.update(orden.id, {
-      cliente_aprobado: false,
-      cliente_rechazo_motivo: motivoRechazo,
-      estado: 'CANCELADA'
-    }),
+    mutationFn: async () => {
+      // P0-004: usar helper centralizado para transición de estado
+      await transicionarEstadoOT(orden.id, 'CANCELADA', {
+        userId: 'portal_cliente',
+        userEmail: 'portal_publico',
+        organizationId: orden.organization_id,
+        motivo: `Cliente rechazó reparación desde portal público: ${motivoRechazo || 'Sin motivo especificado'}`
+      });
+      
+      // Actualizar campos de rechazo del cliente (no gestionados por helper)
+      await base44.entities.OrdenTrabajo.update(orden.id, {
+        cliente_aprobado: false,
+        cliente_rechazo_motivo: motivoRechazo
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orden-publica'] });
       setShowRechazarModal(false);

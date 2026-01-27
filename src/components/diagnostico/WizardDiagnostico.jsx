@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 const CHECKLIST_CATEGORIAS = {
   hardware: {
@@ -122,9 +123,16 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         completed_at: new Date().toISOString()
       });
 
-      // 2. Actualizar OrdenTrabajo
+      // 2. Actualizar OrdenTrabajo (P0-001: usar helper centralizado)
+      await transicionarEstadoOT(ordenTrabajo.id, 'DIAGNOSTICADA', {
+        userId: user?.id,
+        userEmail: user?.email,
+        organizationId: userAccount?.organization_id,
+        motivo: 'Diagnóstico completado (wizard pre-diagnóstico)'
+      });
+      
+      // Actualizar fecha_diagnostico por separado (no gestionado por helper)
       await base44.entities.OrdenTrabajo.update(ordenTrabajo.id, {
-        estado: 'DIAGNOSTICADA',
         fecha_diagnostico: new Date().toISOString()
       });
 

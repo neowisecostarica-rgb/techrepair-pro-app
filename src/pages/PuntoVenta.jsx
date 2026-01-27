@@ -19,6 +19,7 @@ import EnviarWhatsApp from '../components/ventas/EnviarWhatsApp';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { validarVentaPOS, habilitarDiagnosticoTrasPago } from '@/components/pos/validacionesPOS';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function PuntoVenta() {
   return (
@@ -247,10 +248,17 @@ function PuntoVentaContent() {
         await habilitarDiagnosticoTrasPago(ventaData.referencia_ot_id, venta.id);
       }
 
-      // Si es reparación, cambiar estado OT a FINALIZADA
+      // Si es reparación, cambiar estado OT a FINALIZADA (P0-002: usar helper centralizado)
       if (ventaData.tipo_concepto === 'reparacion' && ventaData.referencia_ot_id) {
+        await transicionarEstadoOT(ventaData.referencia_ot_id, 'FINALIZADA', {
+          userId: user?.id,
+          userEmail: user?.email,
+          organizationId: effectiveOrgId,
+          motivo: 'Reparación cobrada y finalizada desde POS'
+        });
+        
+        // Actualizar fecha_cierre por separado (no gestionado por helper)
         await base44.entities.OrdenTrabajo.update(ventaData.referencia_ot_id, {
-          estado: 'FINALIZADA',
           fecha_cierre: new Date().toISOString()
         });
       }

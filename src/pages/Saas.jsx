@@ -696,7 +696,7 @@ function SaasContent() {
                                 setSelectedOrg(org);
                                 setShowImpersonateModal(true);
                               }}
-                              disabled={isImpersonating || org.status === 'suspended'}
+                              disabled={isImpersonating}
                             >
                               Impersonate
                             </Button>

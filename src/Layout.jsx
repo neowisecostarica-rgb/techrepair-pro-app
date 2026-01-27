@@ -256,8 +256,9 @@ function LayoutContent({ children, currentPageName }) {
     );
   }
 
-  // BLOQUEO TOTAL: Si Organization está suspendida → SuspendedScreen (sin sidebar, sin children)
-  if (organization?.status === 'suspended') {
+  // BLOQUEO TOTAL: Si Organization está suspendida → SuspendedScreen
+  // EXCEPCIÓN: Permitir SUPER_ADMIN impersonation para soporte (solo lectura)
+  if (organization?.status === 'suspended' && !isImpersonating) {
     return <SuspendedScreen orgName={organization?.name} orgId={organization?.id} />;
   }
 
@@ -396,7 +397,15 @@ return (
       />
     )}
 
-    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 ${isImpersonating ? 'pt-16' : ''}`}>
+    {isImpersonating && organization?.status === 'suspended' && (
+      <div className="fixed top-16 left-0 right-0 bg-red-600 text-white px-6 py-3 text-center z-50 shadow-lg">
+        <p className="font-bold text-sm">
+          ⚠️ TENANT SUSPENDIDO — SOLO LECTURA (MODO SOPORTE)
+        </p>
+      </div>
+    )}
+
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 ${isImpersonating && organization?.status === 'suspended' ? 'pt-28' : isImpersonating ? 'pt-16' : ''}`}>
       <style>{`
         :root {
           --primary: 142 71% 45%;

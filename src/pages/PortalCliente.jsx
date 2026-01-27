@@ -40,6 +40,7 @@ export default function PortalCliente() {
   const [showAprobarModal, setShowAprobarModal] = useState(false);
   const [showRechazarModal, setShowRechazarModal] = useState(false);
   const [motivoRechazo, setMotivoRechazo] = useState('');
+  const [tokenExpirado, setTokenExpirado] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -64,7 +65,17 @@ export default function PortalCliente() {
 
       const orden = ordenes[0];
 
-      // Registrar acceso
+      // P0-3: Validar expiración del token
+      if (orden.public_access_expires_at) {
+        const ahora = new Date();
+        const expira = new Date(orden.public_access_expires_at);
+        if (expira < ahora) {
+          setTokenExpirado(true);
+          throw new Error('Token expirado');
+        }
+      }
+
+      // Registrar acceso solo si NO está expirado
       await base44.entities.OrdenTrabajo.update(orden.id, {
         public_last_viewed_at: new Date().toISOString()
       });
@@ -111,6 +122,15 @@ export default function PortalCliente() {
 
   const aprobarMutation = useMutation({
     mutationFn: async () => {
+      // P0-3: Validación defensiva - NO permitir si token expirado
+      if (orden.public_access_expires_at) {
+        const ahora = new Date();
+        const expira = new Date(orden.public_access_expires_at);
+        if (expira < ahora) {
+          throw new Error('El enlace ha expirado. Contacta al taller para un nuevo enlace.');
+        }
+      }
+
       // P0-003: usar helper centralizado para transición de estado
       await transicionarEstadoOT(orden.id, 'EN_REPARACION', {
         userId: 'portal_cliente',
@@ -133,6 +153,15 @@ export default function PortalCliente() {
 
   const rechazarMutation = useMutation({
     mutationFn: async () => {
+      // P0-3: Validación defensiva - NO permitir si token expirado
+      if (orden.public_access_expires_at) {
+        const ahora = new Date();
+        const expira = new Date(orden.public_access_expires_at);
+        if (expira < ahora) {
+          throw new Error('El enlace ha expirado. Contacta al taller para un nuevo enlace.');
+        }
+      }
+
       // P0-004: usar helper centralizado para transición de estado
       await transicionarEstadoOT(orden.id, 'CANCELADA', {
         userId: 'portal_cliente',
@@ -186,9 +215,13 @@ export default function PortalCliente() {
         <Card className="max-w-md w-full border-0 shadow-2xl">
           <CardContent className="p-12 text-center">
             <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Orden No Encontrada</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">
+              {tokenExpirado ? 'Enlace Expirado' : 'Orden No Encontrada'}
+            </h1>
             <p className="text-slate-600">
-              El enlace puede haber expirado o no es válido. Contacte a su técnico para obtener un nuevo enlace.
+              {tokenExpirado 
+                ? 'Este enlace ha expirado. Por favor, contacta al taller para obtener un nuevo enlace de acceso.' 
+                : 'El enlace puede haber expirado o no es válido. Contacte a su técnico para obtener un nuevo enlace.'}
             </p>
           </CardContent>
         </Card>
@@ -198,8 +231,12 @@ export default function PortalCliente() {
 
   const config = estadoConfig[orden.estado] || estadoConfig.EN_COLA_REVISION;
   const Icon = config.icon;
+  
+  // P0-3: Verificar expiración antes de permitir aprobación
+  const linkExpirado = orden.public_access_expires_at && new Date(orden.public_access_expires_at) < new Date();
   const puedeAprobar = (orden.estado === 'DIAGNOSTICADA' || orden.estado === 'COTIZADA') && 
-                       orden.cliente_aprobado === undefined;
+                       orden.cliente_aprobado === undefined &&
+                       !linkExpirado;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-6">
@@ -396,6 +433,19 @@ export default function PortalCliente() {
               </Card>
             )}
           </>
+        )}
+
+        {/* Enlace Expirado */}
+        {linkExpirado && (orden.estado === 'DIAGNOSTICADA' || orden.estado === 'COTIZADA') && !orden.cliente_aprobado && (
+          <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-300">
+            <CardContent className="p-8 text-center">
+              <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
+              <h3 className="font-bold text-xl text-slate-900 mb-2">Enlace Expirado</h3>
+              <p className="text-slate-700">
+                Este enlace de acceso ha expirado. Por favor, contacta al taller para obtener un nuevo enlace y poder aprobar o rechazar la reparación.
+              </p>
+            </CardContent>
+          </Card>
         )}
 
         {/* Aprobación */}

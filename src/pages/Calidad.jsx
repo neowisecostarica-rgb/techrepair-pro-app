@@ -12,6 +12,8 @@ import { AlertCircle, Plus, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useAuthContext } from '@/components/contexts/AuthContext';
+import PageGuard from '@/components/guards/PageGuard';
 
 const estadoConfig = {
   abierta: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Abierta' },
@@ -29,18 +31,34 @@ const severidadConfig = {
 };
 
 export default function Calidad() {
+  return (
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN']}>
+      <CalidadContent />
+    </PageGuard>
+  );
+}
+
+function CalidadContent() {
   const [showModal, setShowModal] = useState(false);
   const [editingNC, setEditingNC] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const queryClient = useQueryClient();
+  const { effectiveOrgId } = useAuthContext();
 
   const { data: noConformidades = [] } = useQuery({
-    queryKey: ['no-conformidades'],
-    queryFn: () => base44.entities.NoConformidad.list('-created_date'),
+    queryKey: ['no-conformidades', effectiveOrgId],
+    queryFn: () => base44.entities.NoConformidad.filter({
+      organization_id: effectiveOrgId
+    }),
+    select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
+    enabled: !!effectiveOrgId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.NoConformidad.create(data),
+    mutationFn: (data) => base44.entities.NoConformidad.create({
+      ...data,
+      organization_id: effectiveOrgId
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['no-conformidades'] });
       setShowModal(false);

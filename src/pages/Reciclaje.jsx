@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Recycle, Plus, Leaf, TrendingUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { useAuthContext } from '@/components/contexts/AuthContext';
+import PageGuard from '@/components/guards/PageGuard';
 
 const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
 
@@ -25,17 +27,33 @@ const ECO_FACTORS = {
 };
 
 export default function Reciclaje() {
+  return (
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN']}>
+      <ReciclajeContent />
+    </PageGuard>
+  );
+}
+
+function ReciclajeContent() {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const queryClient = useQueryClient();
+  const { effectiveOrgId } = useAuthContext();
 
   const { data: registros = [] } = useQuery({
-    queryKey: ['reciclaje'],
-    queryFn: () => base44.entities.Reciclaje.list('-created_date'),
+    queryKey: ['reciclaje', effectiveOrgId],
+    queryFn: () => base44.entities.Reciclaje.filter({
+      organization_id: effectiveOrgId
+    }),
+    select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
+    enabled: !!effectiveOrgId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Reciclaje.create(data),
+    mutationFn: (data) => base44.entities.Reciclaje.create({
+      ...data,
+      organization_id: effectiveOrgId
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reciclaje'] });
       setShowModal(false);

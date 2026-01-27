@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
 
 export default function PortalComprobante() {
   const [token, setToken] = useState('');
@@ -145,7 +146,7 @@ export default function PortalComprobante() {
   }
 
   const urlGarantia = garantia 
-    ? `${window.location.origin}/PortalGarantia?token=${garantia.public_access_token}`
+    ? `${getPublicBaseUrl(organization)}/PortalGarantia?token=${garantia.public_access_token}`
     : null;
 
   return (

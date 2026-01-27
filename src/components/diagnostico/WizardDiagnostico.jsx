@@ -117,31 +117,18 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
   // Completar diagnóstico
   const completeDiagnosticoMutation = useMutation({
     mutationFn: async (diagnosticoId) => {
-      // 1. Actualizar diagnóstico
+      // 1. Actualizar diagnóstico (pre-diagnóstico NO cambia estado de OT)
       await base44.entities.Diagnostico.update(diagnosticoId, {
         estado_diagnostico: 'completado',
         completed_at: new Date().toISOString()
       });
 
-      // 2. Actualizar OrdenTrabajo (P0-001: usar helper centralizado)
-      await transicionarEstadoOT(ordenTrabajo.id, 'DIAGNOSTICADA', {
-        userId: user?.id,
-        userEmail: user?.email,
-        organizationId: userAccount?.organization_id,
-        motivo: 'Diagnóstico completado (wizard pre-diagnóstico)'
-      });
-      
-      // Actualizar fecha_diagnostico por separado (no gestionado por helper)
-      await base44.entities.OrdenTrabajo.update(ordenTrabajo.id, {
-        fecha_diagnostico: new Date().toISOString()
-      });
-
-      // 3. Crear documento placeholder
+      // 2. Crear documento placeholder (opcional)
       await base44.entities.DiagnosticoDocumento.create(withOrgId({
         diagnostico_id: diagnosticoId,
         version: 'v1',
         formato: 'pdf',
-        url_documento: 'pending-generation' // Placeholder
+        url_documento: 'pending-generation'
       }, userAccount));
     },
     onSuccess: () => {

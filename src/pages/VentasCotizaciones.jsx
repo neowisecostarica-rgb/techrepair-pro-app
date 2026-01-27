@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
 
 export default function VentasCotizaciones() {
   return (
@@ -431,7 +432,7 @@ function VentasCotizacionesContent() {
                             historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                          const link = `${window.location.origin}/cotizacion?token=${token}`;
+                          const link = `${getPublicBaseUrl(organization)}/cotizacion?token=${token}`;
                           navigator.clipboard.writeText(link);
                           alert('✅ Cotización enviada. Link copiado al portapapeles.');
                           setCotizacionSeleccionada({ ...cotizacionSeleccionada, estado: 'enviada', public_access_token: token, ultimo_envio: envio });
@@ -458,7 +459,7 @@ function VentasCotizacionesContent() {
                             historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                          const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          const link = `${getPublicBaseUrl(organization)}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
                           navigator.clipboard.writeText(link);
                           alert('✅ Link copiado. Reenvío registrado.');
                           setCotizacionSeleccionada({ ...cotizacionSeleccionada, ultimo_envio: envio });
@@ -470,7 +471,7 @@ function VentasCotizacionesContent() {
                       </Button>
                       <Button
                         onClick={() => {
-                          const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          const link = `${getPublicBaseUrl(organization)}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
                           navigator.clipboard.writeText(link);
                           alert('Link copiado al portapapeles');
                         }}
@@ -482,7 +483,7 @@ function VentasCotizacionesContent() {
                       </Button>
                       <Button
                         onClick={() => {
-                          const link = `${window.location.origin}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          const link = `${getPublicBaseUrl(organization)}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
                           window.open(link, '_blank');
                         }}
                         variant="outline"

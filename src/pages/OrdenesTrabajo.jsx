@@ -280,73 +280,8 @@ function OrdenesTrabajoContent() {
         delete data.estado_atencion;
       }
       
-      // P0: Si se cierra/finaliza/entrega, validar actividades abiertas
-      const estadosCierre = ['CERRADA', 'FINALIZADA', 'ENTREGADA'];
-      const vaCerrar = !estadosCierre.includes(ordenAnterior?.estado) && estadosCierre.includes(data.estado);
-      
-      if (vaCerrar) {
-        // Pre-check actividades
-        const actividadesAbiertas = await base44.entities.ActividadTecnica.filter({
-          organization_id: effectiveOrgId,
-          orden_trabajo_id: id,
-          estado: 'en_progreso',
-          soft_deleted: false
-        });
-        
-        if (actividadesAbiertas.length > 0) {
-          throw new Error(`No se puede cerrar OT: hay ${actividadesAbiertas.length} actividad(es) en progreso`);
-        }
-      }
-      
-      // P0.4: Si se cancela, liberar agenda
-      const cambioACancelada = ordenAnterior?.estado !== 'CANCELADA' && data.estado === 'CANCELADA';
-      
-      const result = await base44.entities.OrdenTrabajo.update(id, data);
-      
-      if (cambioACancelada) {
-        // Liberar agenda: cancelar todas las citas futuras de esta OT
-        const citasFuturas = await base44.entities.Cita.filter({
-          organization_id: effectiveOrgId,
-          orden_trabajo_id: id,
-        });
-        
-        const ahora = new Date();
-        for (const cita of citasFuturas) {
-          if (cita.estado !== 'cancelada' && cita.estado !== 'no_asistio') {
-            const fechaCita = new Date(`${cita.fecha}T${cita.hora_inicio || '00:00'}`);
-            if (fechaCita > ahora) {
-              await base44.entities.Cita.update(cita.id, { estado: 'cancelada' });
-            }
-          }
-        }
-        
-        // Auditoría
-        await base44.entities.SuperAdminAudit.create({
-          super_admin_id: user?.id || 'system',
-          super_admin_email: user?.email || 'system',
-          action: 'ot_cancel_release_calendar',
-          target_organization_id: effectiveOrgId,
-          context: `OT ${id} cancelada, agenda liberada`,
-        });
-      }
-      
-      // Post-check si cerró
-      if (vaCerrar) {
-        const checkPost = await base44.entities.ActividadTecnica.filter({
-          organization_id: effectiveOrgId,
-          orden_trabajo_id: id,
-          estado: 'en_progreso',
-          soft_deleted: false
-        });
-        
-        if (checkPost.length > 0) {
-          // Rollback (intentar volver al estado anterior)
-          await base44.entities.OrdenTrabajo.update(id, { estado: ordenAnterior?.estado || 'EN_REPARACION' });
-          throw new Error('Conflicto detectado: actividad iniciada durante cierre');
-        }
-      }
-      
-      return result;
+      // P0: Solo permitir updates de campos no críticos (observaciones, contacto, etc.)
+      return await base44.entities.OrdenTrabajo.update(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
@@ -419,8 +354,12 @@ function OrdenesTrabajoContent() {
     }
   };
 
-  const handleCopiarLink = (orden) => {
-    const link = `${window.location.origin}${createPageUrl('PortalCliente')}?token=${orden.public_access_token}`;
+  const handleCopiarLink = async (orden) => {
+    // Obtener organization para white-label
+    const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
+    const organization = orgs[0];
+    const baseUrl = organization?.public_base_url || window.location.origin;
+    const link = `${baseUrl}${createPageUrl('PortalCliente')}?token=${orden.public_access_token}`;
     navigator.clipboard.writeText(link);
     alert('Link copiado al portapapeles');
   };

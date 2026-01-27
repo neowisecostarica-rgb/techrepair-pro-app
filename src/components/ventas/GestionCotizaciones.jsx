@@ -252,13 +252,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     });
   };
 
-  const copiarLink = (cotizacion) => {
+  const copiarLink = (cotizacion, organization) => {
     if (!cotizacion.public_access_token) {
       alert('Primero debes enviar la cotización para generar el link');
       return;
     }
 
-    const link = `${window.location.origin}/cotizacion?token=${cotizacion.public_access_token}`;
+    const baseUrl = organization?.public_base_url || window.location.origin;
+    const link = `${baseUrl}/cotizacion?token=${cotizacion.public_access_token}`;
     navigator.clipboard.writeText(link);
     alert('Link copiado al portapapeles');
   };
@@ -372,9 +373,10 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     doc.save(`Cotizacion_${cotizacion.id}.pdf`);
   };
 
-  const imprimirCotizacion = (cotizacion) => {
+  const imprimirCotizacion = (cotizacion, organization) => {
     if (cotizacion.public_access_token) {
-      const link = `${window.location.origin}/cotizacion?token=${cotizacion.public_access_token}`;
+      const baseUrl = organization?.public_base_url || window.location.origin;
+      const link = `${baseUrl}/cotizacion?token=${cotizacion.public_access_token}`;
       window.open(link, '_blank');
     } else {
       alert('Primero debes enviar la cotización para poder imprimirla');

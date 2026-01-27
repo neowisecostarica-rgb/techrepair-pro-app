@@ -82,16 +82,18 @@ export default function PortalCotizacion() {
 
   const { data: cliente } = useQuery({
     queryKey: ['cliente-cotizacion', cotizacion?.cliente_id],
-    queryFn: () => base44.entities.Cliente.list(),
+    queryFn: async () => {
+      const clientes = await base44.entities.Cliente.filter({ id: cotizacion.cliente_id });
+      return clientes[0];
+    },
     enabled: !!cotizacion?.cliente_id,
-    select: (data) => data.find(c => c.id === cotizacion.cliente_id),
   });
 
   const { data: organization } = useQuery({
     queryKey: ['org-cotizacion', cotizacion?.organization_id],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.list();
-      return orgs.find(o => o.id === cotizacion.organization_id);
+      const orgs = await base44.entities.Organization.filter({ id: cotizacion.organization_id });
+      return orgs[0];
     },
     enabled: !!cotizacion?.organization_id,
   });

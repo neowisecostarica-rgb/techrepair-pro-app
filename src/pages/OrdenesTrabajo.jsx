@@ -263,6 +263,11 @@ function OrdenesTrabajoContent() {
     mutationFn: async ({ id, data }) => {
       const ordenAnterior = ordenes.find(o => o.id === id);
       
+      // P0-3: Validación ownership - NO permitir update de OT de otro tenant
+      if (ordenAnterior && ordenAnterior.organization_id !== effectiveOrgId) {
+        throw new Error('No autorizado: Esta orden pertenece a otra organización');
+      }
+      
       // P0.3: Filtrar campo 'estado' si viene en data - debe usar transicionarEstadoOT
       if ('estado' in data) {
         console.warn('P0.3: Intento de cambio directo de estado bloqueado. Use transicionarEstadoOT.');
@@ -1092,7 +1097,16 @@ function OrdenesTrabajoContent() {
             <DialogTitle className="text-2xl font-bold">Detalle de Orden de Trabajo</DialogTitle>
           </DialogHeader>
 
-          {selectedOT && (
+          {selectedOT && selectedOT.organization_id !== effectiveOrgId ? (
+            <div className="p-8 text-center">
+              <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
+              <h3 className="font-bold text-xl text-slate-900 mb-2">Acceso Denegado</h3>
+              <p className="text-slate-600">No tienes permisos para ver esta orden de trabajo.</p>
+              <Button onClick={() => setSelectedOT(null)} className="mt-4" variant="outline">
+                Cerrar
+              </Button>
+            </div>
+          ) : selectedOT && (
             <Tabs defaultValue="general" className="mt-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="general">General</TabsTrigger>
@@ -1373,8 +1387,6 @@ function OrdenesTrabajoContent() {
               </TabsContent>
             </Tabs>
           )}
-        </DialogContent>
-      </Dialog>
 
       {/* Wizard Pre-Diagnóstico */}
       <Dialog open={showPreDiagnostico} onOpenChange={setShowPreDiagnostico}>

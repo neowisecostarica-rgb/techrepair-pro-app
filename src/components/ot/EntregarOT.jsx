@@ -75,6 +75,11 @@ export default function EntregarOT({
 
   const entregarMutation = useMutation({
     mutationFn: async () => {
+      // P0-4: Validación ownership - NO permitir entregar OT de otro tenant
+      if (ordenTrabajo.organization_id !== effectiveOrgId) {
+        throw new Error('No autorizado: Esta orden pertenece a otra organización');
+      }
+
       const now = new Date().toISOString();
 
       // P0.3: Finalizar cualquier ActividadTecnica activa de esta OT

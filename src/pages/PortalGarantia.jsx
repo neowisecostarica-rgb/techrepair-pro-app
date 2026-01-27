@@ -68,16 +68,18 @@ export default function PortalGarantia() {
 
   const { data: cliente } = useQuery({
     queryKey: ['cliente-garantia', garantia?.cliente_id],
-    queryFn: () => base44.entities.Cliente.list(),
+    queryFn: async () => {
+      const clientes = await base44.entities.Cliente.filter({ id: garantia.cliente_id });
+      return clientes[0];
+    },
     enabled: !!garantia?.cliente_id,
-    select: (data) => data.find(c => c.id === garantia.cliente_id),
   });
 
   const { data: organization } = useQuery({
     queryKey: ['org-garantia', garantia?.organization_id],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.list();
-      return orgs.find(o => o.id === garantia.organization_id);
+      const orgs = await base44.entities.Organization.filter({ id: garantia.organization_id });
+      return orgs[0];
     },
     enabled: !!garantia?.organization_id,
   });

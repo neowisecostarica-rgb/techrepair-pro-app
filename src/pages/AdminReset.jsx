@@ -67,9 +67,6 @@ function AdminResetContent() {
         base44.entities.MensajeCliente.filter({}).then(items => 
           items.length > 0 ? base44.entities.MensajeCliente.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
-        base44.entities.NotaInterna.filter({}).then(items => 
-          items.length > 0 ? base44.entities.NotaInterna.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
       ]);
       addLog('✅ Notificaciones eliminadas', 'success');
 

@@ -82,6 +82,7 @@ import VentasHistorial from './pages/VentasHistorial';
 import VentasMetricas from './pages/VentasMetricas';
 import Gastos from './pages/Gastos';
 import Proveedores from './pages/Proveedores';
+import CuentasPorPagar from './pages/CuentasPorPagar';
 import __Layout from './Layout.jsx';
 
 
@@ -121,6 +122,7 @@ export const PAGES = {
     "VentasMetricas": VentasMetricas,
     "Gastos": Gastos,
     "Proveedores": Proveedores,
+    "CuentasPorPagar": CuentasPorPagar,
 }
 
 export const pagesConfig = {

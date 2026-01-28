@@ -76,6 +76,10 @@ function LayoutContent({ children, currentPageName }) {
     }
   };
 
+  const handleLogout = () => {
+    base44.auth.logout();
+  };
+
   const handleEndImpersonation = async () => {
     await base44.auth.updateMe({
       impersonating_org_id: null,
@@ -449,13 +453,9 @@ function LayoutContent({ children, currentPageName }) {
 
      { label: 'Mis Estadísticas', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO' },
    ];
- }
+   }
 
-const handleLogout = () => {
-  base44.auth.logout();
-};
-
-return (
+   return (
   <>
     {isImpersonating && (
       <ImpersonationBanner 

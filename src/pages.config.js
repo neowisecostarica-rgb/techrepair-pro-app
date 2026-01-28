@@ -56,8 +56,10 @@ import Calidad from './pages/Calidad';
 import Clientes from './pages/Clientes';
 import ColaRevision from './pages/ColaRevision';
 import CrearUsuariosPrueba from './pages/CrearUsuariosPrueba';
+import CuentasPorPagar from './pages/CuentasPorPagar';
 import Dashboard from './pages/Dashboard';
 import Finanzas from './pages/Finanzas';
+import Gastos from './pages/Gastos';
 import Home from './pages/Home';
 import Inventario from './pages/Inventario';
 import MiDia from './pages/MiDia';
@@ -71,6 +73,7 @@ import PortalComprobante from './pages/PortalComprobante';
 import PortalCotizacion from './pages/PortalCotizacion';
 import PortalGarantia from './pages/PortalGarantia';
 import ProductividadTecnicos from './pages/ProductividadTecnicos';
+import Proveedores from './pages/Proveedores';
 import PuntoVenta from './pages/PuntoVenta';
 import Reciclaje from './pages/Reciclaje';
 import ResumenDiagnostico from './pages/ResumenDiagnostico';
@@ -80,9 +83,6 @@ import VentasCotizaciones from './pages/VentasCotizaciones';
 import VentasGarantias from './pages/VentasGarantias';
 import VentasHistorial from './pages/VentasHistorial';
 import VentasMetricas from './pages/VentasMetricas';
-import Gastos from './pages/Gastos';
-import Proveedores from './pages/Proveedores';
-import CuentasPorPagar from './pages/CuentasPorPagar';
 import InventarioInvertido from './pages/InventarioInvertido';
 import __Layout from './Layout.jsx';
 
@@ -97,8 +97,10 @@ export const PAGES = {
     "Clientes": Clientes,
     "ColaRevision": ColaRevision,
     "CrearUsuariosPrueba": CrearUsuariosPrueba,
+    "CuentasPorPagar": CuentasPorPagar,
     "Dashboard": Dashboard,
     "Finanzas": Finanzas,
+    "Gastos": Gastos,
     "Home": Home,
     "Inventario": Inventario,
     "MiDia": MiDia,
@@ -112,6 +114,7 @@ export const PAGES = {
     "PortalCotizacion": PortalCotizacion,
     "PortalGarantia": PortalGarantia,
     "ProductividadTecnicos": ProductividadTecnicos,
+    "Proveedores": Proveedores,
     "PuntoVenta": PuntoVenta,
     "Reciclaje": Reciclaje,
     "ResumenDiagnostico": ResumenDiagnostico,
@@ -121,9 +124,6 @@ export const PAGES = {
     "VentasGarantias": VentasGarantias,
     "VentasHistorial": VentasHistorial,
     "VentasMetricas": VentasMetricas,
-    "Gastos": Gastos,
-    "Proveedores": Proveedores,
-    "CuentasPorPagar": CuentasPorPagar,
     "InventarioInvertido": InventarioInvertido,
 }
 

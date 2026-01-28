@@ -31,6 +31,17 @@ function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth } = useAuthContext();
 
+  // Query organization (MUST be before any conditional returns)
+  const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({
+    queryKey: ['org-status', effectiveOrgId],
+    queryFn: async () => {
+      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
+      return orgs[0];
+    },
+    enabled: !!effectiveOrgId && effectiveRole !== 'SUPER_ADMIN',
+    staleTime: 60000,
+  });
+
   // Estado de secciones colapsables
   const [sectionsOpen, setSectionsOpen] = useState(() => {
     try {
@@ -205,16 +216,6 @@ function LayoutContent({ children, currentPageName }) {
   }
 
   // GATE GLOBAL: Verificar suspensión de Organization (P0 - Bloqueo Total)
-  const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({
-    queryKey: ['org-status', effectiveOrgId],
-    queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
-      return orgs[0];
-    },
-    enabled: !!effectiveOrgId && effectiveRole !== 'SUPER_ADMIN',
-    staleTime: 60000, // Cache 1min (status no cambia frecuente)
-  });
-
   // Esperar a que cargue org antes de decidir
   if (effectiveOrgId && effectiveRole !== 'SUPER_ADMIN' && isLoadingOrg) {
     return (

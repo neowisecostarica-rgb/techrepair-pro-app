@@ -30,11 +30,13 @@ function SettingsContent() {
   const [showBranchModal, setShowBranchModal] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: organization } = useQuery({
+  const { data: organization, isLoading: isLoadingOrg } = useQuery({
     queryKey: ['organization', effectiveOrgId],
-    queryFn: () => base44.entities.Organization.filter({ id: effectiveOrgId }),
+    queryFn: async () => {
+      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
+      return orgs[0];
+    },
     enabled: !!effectiveOrgId,
-    select: (data) => data[0],
   });
 
   const { data: branches = [] } = useQuery({
@@ -75,7 +77,7 @@ function SettingsContent() {
     return <div className="p-8 text-center">Cargando información de usuario...</div>;
   }
 
-  if (!organization && !effectiveOrgId) {
+  if (!effectiveOrgId) {
     return (
       <div className="max-w-2xl mx-auto mt-12">
         <Card className="border-0 shadow-xl">
@@ -85,21 +87,43 @@ function SettingsContent() {
             <p className="text-slate-600 mb-6">
               Parece que no tienes una organización configurada. Crea tu empresa para comenzar.
             </p>
-            <Button
-              onClick={() => window.location.href = createPageUrl('Onboarding')}
-              className="bg-gradient-to-r from-emerald-500 to-blue-500"
-            >
-              <Building2 className="w-4 h-4 mr-2" />
-              Crear Empresa
-            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  if (isLoadingOrg) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-600">Cargando configuración...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!organization) {
-    return <div className="p-8 text-center">Cargando configuración...</div>;
+    return (
+      <div className="max-w-2xl mx-auto mt-12">
+        <Card className="border-0 shadow-xl">
+          <CardContent className="p-12 text-center">
+            <AlertCircle className="w-16 h-16 mx-auto mb-6 text-red-400" />
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">Error al cargar configuración</h2>
+            <p className="text-slate-600 mb-6">
+              No se pudo cargar la información de tu organización. Intenta recargar la página.
+            </p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Recargar
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // NOTA: Suspensión ahora se maneja globalmente en Layout.js

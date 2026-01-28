@@ -176,8 +176,8 @@ function LayoutContent({ children, currentPageName }) {
       }
       return null;
     }
-    
-    // SUPER_ADMIN in Saas page: Render minimal layout
+
+    // SUPER_ADMIN in Saas or AdminReset page: Render minimal layout
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
         <style>{`
@@ -188,7 +188,72 @@ function LayoutContent({ children, currentPageName }) {
             --accent: 142 71% 95%;
           }
         `}</style>
-        <div className="p-8">{children}</div>
+
+        {/* Sidebar for SUPER_ADMIN */}
+        <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 z-40">
+          <div className="flex flex-col h-full">
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
+                  <Wrench className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-slate-900">TechRepair</h1>
+                  <p className="text-xs text-slate-500">Super Admin</p>
+                </div>
+              </div>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-1">
+                <Link
+                  to={createPageUrl('Saas')}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                    currentPageName === 'Saas'
+                      ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <LayoutDashboard className={`w-5 h-5 ${currentPageName === 'Saas' ? 'text-white' : 'text-slate-400'}`} />
+                  <span className="font-medium">Panel SaaS</span>
+                </Link>
+                <Link
+                  to={createPageUrl('AdminReset')}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                    currentPageName === 'AdminReset'
+                      ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <AlertCircle className={`w-5 h-5 ${currentPageName === 'AdminReset' ? 'text-white' : 'text-slate-400'}`} />
+                  <span className="font-medium">Admin Reset</span>
+                </Link>
+              </div>
+            </nav>
+
+            {user && (
+              <div className="p-4 border-t border-slate-200">
+                <div className="px-4 py-3 bg-slate-50 rounded-xl mb-3">
+                  <p className="text-sm font-medium text-slate-900">{user.full_name}</p>
+                  <p className="text-xs text-slate-500">{user.email}</p>
+                  <p className="text-xs text-emerald-600 font-medium mt-1">SUPER_ADMIN</p>
+                </div>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="w-full justify-start gap-2 text-slate-600 hover:text-red-600 hover:border-red-300"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Cerrar Sesión
+                </Button>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <main className="ml-64">
+          <div className="p-8">{children}</div>
+        </main>
       </div>
     );
   }

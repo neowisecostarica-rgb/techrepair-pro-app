@@ -43,10 +43,12 @@ function AdminResetContent() {
       // 1. Eliminar datos operativos (de menor a mayor dependencia)
       addLog('🗑️ Paso 1/8: Eliminando logs y datos secundarios...', 'info');
       
-      // SuperAdminAudit - explicit block
+      // SuperAdminAudit - explicit block with defensive ID extraction
       const auditItems = await base44.entities.SuperAdminAudit.filter({});
       if (auditItems.length > 0) {
-        await base44.entities.SuperAdminAudit.delete({ query: { id: { $in: auditItems.map(i => i.id) } } });
+        const auditIds = auditItems.map(i => String(i.id));
+        console.log('SuperAdminAudit IDs to delete:', auditIds);
+        await base44.entities.SuperAdminAudit.delete({ query: { id: { $in: auditIds } } });
       }
       
       await Promise.all([

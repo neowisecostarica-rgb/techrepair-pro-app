@@ -168,9 +168,9 @@ function LayoutContent({ children, currentPageName }) {
     );
   }
 
-  // 1. SUPER_ADMIN (non-impersonating) → must access SaaS panel only
+  // 1. SUPER_ADMIN (non-impersonating) → must access SaaS panel and admin tools
   if (effectiveRole === 'SUPER_ADMIN' && !isImpersonating) {
-    if (currentPageName !== 'Saas') {
+    if (currentPageName !== 'Saas' && currentPageName !== 'AdminReset') {
       if (typeof window !== 'undefined') {
         window.location.href = createPageUrl('Saas');
       }
@@ -266,6 +266,7 @@ function LayoutContent({ children, currentPageName }) {
   // Menús según role
   const superAdminMenu = [
     { label: 'Panel SaaS', path: 'Saas', icon: LayoutDashboard },
+    { label: 'Admin Reset', path: 'AdminReset', icon: AlertCircle },
   ];
 
   const orgAdminMenu = [

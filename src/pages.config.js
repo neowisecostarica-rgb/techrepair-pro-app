@@ -48,6 +48,7 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AdminDashboard from './pages/AdminDashboard';
+import AdminReset from './pages/AdminReset';
 import AdminSeedCompuStore from './pages/AdminSeedCompuStore';
 import Agenda from './pages/Agenda';
 import AnalisisTrabajo from './pages/AnalisisTrabajo';
@@ -62,6 +63,7 @@ import Finanzas from './pages/Finanzas';
 import Gastos from './pages/Gastos';
 import Home from './pages/Home';
 import Inventario from './pages/Inventario';
+import InventarioInvertido from './pages/InventarioInvertido';
 import MiDia from './pages/MiDia';
 import MigrationAdmin from './pages/MigrationAdmin';
 import MisVentas from './pages/MisVentas';
@@ -83,13 +85,12 @@ import VentasCotizaciones from './pages/VentasCotizaciones';
 import VentasGarantias from './pages/VentasGarantias';
 import VentasHistorial from './pages/VentasHistorial';
 import VentasMetricas from './pages/VentasMetricas';
-import InventarioInvertido from './pages/InventarioInvertido';
-import AdminReset from './pages/AdminReset';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AdminDashboard": AdminDashboard,
+    "AdminReset": AdminReset,
     "AdminSeedCompuStore": AdminSeedCompuStore,
     "Agenda": Agenda,
     "AnalisisTrabajo": AnalisisTrabajo,
@@ -104,6 +105,7 @@ export const PAGES = {
     "Gastos": Gastos,
     "Home": Home,
     "Inventario": Inventario,
+    "InventarioInvertido": InventarioInvertido,
     "MiDia": MiDia,
     "MigrationAdmin": MigrationAdmin,
     "MisVentas": MisVentas,
@@ -125,8 +127,6 @@ export const PAGES = {
     "VentasGarantias": VentasGarantias,
     "VentasHistorial": VentasHistorial,
     "VentasMetricas": VentasMetricas,
-    "InventarioInvertido": InventarioInvertido,
-    "AdminReset": AdminReset,
 }
 
 export const pagesConfig = {

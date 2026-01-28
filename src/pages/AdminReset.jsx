@@ -44,19 +44,19 @@ function AdminResetContent() {
       addLog('🗑️ Paso 1/8: Eliminando logs y datos secundarios...', 'info');
       await Promise.all([
         base44.entities.EntregaLog.filter({}).then(items => 
-          items.length > 0 ? base44.entities.EntregaLog.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.EntregaLog.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.ComprobanteVentaLog.filter({}).then(items => 
-          items.length > 0 ? base44.entities.ComprobanteVentaLog.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.ComprobanteVentaLog.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.SuperAdminAudit.filter({}).then(items => 
-          items.length > 0 ? base44.entities.SuperAdminAudit.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.SuperAdminAudit.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.ActividadTecnica.filter({}).then(items => 
-          items.length > 0 ? base44.entities.ActividadTecnica.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.ActividadTecnica.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.InventarioHistorial.filter({}).then(items => 
-          items.length > 0 ? base44.entities.InventarioHistorial.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.InventarioHistorial.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
       ]);
       addLog('✅ Logs eliminados', 'success');
@@ -64,13 +64,13 @@ function AdminResetContent() {
       addLog('🗑️ Paso 2/8: Eliminando notificaciones y mensajes...', 'info');
       await Promise.all([
         base44.entities.Notificacion.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Notificacion.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Notificacion.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.MensajeCliente.filter({}).then(items => 
-          items.length > 0 ? base44.entities.MensajeCliente.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.MensajeCliente.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.NotaInterna.filter({}).then(items => 
-          items.length > 0 ? base44.entities.NotaInterna.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.NotaInterna.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
       ]);
       addLog('✅ Notificaciones eliminadas', 'success');
@@ -78,16 +78,16 @@ function AdminResetContent() {
       addLog('🗑️ Paso 3/8: Eliminando datos de taller...', 'info');
       await Promise.all([
         base44.entities.BloqueoTecnico.filter({}).then(items => 
-          items.length > 0 ? base44.entities.BloqueoTecnico.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.BloqueoTecnico.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.PruebaTecnica.filter({}).then(items => 
-          items.length > 0 ? base44.entities.PruebaTecnica.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.PruebaTecnica.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.SolicitudTecnica.filter({}).then(items => 
-          items.length > 0 ? base44.entities.SolicitudTecnica.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.SolicitudTecnica.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.RegistroTiempo.filter({}).then(items => 
-          items.length > 0 ? base44.entities.RegistroTiempo.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.RegistroTiempo.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
       ]);
       addLog('✅ Datos de taller eliminados', 'success');
@@ -95,36 +95,36 @@ function AdminResetContent() {
       addLog('🗑️ Paso 4/8: Eliminando diagnósticos y evidencias...', 'info');
       await Promise.all([
         base44.entities.DiagnosticoEvidencia.filter({}).then(items => 
-          items.length > 0 ? base44.entities.DiagnosticoEvidencia.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.DiagnosticoEvidencia.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.DiagnosticoDocumento.filter({}).then(items => 
-          items.length > 0 ? base44.entities.DiagnosticoDocumento.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.DiagnosticoDocumento.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.DiagnosticoResultado.filter({}).then(items => 
-          items.length > 0 ? base44.entities.DiagnosticoResultado.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.DiagnosticoResultado.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
       ]);
       await base44.entities.DiagnosticoTecnico.filter({}).then(items => 
-        items.length > 0 ? base44.entities.DiagnosticoTecnico.delete({ id: { $in: items.map(i => i.id) } }) : null
+        items.length > 0 ? base44.entities.DiagnosticoTecnico.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
       );
       await base44.entities.PreDiagnostico.filter({}).then(items => 
-        items.length > 0 ? base44.entities.PreDiagnostico.delete({ id: { $in: items.map(i => i.id) } }) : null
+        items.length > 0 ? base44.entities.PreDiagnostico.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
       );
       addLog('✅ Diagnósticos eliminados', 'success');
 
       addLog('🗑️ Paso 5/8: Eliminando finanzas...', 'info');
       await Promise.all([
         base44.entities.SupplierPayment.filter({}).then(items => 
-          items.length > 0 ? base44.entities.SupplierPayment.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.SupplierPayment.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.PurchaseInvoice.filter({}).then(items => 
-          items.length > 0 ? base44.entities.PurchaseInvoice.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.PurchaseInvoice.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Expense.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Expense.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Expense.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Supplier.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Supplier.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Supplier.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
       ]);
       addLog('✅ Finanzas eliminadas', 'success');
@@ -132,48 +132,48 @@ function AdminResetContent() {
       addLog('🗑️ Paso 6/8: Eliminando ventas, garantías, cotizaciones...', 'info');
       await Promise.all([
         base44.entities.VentaItem.filter({}).then(items => 
-          items.length > 0 ? base44.entities.VentaItem.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.VentaItem.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Garantia.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Garantia.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Garantia.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Cotizacion.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Cotizacion.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Cotizacion.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
       ]);
       await base44.entities.Venta.filter({}).then(items => 
-        items.length > 0 ? base44.entities.Venta.delete({ id: { $in: items.map(i => i.id) } }) : null
+        items.length > 0 ? base44.entities.Venta.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
       );
       addLog('✅ Ventas eliminadas', 'success');
 
       addLog('🗑️ Paso 7/8: Eliminando OTs, citas, inventario, clientes...', 'info');
       await Promise.all([
         base44.entities.Cita.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Cita.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Cita.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.OrdenTrabajo.filter({}).then(items => 
-          items.length > 0 ? base44.entities.OrdenTrabajo.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.OrdenTrabajo.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Inventario.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Inventario.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Inventario.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.CategoriaInventario.filter({}).then(items => 
-          items.length > 0 ? base44.entities.CategoriaInventario.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.CategoriaInventario.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Equipo.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Equipo.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Equipo.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Lead.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Lead.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Lead.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Cliente.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Cliente.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Cliente.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.NoConformidad.filter({}).then(items => 
-          items.length > 0 ? base44.entities.NoConformidad.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.NoConformidad.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.Reciclaje.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Reciclaje.delete({ id: { $in: items.map(i => i.id) } }) : null
+          items.length > 0 ? base44.entities.Reciclaje.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
       ]);
       addLog('✅ Datos operativos eliminados', 'success');
@@ -184,17 +184,17 @@ function AdminResetContent() {
         acc.role !== 'SUPER_ADMIN' && acc.user_id !== user.id
       );
       if (accountsToDelete.length > 0) {
-        await base44.entities.UserAccount.delete({ id: { $in: accountsToDelete.map(a => a.id) } });
+        await base44.entities.UserAccount.delete({ query: { id: { $in: accountsToDelete.map(a => a.id) } } });
       }
       addLog(`✅ ${accountsToDelete.length} UserAccounts eliminados`, 'success');
 
       await base44.entities.Branch.filter({}).then(items => 
-        items.length > 0 ? base44.entities.Branch.delete({ id: { $in: items.map(i => i.id) } }) : null
+        items.length > 0 ? base44.entities.Branch.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
       );
 
       const allOrgs = await base44.entities.Organization.filter({});
       if (allOrgs.length > 0) {
-        await base44.entities.Organization.delete({ id: { $in: allOrgs.map(o => o.id) } });
+        await base44.entities.Organization.delete({ query: { id: { $in: allOrgs.map(o => o.id) } } });
       }
       addLog(`✅ ${allOrgs.length} Organizations eliminadas`, 'success');
 

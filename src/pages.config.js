@@ -84,6 +84,7 @@ import VentasGarantias from './pages/VentasGarantias';
 import VentasHistorial from './pages/VentasHistorial';
 import VentasMetricas from './pages/VentasMetricas';
 import InventarioInvertido from './pages/InventarioInvertido';
+import AdminReset from './pages/AdminReset';
 import __Layout from './Layout.jsx';
 
 
@@ -125,6 +126,7 @@ export const PAGES = {
     "VentasHistorial": VentasHistorial,
     "VentasMetricas": VentasMetricas,
     "InventarioInvertido": InventarioInvertido,
+    "AdminReset": AdminReset,
 }
 
 export const pagesConfig = {

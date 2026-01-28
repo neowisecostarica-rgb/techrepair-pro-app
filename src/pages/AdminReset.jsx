@@ -42,15 +42,19 @@ function AdminResetContent() {
     try {
       // 1. Eliminar datos operativos (de menor a mayor dependencia)
       addLog('🗑️ Paso 1/8: Eliminando logs y datos secundarios...', 'info');
+      
+      // SuperAdminAudit - explicit block
+      const auditItems = await base44.entities.SuperAdminAudit.filter({});
+      if (auditItems.length > 0) {
+        await base44.entities.SuperAdminAudit.delete({ query: { id: { $in: auditItems.map(i => i.id) } } });
+      }
+      
       await Promise.all([
         base44.entities.EntregaLog.filter({}).then(items => 
           items.length > 0 ? base44.entities.EntregaLog.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.ComprobanteVentaLog.filter({}).then(items => 
           items.length > 0 ? base44.entities.ComprobanteVentaLog.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.SuperAdminAudit.filter({}).then(items => 
-          items.length > 0 ? base44.entities.SuperAdminAudit.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
         ),
         base44.entities.ActividadTecnica.filter({}).then(items => 
           items.length > 0 ? base44.entities.ActividadTecnica.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null

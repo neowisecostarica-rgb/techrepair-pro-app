@@ -83,6 +83,7 @@ import VentasMetricas from './pages/VentasMetricas';
 import Gastos from './pages/Gastos';
 import Proveedores from './pages/Proveedores';
 import CuentasPorPagar from './pages/CuentasPorPagar';
+import InventarioInvertido from './pages/InventarioInvertido';
 import __Layout from './Layout.jsx';
 
 
@@ -123,6 +124,7 @@ export const PAGES = {
     "Gastos": Gastos,
     "Proveedores": Proveedores,
     "CuentasPorPagar": CuentasPorPagar,
+    "InventarioInvertido": InventarioInvertido,
 }
 
 export const pagesConfig = {

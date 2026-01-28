@@ -9,8 +9,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../../utils';
+import BorradoMasivoNotificaciones from './BorradoMasivoNotificaciones';
+import { useAuthContext } from '@/components/contexts/AuthContext';
 
 export default function NotificacionesPanel({ userAccount, compact = false }) {
+  const { effectiveRole } = useAuthContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -131,7 +134,7 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
               <Bell className="w-5 h-5" />
               Notificaciones
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {criticas.length > 0 && (
                 <Badge className="bg-red-100 text-red-700 border-0">
                   🔴 {criticas.length} Críticas
@@ -141,6 +144,9 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
                 <Badge className="bg-orange-100 text-orange-700 border-0">
                   🟡 {importantes.length} Operativas
                 </Badge>
+              )}
+              {['SUPER_ADMIN', 'ORG_ADMIN'].includes(effectiveRole) && (
+                <BorradoMasivoNotificaciones organizationId={userAccount?.organization_id} />
               )}
             </div>
           </CardTitle>

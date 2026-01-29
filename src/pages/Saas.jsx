@@ -287,7 +287,14 @@ function SaasContent() {
 
   const createOrgMutation = useMutation({
     mutationFn: async (data) => {
-      const org = await base44.entities.Organization.create(data.organization);
+      // P0: Incluir user_id explícitamente para SUPER_ADMIN
+      const orgPayload = {
+        ...data.organization,
+        created_by: user.id, // Explícitamente pasar el user_id del SUPER_ADMIN
+      };
+      
+      console.log('Creating Organization with payload:', orgPayload);
+      const org = await base44.entities.Organization.create(orgPayload);
       
       // Invitar ORG_ADMIN
       await base44.users.inviteUser(data.admin_email, 'user');

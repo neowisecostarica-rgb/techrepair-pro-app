@@ -39,6 +39,7 @@ function SaasContent() {
   const [impersonatedOrg, setImpersonatedOrg] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
+  const [justCreatedOrgId, setJustCreatedOrgId] = useState(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -304,18 +305,37 @@ function SaasContent() {
       
       return org;
     },
-    onSuccess: () => {
+    onSuccess: (newOrg) => {
+      // P0: Auto-refresh de la lista de tenants
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({ queryKey: ['all-user-accounts'] });
+      
+      // P0: Highlight del tenant recién creado
+      setJustCreatedOrgId(newOrg.id);
+      setTimeout(() => setJustCreatedOrgId(null), 5000);
+      
+      // P0: Feedback visual
+      alert(`✅ Tenant "${newOrg.name}" creado exitosamente`);
+      
       setShowModal(false);
       setCreating(false);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error creando tenant:', error);
+      alert(`❌ Error al crear tenant: ${error.message || 'Error desconocido'}`);
       setCreating(false);
     },
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // P0: Prevenir doble submit
+    if (creating) {
+      console.warn('Ya hay una creación en progreso');
+      return;
+    }
+    
     setCreating(true);
     const formData = new FormData(e.target);
     
@@ -627,8 +647,14 @@ function SaasContent() {
                 <tbody>
                   {filteredOrgs.map((org) => {
                     const stats = getOrgStats(org.id);
+                    const isNewlyCreated = justCreatedOrgId === org.id;
                     return (
-                      <tr key={org.id} className="border-t hover:bg-slate-50">
+                      <tr 
+                        key={org.id} 
+                        className={`border-t hover:bg-slate-50 transition-all duration-500 ${
+                          isNewlyCreated ? 'bg-green-100 animate-pulse' : ''
+                        }`}
+                      >
                         <td className="p-3">
                           <p className="font-semibold text-slate-900">{org.name}</p>
                           {org.legal_name && <p className="text-xs text-slate-500">{org.legal_name}</p>}
@@ -934,7 +960,14 @@ function SaasContent() {
                 Cancel
               </Button>
               <Button type="submit" className="bg-slate-800 hover:bg-slate-900" disabled={creating}>
-                {creating ? 'Creating...' : 'Create Organization'}
+                {creating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Creando tenant...
+                  </>
+                ) : (
+                  'Create Organization'
+                )}
               </Button>
             </div>
           </form>

@@ -38,8 +38,9 @@ export default function Onboarding() {
         user_email: authenticatedUser.email,
       });
 
-      // CASO 1: Usuario invitado (tiene UserAccount pendiente sin user_id)
-      const invited = accounts.find(a => !a.user_id);
+      // CASO 1: Usuario invitado (tiene UserAccount pendiente sin user_id vinculado)
+      // P0: Debe tener organization_id válido (ligado al tenant del ORG_ADMIN que invitó)
+      const invited = accounts.find(a => !a.user_id && a.organization_id);
       if (invited) {
         setPendingAccount(invited);
         setMode('invited');
@@ -55,6 +56,16 @@ export default function Onboarding() {
       }
 
       // CASO 3: Usuario nuevo sin invitación → debe crear empresa
+      // P0: HARDENING - Solo permitir crear empresa si no hay cuentas pendientes inválidas
+      const invalidAccounts = accounts.filter(a => !a.organization_id);
+      if (invalidAccounts.length > 0) {
+        // Limpiar cuentas huérfanas (no deberían existir)
+        console.error('Cuentas huérfanas detectadas:', invalidAccounts);
+        for (const acc of invalidAccounts) {
+          await base44.entities.UserAccount.delete(acc.id);
+        }
+      }
+      
       setMode('new_company');
     } catch (err) {
       console.error('Error checking user status:', err);
@@ -64,18 +75,27 @@ export default function Onboarding() {
 
   const completeInvitedUserSetup = async (user, account) => {
     try {
-      // Vincular UserAccount con user_id
+      // P0: HARDENING - Validación de tenant en invitación
+      if (!account.organization_id) {
+        throw new Error('La invitación no tiene un tenant asociado. Contacta al administrador.');
+      }
+
+      // P0: Vincular UserAccount con user_id y activar (ligado a tenant existente)
       await base44.entities.UserAccount.update(account.id, {
         user_id: user.id,
         active: true,
       });
 
+      // P0: Establecer contexto de tenant activo inmediatamente
+      // (AuthContext lo detectará automáticamente al recargar)
+      
       setMode('success');
       setTimeout(() => {
-        if (account.role === 'ORG_ADMIN') {
-          window.location.href = createPageUrl('Settings');
-        } else {
+        // Redirigir según rol
+        if (account.role === 'ORG_ADMIN' || account.role === 'BRANCH_ADMIN') {
           window.location.href = createPageUrl('Dashboard');
+        } else {
+          window.location.href = createPageUrl('MiDia');
         }
       }, 1500);
     } catch (err) {

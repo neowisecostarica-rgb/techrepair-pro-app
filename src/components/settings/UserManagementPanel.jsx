@@ -39,15 +39,22 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
 
   const inviteUserMutation = useMutation({
     mutationFn: async (data) => {
+      // P0: HARDENING - Validación defensiva de organization_id
+      if (!organizationId) {
+        throw new Error('No se puede invitar usuarios sin un tenant válido');
+      }
+
+      // P0: Crear UserAccount pendiente ligado explícitamente al tenant
       await base44.entities.UserAccount.create({
         user_email: data.user_email,
-        organization_id: organizationId,
+        organization_id: organizationId, // EXPLÍCITO: siempre del ORG_ADMIN actual
         branch_id: data.branch_id || null,
         role: data.role,
-        active: false,
-        user_id: `pending_${data.user_email}_${Date.now()}`,
+        active: false, // Pendiente hasta que acepte
+        user_id: null, // null hasta que el usuario acepte y se vincule
       });
 
+      // Enviar invitación via email
       await base44.users.inviteUser(data.user_email, 'user');
     },
     onSuccess: () => {

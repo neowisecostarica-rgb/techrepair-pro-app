@@ -18,7 +18,12 @@ export default function Onboarding() {
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
 
+  // P0: IDEMPOTENCIA - Prevenir múltiples ejecuciones
+  const hasCheckedRef = React.useRef(false);
+
   useEffect(() => {
+    if (hasCheckedRef.current) return; // Ya ejecutado
+    hasCheckedRef.current = true;
     checkUserStatus();
   }, []);
 
@@ -106,6 +111,13 @@ export default function Onboarding() {
 
   const handleCreateCompany = async (e) => {
     e.preventDefault();
+    
+    // P0: IDEMPOTENCIA - Prevenir doble submit
+    if (creating) {
+      console.warn('Ya hay una creación en progreso');
+      return;
+    }
+    
     setCreating(true);
 
     try {
@@ -117,21 +129,45 @@ export default function Onboarding() {
         return;
       }
 
-      // IDEMPOTENCIA: Verificar si ya existe org antes de crear
+      // P0: IDEMPOTENCIA CRÍTICA - Verificar si ya existe org ANTES de cualquier creación
       const existingAccounts = await base44.entities.UserAccount.filter({
         user_id: user.id
       });
 
-      if (existingAccounts.length > 0 && existingAccounts[0].organization_id) {
-        // Ya tiene org configurada
+      // Si ya tiene organization_id, ABORTAR inmediatamente
+      const activeAccount = existingAccounts.find(a => a.organization_id);
+      if (activeAccount) {
+        console.log('Usuario ya tiene organización asociada, redirigiendo...');
         setMode('success');
         setTimeout(() => {
           window.location.href = createPageUrl('Settings');
         }, 1500);
         return;
       }
+
+      // P0: Verificar si existe una org con este nombre del mismo usuario (protección adicional)
+      const existingOrgs = await base44.entities.Organization.filter({
+        name: companyName
+      });
       
-      // 1. Crear Organization (P0: usar estados controlados)
+      for (const org of existingOrgs) {
+        // Verificar si este usuario ya está asociado a esta org
+        const orgAccounts = await base44.entities.UserAccount.filter({
+          user_id: user.id,
+          organization_id: org.id
+        });
+        if (orgAccounts.length > 0) {
+          console.log('Organización duplicada detectada, usando existente');
+          setMode('success');
+          setTimeout(() => {
+            window.location.href = createPageUrl('Settings');
+          }, 1500);
+          return;
+        }
+      }
+      
+      // P0: IDEMPOTENCIA - Crear Organization UNA SOLA VEZ
+      console.log('Creando nueva organización:', companyName);
       const org = await base44.entities.Organization.create({
         name: companyName,
         country: selectedCountry,
@@ -139,13 +175,14 @@ export default function Onboarding() {
         plan: 'basic',
         status: 'active',
       });
+      console.log('Organización creada exitosamente:', org.id);
 
-      // 2. Crear Branch default
+      // 2. Crear Branch default (linked al tenant)
       await base44.entities.Branch.create({
         organization_id: org.id,
         name: 'Principal',
         address: '',
-        is_default: true,
+        active: true,
       });
 
       // 3. SEED CATEGORÍAS BASE (idempotente)
@@ -172,14 +209,14 @@ export default function Onboarding() {
         }
       }
 
-      // 4. P0: Crear UserAccount como ORG_ADMIN (owner) - VINCULACIÓN EXPLÍCITA
-      // Verificar si ya existe UserAccount para este usuario
-      const existingUserAccount = await base44.entities.UserAccount.filter({
+      // 4. P0: Vincular UserAccount al tenant creado como ORG_ADMIN
+      const finalAccounts = await base44.entities.UserAccount.filter({
         user_id: user.id
       });
 
-      if (existingUserAccount.length === 0) {
-        // Crear nuevo UserAccount ligado al tenant
+      if (finalAccounts.length === 0) {
+        // Crear UserAccount ÚNICO ligado al tenant
+        console.log('Creando UserAccount para ORG_ADMIN');
         await base44.entities.UserAccount.create({
           user_id: user.id,
           user_email: user.email,
@@ -188,31 +225,48 @@ export default function Onboarding() {
           active: true,
         });
       } else {
-        // Actualizar UserAccount existente (caso edge: usuario invitado que ahora crea org)
-        await base44.entities.UserAccount.update(existingUserAccount[0].id, {
+        // P0: IMPORTANTE - Si ya existe UserAccount sin org, actualizarlo
+        // NUNCA crear un segundo UserAccount
+        console.log('Actualizando UserAccount existente');
+        await base44.entities.UserAccount.update(finalAccounts[0].id, {
           organization_id: org.id,
           role: 'ORG_ADMIN',
           active: true,
         });
       }
 
+      console.log('Setup completo para usuario:', user.email);
+
+      // P0: Success - redirigir INMEDIATAMENTE
       setMode('success');
       setTimeout(() => {
         window.location.href = createPageUrl('Settings');
       }, 1500);
+      
     } catch (err) {
       console.error('Error creating company:', err);
       
-      // Mensaje de error más específico
-      if (err.message?.includes('duplicate') || err.message?.includes('already exists')) {
-        alert('Ya tienes una empresa configurada. Redirigiendo...');
-        setTimeout(() => {
-          window.location.href = createPageUrl('Settings');
-        }, 1000);
-      } else {
-        alert('Error al crear la empresa: ' + err.message);
+      // P0: IDEMPOTENCIA - Si falla, verificar si ya se creó parcialmente
+      try {
+        const retryAccounts = await base44.entities.UserAccount.filter({
+          user_id: user.id
+        });
+        const retryActiveAccount = retryAccounts.find(a => a.organization_id);
+        
+        if (retryActiveAccount) {
+          console.log('Organización creada parcialmente, redirigiendo...');
+          setMode('success');
+          setTimeout(() => {
+            window.location.href = createPageUrl('Settings');
+          }, 1000);
+          return;
+        }
+      } catch (retryErr) {
+        console.error('Error verificando estado:', retryErr);
       }
       
+      // Error real
+      alert('Error al crear la empresa: ' + err.message);
       setCreating(false);
     }
   };
@@ -354,7 +408,7 @@ export default function Onboarding() {
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600"
-              disabled={creating}
+              disabled={creating || !selectedCountry || !selectedCurrency}
             >
               {creating ? (
                 <>

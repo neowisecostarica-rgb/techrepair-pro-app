@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
+import AprobacionesPanel from '@/components/admin/AprobacionesPanel';
 import { createPageUrl } from '../../utils';
 import { Link } from 'react-router-dom';
 
@@ -170,6 +171,14 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
       </div>
 
       <MensajesMotivacion tipo="diaria" role={effectiveRole} />
+
+      {/* Aprobaciones Pendientes - CRÍTICO P0 */}
+      <div className="mb-8">
+        <AprobacionesPanel 
+          userAccount={{ organization_id: effectiveOrgId }} 
+          user={user} 
+        />
+      </div>
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-red-200">

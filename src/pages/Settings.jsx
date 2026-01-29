@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, MapPin, Users, Plus, Trash2, AlertCircle } from 'lucide-react';
 import PageGuard from '../components/guards/PageGuard';
 import UserManagementPanel from '../components/settings/UserManagementPanel';
-import SenalesNegocio from '../components/admin/SenalesNegocio';
 import ConfiguracionPanel from '../components/admin/ConfiguracionPanel';
 import ConfiguracionNegocio from '../components/settings/ConfiguracionNegocio';
 import { useAuthContext } from '../components/contexts/AuthContext';
@@ -137,7 +136,7 @@ function SettingsContent() {
       </div>
 
       <Tabs defaultValue="negocio" className="space-y-6">
-        <TabsList className="bg-white border border-slate-200 p-1 grid grid-cols-6">
+        <TabsList className="bg-white border border-slate-200 p-1 grid grid-cols-5">
           <TabsTrigger value="negocio" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
             <Building2 className="w-4 h-4 mr-2" />
             Negocio
@@ -153,9 +152,6 @@ function SettingsContent() {
           <TabsTrigger value="usuarios" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
             <Users className="w-4 h-4 mr-2" />
             Usuarios
-          </TabsTrigger>
-          <TabsTrigger value="senales" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
-            🔔 Señales
           </TabsTrigger>
           <TabsTrigger value="config" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
             ⚙️ Config
@@ -260,11 +256,6 @@ function SettingsContent() {
             currentUserId={user?.id}
             branches={branches}
           />
-        </TabsContent>
-
-        {/* Tab Señales */}
-        <TabsContent value="senales">
-          <SenalesNegocio userAccount={userAccount} />
         </TabsContent>
 
         {/* Tab Configuración */}

@@ -16,6 +16,7 @@ import {
 import { format } from 'date-fns';
 import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
 import AprobacionesPanel from '@/components/admin/AprobacionesPanel';
+import SenalesNegocio from '@/components/admin/SenalesNegocio';
 import { createPageUrl } from '../../utils';
 import { Link } from 'react-router-dom';
 
@@ -177,6 +178,13 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
         <AprobacionesPanel 
           userAccount={{ organization_id: effectiveOrgId }} 
           user={user} 
+        />
+      </div>
+
+      {/* Señales de Negocio - OPERATIVO P1 */}
+      <div className="mb-8">
+        <SenalesNegocio 
+          userAccount={{ organization_id: effectiveOrgId }} 
         />
       </div>
 

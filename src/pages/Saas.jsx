@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +42,9 @@ function SaasContent() {
   const [justCreatedOrgId, setJustCreatedOrgId] = useState(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  
+  // P0: Guard de idempotencia inmutable
+  const isCreatingRef = useRef(false);
 
   const { user: authUser, isImpersonating: authIsImpersonating, effectiveOrgId } = useAuthContext();
 
@@ -313,6 +316,9 @@ function SaasContent() {
       return org;
     },
     onSuccess: (newOrg) => {
+      // P0: Resetear guard de idempotencia
+      isCreatingRef.current = false;
+      
       // P0: Auto-refresh de la lista de tenants
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
       queryClient.invalidateQueries({ queryKey: ['all-user-accounts'] });
@@ -328,6 +334,9 @@ function SaasContent() {
       setCreating(false);
     },
     onError: (error) => {
+      // P0: Resetear guard de idempotencia
+      isCreatingRef.current = false;
+      
       console.error('Error creando tenant:', error);
       alert(`❌ Error al crear tenant: ${error.message || 'Error desconocido'}`);
       setCreating(false);
@@ -337,13 +346,16 @@ function SaasContent() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // P0: Prevenir doble submit
-    if (creating) {
-      console.warn('Ya hay una creación en progreso');
+    // P0: Guard de idempotencia INMUTABLE - protección REAL contra duplicados
+    if (isCreatingRef.current) {
+      console.warn('⛔ Guard activo: creación ya en progreso, bloqueando ejecución duplicada');
       return;
     }
     
+    // Activar guard ANTES de cualquier otra lógica
+    isCreatingRef.current = true;
     setCreating(true);
+    
     const formData = new FormData(e.target);
     
     createOrgMutation.mutate({

@@ -922,30 +922,31 @@ function SaasContent() {
 
               <div className="space-y-2">
                 <Label htmlFor="plan">Plan *</Label>
-                <Select name="plan" required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar plan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  id="plan"
+                  name="plan"
+                  required
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md"
+                >
+                  <option value="">Seleccionar plan</option>
+                  <option value="basic">Basic</option>
+                  <option value="pro">Pro</option>
+                  <option value="premium">Premium</option>
+                </select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="partner_id">Partner (Opcional)</Label>
-                <Select name="partner_id">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin partner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {partners.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  id="partner_id"
+                  name="partner_id"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md"
+                >
+                  <option value="">Sin partner</option>
+                  {partners.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2 col-span-2">

@@ -13,6 +13,10 @@ export default function Onboarding() {
   const [user, setUser] = useState(null);
   const [pendingAccount, setPendingAccount] = useState(null);
   const [creating, setCreating] = useState(false);
+  
+  // Estados controlados para Selects (P0: hardening)
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState('');
 
   useEffect(() => {
     checkUserStatus();
@@ -85,6 +89,14 @@ export default function Onboarding() {
     setCreating(true);
 
     try {
+      // P0: Validación defensiva de campos requeridos
+      const companyName = e.target.company_name.value.trim();
+      if (!companyName || !selectedCountry || !selectedCurrency) {
+        alert('Por favor completa todos los campos requeridos');
+        setCreating(false);
+        return;
+      }
+
       // IDEMPOTENCIA: Verificar si ya existe org antes de crear
       const existingAccounts = await base44.entities.UserAccount.filter({
         user_id: user.id
@@ -92,21 +104,18 @@ export default function Onboarding() {
 
       if (existingAccounts.length > 0 && existingAccounts[0].organization_id) {
         // Ya tiene org configurada
-        const existingOrgId = existingAccounts[0].organization_id;
         setMode('success');
         setTimeout(() => {
           window.location.href = createPageUrl('Settings');
         }, 1500);
         return;
       }
-
-      const formData = new FormData(e.target);
       
-      // 1. Crear Organization
+      // 1. Crear Organization (P0: usar estados controlados)
       const org = await base44.entities.Organization.create({
-        name: formData.get('company_name'),
-        country: formData.get('country'),
-        currency: formData.get('currency'),
+        name: companyName,
+        country: selectedCountry,
+        currency: selectedCurrency,
         plan: 'basic',
         status: 'active',
       });
@@ -143,8 +152,14 @@ export default function Onboarding() {
         }
       }
 
-      // 4. Crear UserAccount como ORG_ADMIN (owner)
-      try {
+      // 4. P0: Crear UserAccount como ORG_ADMIN (owner) - VINCULACIÓN EXPLÍCITA
+      // Verificar si ya existe UserAccount para este usuario
+      const existingUserAccount = await base44.entities.UserAccount.filter({
+        user_id: user.id
+      });
+
+      if (existingUserAccount.length === 0) {
+        // Crear nuevo UserAccount ligado al tenant
         await base44.entities.UserAccount.create({
           user_id: user.id,
           user_email: user.email,
@@ -152,23 +167,13 @@ export default function Onboarding() {
           role: 'ORG_ADMIN',
           active: true,
         });
-      } catch (userAccountError) {
-        // Reintentar una vez si falló (race condition)
-        console.warn('Retry UserAccount creation:', userAccountError);
-        const retryAccounts = await base44.entities.UserAccount.filter({
-          user_id: user.id,
-          organization_id: org.id
+      } else {
+        // Actualizar UserAccount existente (caso edge: usuario invitado que ahora crea org)
+        await base44.entities.UserAccount.update(existingUserAccount[0].id, {
+          organization_id: org.id,
+          role: 'ORG_ADMIN',
+          active: true,
         });
-        if (retryAccounts.length === 0) {
-          // No existe, reintentar
-          await base44.entities.UserAccount.create({
-            user_id: user.id,
-            user_email: user.email,
-            organization_id: org.id,
-            role: 'ORG_ADMIN',
-            active: true,
-          });
-        }
       }
 
       setMode('success');
@@ -259,7 +264,13 @@ export default function Onboarding() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="country">País *</Label>
-                <Select name="country" required disabled={creating}>
+                <Select 
+                  name="country" 
+                  required 
+                  disabled={creating}
+                  value={selectedCountry}
+                  onValueChange={setSelectedCountry}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona" />
                   </SelectTrigger>
@@ -290,7 +301,13 @@ export default function Onboarding() {
 
               <div className="space-y-2">
                 <Label htmlFor="currency">Moneda *</Label>
-                <Select name="currency" required disabled={creating}>
+                <Select 
+                  name="currency" 
+                  required 
+                  disabled={creating}
+                  value={selectedCurrency}
+                  onValueChange={setSelectedCurrency}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona" />
                   </SelectTrigger>

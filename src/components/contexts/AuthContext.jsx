@@ -61,16 +61,46 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      // Cargar UserAccount normal
-      const accounts = await base44.entities.UserAccount.filter({ user_id: u.id });
-      if (accounts.length > 0) {
-        // Priorizar cuenta activa y con org válida
-        const activeAccount = accounts.find(a => a.active && a.organization_id);
-        setUserAccount(activeAccount || accounts[0]);
-      } else {
-        setUserAccount(null);
-      }
+      // P0 FIX: Cargar UserAccount por user_id (fuente de verdad)
+      const accounts = await base44.entities.UserAccount.filter({ 
+        user_id: u.id, 
+        active: true 
+      });
       
+      if (accounts.length > 0) {
+        // Prioridad 1: Si hay impersonation activo, buscar por impersonating_org_id
+        if (u.impersonating_org_id) {
+          const impersonatedAccount = accounts.find(a => a.organization_id === u.impersonating_org_id);
+          if (impersonatedAccount) {
+            setUserAccount(impersonatedAccount);
+            setStatus('ready');
+            isLoadingRef.current = false;
+            return;
+          }
+        }
+        
+        // Prioridad 2: Cuenta con organization_id (más reciente si hay múltiples)
+        const validAccounts = accounts.filter(a => a.organization_id);
+        if (validAccounts.length > 0) {
+          const mostRecent = validAccounts.sort((a, b) => 
+            new Date(b.created_date || b.updated_date || 0) - new Date(a.created_date || a.updated_date || 0)
+          )[0];
+          setUserAccount(mostRecent);
+          setStatus('ready');
+          isLoadingRef.current = false;
+          return;
+        }
+        
+        // Prioridad 3: Si solo hay cuentas sin organization_id (invitaciones pendientes)
+        // dejar que Onboarding las procese
+        setUserAccount(null);
+        setStatus('ready');
+        isLoadingRef.current = false;
+        return;
+      }
+
+      // No hay cuentas válidas → redirigir a Onboarding
+      setUserAccount(null);
       setStatus('ready');
       isLoadingRef.current = false;
     } catch (error) {

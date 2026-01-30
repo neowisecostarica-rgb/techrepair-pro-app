@@ -44,26 +44,55 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
         throw new Error('No se puede invitar usuarios sin un tenant válido');
       }
 
-      // P0: Crear UserAccount pendiente ligado explícitamente al tenant
+      // P0 FIX: PRE-FLIGHT - Invitar y resolver user_id
+      let resolvedUserId = null;
+      
+      try {
+        await base44.users.inviteUser(data.user_email, 'user');
+      } catch (error) {
+        console.warn('Invite warning (puede ya existir):', error.message);
+      }
+      
+      // Buscar user_id con reintentos
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        const allUsers = await base44.entities.User.filter({});
+        const targetUser = allUsers.find(u => u.email === data.user_email);
+        if (targetUser) {
+          resolvedUserId = targetUser.id;
+          break;
+        }
+      }
+
+      // Crear UserAccount (con user_id si existe, null si es pendiente)
       await base44.entities.UserAccount.create({
+        user_id: resolvedUserId,
         user_email: data.user_email,
-        organization_id: organizationId, // EXPLÍCITO: siempre del ORG_ADMIN actual
+        organization_id: organizationId,
         branch_id: data.branch_id || null,
         role: data.role,
-        active: false, // Pendiente hasta que acepte
-        user_id: null, // null hasta que el usuario acepte y se vincule
+        active: resolvedUserId ? true : false, // Activo si user_id existe
       });
 
-      // Enviar invitación via email
-      await base44.users.inviteUser(data.user_email, 'user');
+      return { success: true, email: data.user_email, resolved: !!resolvedUserId };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['userAccounts'] });
       setShowInviteModal(false);
       setInviting(false);
+      
+      // P0 FIX: FEEDBACK ÉXITO
+      if (result.resolved) {
+        alert(`✅ Invitación enviada exitosamente a ${result.email}\n\nEl usuario podrá acceder inmediatamente al iniciar sesión.`);
+      } else {
+        alert(`✅ Invitación enviada a ${result.email}\n\nEl usuario deberá registrarse primero para acceder.`);
+      }
     },
-    onError: () => {
+    onError: (error) => {
       setInviting(false);
+      
+      // P0 FIX: FEEDBACK ERROR
+      alert(`❌ Error al invitar usuario: ${error.message}`);
     },
   });
 

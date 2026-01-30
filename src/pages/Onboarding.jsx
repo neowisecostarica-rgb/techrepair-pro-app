@@ -38,49 +38,67 @@ export default function Onboarding() {
         return;
       }
 
-      // Buscar UserAccount existente (invitado o ya configurado)
+      // P0 FIX: Buscar UserAccount por user_id (fuente de verdad)
       const accounts = await base44.entities.UserAccount.filter({
+        user_id: authenticatedUser.id,
+      });
+
+      // CASO 1: Usuario con cuenta activa y organization_id → redirigir
+      const activeAccount = accounts.find(a => a.active && a.organization_id);
+      if (activeAccount) {
+        const targetPage = activeAccount.role === 'ORG_ADMIN' || activeAccount.role === 'BRANCH_ADMIN' 
+          ? 'Dashboard' 
+          : 'MiDia';
+        window.location.href = createPageUrl(targetPage);
+        return;
+      }
+
+      // CASO 2: Invitación pendiente (user_id en UserAccount pero active: false)
+      const pendingInvitation = accounts.find(a => a.user_id === authenticatedUser.id && !a.active && a.organization_id);
+      if (pendingInvitation) {
+        // Activar invitación
+        await base44.entities.UserAccount.update(pendingInvitation.id, {
+          active: true
+        });
+        
+        const targetPage = pendingInvitation.role === 'ORG_ADMIN' || pendingInvitation.role === 'BRANCH_ADMIN' 
+          ? 'Dashboard' 
+          : 'MiDia';
+        window.location.href = createPageUrl(targetPage);
+        return;
+      }
+
+      // CASO 3: Buscar también por email (invitaciones antiguas sin user_id vinculado)
+      const accountsByEmail = await base44.entities.UserAccount.filter({
         user_email: authenticatedUser.email,
       });
 
-      // P0 GUARD: Usuario huérfano (User existe pero sin UserAccount válido)
-      // Esto ocurre tras AdminReset o si cuenta fue desactivada
-      if (accounts.length === 0) {
+      const oldInvitation = accountsByEmail.find(a => !a.user_id && a.organization_id);
+      if (oldInvitation) {
+        // Vincular user_id
+        await base44.entities.UserAccount.update(oldInvitation.id, {
+          user_id: authenticatedUser.id,
+          active: true
+        });
+        
+        const targetPage = oldInvitation.role === 'ORG_ADMIN' || oldInvitation.role === 'BRANCH_ADMIN' 
+          ? 'Dashboard' 
+          : 'MiDia';
+        window.location.href = createPageUrl(targetPage);
+        return;
+      }
+
+      // CASO 4: Usuario huérfano (sin ningún UserAccount válido)
+      if (accounts.length === 0 && accountsByEmail.every(a => !a.organization_id)) {
         setMode('orphaned_user');
         return;
       }
 
-      // CASO 1: Usuario invitado (tiene UserAccount pendiente sin user_id vinculado)
-      // P0: Debe tener organization_id válido (ligado al tenant del ORG_ADMIN que invitó)
-      const invited = accounts.find(a => !a.user_id && a.organization_id);
-      if (invited) {
-        setPendingAccount(invited);
-        setMode('invited');
-        await completeInvitedUserSetup(authenticatedUser, invited);
-        return;
-      }
-
-      // CASO 2: Usuario ya tiene cuenta vinculada (no debería estar aquí, pero redirigir)
-      const existing = accounts.find(a => a.user_id === authenticatedUser.id);
-      if (existing) {
-        window.location.href = createPageUrl('Dashboard');
-        return;
-      }
-
-      // CASO 3: Cuentas inválidas (sin organization_id) - NO permitir creación
-      // P0: Protección contra usuarios viejos de reset QA
-      const invalidAccounts = accounts.filter(a => !a.organization_id);
-      if (invalidAccounts.length > 0) {
-        setMode('orphaned_user');
-        return;
-      }
-      
-      // CASO 4: Usuario realmente nuevo sin invitación → bloquear creación automática
-      // P0: Por seguridad, solo permitir si NO hay ninguna cuenta previa
+      // Fallback: si hay cuentas pero no válidas, mostrar huérfano
       setMode('orphaned_user');
     } catch (err) {
       console.error('Error checking user status:', err);
-      setMode('orphaned_user'); // P0: Por seguridad, bloquear en caso de error
+      setMode('orphaned_user');
     }
   };
 

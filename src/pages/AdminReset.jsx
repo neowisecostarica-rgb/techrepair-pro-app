@@ -142,36 +142,48 @@ function AdminResetContent() {
       addLog('✅ Ventas eliminadas', 'success');
 
       addLog('🗑️ Paso 7/8: Eliminando OTs, citas, inventario, clientes...', 'info');
-      await Promise.all([
-        base44.entities.Cita.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Cita.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.OrdenTrabajo.filter({}).then(items => 
-          items.length > 0 ? base44.entities.OrdenTrabajo.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.Inventario.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Inventario.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.CategoriaInventario.filter({}).then(items => 
-          items.length > 0 ? base44.entities.CategoriaInventario.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.Equipo.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Equipo.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.Lead.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Lead.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.Cliente.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Cliente.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.NoConformidad.filter({}).then(items => 
-          items.length > 0 ? base44.entities.NoConformidad.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-        base44.entities.Reciclaje.filter({}).then(items => 
-          items.length > 0 ? base44.entities.Reciclaje.delete({ query: { id: { $in: items.map(i => i.id) } } }) : null
-        ),
-      ]);
-      addLog('✅ Datos operativos eliminados', 'success');
+      
+      // P0 FIX: Patrón robusto con try/catch individual
+      const entitiesToDelete = [
+        'Cita',
+        'OrdenTrabajo',
+        'Inventario',
+        'CategoriaInventario',
+        'Equipo',
+        'Lead',
+        'Cliente',
+        'NoConformidad',
+        'Reciclaje',
+      ];
+
+      for (const entityName of entitiesToDelete) {
+        try {
+          const items = await base44.entities[entityName].filter({});
+          if (items.length > 0) {
+            let deleted = 0;
+            let failed = 0;
+            addLog(`Procesando ${items.length} de ${entityName}...`, 'info');
+            
+            for (const item of items) {
+              try {
+                if (item.id && typeof item.id === 'string') {
+                  await base44.entities[entityName].delete(item.id);
+                  deleted++;
+                }
+              } catch (deleteError) {
+                failed++;
+                console.warn(`Error eliminando ${entityName} ${item.id}:`, deleteError.message);
+              }
+            }
+            
+            addLog(`✅ ${entityName}: ${deleted} eliminados${failed > 0 ? `, ${failed} fallaron` : ''}`, failed > 0 ? 'warning' : 'success');
+          }
+        } catch (error) {
+          addLog(`⚠️ Error procesando ${entityName}: ${error.message}`, 'warning');
+        }
+      }
+      
+      addLog('✅ Datos operativos procesados', 'success');
 
       addLog('🗑️ Paso 8/9: Eliminando organizations y UserAccounts...', 'info');
       const allUserAccounts = await base44.entities.UserAccount.filter({});

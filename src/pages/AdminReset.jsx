@@ -173,7 +173,7 @@ function AdminResetContent() {
       ]);
       addLog('✅ Datos operativos eliminados', 'success');
 
-      addLog('🗑️ Paso 8/8: Eliminando organizations y usuarios...', 'info');
+      addLog('🗑️ Paso 8/9: Eliminando organizations y UserAccounts...', 'info');
       const allUserAccounts = await base44.entities.UserAccount.filter({});
       const accountsToDelete = allUserAccounts.filter(acc => 
         acc.role !== 'SUPER_ADMIN' && acc.user_id !== user.id
@@ -193,11 +193,33 @@ function AdminResetContent() {
       }
       addLog(`✅ ${allOrgs.length} Organizations eliminadas`, 'success');
 
+      // P0: Intentar eliminar Users (excepto SUPER_ADMIN)
+      addLog('🗑️ Paso 9/9: Intentando eliminar Users (identidades auth)...', 'info');
+      try {
+        const allUsers = await base44.entities.User.filter({});
+        const usersToDelete = allUsers.filter(u => !u.is_super_admin && u.id !== user.id);
+        
+        if (usersToDelete.length > 0) {
+          for (const userToDelete of usersToDelete) {
+            try {
+              await base44.entities.User.delete(userToDelete.id);
+            } catch (deleteError) {
+              addLog(`⚠️ No se pudo eliminar User ${userToDelete.email}: ${deleteError.message}`, 'warning');
+            }
+          }
+          addLog(`✅ ${usersToDelete.length} Users procesados`, 'success');
+        } else {
+          addLog('✅ No hay Users adicionales para eliminar', 'success');
+        }
+      } catch (error) {
+        addLog('⚠️ Base44 no permite eliminar Users. Usuarios viejos quedan sin acceso (sin UserAccount).', 'warning');
+      }
+
       // Limpiar queries cacheadas
       queryClient.clear();
 
       addLog('✨ RESET COMPLETO EXITOSO', 'success');
-      addLog('Sistema limpio y listo para QA', 'success');
+      addLog('ℹ️ Sistema limpio. Usuarios previos (si existen) quedan desactivados sin acceso.', 'info');
 
     } catch (error) {
       addLog(`❌ ERROR: ${error.message}`, 'error');

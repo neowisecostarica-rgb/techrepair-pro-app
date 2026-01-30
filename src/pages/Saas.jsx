@@ -290,30 +290,95 @@ function SaasContent() {
 
   const createOrgMutation = useMutation({
     mutationFn: async (data) => {
-      // P0: Incluir user_id explícitamente para SUPER_ADMIN
-      const orgPayload = {
-        ...data.organization,
-        created_by: user.id, // Explícitamente pasar el user_id del SUPER_ADMIN
-      };
+      // P0: PRE-FLIGHT — Asegurar User existe y obtener user_id ANTES de crear Organization
+      let targetUserId = null;
       
-      console.log('Creating Organization with payload:', orgPayload);
-      const org = await base44.entities.Organization.create(orgPayload);
+      try {
+        // Invitar usuario (crea si no existe, no falla si ya existe)
+        await base44.users.inviteUser(data.admin_email, 'user');
+      } catch (inviteError) {
+        console.warn('Invite warning (puede ya existir):', inviteError.message);
+      }
       
-      // Invitar ORG_ADMIN
-      await base44.users.inviteUser(data.admin_email, 'user');
+      // Buscar user_id con reintentos (delay de creación)
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        const allUsers = await base44.entities.User.filter({});
+        const targetUser = allUsers.find(u => u.email === data.admin_email);
+        if (targetUser) {
+          targetUserId = targetUser.id;
+          break;
+        }
+      }
       
-      // Crear UserAccount para ORG_ADMIN
-      await base44.entities.UserAccount.create({
-        user_email: data.admin_email,
-        organization_id: org.id,
-        role: 'ORG_ADMIN',
-        active: true,
-      });
+      if (!targetUserId) {
+        throw new Error(`No se pudo obtener user_id para ${data.admin_email}. Intenta nuevamente.`);
+      }
 
-      // Auditar creación
-      await recordAudit('create_org', org.id, data.organization.name, 'Organización creada');
+      // P0: CREACIÓN ATÓMICA CON ROLLBACK POR COMPENSACIÓN
+      let org = null;
+      let branch = null;
+      let userAccount = null;
       
-      return org;
+      try {
+        // 1. Organization
+        const orgPayload = {
+          ...data.organization,
+          created_by: user.id,
+        };
+        org = await base44.entities.Organization.create(orgPayload);
+        
+        // 2. Branch (obligatorio)
+        branch = await base44.entities.Branch.create({
+          organization_id: org.id,
+          name: 'Sucursal Principal',
+          active: true,
+        });
+        
+        // 3. UserAccount (con user_id OBLIGATORIO)
+        userAccount = await base44.entities.UserAccount.create({
+          user_id: targetUserId,
+          user_email: data.admin_email,
+          organization_id: org.id,
+          branch_id: branch.id,
+          role: 'ORG_ADMIN',
+          active: true,
+        });
+
+        // 4. Auditar
+        await recordAudit('create_org', org.id, data.organization.name, 'Organización creada');
+        
+        return org;
+      } catch (error) {
+        // ROLLBACK POR COMPENSACIÓN
+        console.error('Error en creación de tenant, ejecutando rollback:', error);
+        
+        if (userAccount) {
+          try {
+            await base44.entities.UserAccount.delete(userAccount.id);
+          } catch (e) {
+            console.error('Rollback UserAccount falló:', e);
+          }
+        }
+        
+        if (branch) {
+          try {
+            await base44.entities.Branch.delete(branch.id);
+          } catch (e) {
+            console.error('Rollback Branch falló:', e);
+          }
+        }
+        
+        if (org) {
+          try {
+            await base44.entities.Organization.delete(org.id);
+          } catch (e) {
+            console.error('Rollback Organization falló:', e);
+          }
+        }
+        
+        throw new Error(`Creación de tenant fallida: ${error.message}. Se ejecutó rollback.`);
+      }
     },
     onSuccess: (newOrg) => {
       // P0: Resetear guard de idempotencia

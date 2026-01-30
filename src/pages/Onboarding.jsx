@@ -43,6 +43,13 @@ export default function Onboarding() {
         user_email: authenticatedUser.email,
       });
 
+      // P0 GUARD: Usuario huérfano (User existe pero sin UserAccount válido)
+      // Esto ocurre tras AdminReset o si cuenta fue desactivada
+      if (accounts.length === 0) {
+        setMode('orphaned_user');
+        return;
+      }
+
       // CASO 1: Usuario invitado (tiene UserAccount pendiente sin user_id vinculado)
       // P0: Debe tener organization_id válido (ligado al tenant del ORG_ADMIN que invitó)
       const invited = accounts.find(a => !a.user_id && a.organization_id);
@@ -60,21 +67,20 @@ export default function Onboarding() {
         return;
       }
 
-      // CASO 3: Usuario nuevo sin invitación → debe crear empresa
-      // P0: HARDENING - Solo permitir crear empresa si no hay cuentas pendientes inválidas
+      // CASO 3: Cuentas inválidas (sin organization_id) - NO permitir creación
+      // P0: Protección contra usuarios viejos de reset QA
       const invalidAccounts = accounts.filter(a => !a.organization_id);
       if (invalidAccounts.length > 0) {
-        // Limpiar cuentas huérfanas (no deberían existir)
-        console.error('Cuentas huérfanas detectadas:', invalidAccounts);
-        for (const acc of invalidAccounts) {
-          await base44.entities.UserAccount.delete(acc.id);
-        }
+        setMode('orphaned_user');
+        return;
       }
       
-      setMode('new_company');
+      // CASO 4: Usuario realmente nuevo sin invitación → bloquear creación automática
+      // P0: Por seguridad, solo permitir si NO hay ninguna cuenta previa
+      setMode('orphaned_user');
     } catch (err) {
       console.error('Error checking user status:', err);
-      setMode('new_company'); // Fallback: permitir crear empresa
+      setMode('orphaned_user'); // P0: Por seguridad, bloquear en caso de error
     }
   };
 
@@ -305,6 +311,37 @@ export default function Onboarding() {
             <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Todo Listo!</h2>
             <p className="text-emerald-600 font-medium">Redirigiendo a tu panel...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // P0 GUARD: Usuario huérfano bloqueado
+  if (mode === 'orphaned_user') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-orange-50 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md border-0 shadow-2xl">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">Cuenta Desactivada</h2>
+            <p className="text-slate-600 mb-6">
+              Tu cuenta no está asociada a ninguna organización. 
+              Esto puede ocurrir si tu cuenta fue reiniciada o desactivada.
+            </p>
+            <p className="text-sm text-slate-500 mb-6">
+              Por favor, contacta a tu administrador o al soporte técnico para reactivar tu acceso.
+            </p>
+            <Button
+              onClick={() => base44.auth.logout()}
+              className="w-full bg-red-600 hover:bg-red-700"
+            >
+              Cerrar Sesión
+            </Button>
           </CardContent>
         </Card>
       </div>

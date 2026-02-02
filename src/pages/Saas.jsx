@@ -312,7 +312,7 @@ function SaasContent() {
       }
       
       if (!targetUserId) {
-        throw new Error(`No se pudo obtener user_id para ${data.admin_email}. Intenta nuevamente.`);
+        console.warn(`⚠️ user_id no resuelto para ${data.admin_email}, creando UserAccount pendiente`);
       }
 
       // P0: CREACIÓN ATÓMICA CON ROLLBACK POR COMPENSACIÓN
@@ -335,14 +335,14 @@ function SaasContent() {
           active: true,
         });
         
-        // 3. UserAccount (con user_id OBLIGATORIO)
+        // 3. UserAccount (con user_id si existe, null si pendiente)
         userAccount = await base44.entities.UserAccount.create({
-          user_id: targetUserId,
+          user_id: targetUserId || null,
           user_email: data.admin_email,
           organization_id: org.id,
           branch_id: branch.id,
           role: 'ORG_ADMIN',
-          active: true,
+          active: Boolean(targetUserId),
         });
 
         // 4. Auditar

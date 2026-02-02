@@ -88,7 +88,13 @@ export default function Onboarding() {
         return;
       }
 
-      // CASO 4: Usuario huérfano (sin ningún UserAccount válido)
+      // CASO 4: Usuario completamente nuevo → permitir crear empresa
+      if (accounts.length === 0 && accountsByEmail.length === 0) {
+        setMode('new_company');
+        return;
+      }
+
+      // CASO 5: Usuario huérfano REAL (sin organization_id válido)
       if (accounts.length === 0 && accountsByEmail.every(a => !a.organization_id)) {
         setMode('orphaned_user');
         return;

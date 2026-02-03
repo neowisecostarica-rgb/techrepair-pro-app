@@ -106,9 +106,11 @@ function SaasContent() {
     mutationFn: (auditData) => base44.entities.SuperAdminAudit.create(auditData),
   });
 
-  const recordAudit = async (action, orgId = null, orgName = null, context = null) => {
+  const recordAudit = (action, orgId = null, orgName = null, context = null) => {
     if (!user) return;
-    await auditMutation.mutateAsync({
+    
+    // Fire-and-forget: no await, no bloqueo
+    auditMutation.mutate({
       super_admin_id: user.id,
       super_admin_email: user.email,
       action,
@@ -116,6 +118,8 @@ function SaasContent() {
       target_organization_name: orgName,
       context
     });
+    
+    // Best-effort: si falla, no afecta la operación principal
   };
 
   const toggleOrgStatusMutation = useMutation({
@@ -144,8 +148,8 @@ function SaasContent() {
         impersonating_started_at: new Date().toISOString()
       });
 
-      // Registrar auditoría
-      await recordAudit(
+      // Registrar auditoría (non-blocking)
+      recordAudit(
         'impersonate_start',
         organization.id,
         organization.name,
@@ -167,8 +171,8 @@ function SaasContent() {
   const handleEndImpersonation = async () => {
     if (!user || !impersonatedOrg) return;
 
-    // Registrar fin de impersonación
-    await recordAudit(
+    // Registrar fin de impersonación (non-blocking)
+    recordAudit(
       'impersonate_end',
       impersonatedOrg.id,
       impersonatedOrg.name,
@@ -200,7 +204,8 @@ function SaasContent() {
         newStatus: 'suspended' 
       });
       
-      await recordAudit(
+      // Auditoría non-blocking
+      recordAudit(
         'suspend_org',
         selectedOrg.id,
         selectedOrg.name,
@@ -225,7 +230,8 @@ function SaasContent() {
         newStatus: 'active' 
       });
       
-      await recordAudit(
+      // Auditoría non-blocking
+      recordAudit(
         'reactivate_org',
         organization.id,
         organization.name,
@@ -250,7 +256,8 @@ function SaasContent() {
     try {
       await base44.entities.Organization.update(selectedOrg.id, { plan: newPlan });
       
-      await recordAudit(
+      // Auditoría non-blocking
+      recordAudit(
         'change_plan',
         selectedOrg.id,
         selectedOrg.name,
@@ -345,8 +352,8 @@ function SaasContent() {
           active: Boolean(targetUserId),
         });
 
-        // 4. Auditar
-        await recordAudit('create_org', org.id, data.organization.name, 'Organización creada');
+        // 4. Auditar (non-blocking)
+        recordAudit('create_org', org.id, data.organization.name, 'Organización creada');
         
         return org;
       } catch (error) {

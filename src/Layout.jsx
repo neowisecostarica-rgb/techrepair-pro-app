@@ -85,13 +85,15 @@ function LayoutContent({ children, currentPageName }) {
       impersonating_org_id: null,
       impersonating_started_at: null
     });
-    
-    // Registrar fin en auditoría
-    await base44.entities.SuperAdminAudit.create({
+
+    // Registrar fin en auditoría (non-blocking)
+    base44.entities.SuperAdminAudit.create({
       super_admin_id: user.id,
       super_admin_email: user.email,
       action: 'impersonate_end',
       target_organization_id: effectiveOrgId,
+    }).catch(err => {
+      console.warn('Auditoría impersonate_end falló (non-blocking):', err);
     });
 
     window.location.href = createPageUrl('Saas');

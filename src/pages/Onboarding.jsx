@@ -477,7 +477,8 @@ if (!user || typeof user.id !== 'string') {
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600"
-              disabled={creating || !selectedCountry || !selectedCurrency}
+              disabled={creating || !user?.id || !selectedCountry || !selectedCurrency}
+
             >
               {creating ? (
                 <>

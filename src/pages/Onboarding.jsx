@@ -149,6 +149,14 @@ export default function Onboarding() {
     }
     
     setCreating(true);
+    
+// P0 HARD GUARD: user debe existir y tener id válido
+if (!user || typeof user.id !== 'string') {
+  console.error('Usuario no inicializado al crear tenant', user);
+  alert('Tu sesión aún se está inicializando. Intenta de nuevo en unos segundos.');
+  setCreating(false);
+  return;
+}
 
     try {
       // P0: Validación defensiva de campos requeridos

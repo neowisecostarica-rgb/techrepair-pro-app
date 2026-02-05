@@ -341,21 +341,23 @@ function SaasContent() {
           name: 'Sucursal Principal',
           active: true,
         });
-        
-        const userAccountPayload = {
-  user_email: data.admin_email,
-  organization_id: org.id,
-  branch_id: branch.id,
-  role: 'ORG_ADMIN',
-  active: Boolean(targetUserId),
-};
+        // 3. UserAccount
+// ⚠️ IMPORTANTE:
+// En Base44, user_id es REQUIRED.
+// Si el usuario aún no existe, NO se crea UserAccount aquí.
+// El UserAccount se creará en Onboarding cuando el usuario acepte la invitación.
 
-// ⚠️ SOLO agregar user_id si existe
 if (targetUserId) {
-  userAccountPayload.user_id = targetUserId;
+  userAccount = await base44.entities.UserAccount.create({
+    user_id: targetUserId,
+    user_email: data.admin_email,
+    organization_id: org.id,
+    branch_id: branch.id,
+    role: 'ORG_ADMIN',
+    active: true,
+  });
 }
 
-userAccount = await base44.entities.UserAccount.create(userAccountPayload);
 
 
         // 4. Auditar (non-blocking)

@@ -88,11 +88,16 @@ export default function Onboarding() {
         return;
       }
 
-      // CASO 4: Usuario completamente nuevo → permitir crear empresa
-      if (accounts.length === 0 && accountsByEmail.length === 0) {
-        setMode('new_company');
-        return;
-      }
+      //// CASO 4: SOLO permitir new_company si NO existe NINGÚN UserAccount con organization_id
+const hasAnyOrgAccount =
+  accounts.some(a => a.organization_id) ||
+  accountsByEmail.some(a => a.organization_id);
+
+if (!hasAnyOrgAccount) {
+  setMode('new_company');
+  return;
+}
+
 
       // CASO 5: Usuario huérfano REAL (sin organization_id válido)
       if (accounts.length === 0 && accountsByEmail.every(a => !a.organization_id)) {

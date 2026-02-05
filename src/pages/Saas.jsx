@@ -342,15 +342,21 @@ function SaasContent() {
           active: true,
         });
         
-        // 3. UserAccount (con user_id si existe, null si pendiente)
-        userAccount = await base44.entities.UserAccount.create({
-          user_id: targetUserId || null,
-          user_email: data.admin_email,
-          organization_id: org.id,
-          branch_id: branch.id,
-          role: 'ORG_ADMIN',
-          active: Boolean(targetUserId),
-        });
+        const userAccountPayload = {
+  user_email: data.admin_email,
+  organization_id: org.id,
+  branch_id: branch.id,
+  role: 'ORG_ADMIN',
+  active: Boolean(targetUserId),
+};
+
+// ⚠️ SOLO agregar user_id si existe
+if (targetUserId) {
+  userAccountPayload.user_id = targetUserId;
+}
+
+userAccount = await base44.entities.UserAccount.create(userAccountPayload);
+
 
         // 4. Auditar (non-blocking)
         recordAudit('create_org', org.id, data.organization.name, 'Organización creada');

@@ -16,6 +16,108 @@ import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
 import { useAuthContext } from '../components/contexts/AuthContext';
 
+// P1: PLAN CATALOG (Frontend-only, precios en monedas soportadas)
+const PLAN_CATALOG = [
+  {
+    code: 'basic',
+    name: 'Basic',
+    description: 'Para negocios pequeños (1 sucursal, funcionalidades básicas)',
+    prices: {
+      CRC: 19900,
+      USD: 39,
+    },
+    color: 'blue',
+  },
+  {
+    code: 'pro',
+    name: 'Pro',
+    description: 'Para negocios en crecimiento (multi-sucursal, reportes avanzados)',
+    prices: {
+      CRC: 39900,
+      USD: 79,
+    },
+    color: 'purple',
+    recommended: true,
+  },
+  {
+    code: 'premium',
+    name: 'Premium',
+    description: 'Para empresas establecidas (usuarios ilimitados, soporte prioritario)',
+    prices: {
+      CRC: 79900,
+      USD: 149,
+    },
+    color: 'emerald',
+  },
+];
+
+// P1: COUNTRY-CURRENCY MAP (ISO codes normalizados)
+const COUNTRY_CURRENCY_MAP = [
+  { code: 'CR', name: 'Costa Rica', currency: 'CRC', flag: '🇨🇷' },
+  { code: 'US', name: 'Estados Unidos', currency: 'USD', flag: '🇺🇸' },
+  { code: 'PA', name: 'Panamá', currency: 'USD', flag: '🇵🇦' },
+  { code: 'MX', name: 'México', currency: 'MXN', flag: '🇲🇽' },
+  { code: 'GT', name: 'Guatemala', currency: 'GTQ', flag: '🇬🇹' },
+  { code: 'SV', name: 'El Salvador', currency: 'USD', flag: '🇸🇻' },
+  { code: 'HN', name: 'Honduras', currency: 'HNL', flag: '🇭🇳' },
+  { code: 'NI', name: 'Nicaragua', currency: 'NIO', flag: '🇳🇮' },
+];
+
+// P1: CURRENCY LABELS (para display)
+const CURRENCY_LABELS = {
+  CRC: 'Colones (₡)',
+  USD: 'Dólares ($)',
+  MXN: 'Pesos (MX$)',
+  GTQ: 'Quetzales (Q)',
+  HNL: 'Lempiras (L)',
+  NIO: 'Córdobas (C$)',
+};
+
+// P1: NORMALIZADORES DEFENSIVOS (soportar legacy sin romper)
+const normalizeCountry = (input) => {
+  if (!input) return input;
+  // Si ya es ISO code
+  if (COUNTRY_CURRENCY_MAP.some(c => c.code === input)) return input;
+  // Mapeo legacy texto libre
+  const legacyMap = {
+    'Costa Rica': 'CR',
+    'Estados Unidos': 'US',
+    'Panamá': 'PA',
+    'Panama': 'PA',
+    'México': 'MX',
+    'Mexico': 'MX',
+    'Guatemala': 'GT',
+    'El Salvador': 'SV',
+    'Honduras': 'HN',
+    'Nicaragua': 'NI',
+  };
+  return legacyMap[input] || input;
+};
+
+const normalizeCurrency = (input) => {
+  if (!input) return input;
+  // Si ya es ISO code
+  if (['CRC', 'USD', 'MXN', 'GTQ', 'HNL', 'NIO'].includes(input)) return input;
+  // Mapeo legacy texto libre
+  const legacyMap = {
+    'Colones': 'CRC',
+    'colones': 'CRC',
+    'Dólares': 'USD',
+    'Dolares': 'USD',
+    'dólares': 'USD',
+    'dolares': 'USD',
+    'Pesos': 'MXN',
+    'pesos': 'MXN',
+    'Quetzales': 'GTQ',
+    'quetzales': 'GTQ',
+    'Lempiras': 'HNL',
+    'lempiras': 'HNL',
+    'Córdobas': 'NIO',
+    'córdobas': 'NIO',
+  };
+  return legacyMap[input] || input;
+};
+
 export default function Saas() {
   return (
     <PageGuard allowedRoles={['SUPER_ADMIN']}>
@@ -40,6 +142,12 @@ function SaasContent() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
   const [justCreatedOrgId, setJustCreatedOrgId] = useState(null);
+  
+  // P1: Estado para selects del modal
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState('');
+  
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   
@@ -442,14 +550,23 @@ if (targetUserId) {
       organization: {
         name: formData.get('name'),
         legal_name: formData.get('legal_name'),
-        country: formData.get('country'),
-        currency: formData.get('currency'),
-        plan: formData.get('plan'),
+        country: selectedCountry, // P1: ISO code
+        currency: selectedCurrency, // P1: ISO code
+        plan: selectedPlan, // P1: código de plan
         status: 'active',
         partner_id: formData.get('partner_id') || undefined,
       },
       admin_email: formData.get('admin_email'),
     });
+  };
+  
+  // P1: Handler de cambio de país (autoselección de moneda)
+  const handleCountryChange = (countryCode) => {
+    setSelectedCountry(countryCode);
+    const country = COUNTRY_CURRENCY_MAP.find(c => c.code === countryCode);
+    if (country) {
+      setSelectedCurrency(country.currency);
+    }
   };
 
   const filteredOrgs = organizations.filter(org => {
@@ -747,6 +864,13 @@ if (targetUserId) {
                   {filteredOrgs.map((org) => {
                     const stats = getOrgStats(org.id);
                     const isNewlyCreated = justCreatedOrgId === org.id;
+
+                    // P1: Datos derivados para mejorar display
+                    const normalizedCurrency = normalizeCurrency(org.currency);
+                    const planInfo = PLAN_CATALOG.find(p => p.code === org.plan);
+                    const price = planInfo?.prices?.[normalizedCurrency];
+                    const partner = partners.find(p => p.id === org.partner_id);
+
                     return (
                       <tr 
                         key={org.id} 
@@ -757,11 +881,17 @@ if (targetUserId) {
                         <td className="p-3">
                           <p className="font-semibold text-slate-900">{org.name}</p>
                           {org.legal_name && <p className="text-xs text-slate-500">{org.legal_name}</p>}
+                          {partner && (
+                            <p className="text-xs text-purple-600 mt-1">🤝 Partner: {partner.name}</p>
+                          )}
                         </td>
                         <td className="p-3">
                           <Badge className="bg-indigo-100 text-indigo-700 border-0 uppercase text-xs">
-                            {org.plan}
+                            {planInfo?.name || org.plan}
                           </Badge>
+                          {price && (
+                            <p className="text-xs text-slate-500 mt-1">{price} {normalizedCurrency}/mes</p>
+                          )}
                         </td>
                         <td className="p-3">
                           <Badge className={org.status === 'active' 
@@ -1056,10 +1186,24 @@ if (targetUserId) {
             </div>
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)} disabled={creating}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setShowModal(false);
+                  setSelectedCountry('');
+                  setSelectedCurrency('');
+                  setSelectedPlan('');
+                }} 
+                disabled={creating}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-slate-800 hover:bg-slate-900" disabled={creating}>
+              <Button 
+                type="submit" 
+                className="bg-slate-800 hover:bg-slate-900" 
+                disabled={creating || !selectedCountry || !selectedCurrency || !selectedPlan}
+              >
                 {creating ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
@@ -1070,9 +1214,9 @@ if (targetUserId) {
                 )}
               </Button>
             </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </form>
+            </DialogContent>
+            </Dialog>
       </div>
       </div>
     </>

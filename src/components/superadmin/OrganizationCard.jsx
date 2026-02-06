@@ -7,6 +7,8 @@ import { Building2, Users, Wrench, Eye, UserCog, Power } from 'lucide-react';
 export default function OrganizationCard({ 
   organization, 
   stats, 
+  planInfo,
+  partnerName,
   onViewDetails, 
   onImpersonate,
   onToggleStatus 
@@ -21,7 +23,10 @@ export default function OrganizationCard({
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-lg">{organization.name}</h3>
-              <p className="text-sm text-slate-500">{organization.country} • {organization.currency}</p>
+              <p className="text-sm text-slate-500">
+                {organization.country} • {organization.currency}
+                {partnerName && <span className="text-purple-600 ml-2">• 🤝 {partnerName}</span>}
+              </p>
             </div>
           </div>
           <Badge className={`${
@@ -55,7 +60,10 @@ export default function OrganizationCard({
               <Building2 className="w-4 h-4 text-emerald-500" />
               <p className="text-xs text-slate-500">Plan</p>
             </div>
-            <p className="font-bold text-slate-900 capitalize">{organization.plan}</p>
+            <p className="font-bold text-slate-900">{planInfo?.name || organization.plan}</p>
+            {planInfo?.price && (
+              <p className="text-xs text-slate-500 mt-1">{planInfo.price} {planInfo.currency}/mes</p>
+            )}
           </div>
         </div>
 

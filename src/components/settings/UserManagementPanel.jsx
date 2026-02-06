@@ -64,28 +64,65 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
         }
       }
 
-      // Crear UserAccount (con user_id si existe, null si es pendiente)
-      await base44.entities.UserAccount.create({
-        user_id: resolvedUserId,
-        user_email: data.user_email,
+      // P0.9: IDEMPOTENCIA - Verificar si ya existe UserAccount
+      const existingAccounts = await base44.entities.UserAccount.filter({
         organization_id: organizationId,
-        branch_id: data.branch_id || null,
-        role: data.role,
-        active: resolvedUserId ? true : false, // Activo si user_id existe
+        user_email: data.user_email
       });
 
-      return { success: true, email: data.user_email, resolved: !!resolvedUserId };
+      // Decisión según resultado
+      if (existingAccounts.length === 0) {
+        // A) No existe → CREATE
+        await base44.entities.UserAccount.create({
+          user_id: resolvedUserId,
+          user_email: data.user_email,
+          organization_id: organizationId,
+          branch_id: data.branch_id || null,
+          role: data.role,
+          active: resolvedUserId ? true : false,
+        });
+        return { success: true, email: data.user_email, resolved: !!resolvedUserId, action: 'created' };
+        
+      } else if (existingAccounts.length === 1) {
+        const account = existingAccounts[0];
+        
+        if (account.active === true) {
+          // B) Usuario activo → RECHAZAR
+          throw new Error(`El usuario ${data.user_email} ya tiene acceso activo. Usa 'Editar Usuario' para modificar su rol o sucursal.`);
+        } else {
+          // B) Usuario inactivo → UPDATE (reinvitación)
+          await base44.entities.UserAccount.update(account.id, {
+            user_id: resolvedUserId,
+            role: data.role,
+            branch_id: data.branch_id || null,
+            active: resolvedUserId ? true : false,
+          });
+          return { success: true, email: data.user_email, resolved: !!resolvedUserId, action: 'updated' };
+        }
+        
+      } else {
+        // C) Duplicación detectada → ERROR
+        throw new Error(`Corrupción de datos detectada: múltiples accesos para el mismo email (${data.user_email}) en esta organización.`);
+      }
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['userAccounts'] });
       setShowInviteModal(false);
       setInviting(false);
       
-      // P0 FIX: FEEDBACK ÉXITO
-      if (result.resolved) {
-        alert(`✅ Invitación enviada exitosamente a ${result.email}\n\nEl usuario podrá acceder inmediatamente al iniciar sesión.`);
-      } else {
-        alert(`✅ Invitación enviada a ${result.email}\n\nEl usuario deberá registrarse primero para acceder.`);
+      // P0.9: FEEDBACK DIFERENCIADO
+      if (result.action === 'created') {
+        if (result.resolved) {
+          alert(`✅ Invitación enviada exitosamente a ${result.email}\n\nEl usuario podrá acceder inmediatamente al iniciar sesión.`);
+        } else {
+          alert(`✅ Invitación enviada a ${result.email}\n\nEl usuario deberá registrarse primero para acceder.`);
+        }
+      } else if (result.action === 'updated') {
+        if (result.resolved) {
+          alert(`✅ Invitación actualizada para ${result.email}\n\nEl usuario ya registrado podrá acceder con su nueva configuración.`);
+        } else {
+          alert(`✅ Invitación reenviada a ${result.email}\n\nSe ha actualizado su rol y sucursal asignados.`);
+        }
       }
     },
     onError: (error) => {

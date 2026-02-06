@@ -1121,7 +1121,15 @@ if (targetUserId) {
       </Dialog>
 
       {/* Modal Create Organization */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={(open) => {
+        setShowModal(open);
+        if (!open) {
+          // Reset form state al cerrar
+          setSelectedCountry('');
+          setSelectedCurrency('');
+          setSelectedPlan('');
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">Create New Organization</DialogTitle>
@@ -1141,27 +1149,70 @@ if (targetUserId) {
 
               <div className="space-y-2">
                 <Label htmlFor="country">País *</Label>
-                <Input id="country" name="country" required />
+                <select
+                  id="country"
+                  value={selectedCountry}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md bg-white"
+                >
+                  <option value="">Seleccionar país</option>
+                  {COUNTRY_CURRENCY_MAP.map(c => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="currency">Moneda *</Label>
-                <Input id="currency" name="currency" required />
+                <select
+                  id="currency"
+                  value={selectedCurrency}
+                  onChange={(e) => setSelectedCurrency(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md bg-white"
+                >
+                  <option value="">Seleccionar moneda</option>
+                  {Object.keys(CURRENCY_LABELS).map(code => (
+                    <option key={code} value={code}>
+                      {CURRENCY_LABELS[code]}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2">
                 <Label htmlFor="plan">Plan *</Label>
                 <select
                   id="plan"
-                  name="plan"
+                  value={selectedPlan}
+                  onChange={(e) => setSelectedPlan(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-slate-200 rounded-md"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md bg-white"
                 >
                   <option value="">Seleccionar plan</option>
-                  <option value="basic">Basic</option>
-                  <option value="pro">Pro</option>
-                  <option value="premium">Premium</option>
+                  {PLAN_CATALOG.map(plan => (
+                    <option key={plan.code} value={plan.code}>
+                      {plan.name} {plan.recommended ? '⭐ (Recomendado)' : ''}
+                    </option>
+                  ))}
                 </select>
+                
+                {/* P1: Preview de plan con precio */}
+                {selectedPlan && selectedCurrency && (() => {
+                  const plan = PLAN_CATALOG.find(p => p.code === selectedPlan);
+                  const price = plan?.prices?.[selectedCurrency];
+                  return (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mt-2">
+                      <p className="text-sm text-blue-800 font-medium">
+                        💰 {plan.name} — {price ? `${price} ${selectedCurrency}/mes` : 'Precio no disponible para esta moneda'}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">{plan.description}</p>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-2">

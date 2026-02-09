@@ -450,21 +450,16 @@ function SaasContent() {
           active: true,
         });
         // 3. UserAccount
-// ⚠️ IMPORTANTE:
-// En Base44, user_id es REQUIRED.
-// Si el usuario aún no existe, NO se crea UserAccount aquí.
-// El UserAccount se creará en Onboarding cuando el usuario acepte la invitación.
-
-if (targetUserId) {
-  userAccount = await base44.entities.UserAccount.create({
-    user_id: targetUserId,
-    user_email: data.admin_email,
-    organization_id: org.id,
-    branch_id: branch.id,
-    role: 'ORG_ADMIN',
-    active: true,
-  });
-}
+        // P0 FIX: SIEMPRE crear UserAccount (con o sin user_id resuelto)
+        // Esto previene que Onboarding cree Organization duplicada
+        userAccount = await base44.entities.UserAccount.create({
+          user_id: targetUserId || null, // Nullable si usuario no existe aún
+          user_email: data.admin_email,
+          organization_id: org.id,
+          branch_id: branch.id,
+          role: 'ORG_ADMIN',
+          active: targetUserId ? true : false, // Activo solo si user_id resuelto
+        });
 
 
 

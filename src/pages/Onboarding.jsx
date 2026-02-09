@@ -20,6 +20,8 @@ export default function Onboarding() {
 
   // P0: IDEMPOTENCIA - Prevenir múltiples ejecuciones
   const hasCheckedRef = React.useRef(false);
+  const isLinkingRef = React.useRef(false);
+  const isCreatingOrgRef = React.useRef(false);
 
   useEffect(() => {
     if (hasCheckedRef.current) return; // Ya ejecutado
@@ -53,50 +55,69 @@ export default function Onboarding() {
         return;
       }
 
-      // CASO 2: Invitación pendiente (user_id en UserAccount pero active: false)
-      const pendingInvitation = accounts.find(a => a.user_id === authenticatedUser.id && !a.active && a.organization_id);
-      if (pendingInvitation) {
-        // Activar invitación
-        await base44.entities.UserAccount.update(pendingInvitation.id, {
-          active: true
-        });
-        
-        const targetPage = pendingInvitation.role === 'ORG_ADMIN' || pendingInvitation.role === 'BRANCH_ADMIN' 
-          ? 'Dashboard' 
-          : 'MiDia';
-        window.location.href = createPageUrl(targetPage);
-        return;
-      }
-
-      // CASO 3: Buscar también por email (invitaciones antiguas sin user_id vinculado)
+      // CASO 2: Buscar también por email (para invitaciones pre-signup)
       const accountsByEmail = await base44.entities.UserAccount.filter({
         user_email: authenticatedUser.email,
       });
 
-      const oldInvitation = accountsByEmail.find(a => !a.user_id && a.organization_id);
-      if (oldInvitation) {
-        // Vincular user_id
-        await base44.entities.UserAccount.update(oldInvitation.id, {
-          user_id: authenticatedUser.id,
-          active: true
-        });
-        
-        const targetPage = oldInvitation.role === 'ORG_ADMIN' || oldInvitation.role === 'BRANCH_ADMIN' 
-          ? 'Dashboard' 
-          : 'MiDia';
-        window.location.href = createPageUrl(targetPage);
-        return;
+      // P0 FIX: PRIORIDAD A INVITACIONES - Detectar ANY invitation (active o no, con o sin user_id)
+      // Esto cubre:
+      // - Invitaciones pendientes (user_id set, active: false)
+      // - Invitaciones antiguas (sin user_id, solo email)
+      const anyInvitation = 
+        accounts.find(a => a.organization_id) || 
+        accountsByEmail.find(a => a.organization_id);
+
+      if (anyInvitation) {
+        // P0: GUARD - Evitar múltiples linking simultáneos
+        if (isLinkingRef.current) {
+          console.warn('Linking ya en progreso, abortando');
+          return;
+        }
+        isLinkingRef.current = true;
+
+        try {
+          // P0: IDEMPOTENCIA - Verificar si ya está correctamente enlazado
+          if (anyInvitation.user_id === authenticatedUser.id && anyInvitation.active) {
+            console.log('UserAccount ya enlazado y activo, redirigiendo...');
+            const targetPage = anyInvitation.role === 'ORG_ADMIN' || anyInvitation.role === 'BRANCH_ADMIN' 
+              ? 'Dashboard' 
+              : 'MiDia';
+            window.location.href = createPageUrl(targetPage);
+            return;
+          }
+
+          // P0: Linking atómico - actualizar user_id + active en una sola operación
+          await base44.entities.UserAccount.update(anyInvitation.id, {
+            user_id: authenticatedUser.id,
+            active: true,
+          });
+
+          console.log('Invitación activada para', authenticatedUser.email, '→', anyInvitation.organization_id);
+
+          // Redirigir según rol
+          const targetPage = anyInvitation.role === 'ORG_ADMIN' || anyInvitation.role === 'BRANCH_ADMIN' 
+            ? 'Dashboard' 
+            : 'MiDia';
+          window.location.href = createPageUrl(targetPage);
+          return;
+        } catch (err) {
+          console.error('Error activando invitación:', err);
+          isLinkingRef.current = false;
+          throw err;
+        }
       }
 
-      //// CASO 4: SOLO permitir new_company si NO existe NINGÚN UserAccount con organization_id
-const hasAnyOrgAccount =
-  accounts.some(a => a.organization_id) ||
-  accountsByEmail.some(a => a.organization_id);
+      // CASO 3: SOLO permitir new_company si NO existe NINGUNA invitación
+      // P0: Doble check defensivo
+      const hasAnyOrgAccount =
+        accounts.some(a => a.organization_id) ||
+        accountsByEmail.some(a => a.organization_id);
 
-if (!hasAnyOrgAccount) {
-  setMode('new_company');
-  return;
-}
+      if (!hasAnyOrgAccount) {
+        setMode('new_company');
+        return;
+      }
 
 
       // CASO 5: Usuario huérfano REAL (sin organization_id válido)
@@ -147,40 +168,60 @@ if (!hasAnyOrgAccount) {
   const handleCreateCompany = async (e) => {
     e.preventDefault();
     
-    // P0: IDEMPOTENCIA - Prevenir doble submit
-    if (creating) {
-      console.warn('Ya hay una creación en progreso');
+    // P0: GUARD INMUTABLE - Prevenir doble submit con ref (más fuerte que state)
+    if (isCreatingOrgRef.current) {
+      console.warn('⛔ Guard activo: creación ya en progreso, bloqueando submit duplicado');
       return;
     }
     
+    isCreatingOrgRef.current = true;
     setCreating(true);
     
-// P0 HARD GUARD: user debe existir y tener id válido
-if (!user || typeof user.id !== 'string') {
-  console.error('Usuario no inicializado al crear tenant', user);
-  alert('Tu sesión aún se está inicializando. Intenta de nuevo en unos segundos.');
-  setCreating(false);
-  return;
-}
+    // P0 HARD GUARD: user debe existir y tener id válido
+    if (!user || typeof user.id !== 'string') {
+      console.error('Usuario no inicializado al crear tenant', user);
+      alert('Tu sesión aún se está inicializando. Intenta de nuevo en unos segundos.');
+      isCreatingOrgRef.current = false;
+      setCreating(false);
+      return;
+    }
 
     try {
       // P0: Validación defensiva de campos requeridos
       const companyName = e.target.company_name.value.trim();
       if (!companyName || !selectedCountry || !selectedCurrency) {
         alert('Por favor completa todos los campos requeridos');
+        isCreatingOrgRef.current = false;
         setCreating(false);
         return;
       }
 
-      // P0: IDEMPOTENCIA CRÍTICA - Verificar si ya existe org ANTES de cualquier creación
-      const existingAccounts = await base44.entities.UserAccount.filter({
+      // P0 FIX CRÍTICO: Verificar si tiene INVITACIÓN PENDIENTE (precedencia sobre new_company)
+      const allAccounts = await base44.entities.UserAccount.filter({
         user_id: user.id
       });
+      const emailAccounts = await base44.entities.UserAccount.filter({
+        user_email: user.email
+      });
 
-      // Si ya tiene organization_id, ABORTAR inmediatamente
-      const activeAccount = existingAccounts.find(a => a.organization_id);
+      // Si existe CUALQUIER invitación con organization_id → ABORTAR creación
+      const hasInvitation = 
+        allAccounts.some(a => a.organization_id) ||
+        emailAccounts.some(a => a.organization_id);
+
+      if (hasInvitation) {
+        console.warn('⛔ Usuario tiene invitación pendiente, abortando creación de org nueva');
+        alert('Detectamos que tienes una invitación pendiente. Refrescando la página para vincular tu cuenta...');
+        isCreatingOrgRef.current = false;
+        window.location.reload();
+        return;
+      }
+
+      // P0: DOBLE CHECK - Verificar si ya creó org anteriormente (por refresh/retry)
+      const activeAccount = allAccounts.find(a => a.organization_id);
       if (activeAccount) {
         console.log('Usuario ya tiene organización asociada, redirigiendo...');
+        isCreatingOrgRef.current = false;
         setMode('success');
         setTimeout(() => {
           window.location.href = createPageUrl('Settings');
@@ -188,7 +229,7 @@ if (!user || typeof user.id !== 'string') {
         return;
       }
 
-      // P0: Verificar si existe una org con este nombre del mismo usuario (protección adicional)
+      // P0: Verificar si existe una org con este nombre del mismo usuario (anti-duplicación)
       const existingOrgs = await base44.entities.Organization.filter({
         name: companyName
       });
@@ -200,7 +241,8 @@ if (!user || typeof user.id !== 'string') {
           organization_id: org.id
         });
         if (orgAccounts.length > 0) {
-          console.log('Organización duplicada detectada, usando existente');
+          console.warn('⚠️ Organización duplicada detectada, usando existente');
+          isCreatingOrgRef.current = false;
           setMode('success');
           setTimeout(() => {
             window.location.href = createPageUrl('Settings');
@@ -278,7 +320,10 @@ if (!user || typeof user.id !== 'string') {
         });
       }
 
-      console.log('Setup completo para usuario:', user.email);
+      console.log('✅ Setup completo para usuario:', user.email);
+
+      // P0: Resetear guard ANTES de success
+      isCreatingOrgRef.current = false;
 
       // P0: Success - redirigir INMEDIATAMENTE
       setMode('success');
@@ -287,7 +332,8 @@ if (!user || typeof user.id !== 'string') {
       }, 1500);
       
     } catch (err) {
-      console.error('Error creating company:', err);
+      console.error('❌ Error creating company:', err);
+      isCreatingOrgRef.current = false;
       
       // P0: IDEMPOTENCIA - Si falla, verificar si ya se creó parcialmente
       try {
@@ -298,6 +344,7 @@ if (!user || typeof user.id !== 'string') {
         
         if (retryActiveAccount) {
           console.log('Organización creada parcialmente, redirigiendo...');
+          isCreatingOrgRef.current = false;
           setMode('success');
           setTimeout(() => {
             window.location.href = createPageUrl('Settings');
@@ -308,8 +355,9 @@ if (!user || typeof user.id !== 'string') {
         console.error('Error verificando estado:', retryErr);
       }
       
-      // Error real
+      // Error real - resetear guard
       alert('Error al crear la empresa: ' + err.message);
+      isCreatingOrgRef.current = false;
       setCreating(false);
     }
   };

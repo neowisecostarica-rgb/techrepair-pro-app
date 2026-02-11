@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatsCard from './StatsCard';
 import RecentOrders from './RecentOrders';
 import QuickActions from './QuickActions';
+import QuickStartCard from './QuickStartCard';
 import { Wrench, DollarSign, Users, UserCog } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -31,6 +32,12 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
   const { data: userAccounts = [], isLoading: loadingUsers } = useQuery({
     queryKey: ['userAccounts', effectiveOrgId],
     queryFn: () => base44.entities.UserAccount.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
+  });
+
+  const { data: organization } = useQuery({
+    queryKey: ['organization', effectiveOrgId],
+    queryFn: () => base44.entities.Organization.filter({ id: effectiveOrgId }).then(orgs => orgs[0]),
     enabled: !!effectiveOrgId,
   });
 
@@ -74,6 +81,30 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     u.role === 'TECHNICIAN' && u.active === true
   ).length;
 
+  // Quick Start logic: calculate setup status
+  const setupStatus = useMemo(() => {
+    const hasBasicInfo = !!(
+      organization?.legal_name &&
+      organization?.telefono_negocio &&
+      organization?.country &&
+      organization?.currency
+    );
+
+    const hasCollaborators = userAccounts.some(u => u.role !== 'ORG_ADMIN');
+    const hasClients = clientes.length > 0;
+    const hasOrders = ordenes.length > 0;
+
+    const isSetupIncomplete = !hasBasicInfo || !hasCollaborators || !hasClients || !hasOrders;
+
+    return {
+      hasBasicInfo,
+      hasCollaborators,
+      hasClients,
+      hasOrders,
+      isSetupIncomplete,
+    };
+  }, [organization, userAccounts, clientes, ordenes]);
+
   // Chart data: orders by day (last 7 days)
   const ordenesUltimos7Dias = Array.from({ length: 7 }, (_, i) => {
     const fecha = new Date();
@@ -94,6 +125,16 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Dashboard Ejecutivo</h1>
         <p className="text-slate-500">Vista general de operaciones (últimos 30 días)</p>
       </div>
+
+      {/* Quick Start Card (only if setup incomplete) */}
+      {setupStatus.isSetupIncomplete && (
+        <QuickStartCard
+          hasBasicInfo={setupStatus.hasBasicInfo}
+          hasCollaborators={setupStatus.hasCollaborators}
+          hasClients={setupStatus.hasClients}
+          hasOrders={setupStatus.hasOrders}
+        />
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

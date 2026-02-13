@@ -41,6 +41,30 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     enabled: !!effectiveOrgId,
   });
 
+  // Quick Start logic: calculate setup status (MUST run before early return)
+  const setupStatus = useMemo(() => {
+    const hasBasicInfo = !!(
+      organization?.legal_name &&
+      organization?.telefono_negocio &&
+      organization?.country &&
+      organization?.currency
+    );
+
+    const hasCollaborators = userAccounts.some(u => u.role !== 'ORG_ADMIN');
+    const hasClients = clientes.length > 0;
+    const hasOrders = ordenes.length > 0;
+
+    const isSetupIncomplete = !hasBasicInfo || !hasCollaborators || !hasClients || !hasOrders;
+
+    return {
+      hasBasicInfo,
+      hasCollaborators,
+      hasClients,
+      hasOrders,
+      isSetupIncomplete,
+    };
+  }, [organization, userAccounts, clientes, ordenes]);
+
   const isLoading = loadingOrdenes || loadingVentas || loadingClientes || loadingUsers;
 
   if (isLoading) {
@@ -80,30 +104,6 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
   const tecnicosActivos = userAccounts.filter(u => 
     u.role === 'TECHNICIAN' && u.active === true
   ).length;
-
-  // Quick Start logic: calculate setup status
-  const setupStatus = useMemo(() => {
-    const hasBasicInfo = !!(
-      organization?.legal_name &&
-      organization?.telefono_negocio &&
-      organization?.country &&
-      organization?.currency
-    );
-
-    const hasCollaborators = userAccounts.some(u => u.role !== 'ORG_ADMIN');
-    const hasClients = clientes.length > 0;
-    const hasOrders = ordenes.length > 0;
-
-    const isSetupIncomplete = !hasBasicInfo || !hasCollaborators || !hasClients || !hasOrders;
-
-    return {
-      hasBasicInfo,
-      hasCollaborators,
-      hasClients,
-      hasOrders,
-      isSetupIncomplete,
-    };
-  }, [organization, userAccounts, clientes, ordenes]);
 
   // Chart data: orders by day (last 7 days)
   const ordenesUltimos7Dias = Array.from({ length: 7 }, (_, i) => {

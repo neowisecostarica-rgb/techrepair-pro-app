@@ -44,44 +44,30 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
         throw new Error('No se puede invitar usuarios sin un tenant válido');
       }
 
-      // P0 FIX: PRE-FLIGHT - Invitar y resolver user_id
-      let resolvedUserId = null;
-      
+      // PASO 1: Invitar usuario a la plataforma (crea/vincula User global)
       try {
-        await base44.users.inviteUser(data.user_email, 'user');
+        await base44.users.inviteUser(data.user_email, data.role);
       } catch (error) {
-        console.warn('Invite warning (puede ya existir):', error.message);
-      }
-      
-      // Buscar user_id con reintentos
-      for (let attempt = 0; attempt < 3; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-        const allUsers = await base44.entities.User.filter({});
-        const targetUser = allUsers.find(u => u.email === data.user_email);
-        if (targetUser) {
-          resolvedUserId = targetUser.id;
-          break;
-        }
+        console.warn('Invitación Base44 (puede ya existir):', error.message);
       }
 
-      // P0.9: IDEMPOTENCIA - Verificar si ya existe UserAccount
+      // PASO 2: Verificar si ya existe UserAccount en esta organización
       const existingAccounts = await base44.entities.UserAccount.filter({
         organization_id: organizationId,
         user_email: data.user_email
       });
 
-      // Decisión según resultado
+      // PASO 3: Decisión según resultado
       if (existingAccounts.length === 0) {
         // A) No existe → CREATE
         await base44.entities.UserAccount.create({
-          user_id: resolvedUserId,
           user_email: data.user_email,
           organization_id: organizationId,
           branch_id: data.branch_id || null,
           role: data.role,
-          active: resolvedUserId ? true : false,
+          active: true,
         });
-        return { success: true, email: data.user_email, resolved: !!resolvedUserId, action: 'created' };
+        return { success: true, email: data.user_email, action: 'created' };
         
       } else if (existingAccounts.length === 1) {
         const account = existingAccounts[0];
@@ -90,18 +76,17 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
           // B) Usuario activo → RECHAZAR
           throw new Error(`El usuario ${data.user_email} ya tiene acceso activo. Usa 'Editar Usuario' para modificar su rol o sucursal.`);
         } else {
-          // B) Usuario inactivo → UPDATE (reinvitación)
+          // C) Usuario inactivo → UPDATE (reinvitación)
           await base44.entities.UserAccount.update(account.id, {
-            user_id: resolvedUserId,
             role: data.role,
             branch_id: data.branch_id || null,
-            active: resolvedUserId ? true : false,
+            active: true,
           });
-          return { success: true, email: data.user_email, resolved: !!resolvedUserId, action: 'updated' };
+          return { success: true, email: data.user_email, action: 'updated' };
         }
         
       } else {
-        // C) Duplicación detectada → ERROR
+        // D) Duplicación detectada → ERROR
         throw new Error(`Corrupción de datos detectada: múltiples accesos para el mismo email (${data.user_email}) en esta organización.`);
       }
     },
@@ -110,25 +95,15 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       setShowInviteModal(false);
       setInviting(false);
       
-      // P0.9: FEEDBACK DIFERENCIADO
+      // FEEDBACK DIFERENCIADO
       if (result.action === 'created') {
-        if (result.resolved) {
-          alert(`✅ Invitación enviada exitosamente a ${result.email}\n\nEl usuario podrá acceder inmediatamente al iniciar sesión.`);
-        } else {
-          alert(`✅ Invitación enviada a ${result.email}\n\nEl usuario deberá registrarse primero para acceder.`);
-        }
+        alert(`✅ Invitación enviada exitosamente a ${result.email}\n\nEl usuario podrá acceder al iniciar sesión.`);
       } else if (result.action === 'updated') {
-        if (result.resolved) {
-          alert(`✅ Invitación actualizada para ${result.email}\n\nEl usuario ya registrado podrá acceder con su nueva configuración.`);
-        } else {
-          alert(`✅ Invitación reenviada a ${result.email}\n\nSe ha actualizado su rol y sucursal asignados.`);
-        }
+        alert(`✅ Invitación actualizada para ${result.email}\n\nSe ha actualizado su rol y sucursal asignados.`);
       }
     },
     onError: (error) => {
       setInviting(false);
-      
-      // P0 FIX: FEEDBACK ERROR
       alert(`❌ Error al invitar usuario: ${error.message}`);
     },
   });

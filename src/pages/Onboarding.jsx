@@ -262,39 +262,7 @@ export default function Onboarding() {
       });
       console.log('Organización creada exitosamente:', org.id);
 
-      // 2. Crear Branch default (linked al tenant)
-      await base44.entities.Branch.create({
-        organization_id: org.id,
-        name: 'Principal',
-        address: '',
-        active: true,
-      });
-
-      // 3. SEED CATEGORÍAS BASE (idempotente)
-      const categoriasBase = [
-        { nombre: "Servicios", permite_stock: false, permite_precio: true, es_vendible: true },
-        { nombre: "Repuestos", permite_stock: true, permite_precio: true, es_vendible: true },
-        { nombre: "Equipos / Portátiles", permite_stock: true, permite_precio: true, es_vendible: true },
-        { nombre: "Accesorios", permite_stock: true, permite_precio: true, es_vendible: true },
-        { nombre: "Reciclaje", permite_stock: true, permite_precio: false, es_vendible: false }
-      ];
-
-      for (const cat of categoriasBase) {
-        const existing = await base44.entities.CategoriaInventario.filter({
-          organization_id: org.id,
-          nombre: cat.nombre
-        });
-
-        if (existing.length === 0) {
-          await base44.entities.CategoriaInventario.create({
-            ...cat,
-            organization_id: org.id,
-            activo: true
-          });
-        }
-      }
-
-      // 4. P0: Vincular UserAccount al tenant creado como ORG_ADMIN
+      // 2. P0 FIX: Vincular UserAccount al tenant ANTES de crear Branch (requerido por RLS)
       const finalAccounts = await base44.entities.UserAccount.filter({
         user_id: user.id
       });
@@ -318,6 +286,50 @@ export default function Onboarding() {
           role: 'ORG_ADMIN',
           active: true,
         });
+      }
+
+      console.log('✅ UserAccount vinculado a org:', org.id);
+
+      // 3. P0 FIX: Crear Branch DESPUÉS de vincular UserAccount (idempotente)
+      const existingBranches = await base44.entities.Branch.filter({
+        organization_id: org.id,
+        name: 'Principal'
+      });
+
+      if (existingBranches.length === 0) {
+        console.log('Creando Branch Principal');
+        await base44.entities.Branch.create({
+          organization_id: org.id,
+          name: 'Principal',
+          address: '',
+          active: true,
+        });
+      } else {
+        console.log('Branch Principal ya existe, omitiendo creación');
+      }
+
+      // 4. SEED CATEGORÍAS BASE (idempotente)
+      const categoriasBase = [
+        { nombre: "Servicios", permite_stock: false, permite_precio: true, es_vendible: true },
+        { nombre: "Repuestos", permite_stock: true, permite_precio: true, es_vendible: true },
+        { nombre: "Equipos / Portátiles", permite_stock: true, permite_precio: true, es_vendible: true },
+        { nombre: "Accesorios", permite_stock: true, permite_precio: true, es_vendible: true },
+        { nombre: "Reciclaje", permite_stock: true, permite_precio: false, es_vendible: false }
+      ];
+
+      for (const cat of categoriasBase) {
+        const existing = await base44.entities.CategoriaInventario.filter({
+          organization_id: org.id,
+          nombre: cat.nombre
+        });
+
+        if (existing.length === 0) {
+          await base44.entities.CategoriaInventario.create({
+            ...cat,
+            organization_id: org.id,
+            activo: true
+          });
+        }
       }
 
       console.log('✅ Setup completo para usuario:', user.email);

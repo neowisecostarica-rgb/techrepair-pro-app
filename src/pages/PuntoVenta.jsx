@@ -62,18 +62,51 @@ function PuntoVentaContent() {
     }
   }, [effectiveOrgId]);
 
-  // Precargar venta si viene de taller
+  // Precargar venta si viene de taller o cotización
   useEffect(() => {
     if (preloadedVenta) {
       setVentaId(preloadedVenta.id);
       setOrigenVenta(preloadedVenta.origen_venta);
       setClienteSeleccionado(preloadedVenta.cliente_id);
+      
+      // Si viene de cotización, detectar timeout
+      if (cotizacionOrigen && preloadedVenta.estado === 'borrador') {
+        const createdDate = new Date(preloadedVenta.created_date);
+        const ahora = new Date();
+        const horasTranscurridas = (ahora - createdDate) / (1000 * 60 * 60);
+        
+        if (horasTranscurridas > 2) {
+          const confirmar = window.confirm(
+            '⚠️ Esta venta borrador tiene más de 2 horas de antigüedad.\n\n' +
+            '¿Deseas continuar con esta conversión o cancelarla?'
+          );
+          
+          if (!confirmar) {
+            // Revertir cotización y eliminar venta
+            (async () => {
+              try {
+                await base44.entities.Cotizacion.update(cotizacionOrigen.id, {
+                  estado_conversion: 'SIN_CONVERTIR',
+                  venta_id: null
+                });
+                await base44.entities.Venta.delete({ id: preloadedVenta.id });
+                alert('Conversión cancelada. Redirigiendo...');
+                window.history.back();
+              } catch (error) {
+                console.error('Error al cancelar conversión:', error);
+              }
+            })();
+            return;
+          }
+        }
+      }
+      
       // Cargar items de la venta
       if (preloadedVenta.items) {
         setCarrito(preloadedVenta.items);
       }
     }
-  }, [preloadedVenta]);
+  }, [preloadedVenta, cotizacionOrigen]);
 
   const { data: inventario = [] } = useQuery({
     queryKey: ['inventario', userAccount?.organization_id],
@@ -228,13 +261,29 @@ function PuntoVentaContent() {
       // Generar public_access_token único
       const publicToken = `vta_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Si ya existe venta (cobro de taller), solo actualizar
+      // Si ya existe venta (cobro de taller o desde cotización), actualizar a pagada
       if (ventaId) {
-        return await base44.entities.Venta.update(ventaId, {
+        const ventaActualizada = await base44.entities.Venta.update(ventaId, {
           estado: 'pagada',
           metodo_pago: ventaData.metodo_pago,
-          public_access_token: publicToken
+          public_access_token: publicToken,
+          // Actualizar totales finales si divergieron
+          total: ventaData.total,
+          subtotal: ventaData.subtotal,
+          impuesto: ventaData.impuesto,
+          descuento_total: ventaData.descuento_total || 0
         });
+
+        // Si viene de cotización, marcarla como CONVERTIDA
+        if (cotizacionOrigen) {
+          await base44.entities.Cotizacion.update(cotizacionOrigen.id, {
+            estado_conversion: 'CONVERTIDA',
+            convertida_at: new Date().toISOString(),
+            convertida_por: user?.id
+          });
+        }
+
+        return ventaActualizada;
       }
       
       // Crear nueva venta con token
@@ -266,7 +315,7 @@ function PuntoVentaContent() {
       return venta;
     },
     onSuccess: async (venta) => {
-      // Crear items si es venta nueva
+      // Crear items si es venta nueva (no actualización)
       if (!ventaId) {
         for (const item of carrito) {
           await base44.entities.VentaItem.create(withOrgId({
@@ -298,6 +347,45 @@ function PuntoVentaContent() {
             }
           }
         }
+      } else if (cotizacionOrigen) {
+        // Si es actualización desde cotización, actualizar los items existentes
+        const itemsExistentes = await base44.entities.VentaItem.filter({ venta_id: venta.id });
+        
+        // Eliminar items viejos
+        for (const itemViejo of itemsExistentes) {
+          await base44.entities.VentaItem.delete({ id: itemViejo.id });
+        }
+        
+        // Crear nuevos items desde carrito actual
+        for (const item of carrito) {
+          await base44.entities.VentaItem.create(withOrgId({
+            venta_id: venta.id,
+            tipo: item.tipo,
+            referencia_id: item.referencia_id,
+            descripcion: item.descripcion,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio_unitario,
+            subtotal: item.subtotal
+          }, userAccount));
+        }
+
+        // Decrementar stock para productos físicos
+        for (const item of carrito) {
+          if (item.tipo === 'producto') {
+            const producto = inventario.find(p => p.id === item.referencia_id);
+            if (producto) {
+              const categorias = await base44.entities.CategoriaInventario.filter({ id: producto.categoria_id });
+              const categoria = categorias[0];
+              
+              if (categoria?.permite_stock !== false) {
+                await base44.entities.Inventario.update(producto.id, {
+                  cantidad_disponible: producto.cantidad_disponible - item.cantidad,
+                  fecha_ultimo_movimiento: new Date().toISOString().split('T')[0]
+                });
+              }
+            }
+          }
+        }
       }
 
       // ✅ EMISIÓN AUTOMÁTICA DE GARANTÍA
@@ -305,6 +393,8 @@ function PuntoVentaContent() {
 
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
       
       // Mostrar tiquete con garantía
       setVentaCompletada(venta);
@@ -582,9 +672,26 @@ function PuntoVentaContent() {
           Punto de Venta - Caja Directa
         </h1>
         <p className="text-slate-600 mb-4">
-          {ventaId ? '💳 Cobrar trabajo de taller' : 'Registra ventas que impactan caja e inventario inmediatamente'}
+          {cotizacionOrigen 
+            ? `💼 Facturando cotización aprobada`
+            : ventaId 
+            ? '💳 Cobrar trabajo de taller' 
+            : 'Registra ventas que impactan caja e inventario inmediatamente'
+          }
         </p>
-        {!ventaId && (
+        {cotizacionOrigen && (
+          <Alert className="bg-emerald-50 border-emerald-200">
+            <AlertCircle className="w-4 h-4 text-emerald-600" />
+            <AlertDescription className="text-emerald-800">
+              📋 <strong>Conversión desde Cotización</strong> - Los datos están precargados. Puedes modificar ítems, cantidades o precios antes de facturar.
+              <br />
+              <span className="text-xs text-emerald-600 mt-1 block">
+                Total Original: ₡{preloadedVenta?.cotizacion_total_original?.toLocaleString()} | Actual: ₡{calcularTotales().total.toLocaleString()}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+        {!ventaId && !cotizacionOrigen && (
           <Alert className="bg-blue-50 border-blue-200">
             <AlertCircle className="w-4 h-4 text-blue-600" />
             <AlertDescription className="text-blue-800">

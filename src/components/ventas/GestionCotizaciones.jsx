@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Send, FileText, AlertCircle, MessageSquare, Link as LinkIcon, Download, Printer } from 'lucide-react';
+import { Plus, Send, FileText, AlertCircle, MessageSquare, Link as LinkIcon, Download, Printer, ShoppingCart } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [], openDirectly = false }) {
   const [showModal, setShowModal] = useState(openDirectly);
   const [editingCotizacion, setEditingCotizacion] = useState(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const clienteActual = clienteId;
 
@@ -393,12 +396,116 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     setShowModal(true);
   };
 
+  const convertirEnFacturaMutation = useMutation({
+    mutationFn: async (cotizacion) => {
+      // Validación backend: verificar que no exista una venta activa con este cotizacion_id
+      const ventasExistentes = await base44.entities.Venta.filter({
+        organization_id: userAccount.organization_id,
+        cotizacion_id: cotizacion.id
+      });
+      
+      const ventaActiva = ventasExistentes.find(v => v.estado !== 'anulada');
+      if (ventaActiva) {
+        throw new Error('Ya existe una venta asociada a esta cotización. No se puede duplicar.');
+      }
+
+      // Crear Venta en estado BORRADOR con snapshots originales
+      const venta = await base44.entities.Venta.create({
+        organization_id: cotizacion.organization_id,
+        branch_id: userAccount.branch_id,
+        cliente_id: cotizacion.cliente_id,
+        origen_venta: 'tienda',
+        origen_detalle: 'DESDE_COTIZACION',
+        tipo_concepto: 'otro',
+        cotizacion_id: cotizacion.id,
+        cotizacion_total_original: cotizacion.total,
+        cotizacion_subtotal_original: cotizacion.subtotal,
+        cotizacion_descuento_original: cotizacion.descuento_total || 0,
+        total: cotizacion.total,
+        subtotal: cotizacion.subtotal,
+        impuesto: cotizacion.impuesto,
+        descuento_total: cotizacion.descuento_total || 0,
+        estado: 'borrador',
+        created_by_user_id: user.id,
+        notas: cotizacion.notas || ''
+      });
+
+      // Crear VentaItems desde cotización
+      for (const item of cotizacion.items) {
+        await base44.entities.VentaItem.create({
+          organization_id: cotizacion.organization_id,
+          venta_id: venta.id,
+          tipo: item.tipo,
+          referencia_id: item.referencia_id || null,
+          descripcion: item.descripcion,
+          cantidad: item.cantidad,
+          precio_unitario: item.precio_unitario,
+          subtotal: item.subtotal
+        });
+      }
+
+      // Actualizar Cotización a EN_PROCESO_FACTURACION
+      await base44.entities.Cotizacion.update(cotizacion.id, {
+        estado_conversion: 'EN_PROCESO_FACTURACION',
+        venta_id: venta.id
+      });
+
+      return { venta, cotizacion };
+    },
+    onSuccess: ({ venta, cotizacion }) => {
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+      
+      // Redirigir a POS con precarga
+      navigate(createPageUrl('PuntoVenta'), {
+        state: {
+          venta: venta,
+          cotizacion_origen: cotizacion,
+          carrito: cotizacion.items,
+          cliente_id: cotizacion.cliente_id
+        }
+      });
+    },
+    onError: (error) => {
+      alert(`Error al convertir cotización: ${error.message}`);
+    }
+  });
+
+  const handleConvertirEnFactura = async (cotizacion) => {
+    if (cotizacion.estado !== 'aprobada') {
+      alert('Solo se pueden convertir cotizaciones en estado APROBADA');
+      return;
+    }
+
+    if (cotizacion.estado_conversion === 'EN_PROCESO_FACTURACION') {
+      alert('Esta cotización ya tiene una conversión en proceso');
+      return;
+    }
+
+    if (cotizacion.estado_conversion === 'CONVERTIDA') {
+      alert('Esta cotización ya fue convertida a venta');
+      return;
+    }
+
+    if (!window.confirm('¿Deseas convertir esta cotización en una venta?\n\nSe abrirá el POS con los datos precargados.')) {
+      return;
+    }
+
+    convertirEnFacturaMutation.mutate(cotizacion);
+  };
+
   const estadoConfig = {
     borrador: { color: 'bg-slate-100 text-slate-700', label: 'Borrador' },
     enviada: { color: 'bg-blue-100 text-blue-700', label: 'Enviada' },
     aprobada: { color: 'bg-emerald-100 text-emerald-700', label: 'Aprobada' },
     rechazada: { color: 'bg-red-100 text-red-700', label: 'Rechazada' },
     vencida: { color: 'bg-orange-100 text-orange-700', label: 'Vencida' },
+  };
+
+  const estadoConversionConfig = {
+    SIN_CONVERTIR: { color: 'bg-slate-100 text-slate-600', label: 'Sin convertir' },
+    EN_PROCESO_FACTURACION: { color: 'bg-yellow-100 text-yellow-700', label: 'En proceso' },
+    CONVERTIDA: { color: 'bg-purple-100 text-purple-700', label: 'Convertida' },
   };
 
   const totales = calcularTotales();
@@ -719,15 +826,21 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
             <div className="space-y-3">
               {cotizaciones.map((cot) => {
                 const config = estadoConfig[cot.estado];
+                const conversionConfig = estadoConversionConfig[cot.estado_conversion || 'SIN_CONVERTIR'];
                 
                 return (
                   <div key={cot.id} className="p-4 bg-slate-50 rounded-lg">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <Badge className={`${config.color} border-0 text-xs`}>
                             {config.label}
                           </Badge>
+                          {cot.estado_conversion && cot.estado_conversion !== 'SIN_CONVERTIR' && (
+                            <Badge className={`${conversionConfig.color} border-0 text-xs`}>
+                              {conversionConfig.label}
+                            </Badge>
+                          )}
                           {cot.requiere_aprobacion && !cot.aprobada_por && (
                             <Badge className="bg-yellow-100 text-yellow-700 border-0 text-xs flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
@@ -742,6 +855,11 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                             Válida hasta: {format(new Date(cot.valida_hasta), 'dd/MM/yyyy')}
                           </p>
                         )}
+                        {cot.convertida_at && (
+                          <p className="text-xs text-purple-600 mt-1">
+                            Convertida el {format(new Date(cot.convertida_at), 'dd/MM/yyyy HH:mm')}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         {cot.estado === 'borrador' && (
@@ -754,6 +872,17 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                               Enviar
                             </Button>
                           </>
+                        )}
+                        {cot.estado === 'aprobada' && cot.estado_conversion === 'SIN_CONVERTIR' && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleConvertirEnFactura(cot)}
+                            disabled={convertirEnFacturaMutation.isPending}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            <ShoppingCart className="w-4 h-4 mr-2" />
+                            Convertir en Factura
+                          </Button>
                         )}
                         {(cot.estado === 'enviada' || cot.estado === 'aprobada') && (
                           <>

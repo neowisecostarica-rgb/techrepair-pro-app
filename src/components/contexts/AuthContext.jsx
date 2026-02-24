@@ -86,15 +86,18 @@ export function AuthProvider({ children }) {
             new Date(b.created_date || b.updated_date || 0) - new Date(a.created_date || a.updated_date || 0)
           )[0];
           
-          // P0 FIX: Sincronizar organization_id a user.data para RLS
+          // FASE 2 - SINCRONIZACIÓN DEFINITIVA: Validar y sincronizar organization_id
           if (mostRecent.organization_id && u.organization_id !== mostRecent.organization_id) {
+            console.log('[P0 SYNC] Detectada desincronización: user.organization_id !== UserAccount.organization_id');
+            console.log('[P0 SYNC] Sincronizando:', mostRecent.organization_id);
             try {
               await base44.auth.updateMe({ organization_id: mostRecent.organization_id });
-              // Actualizar user local
+              // Actualizar user local para reflejar el cambio
               u.organization_id = mostRecent.organization_id;
               setUser(u);
+              console.log('[P0 SYNC] ✅ Sincronización exitosa');
             } catch (syncError) {
-              console.warn('No se pudo sincronizar organization_id al user:', syncError);
+              console.error('[P0 SYNC] ❌ Error sincronizando organization_id:', syncError);
             }
           }
           

@@ -85,6 +85,19 @@ export function AuthProvider({ children }) {
           const mostRecent = validAccounts.sort((a, b) => 
             new Date(b.created_date || b.updated_date || 0) - new Date(a.created_date || a.updated_date || 0)
           )[0];
+          
+          // P0 FIX: Sincronizar organization_id a user.data para RLS
+          if (mostRecent.organization_id && u.organization_id !== mostRecent.organization_id) {
+            try {
+              await base44.auth.updateMe({ organization_id: mostRecent.organization_id });
+              // Actualizar user local
+              u.organization_id = mostRecent.organization_id;
+              setUser(u);
+            } catch (syncError) {
+              console.warn('No se pudo sincronizar organization_id al user:', syncError);
+            }
+          }
+          
           setUserAccount(mostRecent);
           setStatus('ready');
           isLoadingRef.current = false;

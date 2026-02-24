@@ -93,6 +93,11 @@ export default function Onboarding() {
             active: true,
           });
 
+          // P0 FIX: Sincronizar organization_id al user para RLS
+          await base44.auth.updateMe({
+            organization_id: anyInvitation.organization_id
+          });
+
           console.log('Invitación activada para', authenticatedUser.email, '→', anyInvitation.organization_id);
 
           // Redirigir según rol
@@ -287,6 +292,11 @@ export default function Onboarding() {
           active: true,
         });
       }
+
+      // P0 FIX: Sincronizar organization_id al user para RLS
+      await base44.auth.updateMe({
+        organization_id: org.id
+      });
 
       console.log('✅ UserAccount vinculado a org:', org.id);
 

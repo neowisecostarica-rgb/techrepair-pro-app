@@ -250,9 +250,12 @@ export function AuthProvider({ children }) {
     loading,
     status,
     errorCode,
+    identityStatus,
+    multiOrgAccounts,
+    selectOrganization,
     refreshAuth,
     reloadAuth,
-  }), [user, userAccount, effectiveRole, effectiveOrgId, isImpersonating, loading, status, errorCode]);
+  }), [user, userAccount, effectiveRole, effectiveOrgId, isImpersonating, loading, status, errorCode, identityStatus, multiOrgAccounts]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

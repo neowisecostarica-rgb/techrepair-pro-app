@@ -26,33 +26,44 @@ const ROLES_REQUIRE_BRANCH = ['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY'
  * Garantiza que el UserAccount del usuario esté correcto y que user.organization_id
  * en el token esté sincronizado con el UserAccount activo.
  * No inventa roles ni organizaciones sin evidencia.
+ *
+ * Cuando el usuario tiene >1 UserAccount activa Y no hay un organization_id
+ * ya persistido en el token que coincida con exactamente una de ellas,
+ * retorna { account: null, multiOrgAccounts: [...], status: 'MULTI_ORG_REQUIRED' }
+ * sin auto-seleccionar nada.
  */
 async function ensureIdentity(u) {
   const repairs = [];
 
-  // 1. Cargar todas las cuentas del usuario (activas e inactivas)
+  // 1. Cargar todas las cuentas del usuario
   const allAccounts = await base44.entities.UserAccount.filter({ user_id: u.id });
 
-  // 2. Resolver active_org_id de forma determinística
-  //    Prioridad: (1) token persistido si coincide con alguna cuenta, (2) cuenta más reciente activa
+  // 2. Memberships activas con organization_id válido
   const activeAccounts = allAccounts.filter(a => a.active && a.organization_id);
 
   if (activeAccounts.length === 0) {
-    // Sin memberships activas: no inventar. Retornar null para estado "Sin organizaciones".
     console.warn('[EnsureIdentity] Usuario sin memberships activas:', u.email);
-    return { account: null, repairs: ['no_active_membership'] };
+    return { account: null, status: 'NO_MEMBERSHIP', repairs: ['no_active_membership'] };
   }
 
-  // Seleccionar cuenta activa: preferir la que coincide con user.organization_id (persistido),
-  // sino la más reciente con organization_id válido.
+  // 3. Si hay exactamente UNA → resolución directa (caso normal)
+  //    Si hay más de UNA → buscar si el token ya tiene un organization_id que coincida
+  //    con exactamente una de las cuentas activas. Si coincide → usar esa (ya fue elegida previamente).
+  //    Si NO coincide → forzar selector. NUNCA auto-seleccionar.
   let selectedAccount = null;
-  if (u.organization_id) {
-    selectedAccount = activeAccounts.find(a => a.organization_id === u.organization_id);
-  }
-  if (!selectedAccount) {
-    selectedAccount = activeAccounts.sort((a, b) =>
-      new Date(b.updated_date || b.created_date || 0) - new Date(a.updated_date || a.created_date || 0)
-    )[0];
+
+  if (activeAccounts.length === 1) {
+    selectedAccount = activeAccounts[0];
+  } else {
+    // Más de una cuenta activa: solo resolver si el token ya persiste una elección válida
+    if (u.organization_id) {
+      selectedAccount = activeAccounts.find(a => a.organization_id === u.organization_id) || null;
+    }
+    // Si no hay coincidencia → MULTI_ORG_REQUIRED, sin fallback
+    if (!selectedAccount) {
+      console.warn('[EnsureIdentity] MULTI_ORG_REQUIRED para:', u.email, `(${activeAccounts.length} orgs)`);
+      return { account: null, multiOrgAccounts: activeAccounts, status: 'MULTI_ORG_REQUIRED', repairs: [] };
+    }
   }
 
   let account = selectedAccount;

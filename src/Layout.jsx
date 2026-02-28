@@ -264,7 +264,44 @@ function LayoutContent({ children, currentPageName }) {
     );
   }
 
-  // 2. No UserAccount → send to Onboarding (con excepción de páginas protegidas)
+  // 2a. MULTI_ORG_REQUIRED → forzar selector antes de continuar (sin fallback automático)
+  if (identityStatus === 'MULTI_ORG_REQUIRED' && multiOrgAccounts && !isProtectedPage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
+              <Wrench className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Selecciona una organización</h2>
+              <p className="text-sm text-slate-500">Tu cuenta está vinculada a múltiples organizaciones</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {multiOrgAccounts.map((account) => (
+              <button
+                key={account.id}
+                onClick={() => selectOrganization(account)}
+                className="w-full text-left px-4 py-4 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-200"
+              >
+                <p className="font-semibold text-slate-900">{account.organization_id}</p>
+                <p className="text-sm text-slate-500 mt-0.5">{account.role}</p>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => base44.auth.logout()}
+            className="mt-6 w-full text-sm text-slate-400 hover:text-red-500 transition-colors"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 2b. No UserAccount → send to Onboarding (con excepción de páginas protegidas)
   if (!userAccount && !isProtectedPage) {
     if (typeof window !== 'undefined') {
       window.location.href = createPageUrl('Onboarding');

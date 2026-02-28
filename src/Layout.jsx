@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 
 function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth } = useAuthContext();
+  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth, identityStatus, multiOrgAccounts, selectOrganization } = useAuthContext();
 
   // Query organization (MUST be before any conditional returns)
   const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({

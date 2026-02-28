@@ -172,11 +172,12 @@ export function AuthProvider({ children }) {
       }
 
       // Usuario normal: ejecutar EnsureIdentity
-      const { account, repairs } = await ensureIdentity(u);
+      const { account, multiOrgAccounts: multiOrgs, status: identStatus, repairs } = await ensureIdentity(u);
 
-      // Actualizar user con posible cambio de organization_id sincronizado
       setUser({ ...u });
-      setUserAccount(account); // null = Sin organizaciones → Layout redirige a Onboarding
+      setUserAccount(account);
+      setIdentityStatus(identStatus || null);
+      setMultiOrgAccounts(multiOrgs || null);
       setStatus('ready');
       isLoadingRef.current = false;
     } catch (error) {

@@ -117,6 +117,9 @@ export function AuthProvider({ children }) {
   const [userAccount, setUserAccount] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const [errorCode, setErrorCode] = useState(null);
+  // MULTI_ORG_REQUIRED: lista de UserAccounts activas cuando el usuario pertenece a >1 org
+  const [multiOrgAccounts, setMultiOrgAccounts] = useState(null);
+  const [identityStatus, setIdentityStatus] = useState(null); // null | 'NO_MEMBERSHIP' | 'MULTI_ORG_REQUIRED'
 
   const hasInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);

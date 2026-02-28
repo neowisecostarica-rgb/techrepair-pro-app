@@ -207,6 +207,23 @@ export function AuthProvider({ children }) {
 
   const reloadAuth = refreshAuth;
 
+  /**
+   * Llamar desde el selector de organización en el Layout.
+   * Recibe el UserAccount elegido por el usuario, lo establece como activo
+   * y sincroniza el token para que RLS funcione.
+   */
+  const selectOrganization = async (account) => {
+    try {
+      await base44.auth.updateMe({ organization_id: account.organization_id });
+      setUser(prev => ({ ...prev, organization_id: account.organization_id }));
+      setUserAccount(account);
+      setMultiOrgAccounts(null);
+      setIdentityStatus(null);
+    } catch (err) {
+      console.error('[AuthContext] Error al persistir selección de org:', err);
+    }
+  };
+
   const isImpersonating = useMemo(() => {
     return user?.impersonating_org_id ? true : false;
   }, [user?.impersonating_org_id]);

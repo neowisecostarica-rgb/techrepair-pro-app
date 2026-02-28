@@ -3,13 +3,110 @@ import { base44 } from '@/api/base44Client';
 
 const AuthContext = createContext(null);
 
+// Roles válidos oficiales (cerrado)
+const VALID_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
+
+// Roles legacy → rol oficial
+const LEGACY_ROLE_MAP = {
+  'admin': 'ORG_ADMIN',
+  'user': 'SALES',
+  'tech': 'TECHNICIAN',
+  'manager': 'BRANCH_ADMIN',
+  'AUDITOR': 'SUPPORT',
+  'CFO': 'ORG_ADMIN',
+  'CEO': 'ORG_ADMIN',
+  'SUPER_ADMIN': 'ORG_ADMIN', // SUPER_ADMIN en UserAccount es un error legacy
+};
+
+// Roles que requieren branch_id obligatorio
+const ROLES_REQUIRE_BRANCH = ['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
+
+/**
+ * EnsureIdentity — idempotente
+ * Garantiza que el UserAccount del usuario esté correcto y que user.organization_id
+ * en el token esté sincronizado con el UserAccount activo.
+ * No inventa roles ni organizaciones sin evidencia.
+ */
+async function ensureIdentity(u) {
+  const repairs = [];
+
+  // 1. Cargar todas las cuentas del usuario (activas e inactivas)
+  const allAccounts = await base44.entities.UserAccount.filter({ user_id: u.id });
+
+  // 2. Resolver active_org_id de forma determinística
+  //    Prioridad: (1) token persistido si coincide con alguna cuenta, (2) cuenta más reciente activa
+  const activeAccounts = allAccounts.filter(a => a.active && a.organization_id);
+
+  if (activeAccounts.length === 0) {
+    // Sin memberships activas: no inventar. Retornar null para estado "Sin organizaciones".
+    console.warn('[EnsureIdentity] Usuario sin memberships activas:', u.email);
+    return { account: null, repairs: ['no_active_membership'] };
+  }
+
+  // Seleccionar cuenta activa: preferir la que coincide con user.organization_id (persistido),
+  // sino la más reciente con organization_id válido.
+  let selectedAccount = null;
+  if (u.organization_id) {
+    selectedAccount = activeAccounts.find(a => a.organization_id === u.organization_id);
+  }
+  if (!selectedAccount) {
+    selectedAccount = activeAccounts.sort((a, b) =>
+      new Date(b.updated_date || b.created_date || 0) - new Date(a.updated_date || a.created_date || 0)
+    )[0];
+  }
+
+  let account = selectedAccount;
+
+  // 3. Reparar role inválido (idempotente: solo si role no está en lista oficial)
+  if (!VALID_ROLES.includes(account.role)) {
+    const mappedRole = LEGACY_ROLE_MAP[account.role] || 'SALES';
+    console.warn(`[EnsureIdentity] Role legacy "${account.role}" → "${mappedRole}" para`, u.email);
+    account = await base44.entities.UserAccount.update(account.id, { role: mappedRole });
+    repairs.push(`mapped_role:${account.role}`);
+  }
+
+  // 4. Reparar branch_id faltante para roles que lo requieren (idempotente)
+  if (ROLES_REQUIRE_BRANCH.includes(account.role) && !account.branch_id) {
+    const branches = await base44.entities.Branch.filter({
+      organization_id: account.organization_id,
+      active: true
+    });
+    if (branches.length > 0) {
+      account = await base44.entities.UserAccount.update(account.id, { branch_id: branches[0].id });
+      repairs.push(`assigned_branch:${branches[0].id}`);
+      console.log('[EnsureIdentity] Branch asignada automáticamente:', branches[0].id, 'para', u.email);
+    } else {
+      console.warn('[EnsureIdentity] No hay branches activas para org:', account.organization_id);
+    }
+  }
+
+  // 5. Sincronizar user.organization_id al token (RLS requiere esto)
+  //    Esta es la causa raíz del 403. Se sincroniza siempre que haya desincronización.
+  if (u.organization_id !== account.organization_id) {
+    console.log('[EnsureIdentity] Sincronizando token org_id:', u.organization_id, '→', account.organization_id);
+    try {
+      await base44.auth.updateMe({ organization_id: account.organization_id });
+      u.organization_id = account.organization_id; // Actualizar referencia local
+      repairs.push(`synced_token:${account.organization_id}`);
+      console.log('[EnsureIdentity] ✅ Token sincronizado');
+    } catch (syncError) {
+      console.error('[EnsureIdentity] ❌ Error sincronizando token:', syncError);
+    }
+  }
+
+  if (repairs.length > 0) {
+    console.log('[EnsureIdentity] Reparaciones aplicadas para', u.email, ':', repairs);
+  }
+
+  return { account, repairs };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userAccount, setUserAccount] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
-  const [errorCode, setErrorCode] = useState(null); // Para capturar 429
+  const [errorCode, setErrorCode] = useState(null);
 
-  // 1️⃣ Prevent double initialization
   const hasInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
   const last429Timestamp = useRef(null);
@@ -21,34 +118,33 @@ export function AuthProvider({ children }) {
   }, []);
 
   const loadAuthData = async () => {
-    // Prevent concurrent executions
     if (isLoadingRef.current) return;
-    
-    // Anti-loop: Si hay error 429 reciente (< 10 segundos), no reintentar
+
     if (last429Timestamp.current && Date.now() - last429Timestamp.current < 10000) {
       console.warn('AuthContext: Rate limit cooldown activo, no reintentar');
       return;
     }
-    
+
     isLoadingRef.current = true;
     setStatus('loading');
     setErrorCode(null);
 
     try {
       const u = await base44.auth.me();
-      setUser(u);
-      last429Timestamp.current = null; // Reset 429 timestamp en success
+      last429Timestamp.current = null;
 
-      // Si es Super Admin sin impersonación, no cargar UserAccount
+      // SUPER_ADMIN puro (sin impersonation): acceso solo al panel SaaS
       if (u.is_super_admin && !u.impersonating_org_id) {
+        setUser(u);
         setUserAccount(null);
         setStatus('ready');
         isLoadingRef.current = false;
         return;
       }
 
-      // Si está impersonando, no necesita UserAccount real (se simula)
+      // SUPER_ADMIN impersonando: simular UserAccount ORG_ADMIN para la org objetivo
       if (u.is_super_admin && u.impersonating_org_id) {
+        setUser(u);
         setUserAccount({
           user_id: u.id,
           user_email: u.email,
@@ -61,96 +157,41 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      // P0 FIX: Cargar UserAccount por user_id (fuente de verdad)
-      const accounts = await base44.entities.UserAccount.filter({ 
-        user_id: u.id, 
-        active: true 
-      });
-      
-      if (accounts.length > 0) {
-        // Prioridad 1: Si hay impersonation activo, buscar por impersonating_org_id
-        if (u.impersonating_org_id) {
-          const impersonatedAccount = accounts.find(a => a.organization_id === u.impersonating_org_id);
-          if (impersonatedAccount) {
-            setUserAccount(impersonatedAccount);
-            setStatus('ready');
-            isLoadingRef.current = false;
-            return;
-          }
-        }
-        
-        // Prioridad 2: Cuenta con organization_id (más reciente si hay múltiples)
-        const validAccounts = accounts.filter(a => a.organization_id);
-        if (validAccounts.length > 0) {
-          const mostRecent = validAccounts.sort((a, b) => 
-            new Date(b.created_date || b.updated_date || 0) - new Date(a.created_date || a.updated_date || 0)
-          )[0];
-          
-          // FASE 2 - SINCRONIZACIÓN DEFINITIVA: Validar y sincronizar organization_id
-          if (mostRecent.organization_id && u.organization_id !== mostRecent.organization_id) {
-            console.log('[P0 SYNC] Detectada desincronización: user.organization_id !== UserAccount.organization_id');
-            console.log('[P0 SYNC] Sincronizando:', mostRecent.organization_id);
-            try {
-              await base44.auth.updateMe({ organization_id: mostRecent.organization_id });
-              // Actualizar user local para reflejar el cambio
-              u.organization_id = mostRecent.organization_id;
-              setUser(u);
-              console.log('[P0 SYNC] ✅ Sincronización exitosa');
-            } catch (syncError) {
-              console.error('[P0 SYNC] ❌ Error sincronizando organization_id:', syncError);
-            }
-          }
-          
-          setUserAccount(mostRecent);
-          setStatus('ready');
-          isLoadingRef.current = false;
-          return;
-        }
-        
-        // Prioridad 3: Si solo hay cuentas sin organization_id (invitaciones pendientes)
-        // dejar que Onboarding las procese
-        setUserAccount(null);
-        setStatus('ready');
-        isLoadingRef.current = false;
-        return;
-      }
+      // Usuario normal: ejecutar EnsureIdentity
+      const { account, repairs } = await ensureIdentity(u);
 
-      // No hay cuentas válidas → redirigir a Onboarding
-      setUserAccount(null);
+      // Actualizar user con posible cambio de organization_id sincronizado
+      setUser({ ...u });
+      setUserAccount(account); // null = Sin organizaciones → Layout redirige a Onboarding
       setStatus('ready');
       isLoadingRef.current = false;
     } catch (error) {
       console.error('AuthContext: Error loading auth data', error);
-      
-      // Detectar 429 específicamente
+
       if (error?.response?.status === 429 || error?.status === 429) {
         setErrorCode(429);
         last429Timestamp.current = Date.now();
         console.warn('AuthContext: Rate limit (429) detectado, bloqueando reintentos por 10s');
       }
-      
+
       setStatus('error');
       isLoadingRef.current = false;
     }
   };
 
   const refreshAuth = async () => {
-    // Reset state for safe re-initialization
     hasInitializedRef.current = false;
     isLoadingRef.current = false;
     setStatus('idle');
     setErrorCode(null);
-    last429Timestamp.current = null; // Reset 429 cooldown
-    
-    // Re-run initialization
+    last429Timestamp.current = null;
+
     hasInitializedRef.current = true;
     await loadAuthData();
   };
 
-  // Alias para compatibilidad
   const reloadAuth = refreshAuth;
 
-  // 5️⃣ Memoize derived values
   const isImpersonating = useMemo(() => {
     return user?.impersonating_org_id ? true : false;
   }, [user?.impersonating_org_id]);
@@ -160,14 +201,12 @@ export function AuthProvider({ children }) {
   }, [user?.impersonating_org_id, userAccount?.organization_id]);
 
   const effectiveRole = useMemo(() => {
-    // Priorizar SUPER_ADMIN puro ANTES de impersonation/userAccount
     if (user?.is_super_admin && !user?.impersonating_org_id) return 'SUPER_ADMIN';
     if (isImpersonating) return 'ORG_ADMIN';
     if (userAccount?.role) return userAccount.role;
     return null;
   }, [user?.is_super_admin, user?.impersonating_org_id, isImpersonating, userAccount?.role]);
 
-  // Maintain backward compatibility with 'loading' boolean
   const loading = status === 'idle' || status === 'loading';
 
   const value = useMemo(() => ({

@@ -184,9 +184,11 @@ export function AuthProvider({ children }) {
       }
 
       // Usuario normal: ejecutar EnsureIdentity
-      const { account, multiOrgAccounts: multiOrgs, status: identStatus, repairs } = await ensureIdentity(u);
+      const { account, multiOrgAccounts: multiOrgs, status: identStatus, repairs, syncedUser } = await ensureIdentity(u);
 
-      setUser({ ...u });
+      // Usar syncedUser si hubo sincronización de token, para que el estado React
+      // refleje el organization_id ya confirmado por el servidor antes de marcar 'ready'.
+      setUser({ ...(syncedUser || u) });
       setUserAccount(account);
       setIdentityStatus(identStatus || null);
       setMultiOrgAccounts(multiOrgs || null);

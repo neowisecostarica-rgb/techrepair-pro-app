@@ -93,13 +93,25 @@ async function ensureIdentity(u) {
 
   // 5. Sincronizar user.organization_id al token (RLS requiere esto)
   //    Esta es la causa raíz del 403. Se sincroniza siempre que haya desincronización.
+  //    CRÍTICO: después de updateMe() se hace un re-fetch de me() para confirmar que
+  //    el token del servidor ya refleja el nuevo organization_id antes de marcar ready.
   if (u.organization_id !== account.organization_id) {
     console.log('[EnsureIdentity] Sincronizando token org_id:', u.organization_id, '→', account.organization_id);
     try {
       await base44.auth.updateMe({ organization_id: account.organization_id });
-      u.organization_id = account.organization_id; // Actualizar referencia local
+
+      // Re-fetch para confirmar que el token propagado ya contiene el org_id correcto
+      const refreshedUser = await base44.auth.me();
+      u.organization_id = refreshedUser.organization_id;
+
+      if (u.organization_id !== account.organization_id) {
+        console.warn('[EnsureIdentity] ⚠️ Token aún desincronizado tras re-fetch, forzando valor local');
+        u.organization_id = account.organization_id;
+      } else {
+        console.log('[EnsureIdentity] ✅ Token confirmado tras re-fetch:', u.organization_id);
+      }
+
       repairs.push(`synced_token:${account.organization_id}`);
-      console.log('[EnsureIdentity] ✅ Token sincronizado');
     } catch (syncError) {
       console.error('[EnsureIdentity] ❌ Error sincronizando token:', syncError);
     }
@@ -109,7 +121,7 @@ async function ensureIdentity(u) {
     console.log('[EnsureIdentity] Reparaciones aplicadas para', u.email, ':', repairs);
   }
 
-  return { account, repairs };
+  return { account, repairs, syncedUser: u };
 }
 
 export function AuthProvider({ children }) {

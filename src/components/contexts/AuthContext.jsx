@@ -157,6 +157,7 @@ export function AuthProvider({ children }) {
 
     try {
       const u = await base44.auth.me();
+      console.log("AUTH.ME RESULT:", u);
       last429Timestamp.current = null;
 
       // SUPER_ADMIN puro (sin impersonation): acceso solo al panel SaaS

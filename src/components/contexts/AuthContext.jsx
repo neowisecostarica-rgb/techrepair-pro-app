@@ -156,10 +156,9 @@ export function AuthProvider({ children }) {
     setErrorCode(null);
 
     try {
-      const u = await base44.auth.me();
-      const u = await base44.auth.me();
-console.log("AUTH.ME FULL:", JSON.stringify(u, null, 2));
-      last429Timestamp.current = null;
+  const u = await base44.auth.me();
+  console.log("AUTH.ME FULL:", JSON.stringify(u, null, 2));
+  last429Timestamp.current = null;
 
       // SUPER_ADMIN puro (sin impersonation): acceso solo al panel SaaS
       if (u.is_super_admin && !u.impersonating_org_id) {

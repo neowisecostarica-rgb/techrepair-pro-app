@@ -228,9 +228,7 @@ function OrdenesTrabajoContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
-      setShowModal(false);
-      setEditingOT(null);
-      resetForm();
+      navigate(createPageUrl('OrdenesTrabajo'));
     },
   });
 

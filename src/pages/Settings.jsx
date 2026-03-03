@@ -52,7 +52,15 @@ function SettingsContent() {
   });
 
   const deleteBranchMutation = useMutation({
-    mutationFn: (id) => base44.entities.Branch.delete(id),
+    mutationFn: async (id) => {
+      const branches = queryClient.getQueryData(['branches']);
+
+      if (branches && branches.length <= 1) {
+        throw new Error("No se puede eliminar la última sucursal.");
+      }
+
+      return base44.entities.Branch.delete(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] });
     },

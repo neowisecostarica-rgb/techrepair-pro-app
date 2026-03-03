@@ -303,19 +303,17 @@ export default function Onboarding() {
       // 3. P0 FIX: Crear Branch DESPUÉS de vincular UserAccount (idempotente)
       const existingBranches = await base44.entities.Branch.filter({
         organization_id: org.id,
-        name: 'Principal'
       });
 
       if (existingBranches.length === 0) {
-        console.log('Creando Branch Principal');
+        console.log('Creando Sucursal Principal');
         await base44.entities.Branch.create({
           organization_id: org.id,
-          name: 'Principal',
-          address: '',
+          name: 'Sucursal Principal',
           active: true,
         });
       } else {
-        console.log('Branch Principal ya existe, omitiendo creación');
+        console.log('Branch ya existe, omitiendo creación');
       }
 
       // 4. SEED CATEGORÍAS BASE (idempotente)

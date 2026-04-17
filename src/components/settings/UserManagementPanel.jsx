@@ -21,14 +21,12 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   const queryClient = useQueryClient();
 
   // Wait for auth to be ready
-  if (status !== 'ready') {
-    return <div className="p-6 text-center text-slate-500">Cargando...</div>;
-  }
+  const isReady = status === 'ready';
 
   const { data: users = [] } = useQuery({
     queryKey: ['userAccounts', organizationId],
     queryFn: () => base44.entities.UserAccount.filter({ organization_id: organizationId }),
-    enabled: !!organizationId,
+    enabled: !!organizationId && isReady,
   });
 
   // P0.1 TENANT ZERO: Calculate active ORG_ADMIN count
@@ -196,6 +194,10 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   };
 
   const availableRoles = getAvailableRoles();
+
+  if (!isReady) {
+    return <div className="p-6 text-center text-slate-500">Cargando...</div>;
+  }
 
   return (
     <>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -157,6 +157,15 @@ export default function EntregarOT({
     }
   });
 
+  // P0.1: Obtener estado de pago para bloqueo (síncrono, solo para visibilidad inicial)
+  const [estadoPagoInicial, setEstadoPagoInicial] = useState(null);
+  
+  useEffect(() => {
+    if (ordenTrabajo?.id && effectiveOrgId) {
+      obtenerEstadoPagoOT(ordenTrabajo.id, effectiveOrgId).then(setEstadoPagoInicial);
+    }
+  }, [ordenTrabajo?.id, effectiveOrgId]);
+
   const handleEntregar = () => {
     if (!checkboxAceptado) {
       alert('Debe aceptar la confirmación de entrega');
@@ -180,15 +189,6 @@ export default function EntregarOT({
   if (!['ORG_ADMIN', 'SALES'].includes(effectiveRole)) {
     return null;
   }
-
-  // P0.1: Obtener estado de pago para bloqueo (síncrono, solo para visibilidad inicial)
-  const [estadoPagoInicial, setEstadoPagoInicial] = React.useState(null);
-  
-  React.useEffect(() => {
-    if (ordenTrabajo?.id && effectiveOrgId) {
-      obtenerEstadoPagoOT(ordenTrabajo.id, effectiveOrgId).then(setEstadoPagoInicial);
-    }
-  }, [ordenTrabajo?.id, effectiveOrgId]);
 
   // P0.1: Bloquear si no está pagado
   if (estadoPagoInicial && estadoPagoInicial.status !== 'PAGADO') {

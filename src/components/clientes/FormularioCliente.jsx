@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+
+const BACKEND_URL = 'https://TU-BACKEND.onrender.com';
 
 /**
  * Formulario canónico de cliente - ÚNICO componente para crear/editar clientes
@@ -19,9 +20,8 @@ export default function FormularioCliente({
   onCancelar 
 }) {
   const [saving, setSaving] = useState(false);
-  const [checking, setChecking] = useState(false);
-  const [clienteExistente, setClienteExistente] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [apiError, setApiError] = useState(null);
   const [formData, setFormData] = useState({
     nombre_completo: '',
     identificacion: '',
@@ -46,43 +46,6 @@ export default function FormularioCliente({
     }
   }, [cliente]);
 
-  const validarIdentificacion = async (identificacion) => {
-    if (!identificacion || identificacion.length < 3) {
-      setClienteExistente(null);
-      return;
-    }
-
-    setChecking(true);
-    try {
-      const existentes = await base44.entities.Cliente.filter({
-        organization_id: efectiveOrgId,
-        identificacion: identificacion
-      });
-
-      if (existentes.length > 0 && (!cliente || existentes[0].id !== cliente.id)) {
-        setClienteExistente(existentes[0]);
-      } else {
-        setClienteExistente(null);
-      }
-    } catch (error) {
-      console.error('Error validando identificación:', error);
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const handleIdentificacionChange = (value) => {
-    setFormData({ ...formData, identificacion: value });
-    setIsDirty(true);
-    
-    // Validar después de 500ms de inactividad
-    const timer = setTimeout(() => {
-      validarIdentificacion(value);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  };
-
   const handleFieldChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
     setIsDirty(true);
@@ -90,56 +53,65 @@ export default function FormularioCliente({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setApiError(null);
 
     if (!formData.nombre_completo || !formData.identificacion || !formData.telefono) {
-      alert('Nombre completo, identificación y teléfono son obligatorios');
+      setApiError('Nombre completo, identificación y teléfono son obligatorios.');
       return;
     }
 
-    if (clienteExistente) {
-      alert('Ya existe un cliente con esta identificación. Por favor usa el cliente existente.');
+    // Edición temporalmente deshabilitada — endpoint de actualización pendiente en backend
+    if (cliente) {
+      setApiError('La edición de clientes está temporalmente deshabilitada mientras se integra el backend.');
       return;
     }
 
     setSaving(true);
     try {
-      const data = {
-        ...formData,
-        organization_id: efectiveOrgId
-      };
+      const response = await fetch(`${BACKEND_URL}/v1/clients`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-organization-id': efectiveOrgId || ''
+        },
+        body: JSON.stringify({
+          full_name: formData.nombre_completo,
+          phone: formData.telefono
+        })
+      });
 
-      let clienteGuardado;
-      if (cliente) {
-        clienteGuardado = await base44.entities.Cliente.update(cliente.id, data);
-      } else {
-        clienteGuardado = await base44.entities.Cliente.create(data);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error ${response.status} del servidor`);
       }
 
-      // P0.1: Feedback y cierre automático tras éxito
+      const clienteGuardado = await response.json();
       onGuardar(clienteGuardado);
     } catch (error) {
-      console.error('Error guardando cliente:', error);
-      alert('Error al guardar: ' + error.message);
+      console.error('Error creando cliente en backend:', error);
+      setApiError('Error al crear cliente: ' + error.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const usarClienteExistente = () => {
-    if (clienteExistente) {
-      onGuardar(clienteExistente);
-    }
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Alert className="bg-blue-50 border-blue-200">
-        <AlertCircle className="w-4 h-4 text-blue-600" />
-        <AlertDescription className="text-blue-800">
-          La <strong>identificación</strong> es obligatoria para evitar confusión de clientes y equipos. 
-          Clientes con el mismo nombre pueden causar errores operativos.
-        </AlertDescription>
-      </Alert>
+      {cliente && (
+        <Alert className="bg-amber-50 border-amber-200">
+          <AlertCircle className="w-4 h-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            La edición de clientes está <strong>temporalmente deshabilitada</strong> mientras se integra el endpoint de actualización en el backend.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {apiError && (
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertDescription className="text-red-800">{apiError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -149,23 +121,19 @@ export default function FormularioCliente({
             onChange={(e) => handleFieldChange('nombre_completo', e.target.value)}
             placeholder="Nombre completo del cliente"
             required
+            disabled={!!cliente}
           />
         </div>
 
         <div className="space-y-2">
           <Label>Identificación (Cédula/Pasaporte/RUT) *</Label>
-          <div className="relative">
-            <Input
-              value={formData.identificacion}
-              onChange={(e) => handleIdentificacionChange(e.target.value)}
-              placeholder="ID único del cliente"
-              required
-              disabled={!!cliente}
-            />
-            {checking && (
-              <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-3 text-slate-400" />
-            )}
-          </div>
+          <Input
+            value={formData.identificacion}
+            onChange={(e) => { handleFieldChange('identificacion', e.target.value); }}
+            placeholder="ID único del cliente"
+            required
+            disabled={!!cliente}
+          />
           {cliente && (
             <p className="text-xs text-slate-500">
               La identificación no puede modificarse después de crear el cliente
@@ -173,29 +141,6 @@ export default function FormularioCliente({
           )}
         </div>
       </div>
-
-      {clienteExistente && (
-        <Alert className="bg-amber-50 border-amber-200">
-          <AlertCircle className="w-4 h-4 text-amber-600" />
-          <AlertDescription className="text-amber-900">
-            <strong>Este cliente ya existe:</strong> {clienteExistente.nombre_completo}
-            <br />
-            <span className="text-sm">
-              Teléfono: {clienteExistente.telefono} | Email: {clienteExistente.email || 'No registrado'}
-            </span>
-            <div className="mt-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={usarClienteExistente}
-                className="bg-amber-600 hover:bg-amber-700"
-              >
-                Usar este cliente existente
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -272,7 +217,7 @@ export default function FormularioCliente({
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={saving || !!clienteExistente} className="bg-emerald-600">
+        <Button type="submit" disabled={saving || !!cliente} className="bg-emerald-600">
           {saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

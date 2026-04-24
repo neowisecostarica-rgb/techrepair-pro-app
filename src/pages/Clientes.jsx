@@ -47,7 +47,7 @@ function ClientesContent() {
     if (!effectiveOrgId) return [];
 
     const res = await fetch(
-      `https://TU-BACKEND.onrender.com/v1/clients`,
+      `https://techrepairpro-core-1.onrender.com/v1/clients`,
       {
         headers: {
           "Content-Type": "application/json",

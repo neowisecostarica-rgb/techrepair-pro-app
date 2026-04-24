@@ -41,19 +41,29 @@ function ClientesContent() {
     setTimeout(() => setMensajeMotivacion(null), 8000);
   };
 
-  const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({
-      organization_id: effectiveOrgId
-    }),
-    enabled: !!effectiveOrgId,
-  });
+  const { data: clientes = [] } = useQuery({ 
+  queryKey: ['clientes', effectiveOrgId],
+  queryFn: async () => {
+    if (!effectiveOrgId) return [];
 
-  const { data: ordenesCliente = [] } = useQuery({
-    queryKey: ['ordenes-cliente', selectedCliente?.id],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ cliente_id: selectedCliente.id }),
-    enabled: !!selectedCliente,
-  });
+    const res = await fetch(
+      `https://TU-BACKEND.onrender.com/v1/clients`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "x-organization-id": effectiveOrgId,
+        },
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Error cargando clientes desde backend");
+    }
+
+    return res.json();
+  },
+  enabled: !!effectiveOrgId,
+});
 
 
 

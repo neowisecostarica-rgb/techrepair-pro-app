@@ -3,18 +3,23 @@
  *
  * Centraliza todas las llamadas al backend externo (techrepairpro-core).
  * Inyecta automáticamente:
- *   - Authorization: Bearer <token>   (obtenido desde localStorage de Base44)
+ *   - Authorization: Bearer <token>   (obtenido desde appParams o localStorage)
  *   - x-organization-id: <orgId>      (efectiveOrgId del tenant)
  */
+
+import { appParams } from '@/lib/app-params';
 
 const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
 
 /**
- * Obtiene el token JWT del usuario autenticado desde localStorage de Base44.
- * Base44 SDK almacena el token bajo la clave 'base44_access_token'.
+ * Obtiene el token JWT del usuario autenticado.
+ * Prioriza appParams.token (más confiable), luego localStorage como fallback.
  */
 function getAuthToken() {
-  return localStorage.getItem('base44_access_token') || null;
+  return appParams.token
+    || localStorage.getItem('base44_access_token')
+    || localStorage.getItem('base44_access__token')
+    || null;
 }
 
 /**

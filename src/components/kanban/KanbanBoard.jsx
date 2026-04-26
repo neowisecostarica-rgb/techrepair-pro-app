@@ -9,7 +9,7 @@ import { Loader2, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { base44 } from '@/api/base44Client';
 
-const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
+import { sotFetch } from '@/lib/sotClient';
 
 const COLUMN_TO_DEFAULT_STATUS = {
   PENDIENTE: 'EN_COLA_REVISION',
@@ -30,12 +30,7 @@ export default function KanbanBoard({ onCardClick }) {
     queryKey: ['ordenes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const res = await fetch(`${BACKEND_URL}/v1/work-orders`, {
-        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
-      });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Error cargando órdenes');
-      return resData.data || [];
+      return sotFetch('/v1/work-orders', effectiveOrgId) || [];
     },
     enabled: !!effectiveOrgId,
   });
@@ -44,12 +39,7 @@ export default function KanbanBoard({ onCardClick }) {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const res = await fetch(`${BACKEND_URL}/v1/clients`, {
-        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
-      });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Error cargando clientes');
-      return resData.data || [];
+      return sotFetch('/v1/clients', effectiveOrgId) || [];
     },
     enabled: !!effectiveOrgId,
   });
@@ -58,12 +48,7 @@ export default function KanbanBoard({ onCardClick }) {
     queryKey: ['equipos', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const res = await fetch(`${BACKEND_URL}/v1/equipment`, {
-        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
-      });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Error cargando equipos');
-      return resData.data || [];
+      return sotFetch('/v1/equipment', effectiveOrgId) || [];
     },
     enabled: !!effectiveOrgId,
   });

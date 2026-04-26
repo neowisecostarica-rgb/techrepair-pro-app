@@ -26,6 +26,7 @@ import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
 import AgendarDesdeOT from '@/components/ot/AgendarDesdeOT';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { sotFetch } from '@/lib/sotClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IniciarActividad from '@/components/actividades/IniciarActividad';
 import ActividadActiva from '@/components/actividades/ActividadActiva';
@@ -100,12 +101,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['ordenes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const res = await fetch(`${BACKEND_URL}/v1/work-orders`, {
-        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
-      });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Error cargando órdenes');
-      return resData.data || [];
+      return sotFetch('/v1/work-orders', effectiveOrgId) || [];
     },
     enabled: !!effectiveOrgId,
   });
@@ -135,12 +131,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const res = await fetch(`${BACKEND_URL}/v1/clients`, {
-        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
-      });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Error cargando clientes');
-      return resData.data || [];
+      return sotFetch('/v1/clients', effectiveOrgId) || [];
     },
     enabled: !!effectiveOrgId,
   });
@@ -149,12 +140,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['equipos', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const res = await fetch(`${BACKEND_URL}/v1/equipment`, {
-        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
-      });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Error cargando equipos');
-      return resData.data || [];
+      return sotFetch('/v1/equipment', effectiveOrgId) || [];
     },
     enabled: !!effectiveOrgId,
   });
@@ -272,12 +258,8 @@ function OrdenesTrabajoContent() {
     // Si se está creando equipo inline, crearlo primero en el backend SOT
     if (showInlineEquipo && !selectedEquipoId) {
       try {
-        const res = await fetch(`${BACKEND_URL}/v1/equipment`, {
+        const newEquipo = await sotFetch('/v1/equipment', effectiveOrgId, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-organization-id': effectiveOrgId
-          },
           body: JSON.stringify({
             client_id: selectedClienteId,
             type: newEquipoData.tipo,
@@ -286,9 +268,7 @@ function OrdenesTrabajoContent() {
             serial_number: newEquipoData.serie_ingreso || undefined
           })
         });
-        const resData = await res.json();
-        if (!res.ok) throw new Error(resData.error || 'Error al crear equipo');
-        equipoIdFinal = resData.data.id;
+        equipoIdFinal = newEquipo.id;
         queryClient.invalidateQueries({ queryKey: ['equipos'] });
       } catch (error) {
         alert('Error al crear el equipo: ' + error.message);

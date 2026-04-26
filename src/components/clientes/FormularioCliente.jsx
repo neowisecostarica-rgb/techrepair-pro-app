@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
+import { sotFetch } from '@/lib/sotClient';
 
 /**
  * Formulario canónico de cliente - ÚNICO componente para crear/editar clientes
@@ -73,12 +73,8 @@ export default function FormularioCliente({
 
     setSaving(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/v1/clients`, {
+      const newClient = await sotFetch('/v1/clients', efectiveOrgId, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-organization-id': efectiveOrgId
-        },
         body: JSON.stringify({
           full_name: formData.nombre_completo,
           phone: formData.telefono,
@@ -88,14 +84,6 @@ export default function FormularioCliente({
           notes: formData.notas
         })
       });
-
-      const resData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(resData.error || `Error ${response.status} del servidor`);
-      }
-
-      const newClient = resData.data;
       onGuardar(newClient);
     } catch (error) {
       console.error('Error creando cliente en backend:', error);

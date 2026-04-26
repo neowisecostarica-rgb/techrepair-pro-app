@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-const BACKEND_URL = 'https://TU-BACKEND.onrender.com';
+const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
 
 /**
  * Formulario canónico de cliente - ÚNICO componente para crear/editar clientes
@@ -66,27 +66,37 @@ export default function FormularioCliente({
       return;
     }
 
+    if (!efectiveOrgId) {
+      setApiError('Organization no definida. Intenta recargar la página.');
+      return;
+    }
+
     setSaving(true);
     try {
       const response = await fetch(`${BACKEND_URL}/v1/clients`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-organization-id': efectiveOrgId || ''
+          'x-organization-id': efectiveOrgId
         },
         body: JSON.stringify({
           full_name: formData.nombre_completo,
-          phone: formData.telefono
+          phone: formData.telefono,
+          email: formData.email,
+          id_number: formData.identificacion,
+          client_type: formData.tipo_cliente,
+          notes: formData.notas
         })
       });
 
+      const resData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Error ${response.status} del servidor`);
+        throw new Error(resData.error || `Error ${response.status} del servidor`);
       }
 
-      const clienteGuardado = await response.json();
-      onGuardar(clienteGuardado);
+      const newClient = resData.data;
+      onGuardar(newClient);
     } catch (error) {
       console.error('Error creando cliente en backend:', error);
       setApiError('Error al crear cliente: ' + error.message);

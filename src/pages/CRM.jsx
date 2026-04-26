@@ -31,15 +31,15 @@ function CRMContent() {
   const [statusFilter, setStatusFilter] = useState('all');
   const queryClient = useQueryClient();
 
-  if (status !== 'ready') {
-    return <div className="p-6 text-center">Cargando CRM...</div>;
-  }
-
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['leads', effectiveOrgId],
     queryFn: () => base44.entities.Lead.filter({ organization_id: effectiveOrgId }),
     enabled: !!effectiveOrgId,
   });
+
+  if (status !== 'ready') {
+    return <div className="p-6 text-center">Cargando CRM...</div>;
+  }
 
   const { data: salesUsers = [] } = useQuery({
     queryKey: ['salesUsers', effectiveOrgId],

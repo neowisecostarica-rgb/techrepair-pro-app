@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../components/contexts/AuthContext';
+import { base44 } from '@/api/base44Client';
 
 export default function Home() {
   const navigate = useNavigate();

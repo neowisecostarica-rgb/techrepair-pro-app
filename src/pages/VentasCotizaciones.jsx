@@ -28,6 +28,14 @@ export default function VentasCotizaciones() {
 
 function VentasCotizacionesContent() {
   const { effectiveOrgId, user, userAccount } = useAuthContext();
+  const { data: organization } = useQuery({
+    queryKey: ['org-ventascot', effectiveOrgId],
+    queryFn: async () => {
+      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
+      return orgs[0] || null;
+    },
+    enabled: !!effectiveOrgId,
+  });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [busqueda, setBusqueda] = useState('');

@@ -896,6 +896,10 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
             </div>
 
             <div className="bg-slate-50 p-4 rounded-lg space-y-2">
+              {(() => {
+                const totales = calcularTotales();
+                return (
+                  <>
               <div className="flex justify-between text-sm">
                 <span>Subtotal:</span>
                 <span className="font-medium">₡{totales.subtotal.toLocaleString()}</span>
@@ -920,6 +924,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                   </p>
                 </div>
               )}
+                  </>
+                );
+              })()}
             </div>
 
             <div className="space-y-2">

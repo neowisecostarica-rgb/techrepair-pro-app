@@ -20,7 +20,7 @@ const COLUMN_COUNT_COLORS = {
   FINALIZADO: 'bg-emerald-200 text-emerald-800',
 };
 
-export default function KanbanColumn({ columnId, workOrders, clientes, equipos, onCardClick }) {
+export default function KanbanColumn({ columnId, workOrders, clientes, equipos, tecnicos = [], onCardClick }) {
   const style = COLUMN_STYLES[columnId] || 'bg-slate-50 border-slate-200';
   const title = COLUMN_TITLES[columnId] || columnId;
   const countColor = COLUMN_COUNT_COLORS[columnId] || 'bg-slate-200 text-slate-700';
@@ -54,10 +54,11 @@ export default function KanbanColumn({ columnId, workOrders, clientes, equipos, 
                     className={snapshot.isDragging ? 'rotate-1 shadow-lg ring-2 ring-emerald-400 rounded-xl' : ''}
                   >
                     <WorkOrderCard
-                      ot={ot}
-                      clientes={clientes}
-                      equipos={equipos}
-                      onClick={onCardClick}
+                     ot={ot}
+                     clientes={clientes}
+                     equipos={equipos}
+                     tecnicos={tecnicos}
+                     onClick={onCardClick}
                     />
                   </div>
                 )}

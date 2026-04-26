@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Plus, Search, User, Mail, Phone, Building2, History, MessageSquare, Fil
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
+import { sotFetch } from '@/lib/sotFetch';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
@@ -44,15 +45,7 @@ function ClientesContent() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const res = await fetch('https://techrepairpro-core-1.onrender.com/v1/clients', {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-organization-id': effectiveOrgId,
-        },
-      });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Error cargando clientes desde backend');
-      return resData.data || [];
+      return sotFetch('/v1/clients', effectiveOrgId) ?? [];
     },
     enabled: !!effectiveOrgId,
   });

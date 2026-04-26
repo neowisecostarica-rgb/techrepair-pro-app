@@ -1,4 +1,4 @@
-const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
+import { sotFetch } from '@/lib/sotFetch';
 
 /**
  * HELPER CENTRAL ÚNICO PARA CREAR ÓRDENES DE TRABAJO — SOT: PostgreSQL
@@ -8,16 +8,8 @@ const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
  * @returns {Promise<Object>} La OT creada
  */
 export async function crearOrdenTrabajo(datosOT, organizationId) {
-  if (!organizationId) {
-    throw new Error('organization_id es requerido para crear una OT');
-  }
-
-  const response = await fetch(`${BACKEND_URL}/v1/work-orders`, {
+  return sotFetch('/v1/work-orders', organizationId, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-organization-id': organizationId
-    },
     body: JSON.stringify({
       client_id: datosOT.cliente_id,
       equipment_id: datosOT.equipo_id,
@@ -25,12 +17,4 @@ export async function crearOrdenTrabajo(datosOT, organizationId) {
       priority: datosOT.prioridad || 'normal'
     })
   });
-
-  const resData = await response.json();
-
-  if (!response.ok) {
-    throw new Error(resData.error || `Error ${response.status} al crear OT`);
-  }
-
-  return resData.data;
 }

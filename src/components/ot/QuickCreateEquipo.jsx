@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-
-const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
+import { sotFetch } from '@/lib/sotFetch';
 
 export default function QuickCreateEquipo({ open, onOpenChange, organizationId, clienteId, onCreated }) {
   const [tipo, setTipo] = useState('');
@@ -30,29 +29,16 @@ export default function QuickCreateEquipo({ open, onOpenChange, organizationId, 
 
     setSaving(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/v1/equipment`, {
+      const newEquipo = await sotFetch('/v1/equipment', organizationId, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-organization-id': organizationId
-        },
         body: JSON.stringify({
           client_id: clienteId,
           type: tipo,
           brand: marca.trim(),
           model: modelo.trim() || undefined,
           serial_number: serie.trim() || undefined,
-          notes: undefined
         })
       });
-
-      const resData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(resData.error || `Error ${response.status}`);
-      }
-
-      const newEquipo = resData.data;
       onCreated(newEquipo);
       setTipo('');
       setMarca('');

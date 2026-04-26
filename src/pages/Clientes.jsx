@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,29 +40,22 @@ function ClientesContent() {
     setTimeout(() => setMensajeMotivacion(null), 8000);
   };
 
-  const { data: clientes = [] } = useQuery({ 
-  queryKey: ['clientes', effectiveOrgId],
-  queryFn: async () => {
-    if (!effectiveOrgId) return [];
-
-    const res = await fetch(
-      `https://techrepairpro-core-1.onrender.com/v1/clients`,
-      {
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes', effectiveOrgId],
+    queryFn: async () => {
+      if (!effectiveOrgId) return [];
+      const res = await fetch('https://techrepairpro-core-1.onrender.com/v1/clients', {
         headers: {
-          "Content-Type": "application/json",
-          "x-organization-id": effectiveOrgId,
+          'Content-Type': 'application/json',
+          'x-organization-id': effectiveOrgId,
         },
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error("Error cargando clientes desde backend");
-    }
-
-    return res.json();
-  },
-  enabled: !!effectiveOrgId,
-});
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Error cargando clientes desde backend');
+      return resData.data || [];
+    },
+    enabled: !!effectiveOrgId,
+  });
 
 
 

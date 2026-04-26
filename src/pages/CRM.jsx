@@ -34,12 +34,8 @@ function CRMContent() {
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['leads', effectiveOrgId],
     queryFn: () => base44.entities.Lead.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId,
+    enabled: !!effectiveOrgId && status === 'ready',
   });
-
-  if (status !== 'ready') {
-    return <div className="p-6 text-center">Cargando CRM...</div>;
-  }
 
   const { data: salesUsers = [] } = useQuery({
     queryKey: ['salesUsers', effectiveOrgId],
@@ -163,6 +159,10 @@ function CRMContent() {
   };
 
   const getLeadsByStatus = (status) => leads.filter(l => l.status === status).length;
+
+  if (status !== 'ready') {
+    return <div className="p-6 text-center">Cargando CRM...</div>;
+  }
 
   if (isLoading) {
     return <div className="max-w-7xl mx-auto p-6 text-center">Cargando leads...</div>;

@@ -14,7 +14,9 @@ import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2 } from 'lucide
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
+import { useUserAccount } from '@/components/hooks/useOrgData';
+
+const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
 import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 import WizardPreDiagnostico from '@/components/prediagnostico/WizardPreDiagnostico';
 import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';
@@ -30,7 +32,7 @@ import ActividadActiva from '@/components/actividades/ActividadActiva';
 import ListaActividades from '@/components/actividades/ListaActividades';
 import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
-import { generarCodigoOT, calcularFechaEntregaEstimada } from '@/components/ot/utils/generarCodigoOT';
+// generarCodigoOT removido — código generado por backend SOT
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { Play } from 'lucide-react';
 import EntregarOT from '@/components/ot/EntregarOT';
@@ -102,11 +104,17 @@ function OrdenesTrabajoContent() {
   const [estadosPago, setEstadosPago] = useState({});
 
   const { data: ordenes = [] } = useQuery({
-    queryKey: ['ordenes', userAccount?.organization_id],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({
-      organization_id: userAccount.organization_id
-    }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['ordenes', effectiveOrgId],
+    queryFn: async () => {
+      if (!effectiveOrgId) return [];
+      const res = await fetch(`${BACKEND_URL}/v1/work-orders`, {
+        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Error cargando órdenes');
+      return resData.data || [];
+    },
+    enabled: !!effectiveOrgId,
   });
 
   // P0.1: Cargar estados de pago para OTs visibles
@@ -131,46 +139,52 @@ function OrdenesTrabajoContent() {
   }, [ordenes, effectiveOrgId]);
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes', userAccount?.organization_id],
-    queryFn: () => base44.entities.Cliente.filter({
-      organization_id: userAccount.organization_id
-    }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['clientes', effectiveOrgId],
+    queryFn: async () => {
+      if (!effectiveOrgId) return [];
+      const res = await fetch(`${BACKEND_URL}/v1/clients`, {
+        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Error cargando clientes');
+      return resData.data || [];
+    },
+    enabled: !!effectiveOrgId,
   });
 
   const { data: equipos = [] } = useQuery({
-    queryKey: ['equipos', userAccount?.organization_id],
-    queryFn: () => base44.entities.Equipo.filter({
-      organization_id: userAccount.organization_id
-    }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['equipos', effectiveOrgId],
+    queryFn: async () => {
+      if (!effectiveOrgId) return [];
+      const res = await fetch(`${BACKEND_URL}/v1/equipment`, {
+        headers: { 'Content-Type': 'application/json', 'x-organization-id': effectiveOrgId }
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Error cargando equipos');
+      return resData.data || [];
+    },
+    enabled: !!effectiveOrgId,
   });
 
+  // branches y tecnicos aún desde base44 (no migrados)
   const { data: branches = [] } = useQuery({
-    queryKey: ['branches', userAccount?.organization_id],
-    queryFn: () => base44.entities.Branch.filter({
-      organization_id: userAccount.organization_id
-    }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['branches', effectiveOrgId],
+    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
   });
 
   const { data: diagnosticos = [] } = useQuery({
-    queryKey: ['diagnosticos', userAccount?.organization_id],
-    queryFn: () => base44.entities.Diagnostico.filter({
-      organization_id: userAccount.organization_id
-    }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['diagnosticos', effectiveOrgId],
+    queryFn: () => base44.entities.Diagnostico.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
   });
 
   const { data: ventas = [] } = useQuery({
-    queryKey: ['ventas', userAccount?.organization_id],
-    queryFn: () => base44.entities.Venta.filter({
-      organization_id: userAccount.organization_id
-    }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['ventas', effectiveOrgId],
+    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
   });
 
-  // Query para técnicos (usuarios con rol TECHNICIAN)
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
@@ -178,14 +192,13 @@ function OrdenesTrabajoContent() {
         organization_id: effectiveOrgId,
         active: true
       });
-      return accounts.filter(acc => 
+      return accounts.filter(acc =>
         acc.role === 'TECHNICIAN' || acc.role === 'ORG_ADMIN' || acc.role === 'BRANCH_ADMIN'
       );
     },
     enabled: !!effectiveOrgId,
   });
 
-  // Cargar términos activos
   const { data: terminos = [] } = useQuery({
     queryKey: ['terminos', effectiveOrgId],
     queryFn: () => base44.entities.TerminosYCondiciones.filter({
@@ -203,28 +216,8 @@ function OrdenesTrabajoContent() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Generar código OT
-      const codigoOT = await generarCodigoOT(base44, effectiveOrgId);
-      
-      // Calcular fecha entrega estimada
-      const fechaEstimada = calcularFechaEntregaEstimada(data.prioridad);
-      
-      // FASE 1: Auto-asignación en Starter
-      const organization = await base44.entities.Organization.get(effectiveOrgId);
-      let tecnicoAsignadoId = data.tecnico_asignado_id;
-      
-      if (organization?.plan === 'Starter' && effectiveRole === 'ORG_ADMIN' && !tecnicoAsignadoId) {
-        tecnicoAsignadoId = userAccount.user_id;
-      }
-      
-      // P0.2.b: Usar helper central (crea OT + PreDiagnostico automático)
-      return crearOrdenTrabajo(withOrgId({
-        ...data,
-        codigo_ot: codigoOT,
-        fecha_entrega_estimada: fechaEstimada,
-        fecha_ingreso: new Date().toISOString(),
-        tecnico_asignado_id: tecnicoAsignadoId
-      }, userAccount));
+      if (!effectiveOrgId) throw new Error('Organization no definida');
+      return crearOrdenTrabajo(data, effectiveOrgId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
@@ -259,31 +252,12 @@ function OrdenesTrabajoContent() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const ordenAnterior = ordenes.find(o => o.id === id);
-      
-      // P0-3: Validación ownership - NO permitir update de OT de otro tenant
-      if (ordenAnterior && ordenAnterior.organization_id !== effectiveOrgId) {
-        throw new Error('No autorizado: Esta orden pertenece a otra organización');
-      }
-      
-      // P0.3: Filtrar campo 'estado' si viene en data - debe usar transicionarEstadoOT
-      if ('estado' in data) {
-        console.warn('P0.3: Intento de cambio directo de estado bloqueado. Use transicionarEstadoOT.');
-        delete data.estado;
-      }
-
-      // P0.3: Filtrar campo 'estado_atencion' si viene en data - debe usar cambiarEstadoAtencionOT
-      if ('estado_atencion' in data) {
-        console.warn('P0.3: Intento de cambio directo de estado_atencion bloqueado. Use cambiarEstadoAtencionOT.');
-        delete data.estado_atencion;
-      }
-      
-      // P0: Solo permitir updates de campos no críticos (observaciones, contacto, etc.)
-      return await base44.entities.OrdenTrabajo.update(id, data);
+      // Edición completa de OT deshabilitada temporalmente — solo status es permitido via transicionarEstadoOT
+      alert('Edición no disponible temporalmente');
+      return null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
-      queryClient.invalidateQueries({ queryKey: ['citas'] });
       setShowModal(false);
       setEditingOT(null);
       setSelectedOT(null);
@@ -302,18 +276,26 @@ function OrdenesTrabajoContent() {
     const formData = new FormData(e.target);
     let equipoIdFinal = selectedEquipoId;
 
-    // Si se está creando equipo inline, crearlo primero
+    // Si se está creando equipo inline, crearlo primero en el backend SOT
     if (showInlineEquipo && !selectedEquipoId) {
       try {
-        const newEquipo = await base44.entities.Equipo.create({
-          organization_id: effectiveOrgId,
-          cliente_id: selectedClienteId,
-          tipo: newEquipoData.tipo,
-          marca: newEquipoData.marca,
-          modelo: newEquipoData.modelo || undefined,
-          estado_fisico: 'bueno'
+        const res = await fetch(`${BACKEND_URL}/v1/equipment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-organization-id': effectiveOrgId
+          },
+          body: JSON.stringify({
+            client_id: selectedClienteId,
+            type: newEquipoData.tipo,
+            brand: newEquipoData.marca,
+            model: newEquipoData.modelo || undefined,
+            serial_number: newEquipoData.serie_ingreso || undefined
+          })
         });
-        equipoIdFinal = newEquipo.id;
+        const resData = await res.json();
+        if (!res.ok) throw new Error(resData.error || 'Error al crear equipo');
+        equipoIdFinal = resData.data.id;
         queryClient.invalidateQueries({ queryKey: ['equipos'] });
       } catch (error) {
         alert('Error al crear el equipo: ' + error.message);
@@ -353,10 +335,7 @@ function OrdenesTrabajoContent() {
   };
 
   const handleCopiarLink = async (orden) => {
-    // Obtener organization para white-label
-    const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
-    const organization = orgs[0];
-    const baseUrl = organization?.public_base_url || window.location.origin;
+    const baseUrl = window.location.origin;
     const link = `${baseUrl}${createPageUrl('PortalCliente')}?token=${orden.public_access_token}`;
     navigator.clipboard.writeText(link);
     alert('Link copiado al portapapeles');
@@ -387,133 +366,15 @@ function OrdenesTrabajoContent() {
   };
 
   const handleReasignar = async () => {
-    if (!reasignarOT || !nuevoTecnicoId || !motivoReasignacion.trim()) {
-      alert('Debes seleccionar un técnico y especificar el motivo');
-      return;
-    }
-
-    if (reasignarOT.tecnico_asignado_id === nuevoTecnicoId) {
-      alert('El técnico seleccionado ya está asignado a esta OT');
-      return;
-    }
-
-    try {
-      const tecnicoAnteriorId = reasignarOT.tecnico_asignado_id;
-
-      // 1. Cerrar/pausar actividad técnica actual si existe
-      if (tecnicoAnteriorId) {
-        const actividadesActivas = await base44.entities.ActividadTecnica.filter({
-          organization_id: effectiveOrgId,
-          orden_trabajo_id: reasignarOT.id,
-          tecnico_id: tecnicoAnteriorId,
-          estado: 'en_progreso',
-          soft_deleted: false
-        });
-
-        for (const actividad of actividadesActivas) {
-          await base44.entities.ActividadTecnica.update(actividad.id, {
-            estado: 'finalizada',
-            ended_at: new Date().toISOString(),
-            duracion_minutos: Math.round(
-              (new Date() - new Date(actividad.started_at)) / 60000
-            ),
-            resultado: 'incompleto',
-            notas: `Actividad cerrada por reasignación administrativa. Motivo: ${motivoReasignacion}`
-          });
-        }
-      }
-
-      // 2. Actualizar OT con nuevo técnico
-      await base44.entities.OrdenTrabajo.update(reasignarOT.id, {
-        tecnico_asignado_id: nuevoTecnicoId,
-        ultima_actividad: `Reasignada administrativamente. Motivo: ${motivoReasignacion}`,
-        ultima_actividad_at: new Date().toISOString()
-      });
-
-      // 3. Auditoría
-      await base44.entities.SuperAdminAudit.create({
-        super_admin_id: user?.id || 'system',
-        super_admin_email: user?.email || 'system',
-        action: 'ot_reasignacion',
-        target_organization_id: effectiveOrgId,
-        context: `OT ${reasignarOT.codigo_ot} reasignada de técnico ${tecnicoAnteriorId || 'sin asignar'} a ${nuevoTecnicoId}. Motivo: ${motivoReasignacion}`
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
-      queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
-      setShowReasignar(false);
-      setReasignarOT(null);
-      setNuevoTecnicoId('');
-      setMotivoReasignacion('');
-      alert('OT reasignada correctamente');
-    } catch (error) {
-      alert('Error al reasignar: ' + error.message);
-    }
+    // Reasignación de técnico aún no migrada al SOT externo
+    alert('Edición no disponible temporalmente');
   };
 
   const handleCobrarTrabajo = async (orden) => {
-    // Verificar que exista diagnóstico completado
-    const diagnostico = diagnosticos.find(d => 
-      d.orden_trabajo_id === orden.id && 
-      d.estado_diagnostico === 'completado'
-    );
-
-    if (!diagnostico) {
-      alert('No hay diagnóstico completado para esta orden');
-      return;
-    }
-
-    // Verificar que no exista venta ya
-    const ventaExistente = ventas.find(v => v.referencia_ot_id === orden.id);
-    if (ventaExistente && ventaExistente.estado === 'pagada') {
-      alert('Esta orden ya fue cobrada');
-      return;
-    }
-
-    // Crear venta en borrador con items del diagnóstico
-    const ventaData = withOrgId({
-      branch_id: orden.branch_id,
-      cliente_id: orden.cliente_id,
-      origen_venta: 'taller',
-      referencia_ot_id: orden.id,
-      referencia_diagnostico_id: diagnostico.id,
-      total: diagnostico.propuesta_precio_total || 0,
-      subtotal: (diagnostico.propuesta_precio_total || 0) / 1.13,
-      impuesto: (diagnostico.propuesta_precio_total || 0) * 0.13 / 1.13,
-      estado: 'borrador',
-      created_by_user_id: user?.id,
-    }, userAccount);
-
-    try {
-      const venta = await base44.entities.Venta.create(ventaData);
-      
-      // Crear items desde propuesta_precio_detalle si existe
-      if (diagnostico.propuesta_precio_detalle && Array.isArray(diagnostico.propuesta_precio_detalle)) {
-        for (const item of diagnostico.propuesta_precio_detalle) {
-          await base44.entities.VentaItem.create(withOrgId({
-            venta_id: venta.id,
-            tipo: 'servicio', // Asumir servicio por defecto
-            referencia_id: null,
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precio_unitario: item.precio_unitario,
-            subtotal: item.subtotal
-          }, userAccount));
-        }
-      }
-
-      // Redirigir al POS con la venta precargada
-      navigate(createPageUrl('PuntoVenta'), { 
-        state: { 
-          venta: {
-            ...venta,
-            items: diagnostico.propuesta_precio_detalle || []
-          }
-        } 
-      });
-    } catch (error) {
-      alert('Error al crear venta: ' + error.message);
-    }
+    // Cobro de trabajo: redirige al POS con referencia a la OT
+    navigate(createPageUrl('PuntoVenta'), {
+      state: { referencia_ot_id: orden.id }
+    });
   };
 
   return (
@@ -1424,7 +1285,6 @@ function OrdenesTrabajoContent() {
           <FormularioCliente
             efectiveOrgId={effectiveOrgId}
             onGuardar={(newCliente) => {
-              // P0.1: Cierre automático y feedback
               setShowQuickCreateCliente(false);
               queryClient.invalidateQueries({ queryKey: ['clientes'] });
               setSelectedClienteId(newCliente.id);

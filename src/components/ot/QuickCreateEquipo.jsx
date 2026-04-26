@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+
+const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
 
 export default function QuickCreateEquipo({ open, onOpenChange, organizationId, clienteId, onCreated }) {
   const [tipo, setTipo] = useState('');
@@ -16,25 +17,42 @@ export default function QuickCreateEquipo({ open, onOpenChange, organizationId, 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!tipo || !marca.trim()) {
       alert('Tipo y marca son requeridos');
       return;
     }
 
-    setSaving(true);
+    if (!organizationId) {
+      alert('Organization no definida');
+      return;
+    }
 
+    setSaving(true);
     try {
-      const newEquipo = await base44.entities.Equipo.create({
-        organization_id: organizationId,
-        cliente_id: clienteId,
-        tipo,
-        marca: marca.trim(),
-        modelo: modelo.trim() || undefined,
-        serie: serie.trim() || undefined,
-        estado_fisico: 'bueno'
+      const response = await fetch(`${BACKEND_URL}/v1/equipment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-organization-id': organizationId
+        },
+        body: JSON.stringify({
+          client_id: clienteId,
+          type: tipo,
+          brand: marca.trim(),
+          model: modelo.trim() || undefined,
+          serial_number: serie.trim() || undefined,
+          notes: undefined
+        })
       });
 
+      const resData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resData.error || `Error ${response.status}`);
+      }
+
+      const newEquipo = resData.data;
       onCreated(newEquipo);
       setTipo('');
       setMarca('');

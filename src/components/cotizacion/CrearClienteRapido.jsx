@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserPlus, AlertCircle } from 'lucide-react';
-import { withOrgId } from '@/components/hooks/useOrgData';
 
-export default function CrearClienteRapido({ open, onClose, onClienteCreado, userAccount, clientes = [] }) {
+const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
+
+export default function CrearClienteRapido({ open, onClose, onClienteCreado, effectiveOrgId, clientes = [] }) {
   const [formData, setFormData] = useState({
     nombre_completo: '',
     telefono: '',
@@ -18,20 +18,8 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, use
     direccion: ''
   });
   const [advertencia, setAdvertencia] = useState(null);
+  const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
-
-  const crearClienteMutation = useMutation({
-    mutationFn: (data) => base44.entities.Cliente.create(withOrgId({
-      ...data,
-      tipo_cliente: 'individual'
-    }, userAccount)),
-    onSuccess: (nuevoCliente) => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      queryClient.invalidateQueries({ queryKey: ['clientes-cot'] });
-      onClienteCreado(nuevoCliente);
-      handleClose();
-    },
-  });
 
   const handleClose = () => {
     setFormData({
@@ -48,23 +36,19 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, use
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
-    // Advertir si el teléfono ya existe
     if (field === 'telefono' && value.length >= 8) {
       const existente = clientes.find(c => c.telefono === value);
       if (existente) {
-        setAdvertencia({
-          tipo: 'telefono',
-          cliente: existente
-        });
+        setAdvertencia({ tipo: 'telefono', cliente: existente });
       } else {
         setAdvertencia(null);
       }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.nombre_completo || !formData.telefono) {
       alert('Nombre y teléfono son obligatorios');
       return;
@@ -75,7 +59,45 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, use
       return;
     }
 
-    crearClienteMutation.mutate(formData);
+    if (!effectiveOrgId) {
+      alert('Organization no definida');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/v1/clients`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-organization-id': effectiveOrgId
+        },
+        body: JSON.stringify({
+          full_name: formData.nombre_completo,
+          phone: formData.telefono,
+          email: formData.email,
+          id_number: formData.identificacion,
+          client_type: 'individual',
+          notes: formData.direccion
+        })
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resData.error || `Error ${response.status}`);
+      }
+
+      const nuevoCliente = resData.data;
+      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['clientes-cot'] });
+      onClienteCreado(nuevoCliente);
+      handleClose();
+    } catch (error) {
+      alert('Error al crear cliente: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const seleccionarExistente = () => {
@@ -169,12 +191,12 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, use
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
-              disabled={crearClienteMutation.isPending}
+            <Button
+              type="submit"
+              disabled={saving}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {crearClienteMutation.isPending ? 'Creando...' : 'Crear Cliente'}
+              {saving ? 'Creando...' : 'Crear Cliente'}
             </Button>
           </div>
         </form>

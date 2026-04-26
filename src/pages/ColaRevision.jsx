@@ -8,11 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Inbox, UserPlus, Clock } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Inbox, UserPlus } from 'lucide-react';
 import { useUserAccount } from '@/components/hooks/useOrgData';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
+import WorkOrderCard from '@/components/kanban/WorkOrderCard';
+
+const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
 
 export default function ColaRevision() {
   const [showAsignarModal, setShowAsignarModal] = useState(false);
@@ -21,50 +22,63 @@ export default function ColaRevision() {
   const queryClient = useQueryClient();
   const { userAccount } = useUserAccount();
 
-  const { data: ordenesCola = [] } = useQuery({
-    queryKey: ['ordenes-cola', userAccount?.organization_id],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({
-      organization_id: userAccount.organization_id,
-      estado: 'EN_COLA_REVISION'
-    }),
-    enabled: !!userAccount?.organization_id,
+  const orgId = userAccount?.organization_id;
+
+  const { data: todasOrdenes = [] } = useQuery({
+    queryKey: ['ordenes', orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const res = await fetch(`${BACKEND_URL}/v1/work-orders`, {
+        headers: { 'Content-Type': 'application/json', 'x-organization-id': orgId }
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Error cargando órdenes');
+      return resData.data || [];
+    },
+    enabled: !!orgId,
   });
 
-  const { data: ordenesAsignadas = [] } = useQuery({
-    queryKey: ['ordenes-asignadas', userAccount?.organization_id],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({
-      organization_id: userAccount.organization_id,
-      estado: 'ASIGNADA'
-    }),
-    enabled: !!userAccount?.organization_id,
-  });
+  const ordenesCola = todasOrdenes.filter(o => o.estado === 'EN_COLA_REVISION');
+  const ordenesAsignadas = todasOrdenes.filter(o => o.estado === 'ASIGNADA');
 
   const { data: tecnicos = [] } = useQuery({
-    queryKey: ['tecnicos', userAccount?.organization_id],
+    queryKey: ['tecnicos', orgId],
     queryFn: async () => {
       const accounts = await base44.entities.UserAccount.filter({
-        organization_id: userAccount.organization_id,
+        organization_id: orgId,
         role: 'TECHNICIAN'
       });
       return accounts;
     },
-    enabled: !!userAccount?.organization_id,
+    enabled: !!orgId,
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes', userAccount?.organization_id],
-    queryFn: () => base44.entities.Cliente.filter({
-      organization_id: userAccount.organization_id
-    }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['clientes', orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const res = await fetch(`${BACKEND_URL}/v1/clients`, {
+        headers: { 'Content-Type': 'application/json', 'x-organization-id': orgId }
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Error cargando clientes');
+      return resData.data || [];
+    },
+    enabled: !!orgId,
   });
 
   const { data: equipos = [] } = useQuery({
-    queryKey: ['equipos', userAccount?.organization_id],
-    queryFn: () => base44.entities.Equipo.filter({
-      organization_id: userAccount.organization_id
-    }),
-    enabled: !!userAccount?.organization_id,
+    queryKey: ['equipos', orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const res = await fetch(`${BACKEND_URL}/v1/equipment`, {
+        headers: { 'Content-Type': 'application/json', 'x-organization-id': orgId }
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Error cargando equipos');
+      return resData.data || [];
+    },
+    enabled: !!orgId,
   });
 
   const asignarMutation = useMutation({
@@ -77,8 +91,7 @@ export default function ColaRevision() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ordenes-cola'] });
-      queryClient.invalidateQueries({ queryKey: ['ordenes-asignadas'] });
+      queryClient.invalidateQueries({ queryKey: ['ordenes', orgId] });
       setShowAsignarModal(false);
       setSelectedOT(null);
       setTecnicoSeleccionado('');
@@ -92,12 +105,7 @@ export default function ColaRevision() {
 
   const getEquipoInfo = (equipoId) => {
     const equipo = equipos.find(e => e.id === equipoId);
-    return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';
-  };
-
-  const getTecnicoName = (tecnicoId) => {
-    const tecnico = tecnicos.find(t => t.user_id === tecnicoId);
-    return tecnico?.user_email || 'Desconocido';
+    return equipo ? `${equipo.marca} ${equipo.modelo || ''}`.trim() : 'Equipo desconocido';
   };
 
   const handleAsignar = (orden) => {
@@ -130,53 +138,24 @@ export default function ColaRevision() {
         </div>
 
         <div className="grid gap-4">
-          {ordenesCola.map((orden) => (
-            <Card key={orden.id} className="border-0 shadow-md hover:shadow-xl transition-all">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-slate-500 to-slate-700 rounded-xl flex items-center justify-center text-white font-bold">
-                        <Clock className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
-                        <p className="text-sm text-slate-600 font-medium">
-                          {orden.motivo_ingreso}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {getEquipoInfo(orden.equipo_id)}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          Ingreso: {format(new Date(orden.fecha_ingreso || orden.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Badge className="bg-slate-100 text-slate-700 border-0">
-                        EN COLA
-                      </Badge>
-                      <Badge className={`${
-                        orden.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
-                        orden.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
-                        'bg-slate-100 text-slate-700'
-                      } border-0 capitalize`}>
-                        {orden.prioridad}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={() => handleAsignar(orden)}
-                    className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Asignar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          {ordenesCola.map((orden, index) => (
+            <div key={orden.id} className="flex items-center gap-3">
+              <div className="flex-1">
+                <WorkOrderCard
+                  ot={orden}
+                  index={index}
+                  clientes={clientes}
+                  equipos={equipos}
+                />
+              </div>
+              <Button
+                onClick={() => handleAsignar(orden)}
+                className="bg-gradient-to-r from-emerald-500 to-blue-500 shrink-0"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Asignar
+              </Button>
+            </div>
           ))}
 
           {ordenesCola.length === 0 && (
@@ -199,45 +178,14 @@ export default function ColaRevision() {
         </div>
 
         <div className="grid gap-4">
-          {ordenesAsignadas.map((orden) => (
-            <Card key={orden.id} className="border-0 shadow-md">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center text-white font-bold">
-                        <UserPlus className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
-                        <p className="text-sm text-slate-600 font-medium">
-                          {orden.motivo_ingreso}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {getEquipoInfo(orden.equipo_id)}
-                        </p>
-                        <p className="text-xs text-emerald-600 font-medium">
-                          Técnico: {getTecnicoName(orden.tecnico_asignado_id)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Badge className="bg-blue-100 text-blue-700 border-0">
-                        ASIGNADA
-                      </Badge>
-                      <Badge className={`${
-                        orden.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
-                        orden.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
-                        'bg-slate-100 text-slate-700'
-                      } border-0 capitalize`}>
-                        {orden.prioridad}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {ordenesAsignadas.map((orden, index) => (
+            <WorkOrderCard
+              key={orden.id}
+              ot={orden}
+              index={index}
+              clientes={clientes}
+              equipos={equipos}
+            />
           ))}
 
           {ordenesAsignadas.length === 0 && (

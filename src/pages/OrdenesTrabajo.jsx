@@ -39,6 +39,7 @@ import EntregarOT from '@/components/ot/EntregarOT';
 import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { crearOrdenTrabajo } from '@/components/ot/crearOrdenTrabajo';
+import KanbanBoard from '@/components/kanban/KanbanBoard';
 
 import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 const estadoConfig = WORK_ORDER_STATUSES;
@@ -64,6 +65,7 @@ function OrdenesTrabajoContent() {
   const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
   const [showCotizacion, setShowCotizacion] = useState(false);
   const [cotizacionOT, setCotizacionOT] = useState(null);
+  const [vistaActiva, setVistaActiva] = useState('lista');
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showQuickCreateCliente, setShowQuickCreateCliente] = useState(false);
@@ -376,14 +378,38 @@ function OrdenesTrabajoContent() {
           <h1 className="text-4xl font-bold text-slate-900 mb-2">Órdenes de Trabajo</h1>
           <p className="text-slate-500">Gestión completa de reparaciones</p>
         </div>
-        <Button
-          onClick={() => { setEditingOT(null); setShowModal(true); }}
-          className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Nueva OT
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant={vistaActiva === 'lista' ? 'default' : 'outline'}
+            onClick={() => setVistaActiva('lista')}
+            size="sm"
+          >
+            Lista
+          </Button>
+          <Button
+            variant={vistaActiva === 'kanban' ? 'default' : 'outline'}
+            onClick={() => setVistaActiva('kanban')}
+            size="sm"
+          >
+            Kanban
+          </Button>
+          <Button
+            onClick={() => { setEditingOT(null); setShowModal(true); }}
+            className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Nueva OT
+          </Button>
+        </div>
       </div>
+
+      {/* Vista Kanban */}
+      {vistaActiva === 'kanban' && (
+        <KanbanBoard onCardClick={(ot) => setSelectedOT(ot)} />
+      )}
+
+      {/* Vista Lista */}
+      {vistaActiva === 'lista' && <>
 
       {/* Filtros */}
       <Card className="border-0 shadow-lg">
@@ -480,6 +506,7 @@ function OrdenesTrabajoContent() {
           </Card>
         )}
       </div>
+      </> }{/* fin vistaActiva lista */}
 
       {/* Modal Crear OT */}
       <Dialog open={showModal && !selectedOT} onOpenChange={setShowModal}>

@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Search, User, Mail, Phone, Building2, History, MessageSquare, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '@/components/contexts/AuthContext';
-import { sotFetch } from '@/lib/sotClient';
 import PageGuard from '../components/guards/PageGuard';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
@@ -45,7 +44,15 @@ function ClientesContent() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      return sotFetch('/v1/clients', effectiveOrgId) || [];
+      const res = await fetch('https://techrepairpro-core-1.onrender.com/v1/clients', {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-organization-id': effectiveOrgId,
+        },
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Error cargando clientes desde backend');
+      return resData.data || [];
     },
     enabled: !!effectiveOrgId,
   });

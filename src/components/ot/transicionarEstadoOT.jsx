@@ -1,4 +1,4 @@
-import { sotFetch } from '@/lib/sotClient';
+const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
 
 /**
  * Helper centralizado para transiciones de estado de OrdenTrabajo — SOT: PostgreSQL
@@ -28,10 +28,22 @@ export async function transicionarEstadoOT(otIdOrParams, nuevoEstado, context = 
     throw new Error('organization_id es requerido para transicionar estado de OT');
   }
 
-  return sotFetch(`/v1/work-orders/${otId}/status`, organizationId, {
+  const response = await fetch(`${BACKEND_URL}/v1/work-orders/${otId}/status`, {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-organization-id': organizationId
+    },
     body: JSON.stringify({ status: estadoNuevo })
   });
+
+  const resData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(resData.error || `Error ${response.status} al cambiar estado`);
+  }
+
+  return resData.data;
 }
 
 /**
@@ -48,12 +60,24 @@ export async function cambiarEstadoAtencionOT({
     throw new Error('organization_id es requerido');
   }
 
-  return sotFetch(`/v1/work-orders/${ordenTrabajoId}/attention-status`, effectiveOrgId, {
+  const response = await fetch(`${BACKEND_URL}/v1/work-orders/${ordenTrabajoId}/attention-status`, {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-organization-id': effectiveOrgId
+    },
     body: JSON.stringify({
       attention_status: nuevoEstadoAtencion,
       pause_reason: motivoPausa,
       notes: observaciones
     })
   });
+
+  const resData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(resData.error || `Error ${response.status} al cambiar estado de atención`);
+  }
+
+  return resData.data;
 }

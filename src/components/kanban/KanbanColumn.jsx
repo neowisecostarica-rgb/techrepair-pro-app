@@ -1,5 +1,5 @@
 import React from 'react';
-import { Droppable } from '@hello-pangea/dnd';
+import { Droppable, Draggable } from '@hello-pangea/dnd';
 import WorkOrderCard from './WorkOrderCard';
 
 const COLUMN_STYLES = {
@@ -45,14 +45,23 @@ export default function KanbanColumn({ columnId, workOrders, clientes, equipos, 
               ${snapshot.isDraggingOver ? 'bg-white/60' : ''}`}
           >
             {workOrders.map((ot, index) => (
-              <WorkOrderCard
-                key={ot.id}
-                ot={ot}
-                index={index}
-                clientes={clientes}
-                equipos={equipos}
-                onClick={onCardClick}
-              />
+              <Draggable key={ot.id} draggableId={ot.id} index={index}>
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    className={snapshot.isDragging ? 'rotate-1 shadow-lg ring-2 ring-emerald-400 rounded-xl' : ''}
+                  >
+                    <WorkOrderCard
+                      ot={ot}
+                      clientes={clientes}
+                      equipos={equipos}
+                      onClick={onCardClick}
+                    />
+                  </div>
+                )}
+              </Draggable>
             ))}
             {provided.placeholder}
 

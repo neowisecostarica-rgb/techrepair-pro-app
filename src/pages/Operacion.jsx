@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 import PageGuard from '@/components/guards/PageGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -230,16 +231,7 @@ function OperacionContent() {
     })
     .sort((a, b) => b.carga - a.carga);
 
-  const estadoConfig = {
-    'EN_COLA_REVISION': { color: 'bg-amber-100 text-amber-700', label: 'En Cola' },
-    'ASIGNADA': { color: 'bg-blue-100 text-blue-700', label: 'Asignada' },
-    'EN_REVISION': { color: 'bg-indigo-100 text-indigo-700', label: 'En Revisión' },
-    'DIAGNOSTICADA': { color: 'bg-purple-100 text-purple-700', label: 'Diagnosticada' },
-    'COTIZADA': { color: 'bg-yellow-100 text-yellow-700', label: 'Cotizada' },
-    'EN_REPARACION': { color: 'bg-orange-100 text-orange-700', label: 'En Reparación' },
-    'FINALIZADA': { color: 'bg-emerald-100 text-emerald-700', label: 'Finalizada' },
-    'ENTREGADA': { color: 'bg-green-100 text-green-700', label: 'Entregada' },
-  };
+  const estadoConfig = WORK_ORDER_STATUSES;
 
   const sucursalFijaNombre = isBranchAdmin && branchIdFijo
     ? (sucursales.find(s => s.id === branchIdFijo)?.name || 'Tu Sucursal')

@@ -4,23 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, User, Wrench, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 
 export default function ModalDetalleOT({ ot, cliente, tecnico, onClose }) {
   if (!ot) return null;
 
-  const estadoConfig = {
-    'EN_COLA_REVISION': { color: 'bg-amber-100 text-amber-700', label: 'En Cola Revisión' },
-    'ASIGNADA': { color: 'bg-blue-100 text-blue-700', label: 'Asignada' },
-    'EN_REVISION': { color: 'bg-indigo-100 text-indigo-700', label: 'En Revisión' },
-    'DIAGNOSTICADA': { color: 'bg-purple-100 text-purple-700', label: 'Diagnosticada' },
-    'COTIZADA': { color: 'bg-yellow-100 text-yellow-700', label: 'Cotizada' },
-    'EN_REPARACION': { color: 'bg-orange-100 text-orange-700', label: 'En Reparación' },
-    'FINALIZADA': { color: 'bg-emerald-100 text-emerald-700', label: 'Finalizada' },
-    'ENTREGADA': { color: 'bg-green-100 text-green-700', label: 'Entregada' },
-    'CANCELADA': { color: 'bg-red-100 text-red-700', label: 'Cancelada' },
-  };
-
-  const config = estadoConfig[ot.estado] || { color: 'bg-slate-100 text-slate-700', label: ot.estado };
+  const config = WORK_ORDER_STATUSES[ot.estado] || { color: 'bg-slate-100 text-slate-700', label: ot.estado };
 
   return (
     <Dialog open={!!ot} onOpenChange={onClose}>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,14 +69,6 @@ export default function ColaRevision() {
 
   const asignarMutation = useMutation({
     mutationFn: async ({ id, tecnicoId }) => {
-      // FASE 1: Asignar técnico
-      await base44.entities.OrdenTrabajo.update(id, {
-        tecnico_asignado_id: tecnicoId,
-        estado_atencion: 'PAUSADO'
-      });
-
-      // FASE 1: Transición centralizada de estado
-      const orden = await base44.entities.OrdenTrabajo.get(id);
       await transicionarEstadoOT(id, 'ASIGNADA', {
         userId: userAccount?.user_id,
         userEmail: userAccount?.user_email,

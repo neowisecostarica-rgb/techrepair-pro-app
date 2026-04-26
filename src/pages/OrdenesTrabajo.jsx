@@ -40,17 +40,8 @@ import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { crearOrdenTrabajo } from '@/components/ot/crearOrdenTrabajo';
 
-const estadoConfig = {
-  EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola Revisión' },
-  ASIGNADA: { color: 'bg-blue-100 text-blue-700', label: 'Asignada' },
-  EN_REVISION: { color: 'bg-purple-100 text-purple-700', label: 'En Revisión' },
-  DIAGNOSTICADA: { color: 'bg-yellow-100 text-yellow-700', label: 'Diagnosticada' },
-  COTIZADA: { color: 'bg-orange-100 text-orange-700', label: 'Cotizada' },
-  EN_REPARACION: { color: 'bg-indigo-100 text-indigo-700', label: 'En Reparación' },
-  FINALIZADA: { color: 'bg-emerald-100 text-emerald-700', label: 'Finalizada' },
-  ENTREGADA: { color: 'bg-green-100 text-green-700', label: 'Entregada' },
-  CANCELADA: { color: 'bg-red-100 text-red-700', label: 'Cancelada' },
-};
+import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
+const estadoConfig = WORK_ORDER_STATUSES;
 
 export default function OrdenesTrabajo() {
   return (

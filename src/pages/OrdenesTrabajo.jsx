@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuthContext } from "@/components/hooks/useAuthContext";
+import { useAuthContext } from "@/components/contexts/AuthContext";
 import { sotFetch } from "@/lib/sotFetch";
 
 import FormularioCliente from "@/components/clientes/FormularioCliente";

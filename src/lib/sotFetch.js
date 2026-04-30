@@ -4,11 +4,12 @@ const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
 
 /*
 ========================================
-GET SOT TOKEN (PUENTE)
+GET SOT TOKEN (POR ORG)
 ========================================
 */
 async function getSotToken(orgId) {
-  let sotToken = localStorage.getItem('sot_token');
+  const storageKey = `sot_token_${orgId}`;
+  let sotToken = localStorage.getItem(storageKey);
 
   if (sotToken) return sotToken;
 
@@ -40,7 +41,7 @@ async function getSotToken(orgId) {
     throw new Error('Error en auth sync');
   }
 
-  localStorage.setItem('sot_token', data.token);
+  localStorage.setItem(storageKey, data.token);
 
   return data.token;
 }
@@ -55,27 +56,38 @@ export async function sotFetch(path, orgId, opts = {}) {
     throw new Error('organization_id requerido');
   }
 
-  const token = await getSotToken(orgId);
+  try {
+    const token = await getSotToken(orgId);
 
-  const response = await fetch(`${BACKEND_URL}${path}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      ...(opts.headers || {}),
-    },
-  });
+    const response = await fetch(`${BACKEND_URL}${path}`, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...(opts.headers || {}),
+      },
+    });
 
-  const resData = await response.json();
+    const resData = await response.json();
 
-  if (!response.ok) {
-    // si token expiró → limpiar y reintentar en siguiente request
-    if (response.status === 401) {
-      localStorage.removeItem('sot_token');
+    if (!response.ok) {
+      // token inválido → limpiar SOLO de esa org
+      if (response.status === 401) {
+        localStorage.removeItem(`sot_token_${orgId}`);
+      }
+
+      throw new Error(resData.error || `Error ${response.status}`);
     }
 
-    throw new Error(resData.error || `Error ${response.status}`);
-  }
+    return resData.data;
 
-  return resData.data;
+  } catch (error) {
+    console.error('SOT FETCH ERROR:', {
+      path,
+      orgId,
+      message: error.message,
+    });
+
+    throw error;
+  }
 }

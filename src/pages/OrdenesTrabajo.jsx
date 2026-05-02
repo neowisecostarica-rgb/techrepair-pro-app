@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/contexts/AuthContext";
 import { sotFetch } from "@/lib/sotFetch";
 
 import FormularioCliente from "@/components/clientes/FormularioCliente";
 import QuickCreateEquipo from "@/components/ot/QuickCreateEquipo";
-import crearOrdenTrabajo from "@/components/ot/crearOrdenTrabajo";
-import transicionarEstadoOT from "@/components/ot/transicionarEstadoOT";
+
+// 🔥 IMPORTS CORREGIDOS (AQUÍ ESTABA EL ERROR)
+import { crearOrdenTrabajo } from "@/components/ot/crearOrdenTrabajo";
+import { transicionarEstadoOT } from "@/components/ot/transicionarEstadoOT";
 
 export default function OrdenesTrabajo() {
   const { effectiveOrgId } = useAuthContext();
@@ -14,136 +16,94 @@ export default function OrdenesTrabajo() {
   const [clientes, setClientes] = useState([]);
   const [equipos, setEquipos] = useState([]);
 
-  const [loading, setLoading] = useState(false);
-
-  /*
-  ========================================
-  LOAD DATA (SOT)
-  ========================================
-  */
-  async function loadData() {
-    if (!effectiveOrgId) return;
-
-    setLoading(true);
-
-    try {
-      const [ordenesData, clientesData, equiposData] = await Promise.all([
-        sotFetch("/v1/work-orders", effectiveOrgId),
-        sotFetch("/v1/clients", effectiveOrgId),
-        sotFetch("/v1/equipment", effectiveOrgId),
-      ]);
-
-      setOrdenes(ordenesData || []);
-      setClientes(clientesData || []);
-      setEquipos(equiposData || []);
-    } catch (error) {
-      console.error("Error cargando datos:", error.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!effectiveOrgId) return;
+
+    async function loadData() {
+      try {
+        setLoading(true);
+
+        const [ordenesData, clientesData, equiposData] = await Promise.all([
+          sotFetch("/v1/work-orders", effectiveOrgId),
+          sotFetch("/v1/clients", effectiveOrgId),
+          sotFetch("/v1/equipment", effectiveOrgId),
+        ]);
+
+        setOrdenes(ordenesData || []);
+        setClientes(clientesData || []);
+        setEquipos(equiposData || []);
+      } catch (error) {
+        console.error("Error cargando datos:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     loadData();
   }, [effectiveOrgId]);
 
-  /*
-  ========================================
-  CREAR EQUIPO INLINE (SOT)
-  ========================================
-  */
-  async function crearEquipoInline(payload) {
+  // =========================
+  // CREAR ORDEN
+  // =========================
+  const handleCrearOrden = async () => {
     try {
-      await sotFetch("/v1/equipment", effectiveOrgId, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const nuevaOrden = await crearOrdenTrabajo(
+        {
+          cliente_id: clientes[0]?.id,
+          equipo_id: equipos[0]?.id,
+          motivo_ingreso: "Prueba",
+        },
+        effectiveOrgId
+      );
 
-      await loadData();
+      setOrdenes((prev) => [nuevaOrden, ...prev]);
     } catch (error) {
-      console.error("Error creando equipo:", error.message);
+      console.error("Error creando OT:", error);
     }
-  }
+  };
 
-  /*
-  ========================================
-  CREAR ORDEN DE TRABAJO
-  ========================================
-  */
-  async function handleCrearOT(payload) {
-    try {
-      await crearOrdenTrabajo(payload, effectiveOrgId);
-      await loadData();
-    } catch (error) {
-      console.error("Error creando OT:", error.message);
-    }
-  }
-
-  /*
-  ========================================
-  CAMBIAR ESTADO OT
-  ========================================
-  */
-  async function handleCambiarEstado(otId, nuevoEstado) {
+  // =========================
+  // CAMBIAR ESTADO
+  // =========================
+  const handleCambiarEstado = async (id) => {
     try {
       await transicionarEstadoOT({
-        otId,
-        nuevoEstado,
-        organization_id: effectiveOrgId,
+        ordenTrabajoId: id,
+        nuevoEstado: "EN_REVISION",
+        effectiveOrgId,
       });
 
-      await loadData();
+      setOrdenes((prev) =>
+        prev.map((o) =>
+          o.id === id ? { ...o, estado: "EN_REVISION" } : o
+        )
+      );
     } catch (error) {
-      console.error("Error cambiando estado:", error.message);
+      console.error("Error cambiando estado:", error);
     }
-  }
+  };
 
-  /*
-  ========================================
-  RENDER
-  ========================================
-  */
-  if (loading) {
-    return <div>Cargando órdenes...</div>;
-  }
+  // =========================
+  // RENDER
+  // =========================
+  if (loading) return <div>Cargando...</div>;
 
   return (
     <div>
       <h1>Órdenes de Trabajo</h1>
 
-      {/* Crear Cliente */}
-      <FormularioCliente efectiveOrgId={effectiveOrgId} />
-
-      {/* Crear Equipo */}
-      <QuickCreateEquipo
-        effectiveOrgId={effectiveOrgId}
-        onCreated={loadData}
-      />
-
-      {/* Crear OT */}
-      <button
-        onClick={() =>
-          handleCrearOT({
-            client_id: clientes[0]?.id,
-            equipment_id: equipos[0]?.id,
-            problem: "Diagnóstico inicial",
-          })
-        }
-      >
-        Crear OT rápida
+      <button onClick={handleCrearOrden}>
+        Crear Orden de Prueba
       </button>
 
-      {/* LISTADO */}
       <ul>
-        {ordenes.map((ot) => (
-          <li key={ot.id}>
-            {ot.client_name} — {ot.status}
-            <button
-              onClick={() =>
-                handleCambiarEstado(ot.id, "EN_PROCESO")
-              }
-            >
-              Avanzar
+        {ordenes.map((orden) => (
+          <li key={orden.id}>
+            <strong>{orden.motivo_ingreso}</strong> - {orden.estado}
+            <button onClick={() => handleCambiarEstado(orden.id)}>
+              Avanzar Estado
             </button>
           </li>
         ))}

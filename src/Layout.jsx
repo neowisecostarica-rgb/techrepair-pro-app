@@ -658,9 +658,5 @@ function LayoutContent({ children, currentPageName }) {
 }
 
 export default function Layout(props) {
-  return (
-    <AuthProvider>
-      <LayoutContent {...props} />
-    </AuthProvider>
-  );
+  return <LayoutContent {...props} />;
 }

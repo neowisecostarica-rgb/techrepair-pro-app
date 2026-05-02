@@ -14,13 +14,6 @@ Flujo:
    d. Registrar InventarioHistorial
 4. ROLLBACK manual si falla algún paso
 =====================================
-
-QA TEST OVERRIDE:
-Para testing via test_backend_function, el payload puede incluir:
-  _test_user: { id, email, organization_id }
-Esto solo funciona si el header X-Test-Mode: true está presente,
-o si base44.auth.me() falla (entorno de test sin sesión activa).
-=====================================
 */
 
 Deno.serve(async (req) => {
@@ -30,30 +23,8 @@ Deno.serve(async (req) => {
 
   const base44 = createClientFromRequest(req);
 
-  // 2. PARSE BODY (antes de auth para poder leer _test_user)
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: 'Body inválido' }, { status: 400 });
-  }
-
-  // 1. AUTH — con soporte de test override
-  let user = null;
-  try {
-    user = await base44.auth.me();
-  } catch {
-    // En entorno de test, auth.me() puede lanzar error
-    user = null;
-  }
-
-  // Si no hay sesión activa y el payload incluye _test_user, usarlo (solo QA)
-  const isTestMode = !user && body._test_user;
-  if (isTestMode) {
-    user = body._test_user;
-    console.warn('[createSale] MODO TEST activo — usando _test_user del payload');
-  }
-
+  // 1. AUTH
+  const user = await base44.auth.me();
   if (!user) {
     return Response.json({ error: 'No autenticado' }, { status: 401 });
   }
@@ -63,8 +34,13 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'organization_id requerido' }, { status: 400 });
   }
 
-  // Remover _test_user del body para no contaminar el procesamiento
-  delete body._test_user;
+  // 2. PARSE BODY
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: 'Body inválido' }, { status: 400 });
+  }
 
   const {
     client_id,
@@ -180,8 +156,6 @@ Deno.serve(async (req) => {
       throw new Error('Error al crear la venta');
     }
 
-    console.log(`[createSale] Venta creada: ${ventaCreada.id}`);
-
     // PASO B — Crear VentaItems
     for (const item of items) {
       const itemCreado = await base44.asServiceRole.entities.VentaItem.create({
@@ -200,7 +174,6 @@ Deno.serve(async (req) => {
       }
 
       itemsCreados.push(itemCreado);
-      console.log(`[createSale] VentaItem creado: ${itemCreado.id} — ${item.description}`);
     }
 
     // PASO C — Descontar stock + registrar historial
@@ -223,12 +196,9 @@ Deno.serve(async (req) => {
 
       inventariosActualizados.push({
         id: item.inventory_item_id,
-        nombre: invItem.nombre,
         stockAnterior,
         stockNuevo,
       });
-
-      console.log(`[createSale] Stock actualizado: ${invItem.nombre} ${stockAnterior} → ${stockNuevo}`);
 
       // Registrar historial de movimiento
       await base44.asServiceRole.entities.InventarioHistorial.create({
@@ -245,35 +215,35 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ÉXITO
+    // ÉXITO — devolver venta completa con items
     return Response.json({
       success: true,
       data: {
         ...ventaCreada,
         items: itemsCreados,
-        _inventory_updates: inventariosActualizados,
       },
     }, { status: 201 });
 
   } catch (error) {
     // =====================================================
     // ROLLBACK MANUAL
+    // Intentar revertir en orden inverso: historial → stock → items → venta
     // =====================================================
     console.error('[createSale] ERROR — iniciando rollback:', error.message);
 
-    // Revertir stock
+    // Revertir stock de inventarios ya actualizados
     for (const inv of inventariosActualizados) {
       try {
         await base44.asServiceRole.entities.Inventario.update(inv.id, {
           cantidad_disponible: inv.stockAnterior,
         });
-        console.warn(`[createSale] Rollback stock OK: ${inv.id} → ${inv.stockAnterior}`);
+        console.warn(`[createSale] Rollback stock: ${inv.id} → ${inv.stockAnterior}`);
       } catch (rbError) {
         console.error(`[createSale] Rollback stock FALLÓ para ${inv.id}:`, rbError.message);
       }
     }
 
-    // Eliminar VentaItems
+    // Eliminar VentaItems creados
     for (const itemCreado of itemsCreados) {
       try {
         await base44.asServiceRole.entities.VentaItem.delete(itemCreado.id);
@@ -283,7 +253,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Eliminar Venta
+    // Eliminar Venta creada
     if (ventaCreada?.id) {
       try {
         await base44.asServiceRole.entities.Venta.delete(ventaCreada.id);

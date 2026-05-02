@@ -13,13 +13,12 @@ async function getSotToken(orgId) {
 
   if (sotToken) return sotToken;
 
-  const base44Token = await base44.auth.getAccessToken();
+  // 🔥 FIX: eliminar dependencia rota
+  const user = await base44.auth.me();
 
-  if (!base44Token) {
+  if (!user) {
     throw new Error('Usuario no autenticado en Base44');
   }
-
-  const user = await base44.auth.me();
 
   const response = await fetch(`${BACKEND_URL}/v1/auth/sync`, {
     method: 'POST',
@@ -71,7 +70,6 @@ export async function sotFetch(path, orgId, opts = {}) {
     const resData = await response.json();
 
     if (!response.ok) {
-      // token inválido → limpiar SOLO de esa org
       if (response.status === 401) {
         localStorage.removeItem(`sot_token_${orgId}`);
       }

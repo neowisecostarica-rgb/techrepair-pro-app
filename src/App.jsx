@@ -6,7 +6,6 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuthContext } from '@/components/contexts/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -17,9 +16,8 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { status, identityStatus } = useAuthContext();
+  const { status } = useAuthContext();
 
-  // Show loading spinner while checking auth
   if (status === 'loading' || status === 'idle') {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -28,7 +26,6 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Render the main app — layout.jsx handles all auth routing and error states
   return (
     <Routes>
       <Route path="/" element={
@@ -51,7 +48,6 @@ const AuthenticatedApp = () => {
     </Routes>
   );
 };
-
 
 function App() {
   return (

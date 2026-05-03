@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { sotFetch } from '@/lib/sotFetch';
-import { base44 } from '@/api/base44Client';
 
 /**
  * Formulario canónico de cliente - ÚNICO componente para crear/editar clientes
@@ -73,8 +72,7 @@ export default function FormularioCliente({
 
     setSaving(true);
     try {
-      const token = await base44.auth.getAccessToken();
-      const newClient = await sotFetch('/v1/clients', efectiveOrgId, token, {
+      const newClient = await sotFetch('/v1/clients', efectiveOrgId, {
         method: 'POST',
         body: JSON.stringify({
           full_name: formData.nombre_completo,

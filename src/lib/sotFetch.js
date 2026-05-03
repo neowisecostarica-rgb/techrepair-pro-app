@@ -3,28 +3,22 @@ const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
 /*
 ========================================
 SOT FETCH — Identity Bridge via middleware
-El token se recibe como parámetro desde el componente React.
-El backend resuelve users/memberships automáticamente.
+El backend resuelve usuario y organización automáticamente vía cookie de sesión.
 
 Uso:
-  const token = await base44.auth.getAccessToken();
-  const data = await sotFetch('/v1/ruta', effectiveOrgId, token, opts);
+  const data = await sotFetch('/v1/ruta', effectiveOrgId, opts);
 ========================================
 */
-export async function sotFetch(path, orgId, token, opts = {}) {
+export async function sotFetch(path, orgId, opts = {}) {
   if (!orgId) {
     throw new Error('organization_id requerido');
   }
 
-  if (!token) {
-    throw new Error('token requerido');
-  }
-
   const response = await fetch(`${BACKEND_URL}${path}`, {
     ...opts,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
       'x-organization-id': orgId,
       ...(opts.headers || {}),
     },

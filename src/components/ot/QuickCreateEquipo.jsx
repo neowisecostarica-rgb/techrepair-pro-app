@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCreated }) {
@@ -13,15 +14,17 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
   const [modelo, setModelo] = useState('');
   const [serie, setSerie] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!tipo || !marca.trim()) {
-      alert('Tipo y marca son requeridos');
+      setError('Tipo y marca son requeridos.');
       return;
     }
 
+    setError('');
     setSaving(true);
     try {
       const response = await base44.functions.invoke('createEquipment', {
@@ -37,9 +40,13 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
       setModelo('');
       setSerie('');
       onOpenChange(false);
-    } catch (error) {
-      console.error('Error creando equipo:', error);
-      alert('Error al crear el equipo: ' + error.message);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || '';
+      if (msg.toLowerCase().includes('duplicado') || msg.toLowerCase().includes('duplicate') || msg.includes('409')) {
+        setError('Ya existe un equipo con ese número de serie. Verifica o deja el campo vacío.');
+      } else {
+        setError('Error al crear equipo: ' + msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -53,6 +60,12 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <Alert className="bg-red-50 border-red-200">
+              <AlertCircle className="w-4 h-4 text-red-600" />
+              <AlertDescription className="text-red-800 text-sm">{error}</AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-2">
             <Label htmlFor="tipo">Tipo de Equipo *</Label>
             <Select value={tipo} onValueChange={setTipo} disabled={saving}>

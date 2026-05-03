@@ -31,6 +31,9 @@ import ActividadActiva from '@/components/actividades/ActividadActiva';
 import ListaActividades from '@/components/actividades/ListaActividades';
 import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
+import ClienteSearchInput from '@/components/ot/ClienteSearchInput';
+import QuickCreateClienteModal from '@/components/ot/QuickCreateClienteModal';
+import MotivoIngresoInput from '@/components/ot/MotivoIngresoInput';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { Play } from 'lucide-react';
 import EntregarOT from '@/components/ot/EntregarOT';
@@ -66,6 +69,7 @@ function OrdenesTrabajoContent() {
   const [vistaActiva, setVistaActiva] = useState('lista');
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
+  const [motivoIngreso, setMotivoIngreso] = useState('');
   const [showQuickCreateCliente, setShowQuickCreateCliente] = useState(false);
   const [showQuickCreateEquipo, setShowQuickCreateEquipo] = useState(false);
   const [showInlineEquipo, setShowInlineEquipo] = useState(false);
@@ -235,6 +239,7 @@ function OrdenesTrabajoContent() {
     setSelectedClienteId('');
     setSelectedEquipoId('');
     setSelectedPrioridad('normal');
+    setMotivoIngreso('');
     setShowInlineEquipo(false);
     setNewEquipoData({
       tipo: '',
@@ -304,7 +309,7 @@ function OrdenesTrabajoContent() {
       branch_id: formData.get('branch_id'),
       cliente_id: selectedClienteId,
       equipo_id: equipoIdFinal,
-      motivo_ingreso: formData.get('motivo_ingreso'),
+      motivo_ingreso: motivoIngreso || formData.get('motivo_ingreso'),
       observaciones_ingreso: formData.get('observaciones_ingreso'),
       tipo_ingreso: formData.get('tipo_ingreso') || 'presencial',
       tracking_code: formData.get('tracking_code') || undefined,
@@ -532,51 +537,25 @@ function OrdenesTrabajoContent() {
               </AlertDescription>
             </Alert>
 
-            {/* Cliente con Quick Create */}
+            {/* Cliente con búsqueda + Quick Create */}
             <div className="space-y-2">
-              <Label htmlFor="cliente_id">Cliente *</Label>
-              <div className="flex gap-2">
-                <Select 
-                  value={selectedClienteId} 
-                  onValueChange={(value) => {
-                    setSelectedClienteId(value);
+              <Label>Cliente *</Label>
+              {!editingOT ? (
+                <ClienteSearchInput
+                  clientes={clientes}
+                  selectedClienteId={selectedClienteId}
+                  onSelectCliente={(id) => {
+                    setSelectedClienteId(id);
                     setSelectedEquipoId('');
                     setShowInlineEquipo(false);
                   }}
-                  disabled={!!editingOT}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Seleccionar cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes.length === 0 && (
-                      <div className="p-2 text-sm text-slate-500">
-                        No hay clientes. Crea uno nuevo.
-                      </div>
-                    )}
-                    {clientes.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.nombre_completo} - {c.telefono}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {!editingOT && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowQuickCreateCliente(true)}
-                    className="shrink-0"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Nuevo
-                  </Button>
-                )}
-              </div>
-              {editingOT && (
-                <p className="text-xs text-slate-500">
-                  Cliente no editable para mantener integridad de datos
-                </p>
+                  onRequestCreate={() => setShowQuickCreateCliente(true)}
+                />
+              ) : (
+                <>
+                  <Input value={getClienteName(selectedClienteId)} disabled className="bg-slate-100" />
+                  <p className="text-xs text-slate-500">Cliente no editable para mantener integridad de datos</p>
+                </>
               )}
             </div>
 
@@ -803,14 +782,10 @@ function OrdenesTrabajoContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="motivo_ingreso">Motivo de Ingreso *</Label>
-              <Textarea
-                id="motivo_ingreso"
-                name="motivo_ingreso"
-                defaultValue={editingOT?.motivo_ingreso}
-                placeholder="Describe el motivo principal del ingreso..."
-                rows={2}
-                required
+              <Label>Motivo de Ingreso *</Label>
+              <MotivoIngresoInput
+                value={editingOT?.motivo_ingreso || motivoIngreso}
+                onChange={setMotivoIngreso}
               />
             </div>
 
@@ -902,7 +877,7 @@ function OrdenesTrabajoContent() {
               <Button 
                 type="submit" 
                 className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                disabled={!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)))}
+                disabled={!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)) || !motivoIngreso)}
               >
                 {editingOT ? 'Actualizar' : 'Registrar Recepción'}
               </Button>
@@ -1299,23 +1274,15 @@ function OrdenesTrabajoContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Formulario Canónico de Cliente */}
-      <Dialog open={showQuickCreateCliente} onOpenChange={setShowQuickCreateCliente}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Crear Nuevo Cliente</DialogTitle>
-          </DialogHeader>
-          <FormularioCliente
-            onGuardar={(newCliente) => {
-              setShowQuickCreateCliente(false);
-              queryClient.invalidateQueries({ queryKey: ['clientes'] });
-              setSelectedClienteId(newCliente.id);
-              alert('✅ Cliente creado exitosamente');
-            }}
-            onCancelar={() => setShowQuickCreateCliente(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Quick Create Cliente (inline desde OT) */}
+      <QuickCreateClienteModal
+        open={showQuickCreateCliente}
+        onOpenChange={setShowQuickCreateCliente}
+        onCreated={(newCliente) => {
+          queryClient.invalidateQueries({ queryKey: ['clientes'] });
+          setSelectedClienteId(newCliente.id);
+        }}
+      />
 
       {/* Quick Create Equipo (solo para seleccionar equipos ya existentes de otros clientes) */}
       <QuickCreateEquipo

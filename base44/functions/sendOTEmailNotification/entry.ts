@@ -59,6 +59,18 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.integrations.Core.SendEmail({ to: email, subject, body });
 
     console.log(`Email ${tipo} enviado a ${email} para OT ${codigo_ot}`);
+
+    // Registrar evento en OTEvent (solo cuando viene de automatización y tiene id)
+    if (payload.event && payload.data?.id) {
+      await base44.asServiceRole.entities.OTEvent.create({
+        orden_trabajo_id: payload.data.id,
+        tipo,
+        processed: false,
+        created_at: new Date().toISOString()
+      });
+      console.log(`OTEvent ${tipo} registrado para OT ${payload.data.id}`);
+    }
+
     return Response.json({ success: true });
   } catch (error) {
     console.error("Error enviando email:", error);

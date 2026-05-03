@@ -130,7 +130,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "Dashboard",
+    mainPage: "MiDia",
     Pages: PAGES,
     Layout: __Layout,
 };

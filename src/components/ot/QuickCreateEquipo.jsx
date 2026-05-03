@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { sotFetch } from '@/lib/sotFetch';
+import { base44 } from '@/api/base44Client';
 
-export default function QuickCreateEquipo({ open, onOpenChange, organizationId, clienteId, onCreated }) {
+export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCreated }) {
   const [tipo, setTipo] = useState('');
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
@@ -22,24 +22,16 @@ export default function QuickCreateEquipo({ open, onOpenChange, organizationId, 
       return;
     }
 
-    if (!organizationId) {
-      alert('Organization no definida');
-      return;
-    }
-
     setSaving(true);
     try {
-      const newEquipo = await sotFetch('/v1/equipment', organizationId, {
-        method: 'POST',
-        body: JSON.stringify({
-          client_id: clienteId,
-          type: tipo,
-          brand: marca.trim(),
-          model: modelo.trim() || undefined,
-          serial_number: serie.trim() || undefined,
-        })
+      const response = await base44.functions.invoke('createEquipment', {
+        cliente_id: clienteId,
+        tipo,
+        marca: marca.trim(),
+        modelo: modelo.trim() || undefined,
+        serie: serie.trim() || undefined,
       });
-      onCreated(newEquipo);
+      onCreated(response.data);
       setTipo('');
       setMarca('');
       setModelo('');

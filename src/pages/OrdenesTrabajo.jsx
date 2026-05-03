@@ -31,8 +31,6 @@ import ActividadActiva from '@/components/actividades/ActividadActiva';
 import ListaActividades from '@/components/actividades/ListaActividades';
 import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
-import { sotFetch } from '@/lib/sotFetch';
-// generarCodigoOT removido — código generado por backend SOT
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { Play } from 'lucide-react';
 import EntregarOT from '@/components/ot/EntregarOT';
@@ -128,8 +126,8 @@ function OrdenesTrabajoContent() {
     queryKey: ['ordenes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const data = await sotFetch('/v1/work-orders', effectiveOrgId);
-      return (data || []).map(normalizarOrden);
+      const response = await base44.functions.invoke('listWorkOrders', {});
+      return (response.data || []).map(normalizarOrden);
     },
     enabled: !!effectiveOrgId,
   });
@@ -159,7 +157,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const data = await sotFetch('/v1/clients', effectiveOrgId);
+      const data = await base44.entities.Cliente.filter({ organization_id: effectiveOrgId });
       return (data || []).map(normalizarCliente);
     },
     enabled: !!effectiveOrgId,
@@ -169,7 +167,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['equipos', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const data = await sotFetch('/v1/equipment', effectiveOrgId);
+      const data = await base44.entities.Equipo.filter({ organization_id: effectiveOrgId });
       return (data || []).map(normalizarEquipo);
     },
     enabled: !!effectiveOrgId,
@@ -225,8 +223,7 @@ function OrdenesTrabajoContent() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      if (!effectiveOrgId) throw new Error('Organization no definida');
-      return crearOrdenTrabajo(data, effectiveOrgId);
+      return crearOrdenTrabajo(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
@@ -285,20 +282,17 @@ function OrdenesTrabajoContent() {
     const formData = new FormData(e.target);
     let equipoIdFinal = selectedEquipoId;
 
-    // Si se está creando equipo inline, crearlo primero en el backend SOT
+    // Si se está creando equipo inline, crearlo primero vía Base44 Function
     if (showInlineEquipo && !selectedEquipoId) {
       try {
-        const newEquipo = await sotFetch('/v1/equipment', effectiveOrgId, {
-          method: 'POST',
-          body: JSON.stringify({
-            client_id: selectedClienteId,
-            type: newEquipoData.tipo,
-            brand: newEquipoData.marca,
-            model: newEquipoData.modelo || undefined,
-            serial_number: newEquipoData.serie_ingreso || undefined
-          })
+        const equipoResponse = await base44.functions.invoke('createEquipment', {
+          cliente_id: selectedClienteId,
+          tipo: newEquipoData.tipo,
+          marca: newEquipoData.marca,
+          modelo: newEquipoData.modelo || undefined,
+          serie: newEquipoData.serie_ingreso || undefined,
         });
-        equipoIdFinal = newEquipo.id;
+        equipoIdFinal = equipoResponse.data.id;
         queryClient.invalidateQueries({ queryKey: ['equipos'] });
       } catch (error) {
         alert('Error al crear el equipo: ' + error.message);
@@ -1312,7 +1306,6 @@ function OrdenesTrabajoContent() {
             <DialogTitle>Crear Nuevo Cliente</DialogTitle>
           </DialogHeader>
           <FormularioCliente
-            efectiveOrgId={effectiveOrgId}
             onGuardar={(newCliente) => {
               setShowQuickCreateCliente(false);
               queryClient.invalidateQueries({ queryKey: ['clientes'] });
@@ -1328,7 +1321,6 @@ function OrdenesTrabajoContent() {
       <QuickCreateEquipo
         open={showQuickCreateEquipo}
         onOpenChange={setShowQuickCreateEquipo}
-        organizationId={effectiveOrgId}
         clienteId={selectedClienteId}
         onCreated={(newEquipo) => {
           queryClient.invalidateQueries({ queryKey: ['equipos'] });

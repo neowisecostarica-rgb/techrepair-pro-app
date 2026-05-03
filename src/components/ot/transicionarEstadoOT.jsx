@@ -1,59 +1,49 @@
-import { sotFetch } from '@/lib/sotFetch';
+import { base44 } from '@/api/base44Client';
 
 /**
- * Helper centralizado para transiciones de estado de OrdenTrabajo — SOT: PostgreSQL
+ * Helper centralizado para transiciones de estado de OrdenTrabajo — SOT: Base44
  *
  * RETROCOMPATIBILIDAD:
  * - Firma A: transicionarEstadoOT(otId, nuevoEstado, context)
- * - Firma B: transicionarEstadoOT({ ordenTrabajoId, nuevoEstado, effectiveOrgId, userId, userEmail, motivo })
+ * - Firma B: transicionarEstadoOT({ ordenTrabajoId, nuevoEstado, ... })
  */
-export async function transicionarEstadoOT(otIdOrParams, nuevoEstado, context = {}) {
-  let otId, estadoNuevo, organizationId;
+export async function transicionarEstadoOT(otIdOrParams, nuevoEstado) {
+  let otId, estadoNuevo;
 
   if (typeof otIdOrParams === 'object' && otIdOrParams !== null) {
     otId = otIdOrParams.ordenTrabajoId;
     estadoNuevo = otIdOrParams.nuevoEstado;
-    organizationId = otIdOrParams.effectiveOrgId || otIdOrParams.organizationId;
   } else {
     otId = otIdOrParams;
     estadoNuevo = nuevoEstado;
-    organizationId = context.organizationId || context.effectiveOrgId;
   }
 
   if (typeof otId !== 'string' || !otId) {
     throw new Error(`ID de orden de trabajo inválido. Se esperaba un string, se recibió: ${typeof otId}`);
   }
 
-  if (!organizationId) {
-    throw new Error('organization_id es requerido para transicionar estado de OT');
-  }
-
-  return sotFetch(`/v1/work-orders/${otId}/status`, organizationId, {
-    method: 'PATCH',
-    body: JSON.stringify({ status: estadoNuevo })
+  const response = await base44.functions.invoke('changeWorkOrderStatus', {
+    orden_trabajo_id: otId,
+    newStatus: estadoNuevo,
   });
+  return response.data;
 }
 
 /**
- * Helper para cambiar estado_atencion — delegado al backend SOT
+ * Helper para cambiar estado_atencion — actualización directa vía Base44
  */
 export async function cambiarEstadoAtencionOT({
   ordenTrabajoId,
   nuevoEstadoAtencion,
   motivoPausa = null,
-  observaciones = null,
-  effectiveOrgId,
 }) {
-  if (!effectiveOrgId) {
-    throw new Error('organization_id es requerido');
+  if (!ordenTrabajoId) {
+    throw new Error('ordenTrabajoId es requerido');
   }
 
-  return sotFetch(`/v1/work-orders/${ordenTrabajoId}/attention-status`, effectiveOrgId, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      attention_status: nuevoEstadoAtencion,
-      pause_reason: motivoPausa,
-      notes: observaciones
-    })
+  return base44.entities.OrdenTrabajo.update(ordenTrabajoId, {
+    estado_atencion: nuevoEstadoAtencion,
+    motivo_pausa: motivoPausa || undefined,
+    ultima_actividad_at: new Date().toISOString(),
   });
 }

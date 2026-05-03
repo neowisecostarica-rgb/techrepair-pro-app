@@ -11,7 +11,7 @@ import { Plus, Search, User, Mail, Phone, Building2, History, MessageSquare, Fil
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
-import { sotFetch } from '@/lib/sotFetch';
+import { base44 } from '@/api/base44Client';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
@@ -45,7 +45,7 @@ function ClientesContent() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      return sotFetch('/v1/clients', effectiveOrgId) ?? [];
+      return base44.entities.Cliente.filter({ organization_id: effectiveOrgId });
     },
     enabled: !!effectiveOrgId,
   });
@@ -177,10 +177,10 @@ function ClientesContent() {
 
           <FormularioCliente
             cliente={editingCliente}
-            efectiveOrgId={effectiveOrgId}
             onGuardar={() => {
               setShowModal(false);
               setEditingCliente(null);
+              queryClient.invalidateQueries({ queryKey: ['clientes'] });
             }}
             onCancelar={() => {
               setShowModal(false);

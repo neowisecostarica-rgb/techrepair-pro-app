@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { sotFetch } from '@/lib/sotFetch';
+import { base44 } from '@/api/base44Client';
 
 /**
  * Formulario canónico de cliente - ÚNICO componente para crear/editar clientes
@@ -14,7 +14,6 @@ import { sotFetch } from '@/lib/sotFetch';
  */
 export default function FormularioCliente({ 
   cliente = null, 
-  efectiveOrgId, 
   onGuardar, 
   onCancelar 
 }) {
@@ -59,33 +58,20 @@ export default function FormularioCliente({
       return;
     }
 
-    // Edición temporalmente deshabilitada — endpoint de actualización pendiente en backend
-    if (cliente) {
-      setApiError('La edición de clientes está temporalmente deshabilitada mientras se integra el backend.');
-      return;
-    }
-
-    if (!efectiveOrgId) {
-      setApiError('Organization no definida. Intenta recargar la página.');
-      return;
-    }
-
     setSaving(true);
     try {
-      const newClient = await sotFetch('/v1/clients', efectiveOrgId, {
-        method: 'POST',
-        body: JSON.stringify({
-          full_name: formData.nombre_completo,
-          phone: formData.telefono,
-          email: formData.email,
-          id_number: formData.identificacion,
-          client_type: formData.tipo_cliente,
-          notes: formData.notas
-        })
+      const response = await base44.functions.invoke('createClient', {
+        nombre_completo: formData.nombre_completo,
+        identificacion: formData.identificacion,
+        tipo_cliente: formData.tipo_cliente,
+        telefono: formData.telefono,
+        email: formData.email || undefined,
+        direccion: formData.direccion || undefined,
+        notas: formData.notas || undefined,
       });
-      onGuardar(newClient);
+      onGuardar(response.data);
     } catch (error) {
-      console.error('Error creando cliente en backend:', error);
+      console.error('Error creando cliente:', error);
       setApiError('Error al crear cliente: ' + error.message);
     } finally {
       setSaving(false);
@@ -98,7 +84,7 @@ export default function FormularioCliente({
         <Alert className="bg-amber-50 border-amber-200">
           <AlertCircle className="w-4 h-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
-            La edición de clientes está <strong>temporalmente deshabilitada</strong> mientras se integra el endpoint de actualización en el backend.
+            La edición de clientes estará disponible próximamente.
           </AlertDescription>
         </Alert>
       )}
@@ -214,7 +200,7 @@ export default function FormularioCliente({
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={saving || !!cliente} className="bg-emerald-600">
+        <Button type="submit" disabled={saving || !!cliente} className="bg-emerald-600 hover:bg-emerald-700">
           {saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

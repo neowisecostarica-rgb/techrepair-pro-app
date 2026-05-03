@@ -1,0 +1,317 @@
+{
+  "name": "OrdenTrabajo",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "codigo_ot": {
+      "type": "string",
+      "description": "C\u00f3digo \u00fanico de la OT (formato: OT-{orgPrefix}-{a\u00f1o}-{consecutivo})"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "ID de la sucursal"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "equipo_id": {
+      "type": "string",
+      "description": "ID del equipo"
+    },
+    "serie_ingreso": {
+      "type": "string",
+      "description": "N\u00famero de serie o IMEI al momento del ingreso"
+    },
+    "accesorios_ingreso": {
+      "type": "string",
+      "description": "Accesorios entregados con el equipo"
+    },
+    "estado_fisico_ingreso": {
+      "type": "string",
+      "enum": [
+        "excelente",
+        "bueno",
+        "regular",
+        "malo"
+      ],
+      "description": "Estado f\u00edsico del equipo al momento del ingreso"
+    },
+    "contrasena_ingreso": {
+      "type": "string",
+      "description": "Contrase\u00f1a o PIN del equipo (si aplica)"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "EN_COLA_REVISION",
+        "ASIGNADA",
+        "EN_REVISION",
+        "DIAGNOSTICADA",
+        "COTIZADA",
+        "EN_REPARACION",
+        "FINALIZADA",
+        "ENTREGADA",
+        "CANCELADA"
+      ],
+      "default": "EN_COLA_REVISION",
+      "description": "Estado actual de la OT"
+    },
+    "prioridad": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "urgente"
+      ],
+      "default": "normal",
+      "description": "Prioridad de la orden"
+    },
+    "tipo_ingreso": {
+      "type": "string",
+      "enum": [
+        "presencial",
+        "mensajeria",
+        "retiro"
+      ],
+      "default": "presencial",
+      "description": "Tipo de ingreso del equipo"
+    },
+    "tracking_code": {
+      "type": "string",
+      "description": "C\u00f3digo de seguimiento de mensajer\u00eda (opcional)"
+    },
+    "responsable_recepcion": {
+      "type": "string",
+      "description": "Usuario que recibi\u00f3 el equipo"
+    },
+    "fecha_entrega_estimada": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha estimada de entrega"
+    },
+    "tecnico_asignado_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico asignado (nullable)"
+    },
+    "tecnico_revisor_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico revisor (nullable)"
+    },
+    "estado_atencion": {
+      "type": "string",
+      "enum": [
+        "ACTIVO",
+        "PAUSADO",
+        "ESPERANDO"
+      ],
+      "description": "Estado de atenci\u00f3n del t\u00e9cnico"
+    },
+    "ultima_actividad": {
+      "type": "string",
+      "description": "Descripci\u00f3n de la \u00faltima actividad realizada"
+    },
+    "ultima_actividad_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de la \u00faltima actividad"
+    },
+    "motivo_pausa": {
+      "type": "string",
+      "enum": [
+        "esperando_repuesto",
+        "esperando_cliente",
+        "interrupcion",
+        "otro"
+      ],
+      "description": "Motivo de la pausa (si est\u00e1 pausado)"
+    },
+    "motivo_ingreso": {
+      "type": "string",
+      "description": "Motivo de ingreso de la OT"
+    },
+    "observaciones_ingreso": {
+      "type": "string",
+      "description": "Observaciones adicionales al ingreso"
+    },
+    "diagnostico_resumido": {
+      "type": "string",
+      "description": "Resumen del diagn\u00f3stico (auto-generado por wizard)"
+    },
+    "fecha_ingreso": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de ingreso de la OT"
+    },
+    "fecha_revision_inicio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de inicio de revisi\u00f3n"
+    },
+    "fecha_diagnostico": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha del diagn\u00f3stico"
+    },
+    "fecha_cierre": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de cierre de la OT"
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "ID del usuario que cre\u00f3 la OT"
+    },
+    "terminos_aceptados": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si el cliente acept\u00f3 los t\u00e9rminos y condiciones"
+    },
+    "terminos_aceptados_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de aceptaci\u00f3n de t\u00e9rminos"
+    },
+    "terminos_version": {
+      "type": "string",
+      "description": "Versi\u00f3n de t\u00e9rminos aceptada"
+    },
+    "terminos_texto_snapshot": {
+      "type": "string",
+      "description": "Snapshot del texto de t\u00e9rminos aceptado"
+    },
+    "public_access_token": {
+      "type": "string",
+      "description": "Token \u00fanico para acceso p\u00fablico del cliente"
+    },
+    "public_access_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de expiraci\u00f3n del token p\u00fablico"
+    },
+    "public_last_viewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u00daltima vez que el cliente vio la OT"
+    },
+    "cliente_aprobado": {
+      "type": "boolean",
+      "description": "Si el cliente aprob\u00f3 la reparaci\u00f3n"
+    },
+    "cliente_aprobado_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de aprobaci\u00f3n del cliente"
+    },
+    "cliente_rechazo_motivo": {
+      "type": "string",
+      "description": "Motivo de rechazo del cliente"
+    },
+    "diagnostico_habilitado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si el diagn\u00f3stico t\u00e9cnico est\u00e1 habilitado (revisi\u00f3n pagada)"
+    },
+    "revision_pagada_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de pago de revisi\u00f3n"
+    },
+    "revision_venta_id": {
+      "type": "string",
+      "description": "ID de venta asociada al pago de revisi\u00f3n"
+    },
+    "email_created_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag de idempotencia: email de creaci\u00f3n ya enviado"
+    },
+    "email_finalizada_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag de idempotencia: email de finalizaci\u00f3n ya enviado"
+    },
+    "email_entregada_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag de idempotencia: email de entrega ya enviado"
+    }
+  },
+  "required": [
+    "organization_id",
+    "codigo_ot",
+    "branch_id",
+    "cliente_id",
+    "equipo_id",
+    "estado",
+    "tipo_ingreso",
+    "motivo_ingreso",
+    "created_by_user_id"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

@@ -30,7 +30,7 @@ export async function transicionarEstadoOT(otIdOrParams, nuevoEstado) {
 }
 
 /**
- * Helper para cambiar estado_atencion — actualización directa vía Base44
+ * Helper para cambiar estado_atencion — vía changeWorkOrderStatus function
  */
 export async function cambiarEstadoAtencionOT({
   ordenTrabajoId,
@@ -41,9 +41,11 @@ export async function cambiarEstadoAtencionOT({
     throw new Error('ordenTrabajoId es requerido');
   }
 
-  return base44.entities.OrdenTrabajo.update(ordenTrabajoId, {
+  const response = await base44.functions.invoke('changeWorkOrderStatus', {
+    orden_trabajo_id: ordenTrabajoId,
     estado_atencion: nuevoEstadoAtencion,
     motivo_pausa: motivoPausa || undefined,
     ultima_actividad_at: new Date().toISOString(),
   });
+  return response.data;
 }

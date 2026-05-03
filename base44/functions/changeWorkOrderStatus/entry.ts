@@ -15,13 +15,14 @@ Deno.serve(async (req) => {
     if (!orgId) return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
 
     const body = await req.json();
-    const { orden_trabajo_id, newStatus } = body;
+    const { orden_trabajo_id, newStatus, estado_atencion, motivo_pausa, ultima_actividad_at } = body;
 
-    if (!orden_trabajo_id || !newStatus) {
-      return Response.json({ error: 'orden_trabajo_id y newStatus son obligatorios' }, { status: 400 });
+    if (!orden_trabajo_id) {
+      return Response.json({ error: 'orden_trabajo_id es obligatorio' }, { status: 400 });
     }
 
-    if (!VALID_STATUSES.includes(newStatus)) {
+    // newStatus es obligatorio solo si no se está actualizando exclusivamente estado_atencion
+    if (newStatus && !VALID_STATUSES.includes(newStatus)) {
       return Response.json({ error: `newStatus inválido. Valores permitidos: ${VALID_STATUSES.join(', ')}` }, { status: 400 });
     }
 
@@ -31,11 +32,17 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Orden de trabajo no encontrada en esta organización' }, { status: 404 });
     }
 
-    const orden = await base44.entities.OrdenTrabajo.update(orden_trabajo_id, {
-      estado: newStatus,
-      ultima_actividad: `Estado cambiado a ${newStatus}`,
-      ultima_actividad_at: new Date().toISOString(),
-    });
+    const updatePayload = {
+      ultima_actividad_at: ultima_actividad_at || new Date().toISOString(),
+    };
+    if (newStatus) {
+      updatePayload.estado = newStatus;
+      updatePayload.ultima_actividad = `Estado cambiado a ${newStatus}`;
+    }
+    if (estado_atencion !== undefined) updatePayload.estado_atencion = estado_atencion;
+    if (motivo_pausa !== undefined) updatePayload.motivo_pausa = motivo_pausa || null;
+
+    const orden = await base44.entities.OrdenTrabajo.update(orden_trabajo_id, updatePayload);
 
     return Response.json(orden);
   } catch (error) {

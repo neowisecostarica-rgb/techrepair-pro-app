@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
 import { sotFetch } from '@/lib/sotFetch';
+import { base44 } from '@/api/base44Client';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
@@ -45,7 +46,8 @@ function ClientesContent() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      return sotFetch('/v1/clients', effectiveOrgId) ?? [];
+      const token = await base44.auth.getAccessToken();
+      return sotFetch('/v1/clients', effectiveOrgId, token) ?? [];
     },
     enabled: !!effectiveOrgId,
   });

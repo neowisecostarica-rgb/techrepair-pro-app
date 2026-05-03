@@ -28,10 +28,16 @@ export default function KanbanBoard({ onCardClick }) {
     setLocalOrdenes(null);
   }, [fetchedOrdenes]);
 
-  // Agrupar por columna según STATUS_TO_COLUMN
+  // Agrupar y ordenar por antigüedad (más antiguas arriba)
   const grouped = useMemo(() => {
     return Object.keys(KANBAN_COLUMNS).reduce((acc, colId) => {
-      acc[colId] = ordenes.filter(ot => STATUS_TO_COLUMN[ot.estado] === colId);
+      const items = ordenes.filter(ot => STATUS_TO_COLUMN[ot.estado] === colId);
+      items.sort((a, b) => {
+        const fa = new Date(a.fecha_ingreso || a.created_date || 0);
+        const fb = new Date(b.fecha_ingreso || b.created_date || 0);
+        return fa - fb; // ASC: más antiguas arriba
+      });
+      acc[colId] = items;
       return acc;
     }, {});
   }, [ordenes]);

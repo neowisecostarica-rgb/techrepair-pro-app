@@ -21,6 +21,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'tipo_cliente inválido' }, { status: 400 });
     }
 
+    // Prevención de duplicados por identificacion y telefono en la misma organización
+    const [porIdentificacion, porTelefono] = await Promise.all([
+      base44.entities.Cliente.filter({ organization_id: orgId, identificacion: identificacion.trim() }),
+      base44.entities.Cliente.filter({ organization_id: orgId, telefono: telefono.trim() }),
+    ]);
+
+    if (porIdentificacion && porIdentificacion.length > 0) {
+      return Response.json({ error: 'Ya existe un cliente con esta identificación en su organización' }, { status: 409 });
+    }
+    if (porTelefono && porTelefono.length > 0) {
+      return Response.json({ error: 'Ya existe un cliente con este teléfono en su organización' }, { status: 409 });
+    }
+
     const cliente = await base44.entities.Cliente.create({
       organization_id: orgId,
       nombre_completo: nombre_completo.trim(),

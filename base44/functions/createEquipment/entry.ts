@@ -27,6 +27,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'tipo de equipo inválido' }, { status: 400 });
     }
 
+    // Prevención de duplicados por serie en la misma organización (solo si serie tiene valor real)
+    if (serie && serie.trim()) {
+      const porSerie = await base44.entities.Equipo.filter({ organization_id: orgId, serie: serie.trim() });
+      if (porSerie && porSerie.length > 0) {
+        return Response.json({ error: 'Ya existe un equipo con este número de serie en su organización' }, { status: 409 });
+      }
+    }
+
     const equipo = await base44.entities.Equipo.create({
       organization_id: orgId,
       cliente_id,

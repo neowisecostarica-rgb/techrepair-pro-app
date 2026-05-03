@@ -14,6 +14,9 @@ Deno.serve(async (req) => {
     const orgId = user.organization_id || user.impersonating_org_id;
     if (!orgId) return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
 
+    const VALID_ESTADOS_ATENCION = ['ACTIVO', 'PAUSADO', 'ESPERANDO'];
+    const VALID_MOTIVOS_PAUSA = ['esperando_repuesto', 'esperando_cliente', 'interrupcion', 'otro'];
+
     const body = await req.json();
     const { orden_trabajo_id, newStatus, estado_atencion, motivo_pausa, ultima_actividad_at } = body;
 
@@ -21,9 +24,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'orden_trabajo_id es obligatorio' }, { status: 400 });
     }
 
-    // newStatus es obligatorio solo si no se está actualizando exclusivamente estado_atencion
+    // Evitar updates vacíos
+    if (!newStatus && estado_atencion === undefined && motivo_pausa === undefined && !ultima_actividad_at) {
+      return Response.json({ error: 'Debe informar al menos un campo para actualizar (newStatus, estado_atencion, motivo_pausa o ultima_actividad_at)' }, { status: 400 });
+    }
+
     if (newStatus && !VALID_STATUSES.includes(newStatus)) {
       return Response.json({ error: `newStatus inválido. Valores permitidos: ${VALID_STATUSES.join(', ')}` }, { status: 400 });
+    }
+
+    if (estado_atencion !== undefined && !VALID_ESTADOS_ATENCION.includes(estado_atencion)) {
+      return Response.json({ error: `estado_atencion inválido. Valores permitidos: ${VALID_ESTADOS_ATENCION.join(', ')}` }, { status: 400 });
+    }
+
+    if (motivo_pausa !== undefined && motivo_pausa !== null && !VALID_MOTIVOS_PAUSA.includes(motivo_pausa)) {
+      return Response.json({ error: `motivo_pausa inválido. Valores permitidos: ${VALID_MOTIVOS_PAUSA.join(', ')}` }, { status: 400 });
     }
 
     // Validar que la OT pertenezca a la organización del usuario

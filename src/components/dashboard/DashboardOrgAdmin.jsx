@@ -8,15 +8,50 @@ import QuickActions from './QuickActions';
 import QuickStartCard from './QuickStartCard';
 import { Wrench, DollarSign, Users, UserCog } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { startOfMonth, endOfMonth, format, subDays } from 'date-fns';
+import { startOfMonth, endOfMonth, format, subDays, parseISO, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+const ESTADOS_ABIERTOS = [
+  'EN_COLA_REVISION',
+  'ASIGNADA',
+  'EN_REVISION',
+  'DIAGNOSTICADA',
+  'COTIZADA',
+  'EN_REPARACION',
+];
+
+function safeDate(value) {
+  if (!value) return null;
+  const parsed = typeof value === 'string' ? parseISO(value) : new Date(value);
+  return isValid(parsed) ? parsed : null;
+}
+
+function dateKey(value) {
+  const d = safeDate(value);
+  if (!d) return null;
+  return d.toISOString().split('T')[0];
+}
 
 export default function DashboardOrgAdmin({ effectiveOrgId }) {
   const hoy = new Date();
-  const startDate = startOfMonth(hoy).toISOString().split('T')[0];
-  const endDate = endOfMonth(hoy).toISOString().split('T')[0];
 
-  // ── Métricas financieras via función existente ─────────────────────────
+  const startDateObj = startOfMonth(hoy);
+  const endDateObj = endOfMonth(hoy);
+
+  const startDate = startDateObj.toISOString().split('T')[0];
+  const endDate = endDateObj.toISOString().split('T')[0];
+
+  const {
+    data: currentUser,
+    isLoading: loadingCurrentUser,
+  } = useQuery({
+    queryKey: ['dashboard-current-user'],
+    queryFn: () => base44.auth.me(),
+    staleTime: 300_000,
+  });
+
+  const canLoadOrgData = !!effectiveOrgId && !!currentUser;
+
   const {
     data: financialData,
     isLoading: loadingFinancial,
@@ -28,45 +63,89 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
         start_date: startDate,
         end_date: endDate,
       });
-      return res.data;
+
+      return res.data || {};
     },
-    enabled: !!effectiveOrgId,
+    enabled: canLoadOrgData,
     staleTime: 60_000,
   });
 
-  // ── OTs del mes (para conteo y chart) ─────────────────────────────────
-  const { data: ordenes = [], isLoading: loadingOrdenes } = useQuery({
-    queryKey: ['ordenes-dashboard', effectiveOrgId, startDate],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId,
+  const {
+    data: ordenes = [],
+    isLoading: loadingOrdenes,
+  } = useQuery({
+    queryKey: ['ordenes-dashboard', effectiveOrgId],
+    queryFn: () =>
+      base44.entities.OrdenTrabajo.filter(
+        { organization_id: effectiveOrgId },
+        '-created_date',
+        500
+      ),
+    enabled: canLoadOrgData,
     staleTime: 60_000,
   });
 
-  // ── Datos estructurales ───────────────────────────────────────────────
   const { data: organization } = useQuery({
     queryKey: ['organization', effectiveOrgId],
-    queryFn: () => base44.entities.Organization.filter({ id: effectiveOrgId }).then(orgs => orgs[0]),
-    enabled: !!effectiveOrgId,
+    queryFn: () =>
+      base44.entities.Organization
+        .filter({ id: effectiveOrgId })
+        .then(orgs => orgs?.[0] || null),
+    enabled: canLoadOrgData,
     staleTime: 300_000,
   });
 
   const { data: userAccounts = [] } = useQuery({
     queryKey: ['userAccounts', effectiveOrgId],
-    queryFn: () => base44.entities.UserAccount.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId,
+    queryFn: () =>
+      base44.entities.UserAccount.filter(
+        { organization_id: effectiveOrgId },
+        '-created_date',
+        200
+      ),
+    enabled: canLoadOrgData,
     staleTime: 300_000,
   });
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-count', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId,
+    queryFn: () =>
+      base44.entities.Cliente.filter(
+        { organization_id: effectiveOrgId },
+        '-created_date',
+        500
+      ),
+    enabled: canLoadOrgData,
     staleTime: 300_000,
   });
 
-  const loadingMetrics = loadingFinancial || loadingOrdenes;
+  const ordenesMes = useMemo(() => {
+    return ordenes.filter(o => {
+      const created = safeDate(o.created_date || o.created_at);
+      if (!created) return false;
+      return created >= startDateObj && created <= endDateObj;
+    });
+  }, [ordenes, startDateObj, endDateObj]);
 
-  // ── Quick Start logic ──────────────────────────────────────────────────
+  const ordenesUltimos7Dias = useMemo(() => {
+    const countsByDate = ordenes.reduce((acc, orden) => {
+      const key = dateKey(orden.created_date || orden.created_at);
+      if (!key) return acc;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const dia = subDays(hoy, 6 - i);
+      const diaStr = dia.toISOString().split('T')[0];
+
+      return {
+        fecha: format(dia, 'EEE', { locale: es }),
+        cantidad: countsByDate[diaStr] || 0,
+      };
+    });
+  }, [ordenes, hoy]);
+
   const setupStatus = useMemo(() => {
     const hasBasicInfo = !!(
       organization?.legal_name &&
@@ -74,9 +153,11 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
       organization?.country &&
       organization?.currency
     );
+
     const hasCollaborators = userAccounts.some(u => u.role !== 'ORG_ADMIN');
     const hasClients = clientes.length > 0;
     const hasOrders = ordenes.length > 0;
+
     return {
       hasBasicInfo,
       hasCollaborators,
@@ -86,32 +167,37 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     };
   }, [organization, userAccounts, clientes, ordenes]);
 
-  // ── Mapeo de métricas ─────────────────────────────────────────────────
-  const ingresosMes  = financialData?.sales?.total_revenue    ?? 0;
-  const ventasCount  = financialData?.sales?.total_sales_count ?? 0;
+  const ingresosMes = financialData?.sales?.total_revenue ?? 0;
+  const ventasCount = financialData?.sales?.total_sales_count ?? 0;
 
-  // OTs del mes actual
-  const ordenesMes = ordenes.filter(o => {
-    const f = new Date(o.created_date);
-    return f >= new Date(startDate) && f <= new Date(endDate);
-  });
-  const estadosAbiertos = ['EN_COLA_REVISION', 'ASIGNADA', 'EN_REVISION', 'DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION'];
-  const ordenesTotal    = ordenesMes.length;
-  const ordenesAbiertas = ordenesMes.filter(o => estadosAbiertos.includes(o.estado)).length;
-  const ordenesCerradas = ordenesTotal - ordenesAbiertas;
+  const ordenesTotal = ordenesMes.length;
+  const ordenesAbiertas = ordenesMes.filter(o => ESTADOS_ABIERTOS.includes(o.estado)).length;
+  const ordenesCerradas = Math.max(ordenesTotal - ordenesAbiertas, 0);
 
   const clientesActivos = clientes.length;
-  const tecnicosActivos = userAccounts.filter(u => u.role === 'TECHNICIAN' && u.active !== false).length;
 
-  // Chart: OTs por día (últimos 7 días)
-  const ordenesUltimos7Dias = Array.from({ length: 7 }, (_, i) => {
-    const dia = subDays(hoy, 6 - i);
-    const diaStr = dia.toISOString().split('T')[0];
-    const cantidad = ordenes.filter(o => o.created_date?.startsWith(diaStr)).length;
-    return { fecha: format(dia, 'EEE', { locale: es }), cantidad };
-  });
+  const tecnicosConOTMes = useMemo(() => {
+    const ids = new Set();
 
-  // ── Loading state ──────────────────────────────────────────────────────
+    ordenesMes.forEach(o => {
+      const techKey =
+        o.tecnico_asignado_id ||
+        o.tecnico_id ||
+        o.tecnico_asignado_email ||
+        o.tecnico_email;
+
+      if (techKey) ids.add(techKey);
+    });
+
+    return ids.size;
+  }, [ordenesMes]);
+
+  const tecnicosRegistrados = userAccounts.filter(
+    u => u.role === 'TECHNICIAN' && u.active !== false
+  ).length;
+
+  const loadingMetrics = loadingCurrentUser || loadingFinancial || loadingOrdenes;
+
   if (loadingMetrics) {
     return (
       <div className="max-w-7xl mx-auto space-y-6">
@@ -119,11 +205,13 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
           <h1 className="text-4xl font-bold text-slate-900 mb-2">Dashboard Ejecutivo</h1>
           <p className="text-slate-500">Vista general de operaciones (mes actual)</p>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-28 bg-slate-100 rounded-2xl animate-pulse" />
           ))}
         </div>
+
         <div className="h-64 bg-slate-100 rounded-2xl animate-pulse" />
       </div>
     );
@@ -136,7 +224,6 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
         <p className="text-slate-500">Vista general de operaciones (mes actual)</p>
       </div>
 
-      {/* Quick Start Card (only if setup incomplete) */}
       {setupStatus.isSetupIncomplete && (
         <QuickStartCard
           hasBasicInfo={setupStatus.hasBasicInfo}
@@ -146,7 +233,6 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
         />
       )}
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Órdenes (mes)"
@@ -155,44 +241,48 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
           bgColor="bg-emerald-500"
           subtitle={`${ordenesAbiertas} abiertas / ${ordenesCerradas} cerradas`}
         />
+
         <StatsCard
           title="Ingresos (mes)"
-          value={`₡${ingresosMes.toLocaleString()}`}
+          value={`₡${Number(ingresosMes || 0).toLocaleString()}`}
           icon={DollarSign}
           bgColor="bg-blue-500"
-          subtitle={ventasCount ? `${ventasCount} ventas` : undefined}
+          subtitle={ventasCount ? `${ventasCount} ventas` : 'Sin ventas registradas'}
         />
+
         <StatsCard
           title="Clientes Activos"
           value={clientesActivos}
           icon={Users}
           bgColor="bg-purple-500"
         />
+
         <StatsCard
-          title="Técnicos Activos"
-          value={tecnicosActivos}
+          title="Técnicos con OT"
+          value={tecnicosConOTMes}
           icon={UserCog}
           bgColor="bg-orange-500"
+          subtitle={`${tecnicosRegistrados} técnicos registrados`}
         />
       </div>
 
-      {/* Chart */}
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b border-slate-100">
           <CardTitle className="text-lg font-semibold">Órdenes por Día (7 días)</CardTitle>
         </CardHeader>
+
         <CardContent className="p-6">
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={ordenesUltimos7Dias}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="fecha" stroke="#94a3b8" />
-              <YAxis stroke="#94a3b8" />
+              <YAxis stroke="#94a3b8" allowDecimals={false} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'white',
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                 }}
               />
               <Bar dataKey="cantidad" fill="#10b981" radius={[8, 8, 0, 0]} />
@@ -201,11 +291,11 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
         </CardContent>
       </Card>
 
-      {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <RecentOrders orders={ordenes.slice(0, 10)} />
         </div>
+
         <QuickActions />
       </div>
     </div>

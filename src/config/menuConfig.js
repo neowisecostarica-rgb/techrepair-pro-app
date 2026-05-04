@@ -57,7 +57,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Métricas Financieras',
-    path: 'DashboardOperativo',
+    path: 'Finanzas',
     icon: TrendingUp,
     category: 'VISIÓN DEL NEGOCIO',
     roles: ADMIN_ONLY,

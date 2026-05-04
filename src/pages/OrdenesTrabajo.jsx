@@ -230,7 +230,7 @@ function OrdenesTrabajoContent() {
       return crearOrdenTrabajo(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       setShowModal(false);
       resetForm();
     },
@@ -274,7 +274,7 @@ function OrdenesTrabajoContent() {
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       setShowModal(false);
       setEditingOT(null);
       setSelectedOT(null);
@@ -394,7 +394,7 @@ function OrdenesTrabajoContent() {
         ultima_actividad_at: new Date().toISOString(),
       });
 
-      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       setShowReasignar(false);
       setReasignarOT(null);
       setNuevoTecnicoId('');
@@ -1107,7 +1107,7 @@ function OrdenesTrabajoContent() {
                           userId: user?.id,
                           userEmail: user?.email
                         });
-                        queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+                        queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
                         setSelectedOT(null);
                         alert('✅ Revisión iniciada correctamente');
                       } catch (error) {
@@ -1181,7 +1181,7 @@ function OrdenesTrabajoContent() {
                     userEmail={user?.email}
                     effectiveRole={effectiveRole}
                     onSuccess={() => {
-                      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+                      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
                       setSelectedOT(null);
                     }}
                   />
@@ -1234,7 +1234,7 @@ function OrdenesTrabajoContent() {
               onComplete={() => {
                 setShowPreDiagnostico(false);
                 setPreDiagnosticoOT(null);
-                queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+                queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
               }}
             />
           )}
@@ -1259,7 +1259,7 @@ function OrdenesTrabajoContent() {
                 setShowDiagnosticoTecnico(false);
                 setDiagnosticoTecnicoOT(null);
                 setPreDiagnosticoData(null);
-                queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+                queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
               }}
             />
           )}
@@ -1282,7 +1282,7 @@ function OrdenesTrabajoContent() {
               onComplete={() => {
                 setShowCotizacion(false);
                 setCotizacionOT(null);
-                queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+                queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
               }}
             />
           )}
@@ -1301,7 +1301,7 @@ function OrdenesTrabajoContent() {
             onComplete={() => {
               setShowWizard(false);
               setWizardOT(null);
-              queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+              queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
             }}
           />
         </DialogContent>

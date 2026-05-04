@@ -263,15 +263,25 @@ function OrdenesTrabajoContent() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      // Edición completa de OT deshabilitada temporalmente — solo status es permitido via transicionarEstadoOT
-      alert('Edición no disponible temporalmente');
-      return null;
+      // Solo actualizar campos editables — estado y organization_id son inmutables desde aquí
+      await base44.entities.OrdenTrabajo.update(id, {
+        motivo_ingreso: data.motivo_ingreso,
+        observaciones_ingreso: data.observaciones_ingreso,
+        tipo_ingreso: data.tipo_ingreso,
+        prioridad: data.prioridad,
+      });
+      return id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
       setShowModal(false);
       setEditingOT(null);
       setSelectedOT(null);
+      alert('✅ Orden de trabajo actualizada correctamente');
+    },
+    onError: (error) => {
+      console.error('Error actualizando OT:', error);
+      alert('❌ Error al actualizar la orden: ' + error.message);
     },
   });
 
@@ -369,8 +379,30 @@ function OrdenesTrabajoContent() {
   };
 
   const handleReasignar = async () => {
-    // Reasignación de técnico aún no migrada al SOT externo
-    alert('Edición no disponible temporalmente');
+    if (!reasignarOT || !nuevoTecnicoId || !motivoReasignacion.trim()) {
+      alert('Completa todos los campos requeridos');
+      return;
+    }
+
+    try {
+      const tecnico = tecnicos.find(t => t.user_id === nuevoTecnicoId);
+      await base44.entities.OrdenTrabajo.update(reasignarOT.id, {
+        tecnico_asignado_id: nuevoTecnicoId,
+        tecnico_asignado_email: tecnico?.user_email || '',
+        ultima_actividad: `Reasignado a ${tecnico?.user_email || nuevoTecnicoId}. Motivo: ${motivoReasignacion}`,
+        ultima_actividad_at: new Date().toISOString(),
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      setShowReasignar(false);
+      setReasignarOT(null);
+      setNuevoTecnicoId('');
+      setMotivoReasignacion('');
+      alert('✅ Técnico reasignado correctamente');
+    } catch (error) {
+      console.error('Error reasignando técnico:', error);
+      alert('❌ Error al reasignar técnico: ' + error.message);
+    }
   };
 
   const handleCobrarTrabajo = async (orden) => {

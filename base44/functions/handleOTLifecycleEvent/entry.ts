@@ -144,6 +144,12 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
+    const user = await base44.auth.me();
+
+    if (!user) {
+      throw new Error("No autenticado");
+    }
+
     const payload = await req.json();
 
     console.log("[handleOTLifecycleEvent] Evento recibido:", JSON.stringify({
@@ -171,6 +177,12 @@ Deno.serve(async (req) => {
     if (!record?.id) {
       console.error("[handleOTLifecycleEvent] Payload inválido: falta record o record.id");
       return Response.json({ error: "Missing record or record.id" }, { status: 400 });
+    }
+
+    const orgId = user.organization_id || user.impersonating_org_id;
+    if (record.organization_id && orgId && record.organization_id !== orgId) {
+      console.error(`[handleOTLifecycleEvent] Forbidden — OT org: ${record.organization_id}, user org: ${orgId}`);
+      return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (!_trigger || !EVENT_CONFIG[_trigger]) {

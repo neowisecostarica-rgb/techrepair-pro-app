@@ -2,30 +2,19 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
-import { AuthProvider, useAuthContext } from './components/contexts/AuthContext';
+import { useAuthContext } from './components/contexts/AuthContext';
 import ImpersonationBanner from './components/superadmin/ImpersonationBanner';
 import SuspendedScreen from './components/suspended/SuspendedScreen';
 import { useQuery } from '@tanstack/react-query';
 import {
-  LayoutDashboard,
   Wrench,
-  Package,
-  Users,
-  ShoppingCart,
-  Calendar,
-  Recycle,
   AlertCircle,
   LogOut,
   ChevronRight,
   ChevronLeft,
-  ShieldAlert,
-  Settings,
-  FileText,
-  Sun,
-  ChevronDown,
-  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import SidebarMenu from '@/components/layout/SidebarMenu';
 
 function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -211,30 +200,13 @@ function LayoutContent({ children, currentPageName }) {
             </div>
 
             <nav className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-1">
-                <Link
-                  to={createPageUrl('Saas')}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                    currentPageName === 'Saas'
-                      ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                      : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <LayoutDashboard className={`w-5 h-5 ${currentPageName === 'Saas' ? 'text-white' : 'text-slate-400'}`} />
-                  <span className="font-medium">Panel SaaS</span>
-                </Link>
-                <Link
-                  to={createPageUrl('AdminReset')}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                    currentPageName === 'AdminReset'
-                      ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg'
-                      : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <AlertCircle className={`w-5 h-5 ${currentPageName === 'AdminReset' ? 'text-white' : 'text-slate-400'}`} />
-                  <span className="font-medium">Admin Reset</span>
-                </Link>
-              </div>
+              <SidebarMenu
+                effectiveRole="SUPER_ADMIN"
+                currentPageName={currentPageName}
+                sidebarOpen={true}
+                sectionsOpen={{}}
+                toggleSection={() => {}}
+              />
             </nav>
 
             {user && (
@@ -371,130 +343,7 @@ function LayoutContent({ children, currentPageName }) {
     return <SuspendedScreen orgName={organization?.name} orgId={organization?.id} />;
   }
 
-  // Menús según role
-  const superAdminMenu = [
-    { label: 'Panel SaaS', path: 'Saas', icon: LayoutDashboard },
-    { label: 'Admin Reset', path: 'AdminReset', icon: AlertCircle },
-  ];
-
-  const orgAdminMenu = [
-    { label: 'Configuración', path: 'Settings', icon: LayoutDashboard },
-    { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
-  ];
-
-  const operationalMenu = [
-    { label: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard },
-    { label: 'Mi Día', path: 'MiDia', icon: Wrench },
-    { label: 'Cola Revisión', path: 'ColaRevision', icon: LayoutDashboard },
-    { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench },
-    { label: 'CRM', path: 'CRM', icon: Users },
-    { label: 'Clientes', path: 'Clientes', icon: Users },
-    { label: 'Inventario', path: 'Inventario', icon: Package },
-    { label: 'Punto de Venta', path: 'PuntoVenta', icon: ShoppingCart },
-    { label: 'Agenda', path: 'Agenda', icon: Calendar },
-    { label: 'Reciclaje', path: 'Reciclaje', icon: Recycle },
-    { label: 'Calidad', path: 'Calidad', icon: AlertCircle },
-  ];
-
- // STRICT MENU SELECTION: Only show routes allowed per effectiveRole
- let menuItems = [];
-
- if (!effectiveRole) {
-   menuItems = [];
- } else if (effectiveRole === 'SUPER_ADMIN') {
-   // SUPER_ADMIN can ONLY access SaaS panel (unless impersonating, which changes effectiveRole to ORG_ADMIN)
-   menuItems = superAdminMenu;
- } else if (effectiveRole === 'ORG_ADMIN') {
-   // ORG_ADMIN gets full org access - CATEGORIZED MENU
-   menuItems = [
-     // ⭐ HOME OPERATIVA (sin categoría)
-     { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
-
-     // VISIÓN DEL NEGOCIO
-     { label: 'Resumen del Negocio', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard' },
-     { label: 'Métricas Financieras', path: 'DashboardOperativo', icon: TrendingUp, category: 'VISIÓN DEL NEGOCIO' },
-     { label: 'Estado Financiero', path: 'Finanzas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard (Finanzas)' },
-     { label: 'Ventas y Ganancias', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Métricas' },
-     { label: 'Rendimiento del Equipo', path: 'ProductividadTecnicos', icon: Users, category: 'VISIÓN DEL NEGOCIO' },
-     { label: 'Análisis de Operaciones', path: 'AnalisisTrabajo', icon: FileText, category: 'VISIÓN DEL NEGOCIO' },
-     { label: 'Supervisión en Vivo', path: 'Operacion', icon: Wrench, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Operación' },
-
-     // TALLER
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
-     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
-     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
-     { label: 'Reciclaje', path: 'Reciclaje', icon: Recycle, category: 'TALLER' },
-     { label: 'No Conformidades', path: 'Calidad', icon: AlertCircle, category: 'TALLER' },
-
-     // VENTAS
-     { label: 'Caja y Cobros', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS', tooltip: 'Antes: Punto de Venta' },
-     { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
-     { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
-     { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
-
-     // CLIENTES
-     { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
-     { label: 'Gestión de Leads', path: 'CRM', icon: Users, category: 'CLIENTES', tooltip: 'Antes: CRM' },
-
-     // INVENTARIO
-     { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
-
-     // CONFIGURACIÓN (SIEMPRE AL FINAL)
-     { label: 'Configuración', path: 'Settings', icon: Settings, category: 'CONFIGURACIÓN' },
-   ];
- } else if (effectiveRole === 'BRANCH_ADMIN') {
-   // BRANCH_ADMIN gets operational access (no Settings)
-   menuItems = [
-     { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
-
-     { label: 'Resumen del Negocio', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard' },
-     { label: 'Métricas Financieras', path: 'DashboardOperativo', icon: TrendingUp, category: 'VISIÓN DEL NEGOCIO' },
-     { label: 'Estado Financiero', path: 'Finanzas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard (Finanzas)' },
-     { label: 'Supervisión en Vivo', path: 'Operacion', icon: Wrench, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Operación' },
-
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
-     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
-     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
-
-     { label: 'Caja y Cobros', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS', tooltip: 'Antes: Punto de Venta' },
-     { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
-     { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
-     { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
-     { label: 'Ventas y Ganancias', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VENTAS', tooltip: 'Antes: Métricas' },
-
-     { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
-     { label: 'Gestión de Leads', path: 'CRM', icon: Users, category: 'CLIENTES', tooltip: 'Antes: CRM' },
-
-     { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
-   ];
- } else if (effectiveRole === 'SALES') {
-   menuItems = [
-     { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
-     { label: 'Mis Ventas', path: 'MisVentas', icon: TrendingUp, category: null },
-
-     { label: 'Caja y Cobros', path: 'PuntoVenta', icon: ShoppingCart, category: 'VENTAS', tooltip: 'Antes: Punto de Venta' },
-     { label: 'Historial de Ventas', path: 'VentasHistorial', icon: FileText, category: 'VENTAS' },
-     { label: 'Cotizaciones', path: 'VentasCotizaciones', icon: FileText, category: 'VENTAS' },
-     { label: 'Garantías', path: 'VentasGarantias', icon: ShieldAlert, category: 'VENTAS' },
-
-     { label: 'Clientes', path: 'Clientes', icon: Users, category: 'CLIENTES' },
-     { label: 'Gestión de Leads', path: 'CRM', icon: Users, category: 'CLIENTES', tooltip: 'Antes: CRM' },
-
-     { label: 'Órdenes de Trabajo', path: 'OrdenesTrabajo', icon: Wrench, category: 'TALLER' },
-     { label: 'Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
-   ];
- } else if (effectiveRole === 'TECHNICIAN') {
-   menuItems = [
-     { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
-
-     { label: 'Cola de Revisión', path: 'ColaRevision', icon: FileText, category: 'TALLER' },
-     { label: 'Mi Agenda', path: 'Agenda', icon: Calendar, category: 'TALLER' },
-
-     { label: 'Inventario', path: 'Inventario', icon: Package, category: 'INVENTARIO' },
-
-     { label: 'Mis Estadísticas', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO' },
-   ];
-   }
+  // ── Secciones colapsables: estado persistido ya existe arriba ──
 
    return (
   <>
@@ -550,65 +399,15 @@ function LayoutContent({ children, currentPageName }) {
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation — declarativa */}
           <nav className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-1">
-              {(() => {
-                // Group items by category (null = no category, shown first)
-                const categories = [...new Set(menuItems.map(item => item.category))];
-
-                return categories.map((category, catIndex) => {
-                  const items = menuItems.filter(item => item.category === category);
-                  const isFirstCategory = catIndex === 0;
-                  const needsSeparator = !isFirstCategory && category !== null;
-                  const isOpen = category === null || sectionsOpen[category];
-
-                  return (
-                    <div key={category || 'home'} className={needsSeparator ? 'pt-4 mt-4 border-t border-slate-200' : ''}>
-                      {sidebarOpen && category && (
-                        <button
-                          onClick={() => toggleSection(category)}
-                          className="w-full px-3 mb-2 flex items-center gap-2 hover:bg-slate-50 rounded-lg py-1 transition-colors"
-                        >
-                          {isOpen ? (
-                            <ChevronDown className="w-4 h-4 text-slate-400" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
-                          )}
-                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                            {category}
-                          </p>
-                        </button>
-                      )}
-                      {isOpen && items.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = currentPageName === item.path;
-                        return (
-                          <Link
-                            key={item.path}
-                            to={createPageUrl(item.path)}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                              isActive
-                                ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg shadow-emerald-500/30'
-                                : 'text-slate-600 hover:bg-slate-100'
-                            }`}
-                            title={sidebarOpen && item.tooltip ? item.tooltip : undefined}
-                          >
-                            <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-500'}`} />
-                            {sidebarOpen && (
-                              <>
-                                <span className="flex-1 font-medium">{item.label}</span>
-                                {isActive && <ChevronRight className="w-4 h-4" />}
-                              </>
-                            )}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  );
-                });
-              })()}
-            </div>
+            <SidebarMenu
+              effectiveRole={effectiveRole}
+              currentPageName={currentPageName}
+              sidebarOpen={sidebarOpen}
+              sectionsOpen={sectionsOpen}
+              toggleSection={toggleSection}
+            />
           </nav>
 
           {/* User Section */}

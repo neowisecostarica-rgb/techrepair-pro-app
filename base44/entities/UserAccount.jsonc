@@ -1,0 +1,73 @@
+{
+  "name": "UserAccount",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID del User built-in de Base44 (nullable solo para invitaciones pendientes)"
+    },
+    "user_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email del usuario (facilita b\u00fasquedas)"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (requerido para acceso operativo)"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "ID de la sucursal asignada (obligatorio para BRANCH_ADMIN, TECHNICIAN, SALES, INVENTORY, SUPPORT)"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "ORG_ADMIN",
+        "BRANCH_ADMIN",
+        "TECHNICIAN",
+        "SALES",
+        "INVENTORY",
+        "SUPPORT"
+      ],
+      "description": "Rol oficial del usuario en la organizaci\u00f3n"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "active",
+        "suspended"
+      ],
+      "default": "active",
+      "description": "Estado del usuario en la organizaci\u00f3n: invited = pendiente de primer login, active = acceso habilitado, suspended = acceso bloqueado"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Estado de la cuenta (legacy, mantenido para compatibilidad \u2014 usar status)"
+    },
+    "invited_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha en que se envi\u00f3 la invitaci\u00f3n"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha en que el usuario acept\u00f3 / hizo primer login"
+    },
+    "locale": {
+      "type": "string",
+      "description": "Idioma preferido (opcional)"
+    },
+    "timezone": {
+      "type": "string",
+      "description": "Zona horaria (opcional)"
+    }
+  },
+  "required": [
+    "user_email",
+    "role",
+    "organization_id"
+  ]
+}

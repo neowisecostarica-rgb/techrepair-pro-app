@@ -56,6 +56,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       });
 
       // PASO 3: Decisión según resultado
+      const now = new Date().toISOString();
       if (existingAccounts.length === 0) {
         // A) No existe → CREATE
         await base44.entities.UserAccount.create({
@@ -63,22 +64,26 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
           organization_id: organizationId,
           branch_id: data.branch_id || null,
           role: data.role,
+          status: 'invited',
           active: true,
+          invited_at: now,
         });
         return { success: true, email: data.user_email, action: 'created' };
         
       } else if (existingAccounts.length === 1) {
         const account = existingAccounts[0];
         
-        if (account.active === true) {
+        if (account.status === 'active' || (account.active === true && !account.status)) {
           // B) Usuario activo → RECHAZAR
           throw new Error(`El usuario ${data.user_email} ya tiene acceso activo. Usa 'Editar Usuario' para modificar su rol o sucursal.`);
         } else {
-          // C) Usuario inactivo → UPDATE (reinvitación)
+          // C) Usuario suspendido/invitado → UPDATE (reinvitación)
           await base44.entities.UserAccount.update(account.id, {
             role: data.role,
             branch_id: data.branch_id || null,
+            status: 'invited',
             active: true,
+            invited_at: now,
           });
           return { success: true, email: data.user_email, action: 'updated' };
         }
@@ -131,27 +136,27 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   const handleUpdateUser = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const newStatus = formData.get('status');
     updateUserMutation.mutate({
       id: editingUser.id,
       data: {
         role: formData.get('role'),
         branch_id: formData.get('branch_id') || null,
-        active: formData.get('active') === 'true',
+        status: newStatus,
+        active: newStatus !== 'suspended',
       },
     });
   };
 
   const handleDeactivate = (user) => {
-    // P0.1 TENANT ZERO: Prevent deactivating last ORG_ADMIN
     if (isLastActiveOrgAdmin(user)) {
-      alert('⚠️ Esta empresa debe tener al menos un administrador activo.\n\nNo puedes desactivar el último ORG_ADMIN.');
+      alert('⚠️ Esta empresa debe tener al menos un administrador activo.\n\nNo puedes suspender el último ORG_ADMIN.');
       return;
     }
-
-    if (confirm(`¿Desactivar acceso de ${user.user_email}?\n\nEl usuario no podrá iniciar sesión pero su historial quedará intacto.`)) {
+    if (confirm(`¿Suspender acceso de ${user.user_email}?\n\nEl usuario no podrá iniciar sesión pero su historial quedará intacto.`)) {
       updateUserMutation.mutate({
         id: user.id,
-        data: { active: false },
+        data: { status: 'suspended', active: false },
       });
     }
   };
@@ -159,7 +164,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   const handleActivate = (user) => {
     updateUserMutation.mutate({
       id: user.id,
-      data: { active: true },
+      data: { status: 'active', active: true },
     });
   };
 
@@ -179,17 +184,15 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   // Determine available roles based on current user's effectiveRole
   const getAvailableRoles = () => {
     if (effectiveRole === 'ORG_ADMIN') {
-      // ORG_ADMIN can assign all roles EXCEPT SUPER_ADMIN and ORG_ADMIN
       return [
+        { value: 'ORG_ADMIN', label: 'Administrador de Organización' },
         { value: 'BRANCH_ADMIN', label: 'Administrador Sucursal' },
         { value: 'TECHNICIAN', label: 'Técnico' },
         { value: 'SALES', label: 'Ventas' },
-        { value: 'AUDITOR', label: 'Auditor' },
-        { value: 'CFO', label: 'CFO' },
-        { value: 'CEO', label: 'CEO' },
+        { value: 'INVENTORY', label: 'Inventario' },
+        { value: 'SUPPORT', label: 'Soporte' },
       ];
     }
-    // BRANCH_ADMIN has limited assignment (if needed in future)
     return [];
   };
 
@@ -248,10 +251,14 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                       {getBranchName(user.branch_id)}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge className={user.active 
-                        ? 'bg-emerald-100 text-emerald-700 border-0 text-xs' 
-                        : 'bg-slate-100 text-slate-700 border-0 text-xs'}>
-                        {user.active ? 'Activo' : 'Inactivo'}
+                      <Badge className={
+                        (user.status === 'active' || (!user.status && user.active))
+                          ? 'bg-emerald-100 text-emerald-700 border-0 text-xs'
+                          : user.status === 'invited'
+                          ? 'bg-blue-100 text-blue-700 border-0 text-xs'
+                          : 'bg-red-100 text-red-600 border-0 text-xs'
+                      }>
+                        {user.status === 'invited' ? 'Invitado' : user.status === 'suspended' ? 'Suspendido' : 'Activo'}
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
@@ -411,10 +418,10 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="active">Estado *</Label>
-                <Select 
-                  name="active" 
-                  defaultValue={editingUser.active ? 'true' : 'false'} 
+                <Label htmlFor="status">Estado *</Label>
+                <Select
+                  name="status"
+                  defaultValue={editingUser.status || (editingUser.active ? 'active' : 'suspended')}
                   required
                   disabled={isLastActiveOrgAdmin(editingUser)}
                 >
@@ -422,8 +429,9 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="true">Activo</SelectItem>
-                    <SelectItem value="false">Inactivo</SelectItem>
+                    <SelectItem value="active">Activo</SelectItem>
+                    <SelectItem value="invited">Invitado (pendiente)</SelectItem>
+                    <SelectItem value="suspended">Suspendido</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

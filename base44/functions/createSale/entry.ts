@@ -266,6 +266,12 @@ Deno.serve(async (req) => {
     }
 
     for (const item of itemsCarrito) {
+      // Costo histórico snapshot: fuente de verdad para cálculo de margen
+      let costoSnapshot = 0;
+      if (item.tipo === 'producto' && item.referencia_id && inventarioSnapshots[item.referencia_id]) {
+        costoSnapshot = inventarioSnapshots[item.referencia_id].invItem.costo_unitario || 0;
+      }
+
       const itemCreado = await base44.asServiceRole.entities.VentaItem.create({
         organization_id: orgId,
         venta_id: ventaResult.id,
@@ -275,6 +281,7 @@ Deno.serve(async (req) => {
         cantidad: item.cantidad,
         precio_unitario: item.precio_unitario,
         subtotal: item.subtotal,
+        costo_unitario_snapshot: costoSnapshot,
       });
 
       if (!itemCreado || !itemCreado.id) {

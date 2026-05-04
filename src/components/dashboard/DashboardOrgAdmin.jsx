@@ -6,36 +6,43 @@ import StatsCard from './StatsCard';
 import RecentOrders from './RecentOrders';
 import QuickActions from './QuickActions';
 import QuickStartCard from './QuickStartCard';
-import { Wrench, DollarSign, Users, UserCog, AlertCircle } from 'lucide-react';
+import { Wrench, DollarSign, Users, UserCog } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-const SOT_BASE_URL = '/v1';
-
-async function fetchMetricsSummary(orgId) {
-  const res = await fetch(`${SOT_BASE_URL}/work-orders/metrics/summary`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Organization-Id': orgId,
-    },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
+import { startOfMonth, endOfMonth, format, subDays } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function DashboardOrgAdmin({ effectiveOrgId }) {
-  // ── SOT: única llamada al backend de métricas ──────────────────────────
+  const hoy = new Date();
+  const startDate = startOfMonth(hoy).toISOString().split('T')[0];
+  const endDate = endOfMonth(hoy).toISOString().split('T')[0];
+
+  // ── Métricas financieras via función existente ─────────────────────────
   const {
-    data: metrics,
-    isLoading: loadingMetrics,
-    isError: errorMetrics,
+    data: financialData,
+    isLoading: loadingFinancial,
   } = useQuery({
-    queryKey: ['metrics-summary', effectiveOrgId],
-    queryFn: () => fetchMetricsSummary(effectiveOrgId),
+    queryKey: ['dashboard-financial', effectiveOrgId, startDate, endDate],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('getFinancialMetrics', {
+        organization_id: effectiveOrgId,
+        start_date: startDate,
+        end_date: endDate,
+      });
+      return res.data;
+    },
     enabled: !!effectiveOrgId,
     staleTime: 60_000,
   });
 
-  // ── Setup Card: sigue usando base44 (datos estructurales, no métricas) ──
+  // ── OTs del mes (para conteo y chart) ─────────────────────────────────
+  const { data: ordenes = [], isLoading: loadingOrdenes } = useQuery({
+    queryKey: ['ordenes-dashboard', effectiveOrgId, startDate],
+    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
+    staleTime: 60_000,
+  });
+
+  // ── Datos estructurales ───────────────────────────────────────────────
   const { data: organization } = useQuery({
     queryKey: ['organization', effectiveOrgId],
     queryFn: () => base44.entities.Organization.filter({ id: effectiveOrgId }).then(orgs => orgs[0]),
@@ -57,13 +64,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     staleTime: 300_000,
   });
 
-  // ── RecentOrders: se mantiene con base44 (órdenes individuales con detalle) ──
-  const { data: ordenes = [] } = useQuery({
-    queryKey: ['ordenes-recent', effectiveOrgId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId,
-    staleTime: 60_000,
-  });
+  const loadingMetrics = loadingFinancial || loadingOrdenes;
 
   // ── Quick Start logic ──────────────────────────────────────────────────
   const setupStatus = useMemo(() => {
@@ -75,7 +76,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     );
     const hasCollaborators = userAccounts.some(u => u.role !== 'ORG_ADMIN');
     const hasClients = clientes.length > 0;
-    const hasOrders = (metrics?.summary?.total ?? 0) > 0;
+    const hasOrders = ordenes.length > 0;
     return {
       hasBasicInfo,
       hasCollaborators,
@@ -83,43 +84,47 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
       hasOrders,
       isSetupIncomplete: !hasBasicInfo || !hasCollaborators || !hasClients || !hasOrders,
     };
-  }, [organization, userAccounts, clientes, metrics]);
+  }, [organization, userAccounts, clientes, ordenes]);
 
-  // ── Mapeo de métricas SOT → UI ─────────────────────────────────────────
-  const ordenesTotal     = metrics?.summary?.total        ?? 0;
-  const ordenesAbiertas  = metrics?.operations?.backlog   ?? 0;
-  const ordenesCerradas  = ordenesTotal - ordenesAbiertas;
-  const ingresosMes      = metrics?.business?.revenue     ?? 0;
-  const ventasCount      = metrics?.business?.sales_count ?? 0;
-  const clientesActivos  = metrics?.summary?.clients      ?? clientes.length;
-  const tecnicosActivos  = metrics?.summary?.technicians  ?? userAccounts.filter(u => u.role === 'TECHNICIAN' && u.active).length;
-  const chartData        = metrics?.priority?.daily_breakdown ?? [];
+  // ── Mapeo de métricas ─────────────────────────────────────────────────
+  const ingresosMes  = financialData?.sales?.total_revenue    ?? 0;
+  const ventasCount  = financialData?.sales?.total_sales_count ?? 0;
 
-  // Normalizar chart data al shape esperado por recharts
-  const ordenesUltimos7Dias = chartData.length > 0
-    ? chartData.map(d => ({ fecha: d.label ?? d.date ?? d.day, cantidad: d.count ?? d.cantidad ?? 0 }))
-    : Array.from({ length: 7 }, (_, i) => {
-        const fecha = new Date();
-        fecha.setDate(fecha.getDate() - (6 - i));
-        return { fecha: fecha.toLocaleDateString('es', { weekday: 'short' }), cantidad: 0 };
-      });
+  // OTs del mes actual
+  const ordenesMes = ordenes.filter(o => {
+    const f = new Date(o.created_date);
+    return f >= new Date(startDate) && f <= new Date(endDate);
+  });
+  const estadosAbiertos = ['EN_COLA_REVISION', 'ASIGNADA', 'EN_REVISION', 'DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION'];
+  const ordenesTotal    = ordenesMes.length;
+  const ordenesAbiertas = ordenesMes.filter(o => estadosAbiertos.includes(o.estado)).length;
+  const ordenesCerradas = ordenesTotal - ordenesAbiertas;
 
-  // ── Estados de carga / error ──────────────────────────────────────────
+  const clientesActivos = clientes.length;
+  const tecnicosActivos = userAccounts.filter(u => u.role === 'TECHNICIAN' && u.active !== false).length;
+
+  // Chart: OTs por día (últimos 7 días)
+  const ordenesUltimos7Dias = Array.from({ length: 7 }, (_, i) => {
+    const dia = subDays(hoy, 6 - i);
+    const diaStr = dia.toISOString().split('T')[0];
+    const cantidad = ordenes.filter(o => o.created_date?.startsWith(diaStr)).length;
+    return { fecha: format(dia, 'EEE', { locale: es }), cantidad };
+  });
+
+  // ── Loading state ──────────────────────────────────────────────────────
   if (loadingMetrics) {
     return (
-      <div className="max-w-7xl mx-auto p-6 text-center">
-        <p className="text-slate-500">Cargando métricas...</p>
-      </div>
-    );
-  }
-
-  if (errorMetrics) {
-    return (
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <p className="text-sm">No se pudieron cargar las métricas del backend. Intenta recargar la página.</p>
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Dashboard Ejecutivo</h1>
+          <p className="text-slate-500">Vista general de operaciones (mes actual)</p>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-28 bg-slate-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+        <div className="h-64 bg-slate-100 rounded-2xl animate-pulse" />
       </div>
     );
   }
@@ -128,7 +133,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Dashboard Ejecutivo</h1>
-        <p className="text-slate-500">Vista general de operaciones (últimos 30 días)</p>
+        <p className="text-slate-500">Vista general de operaciones (mes actual)</p>
       </div>
 
       {/* Quick Start Card (only if setup incomplete) */}
@@ -144,14 +149,14 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          title="Órdenes (30d)"
+          title="Órdenes (mes)"
           value={ordenesTotal}
           icon={Wrench}
           bgColor="bg-emerald-500"
           subtitle={`${ordenesAbiertas} abiertas / ${ordenesCerradas} cerradas`}
         />
         <StatsCard
-          title="Ingresos (30d)"
+          title="Ingresos (mes)"
           value={`₡${ingresosMes.toLocaleString()}`}
           icon={DollarSign}
           bgColor="bg-blue-500"

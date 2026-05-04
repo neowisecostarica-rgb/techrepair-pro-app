@@ -6,7 +6,7 @@ const EVENT_CONFIG = {
     eventType: "CREATED",
     subject: (ot) => `Orden de trabajo creada: ${ot.codigo_ot || ot.id}`,
     body: (ot, cliente) => `
-Hola ${cliente?.full_name || cliente?.nombre || "cliente"},
+Hola ${cliente?.full_name || cliente?.nombre_completo || cliente?.nombre || "cliente"},
 
 Hemos recibido su equipo y creamos la orden de trabajo ${ot.codigo_ot || ot.id}.
 
@@ -21,7 +21,7 @@ Gracias por confiar en nosotros.
     eventType: "FINALIZADA",
     subject: (ot) => `Orden de trabajo finalizada: ${ot.codigo_ot || ot.id}`,
     body: (ot, cliente) => `
-Hola ${cliente?.full_name || cliente?.nombre || "cliente"},
+Hola ${cliente?.full_name || cliente?.nombre_completo || cliente?.nombre || "cliente"},
 
 Su orden de trabajo ${ot.codigo_ot || ot.id} ha sido finalizada.
 
@@ -36,7 +36,7 @@ Gracias por confiar en nosotros.
     eventType: "ENTREGADA",
     subject: (ot) => `Orden de trabajo entregada: ${ot.codigo_ot || ot.id}`,
     body: (ot, cliente) => `
-Hola ${cliente?.full_name || cliente?.nombre || "cliente"},
+Hola ${cliente?.full_name || cliente?.nombre_completo || cliente?.nombre || "cliente"},
 
 Confirmamos que la orden de trabajo ${ot.codigo_ot || ot.id} fue entregada.
 
@@ -51,12 +51,15 @@ async function safeTrack(base44, eventName, properties = {}) {
       await base44.analytics.track({ eventName, properties });
     }
   } catch (error) {
-    console.log("analytics_track_failed", error.message);
+    console.warn("[handleOTLifecycleEvent] analytics_track_failed:", error.message);
   }
 }
 
 async function getCliente(base44, record) {
-  if (!record?.cliente_id) return null;
+  if (!record?.cliente_id) {
+    console.log("[handleOTLifecycleEvent] Sin cliente_id en OT:", record?.id);
+    return null;
+  }
   try {
     const clientes = await base44.asServiceRole.entities.Cliente.filter(
       { id: record.cliente_id },
@@ -64,7 +67,7 @@ async function getCliente(base44, record) {
     );
     return Array.isArray(clientes) && clientes.length > 0 ? clientes[0] : null;
   } catch (error) {
-    console.log("cliente_lookup_failed", error.message);
+    console.warn("[handleOTLifecycleEvent] cliente_lookup_failed:", error.message);
     return null;
   }
 }
@@ -87,7 +90,7 @@ async function ensureOTEvent(base44, record, config) {
   );
 
   if (Array.isArray(existing) && existing.length > 0) {
-    console.log(`OTEvent already exists: ${config.eventType} / OT ${record.id}`);
+    console.log(`[handleOTLifecycleEvent] OTEvent ya existe — tipo: ${config.eventType}, OT: ${record.id}`);
     return { created: false };
   }
 
@@ -98,7 +101,7 @@ async function ensureOTEvent(base44, record, config) {
     created_at: new Date().toISOString(),
   });
 
-  console.log(`OTEvent created: ${config.eventType} / OT ${record.id}`);
+  console.log(`[handleOTLifecycleEvent] OTEvent creado — tipo: ${config.eventType}, OT: ${record.id}`);
   return { created: true };
 }
 
@@ -106,29 +109,35 @@ async function sendEmailIfNeeded(base44, record, cliente, config) {
   const flag = config.emailFlag;
 
   if (record[flag] === true) {
-    console.log(`Email already sent. Skipping ${flag} / OT ${record.id}`);
-    return { sent: false, skipped: true };
+    console.log(`[handleOTLifecycleEvent] Email ya enviado (flag ${flag}=true) — OT: ${record.id}, saltando.`);
+    return { sent: false, skipped: true, reason: "already_sent" };
   }
 
   const to = resolveEmail(record, cliente);
 
   if (!to) {
-    console.log(`Missing client email for OT ${record.id}, skipping email.`);
+    console.log(`[handleOTLifecycleEvent] Sin email de cliente — OT: ${record.id}, saltando envío.`);
     return { sent: false, skipped: true, reason: "no_email" };
   }
 
-  await base44.asServiceRole.integrations.Core.SendEmail({
-    to,
-    subject: config.subject(record),
-    body: config.body(record, cliente),
-  });
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({
+      to,
+      subject: config.subject(record),
+      body: config.body(record, cliente),
+    });
 
-  await base44.asServiceRole.entities.OrdenTrabajo.update(record.id, {
-    [flag]: true,
-  });
+    await base44.asServiceRole.entities.OrdenTrabajo.update(record.id, {
+      [flag]: true,
+    });
 
-  console.log(`Email sent and flag updated: ${flag} / OT ${record.id}`);
-  return { sent: true, skipped: false };
+    console.log(`[handleOTLifecycleEvent] Email enviado y flag ${flag} actualizado — OT: ${record.id}, destinatario: ${to}`);
+    return { sent: true, skipped: false };
+  } catch (emailError) {
+    // El error de email NO debe romper el flujo — solo se registra
+    console.error(`[handleOTLifecycleEvent] Error al enviar email — OT: ${record.id}, error: ${emailError.message}`);
+    return { sent: false, skipped: false, error: emailError.message };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -136,6 +145,13 @@ Deno.serve(async (req) => {
 
   try {
     const payload = await req.json();
+
+    console.log("[handleOTLifecycleEvent] Evento recibido:", JSON.stringify({
+      event_type: payload.event?.type,
+      _trigger: payload._trigger,
+      ot_id: payload.record?.id || payload.data?.id,
+      ot_estado: payload.record?.estado || payload.data?.estado,
+    }));
 
     // Soporta llamada desde entity automation (data + event) o directa (record + _trigger)
     let record = payload.record || payload.data;
@@ -153,10 +169,12 @@ Deno.serve(async (req) => {
     }
 
     if (!record?.id) {
+      console.error("[handleOTLifecycleEvent] Payload inválido: falta record o record.id");
       return Response.json({ error: "Missing record or record.id" }, { status: 400 });
     }
 
     if (!_trigger || !EVENT_CONFIG[_trigger]) {
+      console.warn(`[handleOTLifecycleEvent] Trigger inválido o no reconocido: "${_trigger}" — OT: ${record.id}`);
       return Response.json(
         { error: `Invalid or missing _trigger: ${_trigger}` },
         { status: 400 }
@@ -165,7 +183,7 @@ Deno.serve(async (req) => {
 
     const config = EVENT_CONFIG[_trigger];
 
-    console.log("handleOTLifecycleEvent:start", { trigger: _trigger, ot_id: record.id });
+    console.log(`[handleOTLifecycleEvent] Procesando trigger: ${_trigger}, OT: ${record.id}`);
 
     const cliente = await getCliente(base44, record);
     const emailResult = await sendEmailIfNeeded(base44, record, cliente, config);
@@ -182,7 +200,7 @@ Deno.serve(async (req) => {
       success: true,
     });
 
-    console.log("handleOTLifecycleEvent:success", { trigger: _trigger, ot_id: record.id });
+    console.log(`[handleOTLifecycleEvent] Completado — trigger: ${_trigger}, OT: ${record.id}, email_sent: ${emailResult.sent}, ot_event_created: ${eventResult.created}`);
 
     return Response.json({
       status: "success",
@@ -190,10 +208,11 @@ Deno.serve(async (req) => {
       ot_id: record.id,
       email_sent: emailResult.sent,
       email_skipped: emailResult.skipped,
+      email_error: emailResult.error || null,
       ot_event_created: eventResult.created,
     });
   } catch (error) {
-    console.error("handleOTLifecycleEvent:error", error.message);
+    console.error("[handleOTLifecycleEvent] Error general:", error.message);
 
     await safeTrack(base44, "ot_lifecycle_event_failed", {
       error: error.message,

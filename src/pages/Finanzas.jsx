@@ -11,6 +11,8 @@ import {
   Megaphone,
   BarChart2,
   Lightbulb,
+  CalendarSearch,
+  AlertCircle,
 } from 'lucide-react';
 import {
   LineChart,
@@ -95,7 +97,7 @@ function FinanzasContent() {
     setFechaHasta(hasta.toISOString().split('T')[0]);
   }, [periodoPreset]);
 
-  const { data: metrics, isLoading: isLoadingMetrics } = useQuery({
+  const { data: metrics, isLoading: isLoadingMetrics, isError: isErrorMetrics } = useQuery({
     queryKey: ['financial-metrics', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
     queryFn: async () => {
       const payload = {
@@ -155,6 +157,8 @@ function FinanzasContent() {
   const newClients   = metrics?.marketing?.total_new_clients ?? 0;
   const marginAmount = revenue * (grossMargin / 100);
 
+  const sinDatos = !isLoadingMetrics && !isErrorMetrics && revenue === 0 && salesCount === 0 && dataLinea.length === 0;
+
   let insight = null;
   if (revenue > 0 && marketingSpend > 0) {
     if (revenue > marketingSpend * 3) {
@@ -195,6 +199,14 @@ function FinanzasContent() {
           sucursalFija={sucursalFijaNombre}
         />
       </div>
+
+      {/* ── ERROR ── */}
+      {isErrorMetrics && !isLoadingMetrics && (
+        <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4">
+          <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
+          <p className="text-sm text-slate-500">No se pudieron calcular las métricas en este momento.</p>
+        </div>
+      )}
 
       {/* ── LOADING ── */}
       {isLoadingMetrics && (
@@ -297,6 +309,28 @@ function FinanzasContent() {
             </div>
           </div>
 
+          {/* ── SIN DATOS ── */}
+          {sinDatos && (
+            <div className="flex flex-col items-center justify-center gap-4 bg-slate-50 border border-slate-100 rounded-2xl px-8 py-10 text-center">
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+                <CalendarSearch className="w-5 h-5 text-slate-300" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-slate-700">No hay ventas registradas en este período.</p>
+                <p className="text-sm text-slate-400">Probá ampliar el rango de fechas o seleccionar un período anterior donde sí hubo actividad.</p>
+              </div>
+              {periodoPreset !== 'año' && (
+                <button
+                  onClick={() => setPeriodoPreset('año')}
+                  className="mt-1 inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-colors"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Ver todo el año
+                </button>
+              )}
+            </div>
+          )}
+
           {/* ── GRÁFICO ── */}
           <Card className="border-0 shadow-sm ring-1 ring-slate-100 rounded-2xl bg-white">
             <CardHeader className="px-7 pt-7 pb-2">
@@ -343,9 +377,9 @@ function FinanzasContent() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[280px] flex flex-col items-center justify-center text-slate-200 gap-2">
-                  <TrendingUp className="w-10 h-10" />
-                  <p className="text-sm text-slate-400">Sin datos en el período</p>
+                <div className="h-[280px] flex flex-col items-center justify-center gap-3">
+                  <TrendingUp className="w-8 h-8 text-slate-200" />
+                  <p className="text-sm text-slate-400">No hay movimiento de ingresos para graficar en este período.</p>
                 </div>
               )}
             </CardContent>

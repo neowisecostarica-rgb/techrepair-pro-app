@@ -56,13 +56,6 @@ export const MENU_ITEMS = [
     tooltip: 'Antes: Dashboard',
   },
   {
-    label: 'Métricas Financieras',
-    path: 'Finanzas',
-    icon: TrendingUp,
-    category: 'VISIÓN DEL NEGOCIO',
-    roles: ADMIN_ONLY,
-  },
-  {
     label: 'Estado Financiero',
     path: 'Finanzas',
     icon: LayoutDashboard,

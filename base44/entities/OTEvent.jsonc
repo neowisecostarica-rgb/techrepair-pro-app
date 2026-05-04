@@ -1,0 +1,33 @@
+{
+  "name": "OTEvent",
+  "type": "object",
+  "properties": {
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la Orden de Trabajo asociada"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "CREATED",
+        "FINALIZADA",
+        "ENTREGADA"
+      ],
+      "description": "Tipo de evento generado por la Orden de Trabajo"
+    },
+    "processed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indica si el evento ya fue procesado por el sistema"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de creaci\u00f3n del evento"
+    }
+  },
+  "required": [
+    "orden_trabajo_id",
+    "tipo"
+  ]
+}

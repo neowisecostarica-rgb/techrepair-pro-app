@@ -83,6 +83,27 @@ function resolveEmail(record, cliente) {
   );
 }
 
+async function ensureOTEvent(base44, record, config) {
+  const existing = await base44.asServiceRole.entities.OTEvent.filter(
+    { orden_trabajo_id: record.id, tipo: config.eventType },
+    1
+  );
+
+  if (Array.isArray(existing) && existing.length > 0) {
+    console.log(`[handleOTLifecycleEvent] OTEvent ya existe — tipo: ${config.eventType}, OT: ${record.id}`);
+    return { created: false };
+  }
+
+  await base44.asServiceRole.entities.OTEvent.create({
+    orden_trabajo_id: record.id,
+    tipo: config.eventType,
+    processed: false,
+    created_at: new Date().toISOString(),
+  });
+
+  console.log(`[handleOTLifecycleEvent] OTEvent creado — tipo: ${config.eventType}, OT: ${record.id}`);
+  return { created: true };
+}
 
 async function sendEmailIfNeeded(base44, record, cliente, config) {
   const flag = config.emailFlag;

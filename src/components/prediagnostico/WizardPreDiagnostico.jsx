@@ -142,9 +142,10 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
         preDiagnosticoFinal = await base44.entities.PreDiagnostico.create(dataCompleta);
       }
 
-      // Generar resumen y actualizar OT
+      // Generar resumen y actualizar OT via function (SOT — no entities.update desde frontend)
       const resumen = generarResumenPreDiagnostico(dataCompleta);
-      await base44.entities.OrdenTrabajo.update(ordenTrabajo.id, {
+      await base44.functions.invoke('updateDiagnosticoResumen', {
+        ordenTrabajoId: ordenTrabajo.id,
         diagnostico_resumido: resumen
       });
 

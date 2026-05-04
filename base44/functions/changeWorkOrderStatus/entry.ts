@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     if (estado_atencion !== undefined) updatePayload.estado_atencion = estado_atencion;
     if (motivo_pausa !== undefined) updatePayload.motivo_pausa = motivo_pausa || null;
 
-    const orden = await base44.entities.OrdenTrabajo.update(orden_trabajo_id, updatePayload);
+    const orden = await base44.asServiceRole.entities.OrdenTrabajo.update(orden_trabajo_id, updatePayload);
 
     return Response.json(orden);
   } catch (error) {

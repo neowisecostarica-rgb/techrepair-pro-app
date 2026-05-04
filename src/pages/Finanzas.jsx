@@ -3,10 +3,34 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageGuard from '@/components/guards/PageGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { TrendingUp, DollarSign, ShoppingCart, Receipt, XCircle, CreditCard } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths } from 'date-fns';
+import {
+  TrendingUp,
+  DollarSign,
+  ShoppingCart,
+  Users,
+  Megaphone,
+  BarChart2,
+  Lightbulb,
+} from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfQuarter,
+  endOfQuarter,
+  startOfYear,
+  endOfYear,
+  subMonths,
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import FiltrosFinanzas from '@/components/finanzas/FiltrosFinanzas';
@@ -17,6 +41,16 @@ export default function Finanzas() {
       <FinanzasContent />
     </PageGuard>
   );
+}
+
+function fmt(number) {
+  if (number === null || number === undefined) return '₡0';
+  return `₡${Number(number).toLocaleString('es-CR', { maximumFractionDigits: 0 })}`;
+}
+
+function pct(number) {
+  if (number === null || number === undefined) return '0%';
+  return `${Number(number).toFixed(1)}%`;
 }
 
 function FinanzasContent() {
@@ -33,17 +67,17 @@ function FinanzasContent() {
   useEffect(() => {
     const hoy = new Date();
     let desde, hasta;
-
     switch (periodoPreset) {
       case 'mes':
         desde = startOfMonth(hoy);
         hasta = endOfMonth(hoy);
         break;
-      case 'mes_anterior':
+      case 'mes_anterior': {
         const mesAnterior = subMonths(hoy, 1);
         desde = startOfMonth(mesAnterior);
         hasta = endOfMonth(mesAnterior);
         break;
+      }
       case 'trimestre':
         desde = startOfQuarter(hoy);
         hasta = endOfQuarter(hoy);
@@ -58,404 +92,287 @@ function FinanzasContent() {
         desde = startOfMonth(hoy);
         hasta = endOfMonth(hoy);
     }
-
     setFechaDesde(desde.toISOString().split('T')[0]);
     setFechaHasta(hasta.toISOString().split('T')[0]);
   }, [periodoPreset]);
 
-  // Ventas pagadas (facturación)
-  const { data: ventasPagadas = [], isLoading } = useQuery({
-    queryKey: ['finanzas-pagadas', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
+  // getFinancialMetrics — fuente principal
+  const { data: metrics, isLoading: isLoadingMetrics } = useQuery({
+    queryKey: ['financial-metrics', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
+    queryFn: async () => {
+      const payload = {
+        organization_id: effectiveOrgId,
+        start_date: fechaDesde,
+        end_date: fechaHasta,
+      };
+      if (branchIdFijo) payload.branch_id = branchIdFijo;
+      else if (sucursalId) payload.branch_id = sucursalId;
+      const res = await base44.functions.invoke('getFinancialMetrics', payload);
+      return res.data;
+    },
+    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta,
+  });
+
+  // Ventas pagadas para el gráfico de línea temporal
+  const { data: ventasPagadas = [] } = useQuery({
+    queryKey: ['finanzas-linea', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId, estado: 'pagada' };
-      
-      if (branchIdFijo) {
-        query.branch_id = branchIdFijo;
-      } else if (sucursalId) {
-        query.branch_id = sucursalId;
-      }
-
-      const allVentas = await base44.entities.Venta.filter(query);
-
-      return allVentas.filter(v => {
-        const ventaFecha = new Date(v.created_date);
+      if (branchIdFijo) query.branch_id = branchIdFijo;
+      else if (sucursalId) query.branch_id = sucursalId;
+      const all = await base44.entities.Venta.filter(query);
+      return all.filter(v => {
+        const d = new Date(v.created_date);
         const desde = new Date(fechaDesde);
         const hasta = new Date(fechaHasta);
         hasta.setHours(23, 59, 59);
-        return ventaFecha >= desde && ventaFecha <= hasta;
+        return d >= desde && d <= hasta;
       });
     },
-    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta
+    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta,
   });
 
-  // Ventas anuladas
-  const { data: ventasAnuladas = [] } = useQuery({
-    queryKey: ['finanzas-anuladas', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
-    queryFn: async () => {
-      let query = { organization_id: effectiveOrgId, estado: 'anulada' };
-      
-      if (branchIdFijo) {
-        query.branch_id = branchIdFijo;
-      } else if (sucursalId) {
-        query.branch_id = sucursalId;
-      }
-
-      const allVentas = await base44.entities.Venta.filter(query);
-
-      return allVentas.filter(v => {
-        const ventaFecha = new Date(v.created_date);
-        const desde = new Date(fechaDesde);
-        const hasta = new Date(fechaHasta);
-        hasta.setHours(23, 59, 59);
-        return ventaFecha >= desde && ventaFecha <= hasta;
-      });
-    },
-    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta
-  });
-
-  // Mes anterior para comparativo
-  const { data: ventasMesAnterior = [] } = useQuery({
-    queryKey: ['finanzas-mes-anterior', effectiveOrgId, branchIdFijo, sucursalId],
-    queryFn: async () => {
-      const mesAnterior = subMonths(new Date(), 1);
-      const desdeMA = startOfMonth(mesAnterior);
-      const hastaMA = endOfMonth(mesAnterior);
-
-      let query = { organization_id: effectiveOrgId, estado: 'pagada' };
-      
-      if (branchIdFijo) {
-        query.branch_id = branchIdFijo;
-      } else if (sucursalId) {
-        query.branch_id = sucursalId;
-      }
-
-      const allVentas = await base44.entities.Venta.filter(query);
-
-      return allVentas.filter(v => {
-        const ventaFecha = new Date(v.created_date);
-        return ventaFecha >= desdeMA && ventaFecha <= hastaMA;
-      });
-    },
-    enabled: !!effectiveOrgId && periodoPreset === 'mes'
-  });
-
-  // Sucursales (para filtro y gráfico)
+  // Sucursales para filtro
   const { data: sucursales = [] } = useQuery({
     queryKey: ['branches-finanzas', effectiveOrgId],
     queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId && !isBranchAdmin
+    enabled: !!effectiveOrgId && !isBranchAdmin,
   });
 
-  // Cálculos KPIs
-  const facturacionTotal = ventasPagadas.reduce((sum, v) => sum + v.total, 0);
-  const numeroVentas = ventasPagadas.length;
-  const ticketPromedio = numeroVentas > 0 ? facturacionTotal / numeroVentas : 0;
-  const totalAnulado = ventasAnuladas.reduce((sum, v) => sum + v.total, 0);
-  const porcentajeAnulado = facturacionTotal > 0 ? (totalAnulado / facturacionTotal * 100) : 0;
-
-  // Crecimiento mes a mes
-  const facturacionMesAnterior = ventasMesAnterior.reduce((sum, v) => sum + v.total, 0);
-  const crecimiento = facturacionMesAnterior > 0 
-    ? ((facturacionTotal - facturacionMesAnterior) / facturacionMesAnterior * 100) 
-    : 0;
-
-  // Ventas por día (gráfico línea)
+  // Gráfico de ingresos en el tiempo
   const ventasPorDia = {};
   ventasPagadas.forEach(v => {
     const fecha = format(new Date(v.created_date), 'yyyy-MM-dd');
-    if (!ventasPorDia[fecha]) {
-      ventasPorDia[fecha] = 0;
-    }
-    ventasPorDia[fecha] += v.total;
+    ventasPorDia[fecha] = (ventasPorDia[fecha] || 0) + v.total;
   });
-
   const dataLinea = Object.keys(ventasPorDia)
     .sort()
     .map(fecha => ({
       fecha: format(new Date(fecha), 'dd MMM', { locale: es }),
-      total: ventasPorDia[fecha]
+      total: ventasPorDia[fecha],
     }));
 
-  // Ventas por sucursal (gráfico barra)
-  const ventasPorSucursal = {};
-  if (!isBranchAdmin) {
-    ventasPagadas.forEach(v => {
-      const sucursal = sucursales.find(s => s.id === v.branch_id);
-      const nombre = sucursal?.name || 'Sin sucursal';
-      if (!ventasPorSucursal[nombre]) {
-        ventasPorSucursal[nombre] = 0;
-      }
-      ventasPorSucursal[nombre] += v.total;
-    });
+  // Métricas
+  const revenue = metrics?.sales?.total_revenue ?? 0;
+  const grossMargin = metrics?.sales?.gross_margin ?? 0;
+  const salesCount = metrics?.sales?.total_sales_count ?? 0;
+  const cac = metrics?.marketing?.cac ?? 0;
+  const marketingSpend = metrics?.marketing?.marketing_spend ?? 0;
+  const newClients = metrics?.marketing?.total_new_clients ?? 0;
+
+  // Margen en monto absoluto: gross_margin% sobre revenue
+  const marginAmount = revenue * (grossMargin / 100);
+
+  // Insight simple
+  let insight = null;
+  if (revenue > 0 && marketingSpend > 0) {
+    if (revenue > marketingSpend * 3) {
+      insight = 'Tus ingresos superan ampliamente la inversión en marketing este período.';
+    } else if (revenue > marketingSpend) {
+      insight = 'Tus ventas superan tu inversión en marketing este período.';
+    } else {
+      insight = 'Tu inversión en marketing supera los ingresos este período — revisa la estrategia.';
+    }
+  } else if (revenue > 0) {
+    insight = 'No hay inversión en marketing registrada para comparar con ingresos.';
   }
 
-  const dataBarra = Object.keys(ventasPorSucursal)
-    .map(nombre => ({
-      nombre,
-      total: ventasPorSucursal[nombre]
-    }))
-    .sort((a, b) => b.total - a.total);
+  const isLoading = isLoadingMetrics;
 
-  // Métodos de pago (gráfico pie)
-  const metodosPago = {};
-  ventasPagadas.forEach(v => {
-    const metodo = v.metodo_pago || 'sin especificar';
-    if (!metodosPago[metodo]) {
-      metodosPago[metodo] = 0;
-    }
-    metodosPago[metodo] += v.total;
-  });
-
-  const dataPie = Object.keys(metodosPago).map(metodo => ({
-    name: metodo.charAt(0).toUpperCase() + metodo.slice(1),
-    value: metodosPago[metodo]
-  }));
-
-  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6'];
-
-  // Nombre sucursal fija (para BRANCH_ADMIN)
   const sucursalFijaNombre = isBranchAdmin && branchIdFijo
     ? (sucursales.find(s => s.id === branchIdFijo)?.name || 'Tu Sucursal')
     : null;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando métricas financieras...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 max-w-7xl mx-auto">
+
+      {/* ── A. HEADER ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Finanzas — Dashboard Ejecutivo</h1>
-          <p className="text-slate-600">Indicadores financieros estratégicos (solo lectura)</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Estado Financiero</h1>
+          {isBranchAdmin && (
+            <p className="text-sm text-slate-500 mt-1">{sucursalFijaNombre || 'Tu Sucursal'}</p>
+          )}
         </div>
-        {isBranchAdmin ? (
-          <Badge className="bg-blue-100 text-blue-700 border-0">Tu Sucursal</Badge>
-        ) : (
-          <Badge className="bg-emerald-100 text-emerald-700 border-0">Organización Completa</Badge>
-        )}
+        <div className="shrink-0">
+          <FiltrosFinanzas
+            periodoPreset={periodoPreset}
+            onPeriodoPresetChange={setPeriodoPreset}
+            fechaDesde={fechaDesde}
+            fechaHasta={fechaHasta}
+            onFechaDesdeChange={setFechaDesde}
+            onFechaHastaChange={setFechaHasta}
+            sucursalId={sucursalId}
+            onSucursalChange={setSucursalId}
+            sucursales={sucursales}
+            mostrarSelectorSucursal={!isBranchAdmin}
+            sucursalFija={sucursalFijaNombre}
+          />
+        </div>
       </div>
 
-      {/* Filtros */}
-      <FiltrosFinanzas
-        periodoPreset={periodoPreset}
-        onPeriodoPresetChange={setPeriodoPreset}
-        fechaDesde={fechaDesde}
-        fechaHasta={fechaHasta}
-        onFechaDesdeChange={setFechaDesde}
-        onFechaHastaChange={setFechaHasta}
-        sucursalId={sucursalId}
-        onSucursalChange={setSucursalId}
-        sucursales={sucursales}
-        mostrarSelectorSucursal={!isBranchAdmin}
-        sucursalFija={sucursalFijaNombre}
-      />
-
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {/* Facturación Total */}
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-emerald-50 to-emerald-100">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">Facturación Total</p>
-                <p className="text-2xl font-bold text-slate-900">₡{facturacionTotal.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Crecimiento */}
-        {periodoPreset === 'mes' && (
-          <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-50 to-blue-100">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-600 mb-1">Crecimiento</p>
-                  <p className="text-2xl font-bold text-slate-900">{crecimiento.toFixed(1)}%</p>
-                  <Badge className={`mt-1 ${crecimiento >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'} border-0 text-xs`}>
-                    vs mes anterior
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Ventas Realizadas */}
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-50 to-purple-100">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
-                <ShoppingCart className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">Ventas Realizadas</p>
-                <p className="text-2xl font-bold text-slate-900">{numeroVentas}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ticket Promedio */}
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-indigo-50 to-indigo-100">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center">
-                <Receipt className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">Ticket Promedio</p>
-                <p className="text-2xl font-bold text-slate-900">₡{ticketPromedio.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ventas Anuladas */}
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-red-100">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">Ventas Anuladas</p>
-                <p className="text-2xl font-bold text-slate-900">₡{totalAnulado.toLocaleString()}</p>
-                <Badge className={`mt-1 ${porcentajeAnulado > 5 ? 'bg-red-200 text-red-800' : 'bg-slate-100 text-slate-700'} border-0 text-xs`}>
-                  {porcentajeAnulado.toFixed(1)}% del total
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Facturación en el Tiempo */}
-        <Card className="border-0 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
-              Facturación en el Tiempo
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {dataLinea.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={dataLinea}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="fecha" stroke="#64748b" style={{ fontSize: '12px' }} />
-                  <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
-                  <Tooltip 
-                    formatter={(value) => `₡${value.toLocaleString()}`}
-                    contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                  />
-                  <Line type="monotone" dataKey="total" stroke="#10b981" strokeWidth={3} dot={{ fill: '#10b981', r: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-slate-400">
-                <div className="text-center">
-                  <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p>No hay ventas en el período seleccionado</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Métodos de Pago */}
-        <Card className="border-0 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-blue-600" />
-              Distribución por Método de Pago
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {dataPie.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={dataPie}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {dataPie.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => `₡${value.toLocaleString()}`} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-slate-400">
-                <div className="text-center">
-                  <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p>No hay ventas en el período seleccionado</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Ventas por Sucursal - Solo ORG_ADMIN */}
-      {!isBranchAdmin && dataBarra.length > 0 && (
-        <Card className="border-0 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5 text-indigo-600" />
-              Ventas por Sucursal
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dataBarra} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis type="number" stroke="#64748b" style={{ fontSize: '12px' }} />
-                <YAxis dataKey="nombre" type="category" stroke="#64748b" style={{ fontSize: '12px' }} width={100} />
-                <Tooltip 
-                  formatter={(value) => `₡${value.toLocaleString()}`}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                />
-                <Bar dataKey="total" fill="#10b981" radius={[0, 8, 8, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      {/* ── LOADING ───────────────────────────────────────────────────────────── */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-slate-500 text-sm">Cargando métricas financieras...</p>
+          </div>
+        </div>
       )}
 
-      {/* Empty State */}
-      {numeroVentas === 0 && (
-        <Card className="border-2 border-dashed border-slate-300">
-          <CardContent className="p-12 text-center">
-            <ShoppingCart className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-slate-700 mb-2">No hay ventas en el período seleccionado</h3>
-            <p className="text-slate-500">Intenta ajustar los filtros de fecha o sucursal</p>
-          </CardContent>
-        </Card>
+      {!isLoading && (
+        <>
+          {/* ── B. BLOQUE PRINCIPAL — 4 KPI CARDS ───────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+            {/* Ingresos */}
+            <Card className="border-0 shadow-md bg-white rounded-2xl">
+              <CardContent className="p-7">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-500">Ingresos</span>
+                </div>
+                <p className="text-4xl font-bold text-slate-900 leading-none">{fmt(revenue)}</p>
+                <p className="text-xs text-slate-400 mt-2">en el período seleccionado</p>
+              </CardContent>
+            </Card>
+
+            {/* Margen */}
+            <Card className="border-0 shadow-md bg-white rounded-2xl">
+              <CardContent className="p-7">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <BarChart2 className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-500">Margen</span>
+                </div>
+                <p className="text-4xl font-bold text-slate-900 leading-none">{pct(grossMargin)}</p>
+                <p className="text-xs text-slate-400 mt-2">{fmt(marginAmount)} equivalente</p>
+              </CardContent>
+            </Card>
+
+            {/* CAC */}
+            <Card className="border-0 shadow-md bg-white rounded-2xl">
+              <CardContent className="p-7">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
+                    <Users className="w-5 h-5 text-violet-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-500">CAC</span>
+                </div>
+                <p className="text-4xl font-bold text-slate-900 leading-none">{fmt(cac)}</p>
+                <p className="text-xs text-slate-400 mt-2">por cliente nuevo</p>
+              </CardContent>
+            </Card>
+
+            {/* Ventas */}
+            <Card className="border-0 shadow-md bg-white rounded-2xl">
+              <CardContent className="p-7">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                    <ShoppingCart className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-500">Ventas</span>
+                </div>
+                <p className="text-4xl font-bold text-slate-900 leading-none">{salesCount}</p>
+                <p className="text-xs text-slate-400 mt-2">en el período</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ── C. BLOQUE SECUNDARIO — 2 MÉTRICAS ───────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Card className="border-0 shadow-sm bg-slate-50 rounded-2xl">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                  <Megaphone className="w-4 h-4 text-slate-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-0.5">Inversión Marketing</p>
+                  <p className="text-xl font-semibold text-slate-800">{fmt(marketingSpend)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm bg-slate-50 rounded-2xl">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                  <Users className="w-4 h-4 text-slate-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-0.5">Clientes Nuevos</p>
+                  <p className="text-xl font-semibold text-slate-800">{newClients}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ── D. GRÁFICO — Ingresos en el tiempo ──────────────────────────────── */}
+          <Card className="border-0 shadow-md rounded-2xl bg-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                Ingresos en el tiempo
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {dataLinea.length > 0 ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={dataLinea} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis
+                      dataKey="fecha"
+                      stroke="#cbd5e1"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="#cbd5e1"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={v => `₡${(v / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip
+                      formatter={v => [fmt(v), 'Ingresos']}
+                      contentStyle={{
+                        borderRadius: '10px',
+                        border: '0',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                        fontSize: '13px',
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="total"
+                      stroke="#10b981"
+                      strokeWidth={2.5}
+                      dot={false}
+                      activeDot={{ r: 5, fill: '#10b981' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[260px] flex flex-col items-center justify-center text-slate-300 gap-2">
+                  <TrendingUp className="w-10 h-10" />
+                  <p className="text-sm">Sin ventas en el período</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── E. INSIGHT ───────────────────────────────────────────────────────── */}
+          {insight && (
+            <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4">
+              <Lightbulb className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-emerald-800">{insight}</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

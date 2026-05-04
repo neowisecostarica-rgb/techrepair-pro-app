@@ -235,7 +235,7 @@ function PuntoVentaContent() {
 
   const createVentaMutation = useMutation({
     mutationFn: async (ventaData) => {
-      // P0: Validar campos requeridos mínimos
+      // Validaciones UX previas (frontend)
       if (!ventaData.total || ventaData.total <= 0) {
         throw new Error('El total de la venta debe ser mayor a cero');
       }
@@ -258,46 +258,37 @@ function PuntoVentaContent() {
         throw new Error(validacion.mensaje);
       }
 
-      // Generar public_access_token único
-      const publicToken = `vta_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      // Si ya existe venta (cobro de taller o desde cotización), actualizar a pagada
-      if (ventaId) {
-        const ventaActualizada = await base44.entities.Venta.update(ventaId, {
-          estado: 'pagada',
+      // Invocar createSale — lógica crítica en backend
+      const response = await base44.functions.invoke('createSale', {
+        ventaData: {
+          cliente_id: ventaData.cliente_id || null,
+          origen_venta: ventaData.origen_venta,
+          tipo_concepto: ventaData.tipo_concepto,
+          referencia_ot_id: ventaData.referencia_ot_id || null,
+          cotizacion_id: cotizacionOrigen?.id || null,
           metodo_pago: ventaData.metodo_pago,
-          public_access_token: publicToken,
-          // Actualizar totales finales si divergieron
           total: ventaData.total,
           subtotal: ventaData.subtotal,
           impuesto: ventaData.impuesto,
-          descuento_total: ventaData.descuento_total || 0
-        });
-
-        // Si viene de cotización, marcarla como CONVERTIDA
-        if (cotizacionOrigen) {
-          await base44.entities.Cotizacion.update(cotizacionOrigen.id, {
-            estado_conversion: 'CONVERTIDA',
-            convertida_at: new Date().toISOString(),
-            convertida_por: user?.id
-          });
-        }
-
-        return ventaActualizada;
-      }
-      
-      // Crear nueva venta con token
-      const venta = await base44.entities.Venta.create({
-        ...ventaData,
-        public_access_token: publicToken
+          descuento_total: ventaData.descuento_total || 0,
+          branch_id: ventaData.branch_id,
+        },
+        itemsCarrito: carrito,
+        cotizacionOrigenId: cotizacionOrigen?.id || null,
+        ventaPreloadId: ventaId || null,
       });
 
-      // HABILITAR DIAGNÓSTICO si es revisión pagada
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'Error al procesar la venta en el servidor');
+      }
+
+      const venta = response.data.data;
+
+      // Lógica post-venta que queda en frontend por ahora (fuera del scope createSale v1)
       if (ventaData.tipo_concepto === 'revision_diagnostico' && ventaData.referencia_ot_id) {
         await habilitarDiagnosticoTrasPago(ventaData.referencia_ot_id, venta.id);
       }
 
-      // Si es reparación, cambiar estado OT a FINALIZADA (P0-002: usar helper centralizado)
       if (ventaData.tipo_concepto === 'reparacion' && ventaData.referencia_ot_id) {
         await transicionarEstadoOT(ventaData.referencia_ot_id, 'FINALIZADA', {
           userId: user?.id,
@@ -305,8 +296,6 @@ function PuntoVentaContent() {
           organizationId: effectiveOrgId,
           motivo: 'Reparación cobrada y finalizada desde POS'
         });
-        
-        // Actualizar fecha_cierre por separado (no gestionado por helper)
         await base44.entities.OrdenTrabajo.update(ventaData.referencia_ot_id, {
           fecha_cierre: new Date().toISOString()
         });
@@ -315,90 +304,15 @@ function PuntoVentaContent() {
       return venta;
     },
     onSuccess: async (venta) => {
-      // Crear items si es venta nueva (no actualización)
-      if (!ventaId) {
-        for (const item of carrito) {
-          await base44.entities.VentaItem.create(withOrgId({
-            venta_id: venta.id,
-            tipo: item.tipo,
-            referencia_id: item.referencia_id,
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precio_unitario: item.precio_unitario,
-            subtotal: item.subtotal
-          }, userAccount));
-        }
-
-        // P0: Decrementar stock SOLO para productos físicos
-        for (const item of carrito) {
-          if (item.tipo === 'producto') {
-            const producto = inventario.find(p => p.id === item.referencia_id);
-            if (producto) {
-              const categorias = await base44.entities.CategoriaInventario.filter({ id: producto.categoria_id });
-              const categoria = categorias[0];
-              
-              // Solo decrementar si permite_stock = true
-              if (categoria?.permite_stock !== false) {
-                await base44.entities.Inventario.update(producto.id, {
-                  cantidad_disponible: producto.cantidad_disponible - item.cantidad,
-                  fecha_ultimo_movimiento: new Date().toISOString().split('T')[0]
-                });
-              }
-            }
-          }
-        }
-      } else if (cotizacionOrigen) {
-        // Si es actualización desde cotización, actualizar los items existentes
-        const itemsExistentes = await base44.entities.VentaItem.filter({ venta_id: venta.id });
-        
-        // Eliminar items viejos
-        for (const itemViejo of itemsExistentes) {
-          await base44.entities.VentaItem.delete({ id: itemViejo.id });
-        }
-        
-        // Crear nuevos items desde carrito actual
-        for (const item of carrito) {
-          await base44.entities.VentaItem.create(withOrgId({
-            venta_id: venta.id,
-            tipo: item.tipo,
-            referencia_id: item.referencia_id,
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precio_unitario: item.precio_unitario,
-            subtotal: item.subtotal
-          }, userAccount));
-        }
-
-        // Decrementar stock para productos físicos
-        for (const item of carrito) {
-          if (item.tipo === 'producto') {
-            const producto = inventario.find(p => p.id === item.referencia_id);
-            if (producto) {
-              const categorias = await base44.entities.CategoriaInventario.filter({ id: producto.categoria_id });
-              const categoria = categorias[0];
-              
-              if (categoria?.permite_stock !== false) {
-                await base44.entities.Inventario.update(producto.id, {
-                  cantidad_disponible: producto.cantidad_disponible - item.cantidad,
-                  fecha_ultimo_movimiento: new Date().toISOString().split('T')[0]
-                });
-              }
-            }
-          }
-        }
-      }
-
-      // ✅ EMISIÓN AUTOMÁTICA DE GARANTÍA
+      // Emisión de garantía (fuera del scope createSale v1)
       await emitirGarantiaAutomatica(venta);
 
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-      
-      // Mostrar tiquete con garantía
+
       setVentaCompletada(venta);
-      
       setCarrito([]);
       setClienteSeleccionado('');
       setVentaId(null);
@@ -406,7 +320,6 @@ function PuntoVentaContent() {
       setOrdenTrabajoObj(null);
     },
     onError: (error) => {
-      // P0: Mostrar error claro al usuario
       alert(`No se pudo completar la venta: ${error.message || 'Error desconocido'}`);
     }
   });

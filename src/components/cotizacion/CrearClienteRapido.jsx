@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserPlus, AlertCircle } from 'lucide-react';
-
-const BACKEND_URL = 'https://techrepairpro-core-1.onrender.com';
+import { base44 } from '@/api/base44Client';
 
 export default function CrearClienteRapido({ open, onClose, onClienteCreado, effectiveOrgId, clientes = [] }) {
   const [formData, setFormData] = useState({
@@ -66,29 +65,21 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, eff
 
     setSaving(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/v1/clients`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-organization-id': effectiveOrgId
-        },
-        body: JSON.stringify({
-          full_name: formData.nombre_completo,
-          phone: formData.telefono,
-          email: formData.email,
-          id_number: formData.identificacion,
-          client_type: 'individual',
-          notes: formData.direccion
-        })
+      const response = await base44.functions.invoke('createClient', {
+        nombre_completo: formData.nombre_completo,
+        telefono: formData.telefono,
+        email: formData.email,
+        identificacion: formData.identificacion,
+        tipo_cliente: 'individual',
+        direccion: formData.direccion,
       });
 
-      const resData = await response.json();
+      const nuevoCliente = response.data;
 
-      if (!response.ok) {
-        throw new Error(resData.error || `Error ${response.status}`);
+      if (!nuevoCliente || !nuevoCliente.id) {
+        throw new Error(nuevoCliente?.error || 'Error al crear el cliente');
       }
 
-      const nuevoCliente = resData.data;
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       queryClient.invalidateQueries({ queryKey: ['clientes-cot'] });
       onClienteCreado(nuevoCliente);

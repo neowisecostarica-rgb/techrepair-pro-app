@@ -1,0 +1,123 @@
+{
+  "name": "Organization",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre comercial de la organizaci\u00f3n"
+    },
+    "legal_name": {
+      "type": "string",
+      "description": "Raz\u00f3n social (opcional)"
+    },
+    "country": {
+      "type": "string",
+      "description": "Pa\u00eds de la organizaci\u00f3n"
+    },
+    "currency": {
+      "type": "string",
+      "description": "Moneda utilizada"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "basic",
+        "pro",
+        "premium"
+      ],
+      "description": "Plan contratado"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended"
+      ],
+      "default": "active",
+      "description": "Estado de la organizaci\u00f3n"
+    },
+    "partner_id": {
+      "type": "string",
+      "description": "ID del partner que refiri\u00f3 (nullable)"
+    },
+    "telefono_negocio": {
+      "type": "string",
+      "description": "Tel\u00e9fono del negocio para comprobantes"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL del logo del negocio (opcional)"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email de contacto comercial del negocio"
+    },
+    "direccion_comercial": {
+      "type": "string",
+      "description": "Direcci\u00f3n f\u00edsica comercial del negocio"
+    },
+    "tipo_entidad": {
+      "type": "string",
+      "enum": [
+        "PERSONA_FISICA",
+        "PERSONA_JURIDICA"
+      ],
+      "description": "Tipo de entidad legal (para facturaci\u00f3n futura)"
+    },
+    "identificacion_fiscal": {
+      "type": "string",
+      "description": "C\u00e9dula jur\u00eddica o f\u00edsica (para facturaci\u00f3n futura)"
+    },
+    "direccion_fiscal": {
+      "type": "string",
+      "description": "Direcci\u00f3n fiscal registrada (para facturaci\u00f3n futura)"
+    },
+    "public_base_url": {
+      "type": "string",
+      "description": "URL base para portales p\u00fablicos (white-label). Ej: https://www.midominio.com"
+    },
+    "garantia_config": {
+      "type": "object",
+      "description": "Configuraci\u00f3n de garant\u00edas"
+    },
+    "saldo_caja_inicial": {
+      "type": "number",
+      "default": 0,
+      "description": "Saldo de caja inicial (manual)"
+    },
+    "saldo_caja_actual": {
+      "type": "number",
+      "default": 0,
+      "description": "Saldo de caja actual (manual)"
+    },
+    "ultima_actualizacion_caja": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u00daltima actualizaci\u00f3n del saldo de caja"
+    },
+    "inventario_config": {
+      "type": "object",
+      "description": "Configuraci\u00f3n de inventario",
+      "properties": {
+        "dias_dinero_dormido": {
+          "type": "number",
+          "default": 90,
+          "description": "D\u00edas sin movimiento para considerar dinero dormido"
+        }
+      }
+    },
+    "marketing_spend": {
+      "type": "number",
+      "default": 0,
+      "description": "Gasto mensual en publicidad/marketing (para c\u00e1lculo de CPA y CAC)"
+    }
+  },
+  "required": [
+    "name",
+    "country",
+    "currency",
+    "plan",
+    "status"
+  ]
+}

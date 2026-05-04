@@ -49,7 +49,7 @@ function fmt(number) {
 }
 
 function pct(number) {
-  if (number === null || number === undefined) return '0%';
+  if (number === null || number === undefined) return '0.0%';
   return `${Number(number).toFixed(1)}%`;
 }
 
@@ -63,7 +63,6 @@ function FinanzasContent() {
   const isBranchAdmin = effectiveRole === 'BRANCH_ADMIN';
   const branchIdFijo = isBranchAdmin ? userAccount?.branch_id : null;
 
-  // Calcular fechas según preset
   useEffect(() => {
     const hoy = new Date();
     let desde, hasta;
@@ -96,7 +95,6 @@ function FinanzasContent() {
     setFechaHasta(hasta.toISOString().split('T')[0]);
   }, [periodoPreset]);
 
-  // getFinancialMetrics — fuente principal
   const { data: metrics, isLoading: isLoadingMetrics } = useQuery({
     queryKey: ['financial-metrics', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
     queryFn: async () => {
@@ -113,7 +111,6 @@ function FinanzasContent() {
     enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta,
   });
 
-  // Ventas pagadas para el gráfico de línea temporal
   const { data: ventasPagadas = [] } = useQuery({
     queryKey: ['finanzas-linea', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
     queryFn: async () => {
@@ -132,14 +129,12 @@ function FinanzasContent() {
     enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta,
   });
 
-  // Sucursales para filtro
   const { data: sucursales = [] } = useQuery({
     queryKey: ['branches-finanzas', effectiveOrgId],
     queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }),
     enabled: !!effectiveOrgId && !isBranchAdmin,
   });
 
-  // Gráfico de ingresos en el tiempo
   const ventasPorDia = {};
   ventasPagadas.forEach(v => {
     const fecha = format(new Date(v.created_date), 'yyyy-MM-dd');
@@ -152,32 +147,24 @@ function FinanzasContent() {
       total: ventasPorDia[fecha],
     }));
 
-  // Métricas
-  const revenue = metrics?.sales?.total_revenue ?? 0;
-  const grossMargin = metrics?.sales?.gross_margin ?? 0;
-  const salesCount = metrics?.sales?.total_sales_count ?? 0;
-  const cac = metrics?.marketing?.cac ?? 0;
-  const marketingSpend = metrics?.marketing?.marketing_spend ?? 0;
-  const newClients = metrics?.marketing?.total_new_clients ?? 0;
-
-  // Margen en monto absoluto: gross_margin% sobre revenue
+  const revenue      = metrics?.sales?.total_revenue     ?? 0;
+  const grossMargin  = metrics?.sales?.gross_margin       ?? 0;
+  const salesCount   = metrics?.sales?.total_sales_count  ?? 0;
+  const cac          = metrics?.marketing?.cac             ?? 0;
+  const marketingSpend = metrics?.marketing?.marketing_spend    ?? 0;
+  const newClients   = metrics?.marketing?.total_new_clients ?? 0;
   const marginAmount = revenue * (grossMargin / 100);
 
-  // Insight simple
   let insight = null;
   if (revenue > 0 && marketingSpend > 0) {
     if (revenue > marketingSpend * 3) {
-      insight = 'Tus ingresos superan ampliamente la inversión en marketing este período.';
+      insight = 'Estás generando más ingresos que lo que inviertes en atraer clientes — un buen ratio de retorno.';
     } else if (revenue > marketingSpend) {
-      insight = 'Tus ventas superan tu inversión en marketing este período.';
+      insight = 'Estás generando más ingresos que lo que inviertes en marketing este período.';
     } else {
-      insight = 'Tu inversión en marketing supera los ingresos este período — revisa la estrategia.';
+      insight = 'Tu inversión en marketing supera los ingresos actuales — vale la pena revisar la estrategia de adquisición.';
     }
-  } else if (revenue > 0) {
-    insight = 'No hay inversión en marketing registrada para comparar con ingresos.';
   }
-
-  const isLoading = isLoadingMetrics;
 
   const sucursalFijaNombre = isBranchAdmin && branchIdFijo
     ? (sucursales.find(s => s.id === branchIdFijo)?.name || 'Tu Sucursal')
@@ -186,152 +173,150 @@ function FinanzasContent() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
 
-      {/* ── A. HEADER ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      {/* ── HEADER ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Estado Financiero</h1>
-          {isBranchAdmin && (
-            <p className="text-sm text-slate-500 mt-1">{sucursalFijaNombre || 'Tu Sucursal'}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Finanzas</h1>
+          {isBranchAdmin && sucursalFijaNombre && (
+            <p className="text-sm text-slate-400 mt-0.5">{sucursalFijaNombre}</p>
           )}
         </div>
-        <div className="shrink-0">
-          <FiltrosFinanzas
-            periodoPreset={periodoPreset}
-            onPeriodoPresetChange={setPeriodoPreset}
-            fechaDesde={fechaDesde}
-            fechaHasta={fechaHasta}
-            onFechaDesdeChange={setFechaDesde}
-            onFechaHastaChange={setFechaHasta}
-            sucursalId={sucursalId}
-            onSucursalChange={setSucursalId}
-            sucursales={sucursales}
-            mostrarSelectorSucursal={!isBranchAdmin}
-            sucursalFija={sucursalFijaNombre}
-          />
-        </div>
+        <FiltrosFinanzas
+          periodoPreset={periodoPreset}
+          onPeriodoPresetChange={setPeriodoPreset}
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onFechaDesdeChange={setFechaDesde}
+          onFechaHastaChange={setFechaHasta}
+          sucursalId={sucursalId}
+          onSucursalChange={setSucursalId}
+          sucursales={sucursales}
+          mostrarSelectorSucursal={!isBranchAdmin}
+          sucursalFija={sucursalFijaNombre}
+        />
       </div>
 
-      {/* ── LOADING ───────────────────────────────────────────────────────────── */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-20">
+      {/* ── LOADING ── */}
+      {isLoadingMetrics && (
+        <div className="flex items-center justify-center py-24">
           <div className="text-center">
-            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Cargando métricas financieras...</p>
+            <div className="w-9 h-9 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-slate-400 text-sm">Calculando métricas...</p>
           </div>
         </div>
       )}
 
-      {!isLoading && (
+      {!isLoadingMetrics && (
         <>
-          {/* ── B. BLOQUE PRINCIPAL — 4 KPI CARDS ───────────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* ── KPI CARDS ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
             {/* Ingresos */}
-            <Card className="border-0 shadow-md bg-white rounded-2xl">
+            <Card className="border-0 shadow-sm ring-1 ring-slate-100 rounded-2xl bg-white">
               <CardContent className="p-7">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-emerald-600" />
+                <div className="flex justify-between items-start mb-5">
+                  <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center">
+                    <DollarSign className="w-4 h-4 text-emerald-500 opacity-80" />
                   </div>
-                  <span className="text-sm font-medium text-slate-500">Ingresos</span>
                 </div>
-                <p className="text-4xl font-bold text-slate-900 leading-none">{fmt(revenue)}</p>
-                <p className="text-xs text-slate-400 mt-2">en el período seleccionado</p>
+                <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">
+                  {fmt(revenue)}
+                </p>
+                <p className="text-sm text-slate-400 mt-2 font-medium">Ingresos</p>
               </CardContent>
             </Card>
 
             {/* Margen */}
-            <Card className="border-0 shadow-md bg-white rounded-2xl">
+            <Card className="border-0 shadow-sm ring-1 ring-slate-100 rounded-2xl bg-white">
               <CardContent className="p-7">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                    <BarChart2 className="w-5 h-5 text-blue-600" />
+                <div className="flex justify-between items-start mb-5">
+                  <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <BarChart2 className="w-4 h-4 text-blue-500 opacity-80" />
                   </div>
-                  <span className="text-sm font-medium text-slate-500">Margen</span>
                 </div>
-                <p className="text-4xl font-bold text-slate-900 leading-none">{pct(grossMargin)}</p>
-                <p className="text-xs text-slate-400 mt-2">{fmt(marginAmount)} equivalente</p>
+                <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">
+                  {pct(grossMargin)}
+                </p>
+                <p className="text-sm text-slate-400 mt-2 font-medium">Margen</p>
+                <p className="text-xs text-slate-400 mt-0.5">{fmt(marginAmount)} ganancia</p>
               </CardContent>
             </Card>
 
             {/* CAC */}
-            <Card className="border-0 shadow-md bg-white rounded-2xl">
+            <Card className="border-0 shadow-sm ring-1 ring-slate-100 rounded-2xl bg-white">
               <CardContent className="p-7">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
-                    <Users className="w-5 h-5 text-violet-600" />
+                <div className="flex justify-between items-start mb-5">
+                  <div className="w-9 h-9 bg-violet-50 rounded-xl flex items-center justify-center">
+                    <Users className="w-4 h-4 text-violet-500 opacity-80" />
                   </div>
-                  <span className="text-sm font-medium text-slate-500">CAC</span>
                 </div>
-                <p className="text-4xl font-bold text-slate-900 leading-none">{fmt(cac)}</p>
-                <p className="text-xs text-slate-400 mt-2">por cliente nuevo</p>
+                <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">
+                  {fmt(cac)}
+                </p>
+                <p className="text-sm text-slate-400 mt-2 font-medium">CAC</p>
+                <p className="text-xs text-slate-400 mt-0.5">por cliente nuevo</p>
               </CardContent>
             </Card>
 
             {/* Ventas */}
-            <Card className="border-0 shadow-md bg-white rounded-2xl">
+            <Card className="border-0 shadow-sm ring-1 ring-slate-100 rounded-2xl bg-white">
               <CardContent className="p-7">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
-                    <ShoppingCart className="w-5 h-5 text-amber-600" />
+                <div className="flex justify-between items-start mb-5">
+                  <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center">
+                    <ShoppingCart className="w-4 h-4 text-amber-500 opacity-80" />
                   </div>
-                  <span className="text-sm font-medium text-slate-500">Ventas</span>
                 </div>
-                <p className="text-4xl font-bold text-slate-900 leading-none">{salesCount}</p>
-                <p className="text-xs text-slate-400 mt-2">en el período</p>
+                <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">
+                  {salesCount}
+                </p>
+                <p className="text-sm text-slate-400 mt-2 font-medium">Ventas</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* ── C. BLOQUE SECUNDARIO — 2 MÉTRICAS ───────────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <Card className="border-0 shadow-sm bg-slate-50 rounded-2xl">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                  <Megaphone className="w-4 h-4 text-slate-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-0.5">Inversión Marketing</p>
-                  <p className="text-xl font-semibold text-slate-800">{fmt(marketingSpend)}</p>
-                </div>
-              </CardContent>
-            </Card>
+          {/* ── BLOQUE SECUNDARIO ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex items-center gap-4 bg-slate-50 rounded-2xl px-6 py-5">
+              <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                <Megaphone className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-slate-800">{fmt(marketingSpend)}</p>
+                <p className="text-xs text-slate-400 font-medium">Inversión Marketing</p>
+              </div>
+            </div>
 
-            <Card className="border-0 shadow-sm bg-slate-50 rounded-2xl">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                  <Users className="w-4 h-4 text-slate-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-0.5">Clientes Nuevos</p>
-                  <p className="text-xl font-semibold text-slate-800">{newClients}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-4 bg-slate-50 rounded-2xl px-6 py-5">
+              <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                <Users className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-slate-800">{newClients}</p>
+                <p className="text-xs text-slate-400 font-medium">Clientes Nuevos</p>
+              </div>
+            </div>
           </div>
 
-          {/* ── D. GRÁFICO — Ingresos en el tiempo ──────────────────────────────── */}
-          <Card className="border-0 shadow-md rounded-2xl bg-white">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold text-slate-700 flex items-center gap-2">
+          {/* ── GRÁFICO ── */}
+          <Card className="border-0 shadow-sm ring-1 ring-slate-100 rounded-2xl bg-white">
+            <CardHeader className="px-7 pt-7 pb-2">
+              <CardTitle className="text-sm font-semibold text-slate-500 flex items-center gap-2 uppercase tracking-wider">
                 <TrendingUp className="w-4 h-4 text-emerald-500" />
                 Ingresos en el tiempo
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-7 pb-7 pt-2">
               {dataLinea.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={dataLinea} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={dataLinea} margin={{ top: 8, right: 4, bottom: 4, left: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f8fafc" />
                     <XAxis
                       dataKey="fecha"
-                      stroke="#cbd5e1"
                       tick={{ fill: '#94a3b8', fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
-                      stroke="#cbd5e1"
                       tick={{ fill: '#94a3b8', fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
@@ -340,36 +325,37 @@ function FinanzasContent() {
                     <Tooltip
                       formatter={v => [fmt(v), 'Ingresos']}
                       contentStyle={{
-                        borderRadius: '10px',
+                        borderRadius: '12px',
                         border: '0',
-                        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.07)',
                         fontSize: '13px',
+                        padding: '8px 14px',
                       }}
                     />
                     <Line
                       type="monotone"
                       dataKey="total"
                       stroke="#10b981"
-                      strokeWidth={2.5}
+                      strokeWidth={2}
                       dot={false}
-                      activeDot={{ r: 5, fill: '#10b981' }}
+                      activeDot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[260px] flex flex-col items-center justify-center text-slate-300 gap-2">
+                <div className="h-[280px] flex flex-col items-center justify-center text-slate-200 gap-2">
                   <TrendingUp className="w-10 h-10" />
-                  <p className="text-sm">Sin ventas en el período</p>
+                  <p className="text-sm text-slate-400">Sin datos en el período</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* ── E. INSIGHT ───────────────────────────────────────────────────────── */}
+          {/* ── INSIGHT ── */}
           {insight && (
-            <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4">
+            <div className="flex items-start gap-3 rounded-2xl px-6 py-4 bg-emerald-50 border border-emerald-100">
               <Lightbulb className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-              <p className="text-sm text-emerald-800">{insight}</p>
+              <p className="text-sm text-emerald-800 leading-relaxed">{insight}</p>
             </div>
           )}
         </>

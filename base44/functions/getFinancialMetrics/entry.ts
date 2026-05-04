@@ -8,6 +8,11 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const allowedRoles = ["ORG_ADMIN", "BRANCH_ADMIN"];
+  if (!allowedRoles.includes(user.role)) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const body = await req.json().catch(() => ({}));
 
   // Determinar período: por defecto mes actual

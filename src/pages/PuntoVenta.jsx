@@ -49,6 +49,8 @@ function PuntoVentaContent() {
   const [validacionesPendientes, setValidacionesPendientes] = useState([]);
   const [ordenTrabajoObj, setOrdenTrabajoObj] = useState(null);
   const [showConfirmacionVenta, setShowConfirmacionVenta] = useState(false);
+  // Idempotency key: generada una vez por sesión de compra, se resetea tras venta exitosa
+  const [idempotencyKey] = useState(() => `ik_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
   const { effectiveRole, effectiveOrgId } = useAuthContext();
@@ -276,6 +278,7 @@ function PuntoVentaContent() {
         itemsCarrito: carrito,
         cotizacionOrigenId: cotizacionOrigen?.id || null,
         ventaPreloadId: ventaId || null,
+        idempotency_key: idempotencyKey,
       });
 
       if (!response?.data?.success) {

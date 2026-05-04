@@ -2,16 +2,25 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 /*
 =====================================
-createSale — SOT-BASE44-OPERATIVO v1
+createSale — SOT-BASE44-OPERATIVO v2
 =====================================
 Responsabilidad única:
   1. Validar auth + organización
-  2. Validar ventaData e itemsCarrito
-  3. Validar stock para productos físicos
-  4. Crear o actualizar Venta
-  5. Crear VentaItems
-  6. Actualizar Inventario (solo productos físicos con permite_stock)
-  7. Marcar Cotizacion como CONVERTIDA si cotizacionOrigenId presente
+  2. Idempotencia: organization_id + idempotency_key
+  3. Validar ventaData e itemsCarrito
+  4. Validar ventaPreloadId (ownership + estado borrador)
+  5. Validar stock para productos físicos
+  6. Crear Venta con estado "procesando"
+  7. Crear VentaItems
+  8. Actualizar Inventario + registrar InventarioHistorial
+  9. Marcar Cotizacion como CONVERTIDA si cotizacionOrigenId presente
+ 10. Actualizar Venta a estado "pagada" (último paso del happy path)
+
+Rollback mejorado:
+  - Revertir stock de Inventario
+  - Eliminar VentaItems creados
+  - Eliminar Venta nueva (si aplica)
+  - Si rollback falla parcialmente: marcar Venta como "inconsistente"
 
 NO incluye: transición OT, emisión Garantía, habilitar Diagnóstico.
 =====================================
@@ -44,8 +53,64 @@ Deno.serve(async (req) => {
   }
 
   const { ventaData, itemsCarrito, cotizacionOrigenId, ventaPreloadId } = body;
+  let idempotencyKey = body.idempotency_key;
 
-  // 3. VALIDACIONES DE INPUT
+  // 3. IDEMPOTENCIA
+  // Si no viene idempotency_key, generar una interna (fallback temporal)
+  if (!idempotencyKey) {
+    console.warn('[createSale] WARN: idempotency_key no enviado desde el frontend. Generando clave interna. Este escenario debe eliminarse en v3.');
+    idempotencyKey = `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Buscar venta existente por organization_id + idempotency_key
+  const ventasExistentes = await base44.asServiceRole.entities.Venta.filter({
+    organization_id: orgId,
+    idempotency_key: idempotencyKey,
+  });
+
+  if (ventasExistentes && ventasExistentes.length > 0) {
+    const ventaExistente = ventasExistentes[0];
+    const estadoExistente = ventaExistente.estado;
+
+    if (estadoExistente === 'pagada') {
+      // Reintento exitoso — devolver la venta original
+      console.warn(`[createSale] Idempotencia: venta ${ventaExistente.id} ya procesada (pagada). Devolviendo resultado original.`);
+      return Response.json({ success: true, data: ventaExistente, idempotent: true }, { status: 200 });
+    }
+
+    if (estadoExistente === 'procesando') {
+      return Response.json({
+        error: 'Operación en proceso. Espera unos segundos e intenta nuevamente.',
+        estado: 'procesando',
+        venta_id: ventaExistente.id,
+      }, { status: 409 });
+    }
+
+    if (estadoExistente === 'inconsistente') {
+      return Response.json({
+        error: `La venta ${ventaExistente.id} quedó en estado inconsistente por un error previo. Requiere revisión manual antes de continuar.`,
+        estado: 'inconsistente',
+        venta_id: ventaExistente.id,
+      }, { status: 500 });
+    }
+
+    if (estadoExistente === 'anulada') {
+      return Response.json({
+        error: 'Esta venta fue anulada. No se puede reprocesar con la misma clave.',
+        estado: 'anulada',
+        venta_id: ventaExistente.id,
+      }, { status: 409 });
+    }
+
+    // Cualquier otro estado inesperado
+    return Response.json({
+      error: `La venta con esta clave ya existe con estado "${estadoExistente}". No se puede crear una nueva.`,
+      estado: estadoExistente,
+      venta_id: ventaExistente.id,
+    }, { status: 409 });
+  }
+
+  // 4. VALIDACIONES DE INPUT
   if (!ventaData) {
     return Response.json({ error: 'ventaData es requerido' }, { status: 400 });
   }
@@ -62,7 +127,6 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'branch_id es requerido' }, { status: 400 });
   }
 
-  // Validar estructura de cada item
   for (const item of itemsCarrito) {
     if (!item.descripcion) {
       return Response.json({ error: 'Cada item debe tener descripcion' }, { status: 400 });
@@ -75,7 +139,28 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 4. VALIDAR STOCK para productos físicos — ANTES de cualquier escritura
+  // 5. VALIDAR ventaPreloadId — ownership + estado borrador
+  if (ventaPreloadId) {
+    const ventasPreload = await base44.asServiceRole.entities.Venta.filter({
+      id: ventaPreloadId,
+      organization_id: orgId,
+    });
+
+    if (!ventasPreload || ventasPreload.length === 0) {
+      return Response.json({
+        error: `Venta pre-cargada "${ventaPreloadId}" no encontrada o no pertenece a esta organización`,
+      }, { status: 400 });
+    }
+
+    const ventaPreload = ventasPreload[0];
+    if (ventaPreload.estado !== 'borrador') {
+      return Response.json({
+        error: `La venta pre-cargada "${ventaPreloadId}" ya fue procesada (estado: ${ventaPreload.estado}). No se puede actualizar.`,
+      }, { status: 409 });
+    }
+  }
+
+  // 6. VALIDAR STOCK para productos físicos — ANTES de cualquier escritura
   const inventarioSnapshots = {};
 
   for (const item of itemsCarrito) {
@@ -94,7 +179,6 @@ Deno.serve(async (req) => {
 
     const invItem = invResults[0];
 
-    // Verificar si la categoría controla stock
     let permiteStock = true;
     if (invItem.categoria_id) {
       const categorias = await base44.asServiceRole.entities.CategoriaInventario.filter({
@@ -119,29 +203,32 @@ Deno.serve(async (req) => {
   }
 
   // =====================================================
-  // 5. OPERACIONES DE ESCRITURA — validaciones pasaron
+  // 7. OPERACIONES DE ESCRITURA — todas las validaciones pasaron
   // =====================================================
   let ventaResult = null;
   const itemsCreados = [];
   const inventariosActualizados = [];
+  let rollbackFailed = false;
+  const rollbackErrors = [];
 
   try {
     const publicToken = `vta_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // PASO A — Crear o actualizar Venta
+    // PASO A — Crear o actualizar Venta (estado inicial: "procesando")
     if (ventaPreloadId) {
-      // Venta pre-existente (ej. cobro de taller o conversión de cotización)
+      // Venta pre-existente: actualizar a "procesando" mientras se ejecuta la transacción
       ventaResult = await base44.asServiceRole.entities.Venta.update(ventaPreloadId, {
-        estado: 'pagada',
+        estado: 'procesando',
         metodo_pago: ventaData.metodo_pago,
         public_access_token: publicToken,
         total: ventaData.total,
         subtotal: ventaData.subtotal,
         impuesto: ventaData.impuesto,
         descuento_total: ventaData.descuento_total || 0,
+        idempotency_key: idempotencyKey,
       });
     } else {
-      // Nueva venta
+      // Nueva venta — estado inicial "procesando"
       ventaResult = await base44.asServiceRole.entities.Venta.create({
         organization_id: orgId,
         branch_id: ventaData.branch_id,
@@ -156,9 +243,10 @@ Deno.serve(async (req) => {
         impuesto: ventaData.impuesto,
         descuento_total: ventaData.descuento_total || 0,
         metodo_pago: ventaData.metodo_pago,
-        estado: 'pagada',
+        estado: 'procesando',
         created_by_user_id: user.id,
         public_access_token: publicToken,
+        idempotency_key: idempotencyKey,
       });
     }
 
@@ -195,7 +283,7 @@ Deno.serve(async (req) => {
       itemsCreados.push(itemCreado);
     }
 
-    // PASO C — Actualizar Inventario para productos físicos
+    // PASO C — Actualizar Inventario + registrar InventarioHistorial
     for (const item of itemsCarrito) {
       if (item.tipo !== 'producto' || !item.referencia_id) continue;
 
@@ -212,6 +300,17 @@ Deno.serve(async (req) => {
       });
 
       inventariosActualizados.push({ id: item.referencia_id, stockAnterior, stockNuevo });
+
+      // Registrar historial de movimiento de inventario
+      await base44.asServiceRole.entities.InventarioHistorial.create({
+        organization_id: orgId,
+        inventario_id: item.referencia_id,
+        campo: 'cantidad_disponible',
+        valor_anterior: String(stockAnterior),
+        valor_nuevo: String(stockNuevo),
+        modificado_por: user.id,
+        motivo: `Venta - Ref: ${ventaResult.id}`,
+      });
     }
 
     // PASO D — Marcar Cotizacion como CONVERTIDA si aplica
@@ -224,50 +323,102 @@ Deno.serve(async (req) => {
       });
     }
 
+    // PASO E — Marcar Venta como "pagada" (último paso — confirma transacción completa)
+    const ventaFinal = await base44.asServiceRole.entities.Venta.update(ventaResult.id, {
+      estado: 'pagada',
+    });
+
     return Response.json({
       success: true,
       data: {
-        ...ventaResult,
+        ...(ventaFinal || ventaResult),
         items: itemsCreados,
       },
     }, { status: 201 });
 
   } catch (error) {
     // ROLLBACK MANUAL — revertir en orden inverso
-    console.error('[createSale] ERROR — iniciando rollback:', error.message);
+    console.error('[createSale] ERROR — iniciando rollback:', {
+      message: error.message,
+      ventaId: ventaResult?.id,
+      itemsCreados: itemsCreados.length,
+      inventariosActualizados: inventariosActualizados.length,
+    });
 
+    // ROLLBACK 1 — Revertir stock de Inventario
     for (const inv of inventariosActualizados) {
       try {
         await base44.asServiceRole.entities.Inventario.update(inv.id, {
           cantidad_disponible: inv.stockAnterior,
         });
-        console.warn(`[createSale] Rollback stock: ${inv.id} → ${inv.stockAnterior}`);
+        console.warn(`[createSale] Rollback stock OK: ${inv.id} → ${inv.stockAnterior}`);
       } catch (rbError) {
+        rollbackFailed = true;
+        rollbackErrors.push(`stock:${inv.id}:${rbError.message}`);
         console.error(`[createSale] Rollback stock FALLÓ para ${inv.id}:`, rbError.message);
       }
     }
 
+    // ROLLBACK 2 — Eliminar VentaItems creados
     for (const itemCreado of itemsCreados) {
       try {
         await base44.asServiceRole.entities.VentaItem.delete(itemCreado.id);
-        console.warn(`[createSale] Rollback VentaItem eliminado: ${itemCreado.id}`);
+        console.warn(`[createSale] Rollback VentaItem OK: ${itemCreado.id}`);
       } catch (rbError) {
+        rollbackFailed = true;
+        rollbackErrors.push(`ventaitem:${itemCreado.id}:${rbError.message}`);
         console.error(`[createSale] Rollback VentaItem FALLÓ para ${itemCreado.id}:`, rbError.message);
       }
     }
 
-    if (ventaResult?.id && !ventaPreloadId) {
-      try {
-        await base44.asServiceRole.entities.Venta.delete(ventaResult.id);
-        console.warn(`[createSale] Rollback Venta eliminada: ${ventaResult.id}`);
-      } catch (rbError) {
-        console.error(`[createSale] Rollback Venta FALLÓ para ${ventaResult.id}:`, rbError.message);
+    // ROLLBACK 3 — Eliminar Venta nueva o marcar como inconsistente si rollback falló
+    if (ventaResult?.id) {
+      if (!ventaPreloadId) {
+        // Venta nueva: intentar eliminar
+        try {
+          await base44.asServiceRole.entities.Venta.delete(ventaResult.id);
+          console.warn(`[createSale] Rollback Venta eliminada: ${ventaResult.id}`);
+        } catch (rbError) {
+          rollbackFailed = true;
+          rollbackErrors.push(`venta_delete:${ventaResult.id}:${rbError.message}`);
+          console.error(`[createSale] Rollback Venta DELETE FALLÓ para ${ventaResult.id}:`, rbError.message);
+
+          // No se pudo eliminar — marcar como inconsistente para auditoría manual
+          try {
+            await base44.asServiceRole.entities.Venta.update(ventaResult.id, {
+              estado: 'inconsistente',
+              rollback_status: rollbackFailed ? 'failed' : 'partial',
+              rollback_error: rollbackErrors.slice(0, 3).join(' | ').substring(0, 500),
+            });
+            console.error(`[createSale] Venta ${ventaResult.id} marcada como INCONSISTENTE. Requiere revisión manual.`);
+          } catch (markError) {
+            console.error(`[createSale] CRÍTICO: No se pudo marcar venta ${ventaResult.id} como inconsistente:`, markError.message);
+          }
+        }
+      } else {
+        // ventaPreloadId: no eliminar, solo revertir estado a borrador (o marcar inconsistente si rollback falló)
+        const estadoRevertido = rollbackFailed ? 'inconsistente' : 'borrador';
+        try {
+          await base44.asServiceRole.entities.Venta.update(ventaResult.id, {
+            estado: estadoRevertido,
+            ...(rollbackFailed && {
+              rollback_status: 'partial',
+              rollback_error: rollbackErrors.slice(0, 3).join(' | ').substring(0, 500),
+            }),
+          });
+          console.warn(`[createSale] Venta preload ${ventaResult.id} revertida a estado: ${estadoRevertido}`);
+        } catch (revertError) {
+          console.error(`[createSale] CRÍTICO: No se pudo revertir venta preload ${ventaResult.id}:`, revertError.message);
+        }
       }
     }
 
+    const rollbackStatus = rollbackFailed ? (rollbackErrors.length > 1 ? 'partial' : 'failed') : 'success';
+
     return Response.json({
       error: error.message || 'Error interno al procesar la venta',
-      rollback: 'ejecutado',
+      rollback: rollbackStatus,
+      ...(rollbackFailed && { rollback_errors: rollbackErrors }),
     }, { status: 500 });
   }
 });

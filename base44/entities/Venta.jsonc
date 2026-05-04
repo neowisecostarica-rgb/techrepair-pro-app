@@ -1,0 +1,203 @@
+{
+  "name": "Venta",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "ID de la sucursal"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID del cliente (nullable)"
+    },
+    "origen_venta": {
+      "type": "string",
+      "enum": [
+        "taller",
+        "tienda"
+      ],
+      "description": "Origen de la venta"
+    },
+    "origen_detalle": {
+      "type": "string",
+      "enum": [
+        "POS_DIRECTO",
+        "DESDE_COTIZACION",
+        "DESDE_OT"
+      ],
+      "default": "POS_DIRECTO",
+      "description": "Origen espec\u00edfico de la venta"
+    },
+    "tipo_concepto": {
+      "type": "string",
+      "enum": [
+        "revision_diagnostico",
+        "reparacion",
+        "venta_producto",
+        "otro"
+      ],
+      "description": "Tipo de concepto cobrado"
+    },
+    "referencia_ot_id": {
+      "type": "string",
+      "description": "ID de la orden de trabajo (nullable)"
+    },
+    "referencia_diagnostico_id": {
+      "type": "string",
+      "description": "ID del diagn\u00f3stico (nullable)"
+    },
+    "cotizacion_id": {
+      "type": "string",
+      "description": "ID de cotizaci\u00f3n origen (nullable)"
+    },
+    "cotizacion_total_original": {
+      "type": "number",
+      "description": "Total original de la cotizaci\u00f3n (snapshot)"
+    },
+    "cotizacion_subtotal_original": {
+      "type": "number",
+      "description": "Subtotal original de la cotizaci\u00f3n (snapshot)"
+    },
+    "cotizacion_descuento_original": {
+      "type": "number",
+      "description": "Descuento original de la cotizaci\u00f3n (snapshot)"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total de la venta"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal antes de impuestos"
+    },
+    "impuesto": {
+      "type": "number",
+      "description": "Monto de impuestos"
+    },
+    "descuento_total": {
+      "type": "number",
+      "default": 0,
+      "description": "Descuento total aplicado"
+    },
+    "metodo_pago": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "tarjeta",
+        "transferencia",
+        "mixto"
+      ],
+      "description": "M\u00e9todo de pago"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "borrador",
+        "procesando",
+        "pagada",
+        "anulada",
+        "inconsistente"
+      ],
+      "default": "borrador",
+      "description": "Estado de la venta. 'procesando' = transacci\u00f3n en vuelo. 'inconsistente' = rollback fallido, requiere revisi\u00f3n manual."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Clave de idempotencia por sesi\u00f3n de compra (nullable). Unicidad garantizada por validaci\u00f3n en createSale: organization_id + idempotency_key."
+    },
+    "rollback_status": {
+      "type": "string",
+      "description": "Estado del rollback si aplica: 'success' | 'failed' | 'partial' (nullable)"
+    },
+    "rollback_error": {
+      "type": "string",
+      "description": "Mensaje resumido del error de rollback para auditor\u00eda (nullable)"
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "ID del usuario que cre\u00f3 la venta"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales"
+    },
+    "public_access_token": {
+      "type": "string",
+      "description": "Token \u00fanico para acceso p\u00fablico al comprobante"
+    }
+  },
+  "required": [
+    "organization_id",
+    "branch_id",
+    "origen_venta",
+    "total",
+    "estado",
+    "created_by_user_id"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

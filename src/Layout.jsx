@@ -412,6 +412,7 @@ function LayoutContent({ children, currentPageName }) {
 
      // VISIÓN DEL NEGOCIO
      { label: 'Resumen del Negocio', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard' },
+     { label: 'Métricas Financieras', path: 'DashboardOperativo', icon: TrendingUp, category: 'VISIÓN DEL NEGOCIO' },
      { label: 'Estado Financiero', path: 'Finanzas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard (Finanzas)' },
      { label: 'Ventas y Ganancias', path: 'VentasMetricas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Métricas' },
      { label: 'Rendimiento del Equipo', path: 'ProductividadTecnicos', icon: Users, category: 'VISIÓN DEL NEGOCIO' },
@@ -447,6 +448,7 @@ function LayoutContent({ children, currentPageName }) {
      { label: 'Mi Día', path: 'MiDia', icon: Sun, category: null },
 
      { label: 'Resumen del Negocio', path: 'Dashboard', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard' },
+     { label: 'Métricas Financieras', path: 'DashboardOperativo', icon: TrendingUp, category: 'VISIÓN DEL NEGOCIO' },
      { label: 'Estado Financiero', path: 'Finanzas', icon: LayoutDashboard, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Dashboard (Finanzas)' },
      { label: 'Supervisión en Vivo', path: 'Operacion', icon: Wrench, category: 'VISIÓN DEL NEGOCIO', tooltip: 'Antes: Operación' },
 

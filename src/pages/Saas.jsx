@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Building2, Plus, Search, ShieldAlert, AlertCircle } from 'lucide-react';
 import OrganizationCard from '../components/superadmin/OrganizationCard';
-import GlobalSalesMetrics from '@/components/superadmin/GlobalSalesMetrics';
+import PlatformActivityMetrics from '@/components/superadmin/PlatformActivityMetrics';
 import ImpersonationBanner from '../components/superadmin/ImpersonationBanner';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
@@ -720,7 +720,7 @@ function SaasContent() {
 
       {/* Global Sales Metrics (Super Admin) */}
       {!authIsImpersonating && (
-        <GlobalSalesMetrics organizations={organizations} />
+        <PlatformActivityMetrics organizations={organizations} />
       )}
 
       {/* System Health */}

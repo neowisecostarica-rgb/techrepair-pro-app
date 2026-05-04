@@ -84,8 +84,14 @@ Deno.serve(async (req) => {
       const cantidad = item.cantidad || 1;
 
       let costoUnitario = 0;
-      if (item.tipo === 'producto' && item.referencia_id) {
-        costoUnitario = costosMap[item.referencia_id] || 0;
+      if (item.tipo === 'producto') {
+        // Fuente principal: snapshot histórico del costo al momento de la venta
+        if (item.costo_unitario_snapshot != null && item.costo_unitario_snapshot !== '') {
+          costoUnitario = item.costo_unitario_snapshot;
+        } else if (item.referencia_id) {
+          // Fallback: costo actual en inventario (solo si no hay snapshot)
+          costoUnitario = costosMap[item.referencia_id] || 0;
+        }
       }
       // Servicios: costo asumido en 0 (no tienen costo en inventario)
 

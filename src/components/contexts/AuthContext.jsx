@@ -68,26 +68,26 @@ async function ensureIdentity(u) {
 
   let account = selectedAccount;
 
-  // 3. Reparar role inválido (idempotente: solo si role no está en lista oficial)
-  if (!VALID_ROLES.includes(account.role)) {
-    const mappedRole = LEGACY_ROLE_MAP[account.role] || 'SALES';
-    console.warn(`[EnsureIdentity] Role legacy "${account.role}" → "${mappedRole}" para`, u.email);
-    account = await base44.entities.UserAccount.update(account.id, { role: mappedRole });
-    repairs.push(`mapped_role:${account.role}`);
-  }
+  // 3 & 4. Reparar role inválido y branch_id faltante via backend (SOT)
+  const needsRoleRepair = !VALID_ROLES.includes(account.role);
+  const needsBranchRepair = ROLES_REQUIRE_BRANCH.includes(account.role) && !account.branch_id;
 
-  // 4. Reparar branch_id faltante para roles que lo requieren (idempotente)
-  if (ROLES_REQUIRE_BRANCH.includes(account.role) && !account.branch_id) {
-    const branches = await base44.entities.Branch.filter({
-      organization_id: account.organization_id,
-      active: true
-    });
-    if (branches.length > 0) {
-      account = await base44.entities.UserAccount.update(account.id, { branch_id: branches[0].id });
-      repairs.push(`assigned_branch:${branches[0].id}`);
-      console.log('[EnsureIdentity] Branch asignada automáticamente:', branches[0].id, 'para', u.email);
-    } else {
-      console.warn('[EnsureIdentity] No hay branches activas para org:', account.organization_id);
+  if (needsRoleRepair || needsBranchRepair) {
+    try {
+      const repairResult = await base44.functions.invoke('repairUserIdentity', {
+        organization_id: account.organization_id,
+      });
+      const repaired = repairResult?.data;
+      if (repaired?.repairs?.length > 0) {
+        repairs.push(...repaired.repairs);
+        console.log('[EnsureIdentity] Reparaciones aplicadas via backend para', u.email, ':', repaired.repairs);
+        // Re-fetch del UserAccount para obtener la versión reparada
+        const refreshed = await base44.entities.UserAccount.filter({ id: account.id });
+        if (refreshed[0]) account = refreshed[0];
+      }
+    } catch (repairErr) {
+      console.error('[EnsureIdentity] Error al invocar repairUserIdentity:', repairErr);
+      // No bloquear el login si la reparación falla — continuar con la cuenta actual
     }
   }
 

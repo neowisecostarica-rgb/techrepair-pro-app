@@ -91,27 +91,41 @@ async function ensureIdentity(u) {
     }
   }
 
-  // 5. Sincronizar user.organization_id al token (RLS requiere esto)
-  //    Esta es la causa raíz del 403. Se sincroniza siempre que haya desincronización.
-  //    CRÍTICO: después de updateMe() se hace un re-fetch de me() para confirmar que
-  //    el token del servidor ya refleja el nuevo organization_id antes de marcar ready.
-  if (u.organization_id !== account.organization_id) {
-    console.log('[EnsureIdentity] Sincronizando token org_id:', u.organization_id, '→', account.organization_id);
-    try {
-      await base44.auth.updateMe({ organization_id: account.organization_id });
+  // 5. Sincronizar user.organization_id y user.role (plataforma) al token
+  //    - organization_id: RLS requiere que coincida con el UserAccount activo
+  //    - role="admin": Base44 requiere _app_role="admin" para operaciones CREATE
+  //      El control real de permisos de negocio se mantiene en UserAccount.role
+  const needsOrgSync = u.organization_id !== account.organization_id;
+  const needsRoleSync = u.role !== 'admin';
 
-      // Re-fetch para confirmar que el token propagado ya contiene el org_id correcto
+  if (needsOrgSync || needsRoleSync) {
+    const updatePayload = {};
+    if (needsOrgSync) {
+      updatePayload.organization_id = account.organization_id;
+      console.log('[EnsureIdentity] Sincronizando token org_id:', u.organization_id, '→', account.organization_id);
+    }
+    if (needsRoleSync) {
+      updatePayload.role = 'admin';
+      console.log('[EnsureIdentity] Sincronizando _app_role a "admin" para operaciones CREATE (control real en UserAccount.role)');
+    }
+
+    try {
+      await base44.auth.updateMe(updatePayload);
+
+      // Re-fetch para confirmar que el token propagado ya contiene los valores correctos
       const refreshedUser = await base44.auth.me();
       u.organization_id = refreshedUser.organization_id;
+      u.role = refreshedUser.role;
 
-      if (u.organization_id !== account.organization_id) {
-        console.warn('[EnsureIdentity] ⚠️ Token aún desincronizado tras re-fetch, forzando valor local');
+      if (needsOrgSync && u.organization_id !== account.organization_id) {
+        console.warn('[EnsureIdentity] ⚠️ Token org_id aún desincronizado tras re-fetch, forzando valor local');
         u.organization_id = account.organization_id;
-      } else {
-        console.log('[EnsureIdentity] ✅ Token confirmado tras re-fetch:', u.organization_id);
+      } else if (needsOrgSync) {
+        console.log('[EnsureIdentity] ✅ Token org_id confirmado tras re-fetch:', u.organization_id);
       }
 
-      repairs.push(`synced_token:${account.organization_id}`);
+      if (needsOrgSync) repairs.push(`synced_token:${account.organization_id}`);
+      if (needsRoleSync) repairs.push('synced_app_role:admin');
     } catch (syncError) {
       console.error('[EnsureIdentity] ❌ Error sincronizando token:', syncError);
     }

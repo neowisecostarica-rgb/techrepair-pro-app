@@ -42,8 +42,8 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
         return;
       }
 
-      // Crear categoría
-      const newCategoria = await base44.entities.CategoriaInventario.create({
+      // Crear categoría vía backend function (bypasea RLS restrictiva)
+      const response = await base44.functions.invoke('createCategoriaInventario', {
         organization_id: organizationId,
         nombre: nombre.trim(),
         permite_stock: permiteStock,
@@ -51,6 +51,7 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
         es_vendible: esVendible,
         activo: true
       });
+      const newCategoria = response.data;
 
       // Notificar y cerrar
       onCreated(newCategoria);

@@ -1093,10 +1093,24 @@ function OrdenesTrabajoContent() {
                   </Button>
                 )}
                 
+                {/* Botón Diagnóstico Técnico — visible cuando OT está ASIGNADA */}
+                {selectedOT.estado === 'ASIGNADA' && (
+                  <Button
+                    onClick={() => {
+                      setDiagnosticoTecnicoOT(selectedOT);
+                      setShowDiagnosticoTecnico(true);
+                      setSelectedOT(null);
+                    }}
+                    className="bg-gradient-to-r from-purple-500 to-blue-500"
+                  >
+                    🔬 Iniciar Diagnóstico Técnico
+                  </Button>
+                )}
+
                 {/* P0.1: Botón "Iniciar Revisión" para técnicos cuando OT está ASIGNADA */}
-                {effectiveRole === 'TECHNICIAN' && 
-                  selectedOT.estado === 'ASIGNADA' && 
-                  selectedOT.tecnico_asignado_id === user?.id && (
+                 {effectiveRole === 'TECHNICIAN' && 
+                   selectedOT.estado === 'ASIGNADA' && 
+                   selectedOT.tecnico_asignado_id === user?.id && (
                   <Button 
                     onClick={async () => {
                       try {
@@ -1247,7 +1261,7 @@ function OrdenesTrabajoContent() {
           {diagnosticoTecnicoOT && (
             <WizardDiagnosticoTecnico
               ordenTrabajo={diagnosticoTecnicoOT}
-              preDiagnostico={preDiagnosticoData}
+              preDiagnostico={preDiagnosticoData || null}
               effectiveOrgId={effectiveOrgId}
               tecnicoId={user?.id}
               onClose={() => {

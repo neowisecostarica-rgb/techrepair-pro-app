@@ -29,9 +29,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: acceso denegado' }, { status: 403 });
     }
 
-    // 4. UPDATE PARCIAL — solo diagnostico_resumido, NO tocar estado ni otros campos
+    // 4. UPDATE PARCIAL — incluir estado existente para satisfacer el campo required
     const updatedOT = await base44.asServiceRole.entities.OrdenTrabajo.update(ordenTrabajoId, {
-      diagnostico_resumido
+      diagnostico_resumido,
+      estado: ot.estado
     });
 
     return Response.json({ success: true, data: updatedOT });

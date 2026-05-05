@@ -22,6 +22,11 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
       return;
     }
 
+    if (!organizationId) {
+      alert('Error: no se pudo determinar la organización. Intenta recargar la página.');
+      return;
+    }
+
     setSaving(true);
 
     try {

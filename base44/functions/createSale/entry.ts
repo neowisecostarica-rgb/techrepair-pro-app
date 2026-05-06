@@ -335,6 +335,18 @@ Deno.serve(async (req) => {
       estado: 'pagada',
     });
 
+    // PASO F — Post-procesamiento operacional (desacoplado, non-blocking)
+    // Invoca processPostSaleActions SOLO si la venta fue exitosa y commitada.
+    // Fallos aquí NO afectan el resultado de la venta (ya está pagada).
+    try {
+      await base44.functions.invoke('processPostSaleActions', {
+        sale_id: ventaResult.id,
+      });
+    } catch (postSaleError) {
+      // Non-critical: loguear pero no interrumpir respuesta al cliente
+      console.warn('[createSale] processPostSaleActions falló (non-critical):', postSaleError.message);
+    }
+
     return Response.json({
       success: true,
       data: {

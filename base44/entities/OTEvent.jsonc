@@ -11,9 +11,26 @@
       "enum": [
         "CREATED",
         "FINALIZADA",
-        "ENTREGADA"
+        "ENTREGADA",
+        "SALE_COMPLETED"
       ],
-      "description": "Tipo de evento generado por la Orden de Trabajo"
+      "description": "Tipo de evento generado"
+    },
+    "sale_id": {
+      "type": "string",
+      "description": "ID de la Venta asociada (solo para SALE_COMPLETED)"
+    },
+    "venta_total": {
+      "type": "number",
+      "description": "Total de la venta (solo para SALE_COMPLETED)"
+    },
+    "tipo_concepto": {
+      "type": "string",
+      "description": "tipo_concepto de la venta (solo para SALE_COMPLETED)"
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "ID del usuario que gener\u00f3 el evento"
     },
     "processed": {
       "type": "boolean",

@@ -52,7 +52,9 @@
         "EN_REVISION",
         "DIAGNOSTICADA",
         "COTIZADA",
+        "APROBADA",
         "EN_REPARACION",
+        "PRUEBAS",
         "FINALIZADA",
         "ENTREGADA",
         "CANCELADA"

@@ -16,9 +16,16 @@ export const KANBAN_COLUMNS = {
     colorClass: 'bg-blue-50 border-blue-200',
     headerClass: 'text-blue-700',
   },
+  APROBADAS: {
+    label: 'Aprobadas',
+    statuses: ['APROBADA'],
+    defaultStatus: 'APROBADA',
+    colorClass: 'bg-teal-50 border-teal-200',
+    headerClass: 'text-teal-700',
+  },
   EN_REPARACION: {
     label: 'En reparación',
-    statuses: ['EN_REPARACION'],
+    statuses: ['EN_REPARACION', 'PRUEBAS'],
     defaultStatus: 'EN_REPARACION',
     colorClass: 'bg-indigo-50 border-indigo-200',
     headerClass: 'text-indigo-700',
@@ -52,15 +59,17 @@ export const STATUS_TO_COLUMN = Object.entries(KANBAN_COLUMNS).reduce((acc, [col
   return acc;
 }, {});
 
-// Badge visual por estado
+// Badge visual por estado — estados oficiales ONF TechRepairPro
 export const WORK_ORDER_STATUSES = {
-  EN_COLA_REVISION: { label: 'En Cola',       color: 'bg-amber-100 text-amber-700' },
-  ASIGNADA:         { label: 'Asignada',       color: 'bg-blue-100 text-blue-700' },
-  EN_REVISION:      { label: 'En Revisión',    color: 'bg-purple-100 text-purple-700' },
-  DIAGNOSTICADA:    { label: 'Diagnosticada',  color: 'bg-yellow-100 text-yellow-700' },
-  COTIZADA:         { label: 'Cotizada',        color: 'bg-orange-100 text-orange-700' },
-  EN_REPARACION:    { label: 'En Reparación',  color: 'bg-indigo-100 text-indigo-700' },
-  FINALIZADA:       { label: 'Finalizada',     color: 'bg-emerald-100 text-emerald-700' },
-  ENTREGADA:        { label: 'Entregada',      color: 'bg-green-100 text-green-700' },
-  CANCELADA:        { label: 'Cancelada',      color: 'bg-red-100 text-red-700' },
+  EN_COLA_REVISION: { label: 'En Cola',        color: 'bg-amber-100 text-amber-700' },
+  ASIGNADA:         { label: 'Asignada',        color: 'bg-blue-100 text-blue-700' },
+  EN_REVISION:      { label: 'En Revisión',     color: 'bg-purple-100 text-purple-700' },
+  DIAGNOSTICADA:    { label: 'Diagnosticada',   color: 'bg-yellow-100 text-yellow-700' },
+  COTIZADA:         { label: 'Cotizada',         color: 'bg-orange-100 text-orange-700' },
+  APROBADA:         { label: 'Aprobada',         color: 'bg-teal-100 text-teal-700' },
+  EN_REPARACION:    { label: 'En Reparación',   color: 'bg-indigo-100 text-indigo-700' },
+  PRUEBAS:          { label: 'En Pruebas',       color: 'bg-cyan-100 text-cyan-700' },
+  FINALIZADA:       { label: 'Finalizada',      color: 'bg-emerald-100 text-emerald-700' },
+  ENTREGADA:        { label: 'Entregada',       color: 'bg-green-100 text-green-700' },
+  CANCELADA:        { label: 'Cancelada',       color: 'bg-red-100 text-red-700' },
 };

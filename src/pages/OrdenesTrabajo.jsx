@@ -387,6 +387,7 @@ function OrdenesTrabajoContent() {
 
     try {
       const tecnico = tecnicos.find(t => t.user_id === nuevoTecnicoId);
+      // Reasignación: actualizar técnico sin cambiar estado (solo campos no-lifecycle)
       await base44.entities.OrdenTrabajo.update(reasignarOT.id, {
         tecnico_asignado_id: nuevoTecnicoId,
         tecnico_asignado_email: tecnico?.user_email || '',

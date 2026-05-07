@@ -12,7 +12,15 @@
         "CREATED",
         "FINALIZADA",
         "ENTREGADA",
-        "SALE_COMPLETED"
+        "CANCELADA",
+        "SALE_COMPLETED",
+        "TRANSITION_ASIGNADA",
+        "TRANSITION_EN_REVISION",
+        "TRANSITION_DIAGNOSTICADA",
+        "TRANSITION_COTIZADA",
+        "TRANSITION_APROBADA",
+        "TRANSITION_EN_REPARACION",
+        "TRANSITION_PRUEBAS"
       ],
       "description": "Tipo de evento generado"
     },

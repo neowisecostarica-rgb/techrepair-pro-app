@@ -215,10 +215,9 @@ Deno.serve(async (req) => {
     const updatedOT = await base44.asServiceRole.entities.OrdenTrabajo.update(orden_trabajo_id, updatePayload);
 
     // ── 12. OTEvent oficial — ownership: transitionWorkOrderStatus ───────────────
-    // Modelo aprobado ONF-v2 Bloque 0B.1
+    // Modelo aprobado ONF-v2 Bloque 0B.1a
     //
     // EVENTOS CANÓNICOS (idempotencia estricta: 1 por OT):
-    //   CREATED    → solo cuando oldStatus es null/undefined y newStatus es EN_COLA_REVISION
     //   FINALIZADA → solo cuando newStatus es FINALIZADA
     //   ENTREGADA  → solo cuando newStatus es ENTREGADA
     //   CANCELADA  → solo cuando newStatus es CANCELADA
@@ -227,6 +226,7 @@ Deno.serve(async (req) => {
     //   TRANSITION_ASIGNADA, TRANSITION_EN_REVISION, TRANSITION_DIAGNOSTICADA,
     //   TRANSITION_COTIZADA, TRANSITION_APROBADA, TRANSITION_EN_REPARACION, TRANSITION_PRUEBAS
     //
+    // CREATED → ownership exclusivo de createWorkOrder (Bloque 0B.1a)
     // NO existen: TRANSITION_FINALIZADA, TRANSITION_ENTREGADA, TRANSITION_CANCELADA
     // processPostSaleActions sigue siendo dueño exclusivo de SALE_COMPLETED
 
@@ -242,31 +242,11 @@ Deno.serve(async (req) => {
     };
 
     try {
-      const isCreation = (!currentStatus || currentStatus === null) && newStatus === 'EN_COLA_REVISION';
       const isCanonical = CANONICAL_EVENTS.includes(newStatus);
       const transitionType = TRANSITION_EVENT_MAP[newStatus];
 
-      // ── A. CREATED: idempotencia estricta, solo en nacimiento de OT ──────────
-      if (isCreation) {
-        const existingCreated = await base44.asServiceRole.entities.OTEvent.filter({
-          orden_trabajo_id: orden_trabajo_id,
-          tipo: 'CREATED',
-        }, 1);
-        if (!existingCreated || existingCreated.length === 0) {
-          await base44.asServiceRole.entities.OTEvent.create({
-            orden_trabajo_id: orden_trabajo_id,
-            tipo: 'CREATED',
-            created_by_user_id: user.id,
-            processed: false,
-            created_at: now,
-          });
-          console.log(`[transitionWorkOrderStatus] OTEvent CREATED — OT: ${orden_trabajo_id}`);
-        } else {
-          console.log(`[transitionWorkOrderStatus] OTEvent CREATED ya existe (idempotencia) — OT: ${orden_trabajo_id}`);
-        }
-      }
-
-      // ── B. CANÓNICOS (FINALIZADA, ENTREGADA, CANCELADA): idempotencia estricta ─
+      // ── A. CANÓNICOS (FINALIZADA, ENTREGADA, CANCELADA): idempotencia estricta ─
+      // NOTA: CREATED es ownership exclusivo de createWorkOrder (Bloque 0B.1a)
       if (isCanonical) {
         const existingCanonical = await base44.asServiceRole.entities.OTEvent.filter({
           orden_trabajo_id: orden_trabajo_id,

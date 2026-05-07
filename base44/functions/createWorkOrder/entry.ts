@@ -63,6 +63,33 @@ Deno.serve(async (req) => {
       fecha_ingreso: new Date().toISOString(),
     });
 
+    // ── OTEvent CREATED — ownership exclusivo de createWorkOrder (Bloque 0B.1a) ──
+    // Idempotencia: verificar antes de crear para soportar reintentos seguros.
+    // Si falla: NO rollbackear la OT — loggear y permitir continuidad operacional.
+    try {
+      const existingCreated = await base44.asServiceRole.entities.OTEvent.filter({
+        orden_trabajo_id: orden.id,
+        tipo: 'CREATED',
+      }, 1);
+
+      if (!existingCreated || existingCreated.length === 0) {
+        await base44.asServiceRole.entities.OTEvent.create({
+          organization_id: orgId,
+          orden_trabajo_id: orden.id,
+          tipo: 'CREATED',
+          created_by_user_id: user.id,
+          processed: false,
+          created_at: new Date().toISOString(),
+        });
+        console.log(`[createWorkOrder] OTEvent CREATED generado — OT: ${orden.id}, codigo: ${orden.codigo_ot}`);
+      } else {
+        console.log(`[createWorkOrder] OTEvent CREATED ya existe (idempotencia) — OT: ${orden.id}`);
+      }
+    } catch (eventError) {
+      // El fallo del evento NO debe bloquear la creación de la OT
+      console.error(`[createWorkOrder] OTEvent CREATED falló (OT existe y es válida) — OT: ${orden.id}, error: ${eventError.message}`);
+    }
+
     return Response.json(orden);
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

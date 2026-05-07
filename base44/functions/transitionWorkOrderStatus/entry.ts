@@ -214,38 +214,90 @@ Deno.serve(async (req) => {
     // ── 11. Ejecutar actualización ────────────────────────────────────────────
     const updatedOT = await base44.asServiceRole.entities.OrdenTrabajo.update(orden_trabajo_id, updatePayload);
 
-    // ── 12. Trazabilidad mínima: registrar en OTEvent (reutilizar entidad existente) ──
-    // Solo para eventos que tienen tipo definido en OTEvent
-    const OT_EVENT_TYPES = {
-      EN_COLA_REVISION: 'CREATED', // normalmente via automation, aquí como fallback
-      FINALIZADA: 'FINALIZADA',
-      ENTREGADA: 'ENTREGADA',
+    // ── 12. OTEvent oficial — ownership: transitionWorkOrderStatus ───────────────
+    // Modelo aprobado ONF-v2 Bloque 0B.1
+    //
+    // EVENTOS CANÓNICOS (idempotencia estricta: 1 por OT):
+    //   CREATED    → solo cuando oldStatus es null/undefined y newStatus es EN_COLA_REVISION
+    //   FINALIZADA → solo cuando newStatus es FINALIZADA
+    //   ENTREGADA  → solo cuando newStatus es ENTREGADA
+    //   CANCELADA  → solo cuando newStatus es CANCELADA
+    //
+    // EVENTOS TRANSICIÓN (siempre se crean, no son idempotentes por diseño):
+    //   TRANSITION_ASIGNADA, TRANSITION_EN_REVISION, TRANSITION_DIAGNOSTICADA,
+    //   TRANSITION_COTIZADA, TRANSITION_APROBADA, TRANSITION_EN_REPARACION, TRANSITION_PRUEBAS
+    //
+    // NO existen: TRANSITION_FINALIZADA, TRANSITION_ENTREGADA, TRANSITION_CANCELADA
+    // processPostSaleActions sigue siendo dueño exclusivo de SALE_COMPLETED
+
+    const CANONICAL_EVENTS = ['FINALIZADA', 'ENTREGADA', 'CANCELADA'];
+    const TRANSITION_EVENT_MAP = {
+      ASIGNADA:      'TRANSITION_ASIGNADA',
+      EN_REVISION:   'TRANSITION_EN_REVISION',
+      DIAGNOSTICADA: 'TRANSITION_DIAGNOSTICADA',
+      COTIZADA:      'TRANSITION_COTIZADA',
+      APROBADA:      'TRANSITION_APROBADA',
+      EN_REPARACION: 'TRANSITION_EN_REPARACION',
+      PRUEBAS:       'TRANSITION_PRUEBAS',
     };
 
-    const eventType = OT_EVENT_TYPES[newStatus];
-
-    // Para todos los estados, crear un registro de trazabilidad en OTEvent
-    // extendiendo el tipo con el nombre del estado para trazabilidad completa
     try {
-      // Verificar si ya existe evento de este tipo (idempotencia)
-      const tipoEvento = eventType || `TRANSITION_${newStatus}`;
-      const existing = await base44.asServiceRole.entities.OTEvent.filter({
-        orden_trabajo_id: orden_trabajo_id,
-        tipo: tipoEvento,
-      }, 1);
+      const isCreation = (!currentStatus || currentStatus === null) && newStatus === 'EN_COLA_REVISION';
+      const isCanonical = CANONICAL_EVENTS.includes(newStatus);
+      const transitionType = TRANSITION_EVENT_MAP[newStatus];
 
-      // Para transiciones no críticas (no FINALIZADA/ENTREGADA), siempre crear
-      // Para FINALIZADA/ENTREGADA, verificar idempotencia
-      const shouldCreate = !eventType || !existing || existing.length === 0;
+      // ── A. CREATED: idempotencia estricta, solo en nacimiento de OT ──────────
+      if (isCreation) {
+        const existingCreated = await base44.asServiceRole.entities.OTEvent.filter({
+          orden_trabajo_id: orden_trabajo_id,
+          tipo: 'CREATED',
+        }, 1);
+        if (!existingCreated || existingCreated.length === 0) {
+          await base44.asServiceRole.entities.OTEvent.create({
+            orden_trabajo_id: orden_trabajo_id,
+            tipo: 'CREATED',
+            created_by_user_id: user.id,
+            processed: false,
+            created_at: now,
+          });
+          console.log(`[transitionWorkOrderStatus] OTEvent CREATED — OT: ${orden_trabajo_id}`);
+        } else {
+          console.log(`[transitionWorkOrderStatus] OTEvent CREATED ya existe (idempotencia) — OT: ${orden_trabajo_id}`);
+        }
+      }
 
-      if (shouldCreate) {
+      // ── B. CANÓNICOS (FINALIZADA, ENTREGADA, CANCELADA): idempotencia estricta ─
+      if (isCanonical) {
+        const existingCanonical = await base44.asServiceRole.entities.OTEvent.filter({
+          orden_trabajo_id: orden_trabajo_id,
+          tipo: newStatus,
+        }, 1);
+        if (!existingCanonical || existingCanonical.length === 0) {
+          await base44.asServiceRole.entities.OTEvent.create({
+            orden_trabajo_id: orden_trabajo_id,
+            tipo: newStatus,
+            created_by_user_id: user.id,
+            processed: false,
+            created_at: now,
+          });
+          console.log(`[transitionWorkOrderStatus] OTEvent canónico ${newStatus} — OT: ${orden_trabajo_id}`);
+        } else {
+          console.log(`[transitionWorkOrderStatus] OTEvent canónico ${newStatus} ya existe (idempotencia) — OT: ${orden_trabajo_id}`);
+        }
+      }
+
+      // ── C. TRANSICIÓN: eventos intermedios, sin idempotencia (permiten historial) ─
+      if (transitionType) {
         await base44.asServiceRole.entities.OTEvent.create({
           orden_trabajo_id: orden_trabajo_id,
-          tipo: tipoEvento,
+          tipo: transitionType,
+          created_by_user_id: user.id,
           processed: false,
           created_at: now,
         });
+        console.log(`[transitionWorkOrderStatus] OTEvent ${transitionType} — OT: ${orden_trabajo_id}`);
       }
+
     } catch (traceError) {
       // Trazabilidad no debe romper el flujo principal
       console.warn('[transitionWorkOrderStatus] trazabilidad_fallida:', traceError.message);

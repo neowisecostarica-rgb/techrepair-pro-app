@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    console.log(`[processOTEvent] Iniciando — event_id: ${eventId}, caller: ${callerUser?.email || 'automation'}`);
+    // [Bloque A] Log de inicio eliminado (ruido operacional)
 
     // ── 3. Leer OTEvent desde la entidad (source of truth) ─────────────────────
     // Usamos data del payload si está disponible (automation lo inyecta),
@@ -179,7 +179,6 @@ Deno.serve(async (req) => {
 
     // ── 5. Guard de idempotencia ────────────────────────────────────────────────
     if (processed === true) {
-      console.log(`[processOTEvent] Evento ya procesado (idempotencia) — event_id: ${eventId}, tipo: ${tipo}, org: ${organization_id}`);
       return Response.json({
         success: true,
         skipped: true,
@@ -191,17 +190,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── 6. Log de inicio de procesamiento ──────────────────────────────────────
-    console.log(`[processOTEvent] Procesando — event_id: ${eventId}, tipo: ${tipo}, org: ${organization_id}, OT: ${orden_trabajo_id}`);
-
-    // ── 7. Switch por tipo — hook points para fases futuras ────────────────────
+    // ── 6. Switch por tipo — hook points para fases futuras ────────────────────
     // En 0B.2B: SOLO logging. Emails/notificaciones se migran en 0B.2C+.
     // Cada case es un hook point documentado para la siguiente fase.
     let tipoReconocido = true;
     switch (tipo) {
       case 'CREATED': {
         // ── 0B.2C: Email de bienvenida ─────────────────────────────────────────
-        console.log(`[processOTEvent] [CREATED] OT: ${orden_trabajo_id} — ejecutando side-effect email`);
 
         const tmpl = EMAIL_TEMPLATES.CREATED;
 
@@ -216,7 +211,6 @@ Deno.serve(async (req) => {
 
         if (!ot) {
           console.warn(`[processOTEvent] [CREATED] OT no encontrada: ${orden_trabajo_id} — skipping email`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'CREATED', ot_id: orden_trabajo_id, reason: 'ot_not_found', org: organization_id });
           break;
         }
 
@@ -228,8 +222,6 @@ Deno.serve(async (req) => {
 
         // c. Verificar flag email_created_sent (idempotencia del email)
         if (ot[tmpl.flag] === true) {
-          console.log(`[processOTEvent] [CREATED] email_created_sent=true — OT: ${ot.id} — skipping (ya enviado)`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'CREATED', ot_id: ot.id, reason: 'already_sent', org: organization_id });
           break;
         }
 
@@ -238,8 +230,6 @@ Deno.serve(async (req) => {
         const toEmail = resolveEmailAddress(ot, cliente);
 
         if (!toEmail) {
-          console.log(`[processOTEvent] [CREATED] Sin email — OT: ${ot.id} — skipping`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'CREATED', ot_id: ot.id, reason: 'no_email', org: organization_id });
           break;
         }
 
@@ -279,7 +269,6 @@ Deno.serve(async (req) => {
 
       case 'FINALIZADA': {
         // ── 0B.2C.2: Email de finalización ────────────────────────────────────
-        console.log(`[processOTEvent] [FINALIZADA] OT: ${orden_trabajo_id} — ejecutando side-effect email`);
 
         const tmplF = EMAIL_TEMPLATES.FINALIZADA;
 
@@ -294,7 +283,6 @@ Deno.serve(async (req) => {
 
         if (!otF) {
           console.warn(`[processOTEvent] [FINALIZADA] OT no encontrada: ${orden_trabajo_id} — skipping email`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'FINALIZADA', ot_id: orden_trabajo_id, reason: 'ot_not_found', org: organization_id });
           break;
         }
 
@@ -306,8 +294,6 @@ Deno.serve(async (req) => {
 
         // c. Verificar flag email_finalizada_sent (idempotencia del email)
         if (otF[tmplF.flag] === true) {
-          console.log(`[processOTEvent] [FINALIZADA] email_finalizada_sent=true — OT: ${otF.id} — skipping (ya enviado)`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'FINALIZADA', ot_id: otF.id, reason: 'already_sent', org: organization_id });
           break;
         }
 
@@ -316,8 +302,6 @@ Deno.serve(async (req) => {
         const toEmailF = resolveEmailAddress(otF, clienteF);
 
         if (!toEmailF) {
-          console.log(`[processOTEvent] [FINALIZADA] Sin email — OT: ${otF.id} — skipping`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'FINALIZADA', ot_id: otF.id, reason: 'no_email', org: organization_id });
           break;
         }
 
@@ -355,7 +339,6 @@ Deno.serve(async (req) => {
 
       case 'ENTREGADA': {
         // ── 0B.2C.3: Email de entrega ──────────────────────────────────────────
-        console.log(`[processOTEvent] [ENTREGADA] OT: ${orden_trabajo_id} — ejecutando side-effect email`);
 
         const tmplE = EMAIL_TEMPLATES.ENTREGADA;
 
@@ -370,7 +353,6 @@ Deno.serve(async (req) => {
 
         if (!otE) {
           console.warn(`[processOTEvent] [ENTREGADA] OT no encontrada: ${orden_trabajo_id} — skipping email`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'ENTREGADA', ot_id: orden_trabajo_id, reason: 'ot_not_found', org: organization_id });
           break;
         }
 
@@ -382,8 +364,6 @@ Deno.serve(async (req) => {
 
         // c. Verificar flag email_entregada_sent (idempotencia del email)
         if (otE[tmplE.flag] === true) {
-          console.log(`[processOTEvent] [ENTREGADA] email_entregada_sent=true — OT: ${otE.id} — skipping (ya enviado)`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'ENTREGADA', ot_id: otE.id, reason: 'already_sent', org: organization_id });
           break;
         }
 
@@ -392,8 +372,6 @@ Deno.serve(async (req) => {
         const toEmailE = resolveEmailAddress(otE, clienteE);
 
         if (!toEmailE) {
-          console.log(`[processOTEvent] [ENTREGADA] Sin email — OT: ${otE.id} — skipping`);
-          await safeTrack(base44, 'ot_email_skipped', { tipo: 'ENTREGADA', ot_id: otE.id, reason: 'no_email', org: organization_id });
           break;
         }
 
@@ -463,7 +441,7 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.OTEvent.update(eventId, {
         processed: true,
       });
-      console.log(`[processOTEvent] processed=true marcado — event_id: ${eventId}, tipo: ${tipo}, org: ${organization_id}`);
+      // processed=true marcado OK
     } catch (updateError) {
       // Fallo al marcar processed: loggear pero retornar error para que
       // la automation pueda reintentar si el motor lo soporta.
@@ -490,7 +468,7 @@ Deno.serve(async (req) => {
       caller: callerUser?.email || 'automation',
     };
 
-    console.log(`[processOTEvent] Completado — ${JSON.stringify(resumen)}`);
+    // [Bloque A] Log de completado eliminado (ruido operacional)
     return Response.json(resumen);
 
   } catch (error) {

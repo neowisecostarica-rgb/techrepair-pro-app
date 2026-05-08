@@ -84,25 +84,10 @@ function resolveEmail(record, cliente) {
 }
 
 async function ensureOTEvent(base44, record, config) {
-  const existing = await base44.asServiceRole.entities.OTEvent.filter(
-    { orden_trabajo_id: record.id, tipo: config.eventType },
-    1
-  );
-
-  if (Array.isArray(existing) && existing.length > 0) {
-    console.log(`[handleOTLifecycleEvent] OTEvent ya existe — tipo: ${config.eventType}, OT: ${record.id}`);
-    return { created: false };
-  }
-
-  await base44.asServiceRole.entities.OTEvent.create({
-    orden_trabajo_id: record.id,
-    tipo: config.eventType,
-    processed: false,
-    created_at: new Date().toISOString(),
-  });
-
-  console.log(`[handleOTLifecycleEvent] OTEvent creado — tipo: ${config.eventType}, OT: ${record.id}`);
-  return { created: true };
+  // 0B.2C: OTEvent creation is now handled exclusively by the Gateway automation.
+  // This function is neutralized to prevent duplicate OTEvent creation.
+  console.log(`[handleOTLifecycleEvent] ensureOTEvent neutralizado — tipo: ${config.eventType}, OT: ${record.id} — handled_by_gateway`);
+  return { created: false, reason: 'handled_by_gateway' };
 }
 
 async function sendEmailIfNeeded(base44, record, cliente, config) {

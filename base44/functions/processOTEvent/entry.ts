@@ -2,22 +2,25 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 /*
 =====================================
-processOTEvent — ONF TechRepairPro v1 — Bloque 0B.2B
+processOTEvent — ONF TechRepairPro v1 — Bloque 0B.2C
 =====================================
 Responsabilidad:
   Gateway centralizado de consumo de OTEvent.
-  Recibe el payload de la automation (entity create sobre OTEvent)
-  y marca el evento como processed=true.
+  Ejecuta side-effects por tipo y marca el evento como processed=true.
 
-  En este bloque SOLO se marca processed — cero side-effects externos.
-  Los módulos de email/notificaciones/CRM se integrarán en fases posteriores.
+  0B.2C: Email CREATED migrado desde handleOTLifecycleEvent.
+  Coexistencia segura: email_created_sent en OrdenTrabajo actúa como
+  idempotencia del email. Si handleOTLifecycleEvent llega primero,
+  el flag ya estará en true y processOTEvent salteará el envío.
+  Si processOTEvent llega primero, pondrá el flag en true y
+  handleOTLifecycleEvent salteará su propio envío.
 
 INVARIANTES (no romper nunca):
   - NUNCA crea OTEvent (para evitar loop de auto-trigger)
-  - NUNCA cambia estado de OrdenTrabajo
-  - NUNCA dispara emails, WhatsApp ni notificaciones externas
+  - NUNCA cambia estado de OrdenTrabajo (salvo flags email_*_sent)
   - Idempotente: si processed===true, retorna skipped sin tocar nada
   - Si falta organization_id, retorna error controlado sin marcar processed
+  - Si SendEmail falla, NO marca email_*_sent=true pero SÍ completa processed=true
 
 Payload esperado (automation entity):
   {
@@ -30,6 +33,54 @@ También acepta llamada directa con:
   { ot_event_id: "..." }
 =====================================
 */
+
+// ── Helpers de email (migrados desde handleOTLifecycleEvent) ──────────────────
+
+function resolveEmailAddress(ot, cliente) {
+  return (
+    ot?.cliente_email ||
+    ot?.email_cliente ||
+    ot?.email ||
+    cliente?.email ||
+    cliente?.correo ||
+    null
+  );
+}
+
+async function getClienteForOT(base44, ot) {
+  if (!ot?.cliente_id) return null;
+  try {
+    const clientes = await base44.asServiceRole.entities.Cliente.filter({ id: ot.cliente_id }, 1);
+    return Array.isArray(clientes) && clientes.length > 0 ? clientes[0] : null;
+  } catch (err) {
+    console.warn(`[processOTEvent] cliente_lookup_failed: ${err.message}`);
+    return null;
+  }
+}
+
+async function safeTrack(base44, eventName, properties = {}) {
+  try {
+    if (base44.analytics?.track) {
+      await base44.analytics.track({ eventName, properties });
+    }
+  } catch (err) {
+    console.warn(`[processOTEvent] analytics_track_failed: ${err.message}`);
+  }
+}
+
+const EMAIL_TEMPLATES = {
+  CREATED: {
+    flag: 'email_created_sent',
+    subject: (ot) => `Orden de trabajo creada: ${ot.codigo_ot || ot.id}`,
+    body: (ot, cliente) => `Hola ${cliente?.full_name || cliente?.nombre_completo || cliente?.nombre || 'cliente'},
+
+Hemos recibido su equipo y creamos la orden de trabajo ${ot.codigo_ot || ot.id}.
+
+Le estaremos notificando cualquier avance importante.
+
+Gracias por confiar en nosotros.`.trim(),
+  },
+};
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -128,10 +179,83 @@ Deno.serve(async (req) => {
     // Cada case es un hook point documentado para la siguiente fase.
     let tipoReconocido = true;
     switch (tipo) {
-      case 'CREATED':
-        // Hook: 0B.2C → migrar email de bienvenida desde handleOTLifecycleEvent
-        console.log(`[processOTEvent] [CREATED] OT: ${orden_trabajo_id} — hook point 0B.2C (email)`);
+      case 'CREATED': {
+        // ── 0B.2C: Email de bienvenida ─────────────────────────────────────────
+        console.log(`[processOTEvent] [CREATED] OT: ${orden_trabajo_id} — ejecutando side-effect email`);
+
+        const tmpl = EMAIL_TEMPLATES.CREATED;
+
+        // a. Cargar OrdenTrabajo
+        let ot = null;
+        try {
+          const ots = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+          ot = Array.isArray(ots) && ots.length > 0 ? ots[0] : null;
+        } catch (otErr) {
+          console.warn(`[processOTEvent] [CREATED] Error cargando OT ${orden_trabajo_id}: ${otErr.message}`);
+        }
+
+        if (!ot) {
+          console.warn(`[processOTEvent] [CREATED] OT no encontrada: ${orden_trabajo_id} — skipping email`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'CREATED', ot_id: orden_trabajo_id, reason: 'ot_not_found', org: organization_id });
+          break;
+        }
+
+        // b. Validar organization_id (tenant shield)
+        if (ot.organization_id !== organization_id) {
+          console.warn(`[processOTEvent] [CREATED] Mismatch org — OT: ${ot.organization_id}, event: ${organization_id} — skipping`);
+          break;
+        }
+
+        // c. Verificar flag email_created_sent (idempotencia del email)
+        if (ot[tmpl.flag] === true) {
+          console.log(`[processOTEvent] [CREATED] email_created_sent=true — OT: ${ot.id} — skipping (ya enviado)`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'CREATED', ot_id: ot.id, reason: 'already_sent', org: organization_id });
+          break;
+        }
+
+        // d. Cargar Cliente y resolver email
+        const cliente = await getClienteForOT(base44, ot);
+        const toEmail = resolveEmailAddress(ot, cliente);
+
+        if (!toEmail) {
+          console.log(`[processOTEvent] [CREATED] Sin email — OT: ${ot.id} — skipping`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'CREATED', ot_id: ot.id, reason: 'no_email', org: organization_id });
+          break;
+        }
+
+        // e. Enviar email
+        let emailSent = false;
+        try {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: toEmail,
+            subject: tmpl.subject(ot),
+            body: tmpl.body(ot, cliente),
+          });
+          emailSent = true;
+          console.log(`[processOTEvent] [CREATED] Email enviado — OT: ${ot.id}, to: ${toEmail}`);
+        } catch (emailErr) {
+          // Error de email: NO detener el flujo — processed=true se marcará igual
+          console.error(`[processOTEvent] [CREATED] SendEmail falló — OT: ${ot.id}: ${emailErr.message}`);
+          await safeTrack(base44, 'ot_email_failed', { tipo: 'CREATED', ot_id: ot.id, error: emailErr.message, org: organization_id });
+          break; // Sale del case, continúa hacia processed=true
+        }
+
+        // f. Actualizar flag SOLO si el email se envió correctamente
+        if (emailSent) {
+          try {
+            await base44.asServiceRole.entities.OrdenTrabajo.update(ot.id, { [tmpl.flag]: true });
+            console.log(`[processOTEvent] [CREATED] ${tmpl.flag}=true actualizado — OT: ${ot.id}`);
+          } catch (flagErr) {
+            // Flag no se actualizó pero email ya salió — riesgo de reenvío en retry.
+            // Loggear con suficiente contexto para investigación.
+            console.error(`[processOTEvent] [CREATED] Error actualizando ${tmpl.flag} — OT: ${ot.id}: ${flagErr.message}`);
+          }
+
+          // g. Analytics de éxito
+          await safeTrack(base44, 'ot_email_sent', { tipo: 'CREATED', ot_id: ot.id, to: toEmail, org: organization_id });
+        }
         break;
+      }
 
       case 'FINALIZADA':
         // Hook: 0B.2C → migrar email de finalización desde handleOTLifecycleEvent

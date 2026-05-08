@@ -155,6 +155,7 @@ Deno.serve(async (req) => {
   if (!yaExiste) {
     try {
       await base44.asServiceRole.entities.OTEvent.create({
+        organization_id: orgId,
         orden_trabajo_id: referencia_ot_id,
         tipo: tipoEvento,
         sale_id: sale_id,

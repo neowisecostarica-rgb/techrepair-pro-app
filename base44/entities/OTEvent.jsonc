@@ -2,6 +2,10 @@
   "name": "OTEvent",
   "type": "object",
   "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant) \u2014 blindaje multitenant, Bloque 0B.2A"
+    },
     "orden_trabajo_id": {
       "type": "string",
       "description": "ID de la Orden de Trabajo asociada"

@@ -254,6 +254,7 @@ Deno.serve(async (req) => {
         }, 1);
         if (!existingCanonical || existingCanonical.length === 0) {
           await base44.asServiceRole.entities.OTEvent.create({
+            organization_id: orgId,
             orden_trabajo_id: orden_trabajo_id,
             tipo: newStatus,
             created_by_user_id: user.id,
@@ -269,6 +270,7 @@ Deno.serve(async (req) => {
       // ── C. TRANSICIÓN: eventos intermedios, sin idempotencia (permiten historial) ─
       if (transitionType) {
         await base44.asServiceRole.entities.OTEvent.create({
+          organization_id: orgId,
           orden_trabajo_id: orden_trabajo_id,
           tipo: transitionType,
           created_by_user_id: user.id,

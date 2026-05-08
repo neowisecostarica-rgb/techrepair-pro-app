@@ -42,22 +42,24 @@ export async function transicionarEstadoOT(otIdOrParams, nuevoEstado, context) {
 }
 
 /**
- * Helper para cambiar estado_atencion — vía changeWorkOrderStatus function
+ * Helper para cambiar estado_atencion — vía updateWorkOrderAttentionStatus (Bloque B Fase 1)
+ * Reemplaza el bypass legacy changeWorkOrderStatus para attention lifecycle.
  */
 export async function cambiarEstadoAtencionOT({
   ordenTrabajoId,
   nuevoEstadoAtencion,
   motivoPausa = null,
+  observaciones,
 }) {
   if (!ordenTrabajoId) {
     throw new Error('ordenTrabajoId es requerido');
   }
 
-  const response = await base44.functions.invoke('changeWorkOrderStatus', {
+  const response = await base44.functions.invoke('updateWorkOrderAttentionStatus', {
     orden_trabajo_id: ordenTrabajoId,
     estado_atencion: nuevoEstadoAtencion,
-    motivo_pausa: motivoPausa || undefined,
-    ultima_actividad_at: new Date().toISOString(),
+    motivo_pausa: motivoPausa || null,
+    observaciones: observaciones || undefined,
   });
   return response.data;
 }

@@ -428,6 +428,11 @@ Deno.serve(async (req) => {
         console.log(`[processOTEvent] [${tipo}] OT: ${orden_trabajo_id} — hook point 0B.2D (SLA)`);
         break;
 
+      case 'ATTENTION_STATUS_CHANGED':
+        // Bloque B Fase 1: reconocimiento pasivo — sin side-effects.
+        // Solo permite que processed=true sea marcado para idempotencia.
+        break;
+
       default:
         tipoReconocido = false;
         console.warn(`[processOTEvent] Tipo de evento no reconocido: "${tipo}" — event_id: ${eventId}`);

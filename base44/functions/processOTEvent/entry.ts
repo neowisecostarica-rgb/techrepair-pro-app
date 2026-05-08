@@ -100,6 +100,17 @@ Confirmamos que la orden de trabajo ${ot.codigo_ot || ot.id} fue entregada.
 
 Gracias por confiar en nosotros.`.trim(),
   },
+  CANCELADA: {
+    flag: 'email_cancelada_sent',
+    subject: (ot) => `Orden de trabajo cancelada: ${ot.codigo_ot || ot.id}`,
+    body: (ot, cliente) => `Hola ${cliente?.full_name || cliente?.nombre_completo || cliente?.nombre || 'cliente'},
+
+Le informamos que la orden de trabajo ${ot.codigo_ot || ot.id} ha sido cancelada.
+
+Si tiene alguna consulta al respecto, no dude en comunicarse con nosotros.
+
+Gracias por confiar en nosotros.`.trim(),
+  },
 };
 
 Deno.serve(async (req) => {
@@ -407,10 +418,72 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case 'CANCELADA':
-        // Hook: 0B.2D → notificación al técnico asignado
-        console.log(`[processOTEvent] [CANCELADA] OT: ${orden_trabajo_id} — hook point 0B.2D`);
+      case 'CANCELADA': {
+        // ── 0B.2E.1A: Email de cancelación ────────────────────────────────────
+        const tmplC = EMAIL_TEMPLATES.CANCELADA;
+
+        // a. Cargar OrdenTrabajo
+        let otC = null;
+        try {
+          const otsC = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+          otC = Array.isArray(otsC) && otsC.length > 0 ? otsC[0] : null;
+        } catch (otErrC) {
+          console.warn(`[processOTEvent] [CANCELADA] Error cargando OT ${orden_trabajo_id}: ${otErrC.message}`);
+        }
+
+        if (!otC) {
+          console.warn(`[processOTEvent] [CANCELADA] OT no encontrada: ${orden_trabajo_id} — skipping email`);
+          break;
+        }
+
+        // b. Validar organization_id (tenant shield)
+        if (otC.organization_id !== organization_id) {
+          console.warn(`[processOTEvent] [CANCELADA] Mismatch org — OT: ${otC.organization_id}, event: ${organization_id} — skipping`);
+          break;
+        }
+
+        // c. Verificar flag email_cancelada_sent (idempotencia del email)
+        if (otC[tmplC.flag] === true) {
+          break;
+        }
+
+        // d. Cargar Cliente y resolver email
+        const clienteC = await getClienteForOT(base44, otC);
+        const toEmailC = resolveEmailAddress(otC, clienteC);
+
+        if (!toEmailC) {
+          break;
+        }
+
+        // e. Enviar email
+        let emailSentC = false;
+        try {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: toEmailC,
+            subject: tmplC.subject(otC),
+            body: tmplC.body(otC, clienteC),
+          });
+          emailSentC = true;
+          console.log(`[processOTEvent] [CANCELADA] Email enviado — OT: ${otC.id}, to: ${toEmailC}`);
+        } catch (emailErrC) {
+          console.error(`[processOTEvent] [CANCELADA] SendEmail falló — OT: ${otC.id}: ${emailErrC.message}`);
+          await safeTrack(base44, 'ot_email_failed', { tipo: 'CANCELADA', ot_id: otC.id, error: emailErrC.message, org: organization_id });
+          break;
+        }
+
+        // f. Actualizar flag SOLO si el email se envió correctamente
+        if (emailSentC) {
+          try {
+            await base44.asServiceRole.entities.OrdenTrabajo.update(otC.id, { [tmplC.flag]: true });
+          } catch (flagErrC) {
+            console.error(`[processOTEvent] [CANCELADA] Error actualizando ${tmplC.flag} — OT: ${otC.id}: ${flagErrC.message}`);
+          }
+
+          // g. Analytics de éxito
+          await safeTrack(base44, 'ot_email_sent', { tipo: 'CANCELADA', ot_id: otC.id, to: toEmailC, org: organization_id });
+        }
         break;
+      }
 
       case 'SALE_COMPLETED':
         // Hook: 0B.2E → trazabilidad CRM y métricas de venta

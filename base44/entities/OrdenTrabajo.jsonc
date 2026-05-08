@@ -241,6 +241,11 @@
       "type": "boolean",
       "default": false,
       "description": "Flag de idempotencia: email de entrega ya enviado"
+    },
+    "email_cancelada_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag de idempotencia: email de cancelaci\u00f3n ya enviado"
     }
   },
   "required": [

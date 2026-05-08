@@ -80,6 +80,17 @@ Le estaremos notificando cualquier avance importante.
 
 Gracias por confiar en nosotros.`.trim(),
   },
+  FINALIZADA: {
+    flag: 'email_finalizada_sent',
+    subject: (ot) => `Orden de trabajo finalizada: ${ot.codigo_ot || ot.id}`,
+    body: (ot, cliente) => `Hola ${cliente?.full_name || cliente?.nombre_completo || cliente?.nombre || 'cliente'},
+
+Su orden de trabajo ${ot.codigo_ot || ot.id} ha sido finalizada.
+
+Ya puede coordinar la entrega o retiro del equipo.
+
+Gracias por confiar en nosotros.`.trim(),
+  },
 };
 
 Deno.serve(async (req) => {
@@ -257,10 +268,81 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case 'FINALIZADA':
-        // Hook: 0B.2C → migrar email de finalización desde handleOTLifecycleEvent
-        console.log(`[processOTEvent] [FINALIZADA] OT: ${orden_trabajo_id} — hook point 0B.2C (email)`);
+      case 'FINALIZADA': {
+        // ── 0B.2C.2: Email de finalización ────────────────────────────────────
+        console.log(`[processOTEvent] [FINALIZADA] OT: ${orden_trabajo_id} — ejecutando side-effect email`);
+
+        const tmplF = EMAIL_TEMPLATES.FINALIZADA;
+
+        // a. Cargar OrdenTrabajo
+        let otF = null;
+        try {
+          const otsF = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+          otF = Array.isArray(otsF) && otsF.length > 0 ? otsF[0] : null;
+        } catch (otErrF) {
+          console.warn(`[processOTEvent] [FINALIZADA] Error cargando OT ${orden_trabajo_id}: ${otErrF.message}`);
+        }
+
+        if (!otF) {
+          console.warn(`[processOTEvent] [FINALIZADA] OT no encontrada: ${orden_trabajo_id} — skipping email`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'FINALIZADA', ot_id: orden_trabajo_id, reason: 'ot_not_found', org: organization_id });
+          break;
+        }
+
+        // b. Validar organization_id (tenant shield)
+        if (otF.organization_id !== organization_id) {
+          console.warn(`[processOTEvent] [FINALIZADA] Mismatch org — OT: ${otF.organization_id}, event: ${organization_id} — skipping`);
+          break;
+        }
+
+        // c. Verificar flag email_finalizada_sent (idempotencia del email)
+        if (otF[tmplF.flag] === true) {
+          console.log(`[processOTEvent] [FINALIZADA] email_finalizada_sent=true — OT: ${otF.id} — skipping (ya enviado)`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'FINALIZADA', ot_id: otF.id, reason: 'already_sent', org: organization_id });
+          break;
+        }
+
+        // d. Cargar Cliente y resolver email
+        const clienteF = await getClienteForOT(base44, otF);
+        const toEmailF = resolveEmailAddress(otF, clienteF);
+
+        if (!toEmailF) {
+          console.log(`[processOTEvent] [FINALIZADA] Sin email — OT: ${otF.id} — skipping`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'FINALIZADA', ot_id: otF.id, reason: 'no_email', org: organization_id });
+          break;
+        }
+
+        // e. Enviar email
+        let emailSentF = false;
+        try {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: toEmailF,
+            subject: tmplF.subject(otF),
+            body: tmplF.body(otF, clienteF),
+          });
+          emailSentF = true;
+          console.log(`[processOTEvent] [FINALIZADA] Email enviado — OT: ${otF.id}, to: ${toEmailF}`);
+        } catch (emailErrF) {
+          // Error de email: NO detener el flujo — processed=true se marcará igual
+          console.error(`[processOTEvent] [FINALIZADA] SendEmail falló — OT: ${otF.id}: ${emailErrF.message}`);
+          await safeTrack(base44, 'ot_email_failed', { tipo: 'FINALIZADA', ot_id: otF.id, error: emailErrF.message, org: organization_id });
+          break; // Sale del case, continúa hacia processed=true
+        }
+
+        // f. Actualizar flag SOLO si el email se envió correctamente
+        if (emailSentF) {
+          try {
+            await base44.asServiceRole.entities.OrdenTrabajo.update(otF.id, { [tmplF.flag]: true });
+            console.log(`[processOTEvent] [FINALIZADA] ${tmplF.flag}=true actualizado — OT: ${otF.id}`);
+          } catch (flagErrF) {
+            console.error(`[processOTEvent] [FINALIZADA] Error actualizando ${tmplF.flag} — OT: ${otF.id}: ${flagErrF.message}`);
+          }
+
+          // g. Analytics de éxito
+          await safeTrack(base44, 'ot_email_sent', { tipo: 'FINALIZADA', ot_id: otF.id, to: toEmailF, org: organization_id });
+        }
         break;
+      }
 
       case 'ENTREGADA':
         // Hook: 0B.2C → migrar email de entrega desde handleOTLifecycleEvent

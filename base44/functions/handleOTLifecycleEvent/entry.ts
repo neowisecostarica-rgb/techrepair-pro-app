@@ -93,6 +93,12 @@ async function ensureOTEvent(base44, record, config) {
 async function sendEmailIfNeeded(base44, record, cliente, config) {
   const flag = config.emailFlag;
 
+  // 0B.2C.3: ENTREGADA email migrado a processOTEvent — neutralización legacy
+  if (config.eventType === "ENTREGADA") {
+    console.log(`[handleOTLifecycleEvent] OT_DELIVERED email neutralizado — handled_by_processOTEvent — OT: ${record.id}`);
+    return { sent: false, skipped: true, reason: "handled_by_processOTEvent" };
+  }
+
   if (record[flag] === true) {
     console.log(`[handleOTLifecycleEvent] Email ya enviado (flag ${flag}=true) — OT: ${record.id}, saltando.`);
     return { sent: false, skipped: true, reason: "already_sent" };

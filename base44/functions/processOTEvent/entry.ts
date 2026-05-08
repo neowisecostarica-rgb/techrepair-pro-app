@@ -91,6 +91,15 @@ Ya puede coordinar la entrega o retiro del equipo.
 
 Gracias por confiar en nosotros.`.trim(),
   },
+  ENTREGADA: {
+    flag: 'email_entregada_sent',
+    subject: (ot) => `Orden de trabajo entregada: ${ot.codigo_ot || ot.id}`,
+    body: (ot, cliente) => `Hola ${cliente?.full_name || cliente?.nombre_completo || cliente?.nombre || 'cliente'},
+
+Confirmamos que la orden de trabajo ${ot.codigo_ot || ot.id} fue entregada.
+
+Gracias por confiar en nosotros.`.trim(),
+  },
 };
 
 Deno.serve(async (req) => {
@@ -344,10 +353,81 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case 'ENTREGADA':
-        // Hook: 0B.2C → migrar email de entrega desde handleOTLifecycleEvent
-        console.log(`[processOTEvent] [ENTREGADA] OT: ${orden_trabajo_id} — hook point 0B.2C (email)`);
+      case 'ENTREGADA': {
+        // ── 0B.2C.3: Email de entrega ──────────────────────────────────────────
+        console.log(`[processOTEvent] [ENTREGADA] OT: ${orden_trabajo_id} — ejecutando side-effect email`);
+
+        const tmplE = EMAIL_TEMPLATES.ENTREGADA;
+
+        // a. Cargar OrdenTrabajo
+        let otE = null;
+        try {
+          const otsE = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+          otE = Array.isArray(otsE) && otsE.length > 0 ? otsE[0] : null;
+        } catch (otErrE) {
+          console.warn(`[processOTEvent] [ENTREGADA] Error cargando OT ${orden_trabajo_id}: ${otErrE.message}`);
+        }
+
+        if (!otE) {
+          console.warn(`[processOTEvent] [ENTREGADA] OT no encontrada: ${orden_trabajo_id} — skipping email`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'ENTREGADA', ot_id: orden_trabajo_id, reason: 'ot_not_found', org: organization_id });
+          break;
+        }
+
+        // b. Validar organization_id (tenant shield)
+        if (otE.organization_id !== organization_id) {
+          console.warn(`[processOTEvent] [ENTREGADA] Mismatch org — OT: ${otE.organization_id}, event: ${organization_id} — skipping`);
+          break;
+        }
+
+        // c. Verificar flag email_entregada_sent (idempotencia del email)
+        if (otE[tmplE.flag] === true) {
+          console.log(`[processOTEvent] [ENTREGADA] email_entregada_sent=true — OT: ${otE.id} — skipping (ya enviado)`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'ENTREGADA', ot_id: otE.id, reason: 'already_sent', org: organization_id });
+          break;
+        }
+
+        // d. Cargar Cliente y resolver email
+        const clienteE = await getClienteForOT(base44, otE);
+        const toEmailE = resolveEmailAddress(otE, clienteE);
+
+        if (!toEmailE) {
+          console.log(`[processOTEvent] [ENTREGADA] Sin email — OT: ${otE.id} — skipping`);
+          await safeTrack(base44, 'ot_email_skipped', { tipo: 'ENTREGADA', ot_id: otE.id, reason: 'no_email', org: organization_id });
+          break;
+        }
+
+        // e. Enviar email
+        let emailSentE = false;
+        try {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: toEmailE,
+            subject: tmplE.subject(otE),
+            body: tmplE.body(otE, clienteE),
+          });
+          emailSentE = true;
+          console.log(`[processOTEvent] [ENTREGADA] Email enviado — OT: ${otE.id}, to: ${toEmailE}`);
+        } catch (emailErrE) {
+          // Error de email: NO detener el flujo — processed=true se marcará igual
+          console.error(`[processOTEvent] [ENTREGADA] SendEmail falló — OT: ${otE.id}: ${emailErrE.message}`);
+          await safeTrack(base44, 'ot_email_failed', { tipo: 'ENTREGADA', ot_id: otE.id, error: emailErrE.message, org: organization_id });
+          break; // Sale del case, continúa hacia processed=true
+        }
+
+        // f. Actualizar flag SOLO si el email se envió correctamente
+        if (emailSentE) {
+          try {
+            await base44.asServiceRole.entities.OrdenTrabajo.update(otE.id, { [tmplE.flag]: true });
+            console.log(`[processOTEvent] [ENTREGADA] ${tmplE.flag}=true actualizado — OT: ${otE.id}`);
+          } catch (flagErrE) {
+            console.error(`[processOTEvent] [ENTREGADA] Error actualizando ${tmplE.flag} — OT: ${otE.id}: ${flagErrE.message}`);
+          }
+
+          // g. Analytics de éxito
+          await safeTrack(base44, 'ot_email_sent', { tipo: 'ENTREGADA', ot_id: otE.id, to: toEmailE, org: organization_id });
+        }
         break;
+      }
 
       case 'CANCELADA':
         // Hook: 0B.2D → notificación al técnico asignado

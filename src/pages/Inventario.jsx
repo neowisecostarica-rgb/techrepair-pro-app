@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign, Leaf, Shield, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign, Leaf, Shield, CheckCircle2, XCircle, SlidersHorizontal } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { useAuthContext } from '@/components/contexts/AuthContext';
@@ -16,11 +16,13 @@ import ExportarInventario from '@/components/inventario/ExportarInventario';
 import ImportarInventario from '@/components/inventario/ImportarInventario';
 import QuickCreateCategoria from '@/components/inventario/QuickCreateCategoria';
 import { generarCodigoInterno } from '@/components/inventario/utils/generarCodigoInterno';
+import ModalAjusteStock from '@/components/inventario/ModalAjusteStock';
 
 export default function Inventario() {
   const [showModal, setShowModal] = useState(false);
   const [showQuickCreateCategoria, setShowQuickCreateCategoria] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [ajusteItem, setAjusteItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
   const [selectedCategoriaId, setSelectedCategoriaId] = useState('');
@@ -505,13 +507,26 @@ export default function Inventario() {
                       </td>
                       <td className="p-4">
                         {effectiveRole === 'ORG_ADMIN' ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => { setEditingItem(item); setShowModal(true); }}
-                          >
-                            Editar
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setEditingItem(item); setShowModal(true); }}
+                            >
+                              Editar
+                            </Button>
+                            {categoria?.permite_stock && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setAjusteItem(item)}
+                                className="gap-1 text-slate-600 hover:text-emerald-700 hover:border-emerald-400"
+                              >
+                                <SlidersHorizontal className="w-3 h-3" />
+                                Ajustar
+                              </Button>
+                            )}
+                          </div>
                         ) : (
                           <Badge variant="outline" className="text-slate-400">
                             Solo lectura
@@ -930,6 +945,17 @@ export default function Inventario() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL AJUSTE STOCK */}
+      <ModalAjusteStock
+        open={!!ajusteItem}
+        onOpenChange={(open) => { if (!open) setAjusteItem(null); }}
+        item={ajusteItem}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['inventario'] });
+          setAjusteItem(null);
+        }}
+      />
 
       {/* QUICK CREATE CATEGORÍA */}
       <QuickCreateCategoria

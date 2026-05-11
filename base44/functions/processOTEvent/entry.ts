@@ -177,6 +177,7 @@ Deno.serve(async (req) => {
     // Se retorna error controlado SIN marcar processed para permitir investigación.
     if (!organization_id) {
       console.warn(`[processOTEvent] Evento sin organization_id — event_id: ${eventId}, tipo: ${tipo}, OT: ${orden_trabajo_id}`);
+      await safeTrack(base44, 'ot_event_skipped', { reason: 'missing_organization_id', event_id: eventId, tipo });
       return Response.json({
         success: false,
         skipped: true,
@@ -188,8 +189,12 @@ Deno.serve(async (req) => {
       }, { status: 200 });
     }
 
+    // ── 4b. Track: evento recibido ──────────────────────────────────────────────
+    await safeTrack(base44, 'ot_event_received', { event_id: eventId, tipo, org: organization_id, ot_id: orden_trabajo_id || null });
+
     // ── 5. Guard de idempotencia ────────────────────────────────────────────────
     if (processed === true) {
+      await safeTrack(base44, 'ot_event_skipped', { reason: 'already_processed', event_id: eventId, tipo, org: organization_id });
       return Response.json({
         success: true,
         skipped: true,
@@ -509,6 +514,7 @@ Deno.serve(async (req) => {
       default:
         tipoReconocido = false;
         console.warn(`[processOTEvent] Tipo de evento no reconocido: "${tipo}" — event_id: ${eventId}`);
+        await safeTrack(base44, 'ot_event_skipped', { reason: 'unrecognized_type', tipo, event_id: eventId, org: organization_id });
     }
 
     // ── 8. Marcar processed=true ────────────────────────────────────────────────
@@ -533,6 +539,15 @@ Deno.serve(async (req) => {
       }, { status: 500 });
     }
 
+    // ── 8b. Track: evento procesado exitosamente ────────────────────────────────
+    await safeTrack(base44, 'ot_event_processed', {
+      event_id: eventId,
+      tipo,
+      tipo_reconocido: tipoReconocido,
+      org: organization_id,
+      ot_id: orden_trabajo_id || null,
+    });
+
     // ── 9. Respuesta de éxito ───────────────────────────────────────────────────
     const resumen = {
       success: true,
@@ -551,6 +566,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error(`[processOTEvent] Error no controlado: ${error.message}`);
+    await safeTrack(base44, 'ot_event_failed', { error: error.message });
     return Response.json({
       success: false,
       error: error.message,

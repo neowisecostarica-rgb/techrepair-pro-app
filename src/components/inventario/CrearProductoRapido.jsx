@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,11 +12,21 @@ import { useAuthContext } from '../contexts/AuthContext';
 export default function CrearProductoRapido({ open, onClose, codigoBarras, onProductoCreado }) {
   const { effectiveOrgId } = useAuthContext();
   const queryClient = useQueryClient();
+
+  const { data: categorias = [], isLoading: loadingCategorias } = useQuery({
+    queryKey: ['categorias', effectiveOrgId],
+    queryFn: () => base44.entities.CategoriaInventario.filter({
+      organization_id: effectiveOrgId,
+      activo: true
+    }),
+    enabled: !!effectiveOrgId && open,
+    staleTime: 5 * 60 * 1000,
+  });
   
   const [formData, setFormData] = useState({
     codigo_barras: codigoBarras || '',
     nombre: '',
-    categoria: 'repuesto',
+    categoria_id: '',
     precio_venta: '',
     cantidad_disponible: '0',
     costo_unitario: ''
@@ -36,7 +46,7 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
       setFormData({
         codigo_barras: '',
         nombre: '',
-        categoria: 'repuesto',
+        categoria_id: '',
         precio_venta: '',
         cantidad_disponible: '0',
         costo_unitario: ''
@@ -47,8 +57,8 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!formData.codigo_barras || !formData.nombre || !formData.precio_venta || !formData.costo_unitario) {
-      alert('Completar campos obligatorios');
+    if (!formData.codigo_barras || !formData.nombre || !formData.precio_venta || !formData.costo_unitario || !formData.categoria_id) {
+      alert('Completar campos obligatorios (incluyendo categoría)');
       return;
     }
 
@@ -90,18 +100,29 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
 
           <div>
             <Label>Categoría *</Label>
-            <Select value={formData.categoria} onValueChange={(val) => setFormData({ ...formData, categoria: val })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="repuesto">Repuesto</SelectItem>
-                <SelectItem value="equipo_nuevo">Equipo Nuevo</SelectItem>
-                <SelectItem value="accesorio">Accesorio</SelectItem>
-                <SelectItem value="consumible">Consumible</SelectItem>
-                <SelectItem value="suministro">Suministro</SelectItem>
-              </SelectContent>
-            </Select>
+            {loadingCategorias ? (
+              <div className="flex items-center gap-2 h-10 px-3 border rounded-md text-sm text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Cargando categorías...
+              </div>
+            ) : categorias.length === 0 ? (
+              <div className="h-10 px-3 border border-orange-200 bg-orange-50 rounded-md flex items-center text-sm text-orange-700">
+                No hay categorías. Crea una desde Inventario.
+              </div>
+            ) : (
+              <Select value={formData.categoria_id} onValueChange={(val) => setFormData({ ...formData, categoria_id: val })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categorias.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -149,7 +170,7 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancelar
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} className="flex-1">
+            <Button type="submit" disabled={createMutation.isPending || !formData.categoria_id || loadingCategorias} className="flex-1">
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

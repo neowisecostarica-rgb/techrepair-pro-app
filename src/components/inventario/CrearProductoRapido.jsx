@@ -24,20 +24,10 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Validar código único
-      const existentes = await base44.entities.Inventario.filter({
-        organization_id: effectiveOrgId
+      const res = await base44.functions.invoke('createInventoryItem', {
+        itemData: { ...data, organization_id: effectiveOrgId },
       });
-      
-      const duplicado = existentes.find(i => i.codigo_barras === data.codigo_barras);
-      if (duplicado) {
-        throw new Error(`Código ya existe: ${duplicado.nombre}`);
-      }
-
-      return await base44.entities.Inventario.create({
-        ...data,
-        organization_id: effectiveOrgId
-      });
+      return res.data?.data ?? res.data;
     },
     onSuccess: (producto) => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });

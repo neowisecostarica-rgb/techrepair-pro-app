@@ -61,43 +61,10 @@ export default function Inventario() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Validar categoría
-      const categoria = categorias.find(c => c.id === data.categoria_id);
-      if (!categoria) {
-        throw new Error('Debe seleccionar una categoría válida');
-      }
-
-      // VALIDACIONES BLOQUEANTES
-      if (!categoria.permite_stock && data.cantidad_disponible > 0) {
-        throw new Error(`La categoría "${categoria.nombre}" no permite stock. Debe ser 0.`);
-      }
-
-      if (!categoria.es_vendible && data.precio_venta > 0) {
-        throw new Error(`La categoría "${categoria.nombre}" no es vendible. El precio debe ser 0.`);
-      }
-
-      if (categoria.es_vendible && !data.precio_venta) {
-        throw new Error(`La categoría "${categoria.nombre}" requiere precio de venta.`);
-      }
-
-      // Auto-generar codigo_interno
-      const codigoInterno = generarCodigoInterno(effectiveOrgId);
-
-      // Calcular garantia_proveedor_vence si hay fecha_compra y meses
-      let garantiaVence = null;
-      if (data.fecha_compra && data.garantia_proveedor_meses > 0) {
-        const fechaCompra = new Date(data.fecha_compra);
-        garantiaVence = new Date(fechaCompra);
-        garantiaVence.setMonth(garantiaVence.getMonth() + data.garantia_proveedor_meses);
-        garantiaVence = garantiaVence.toISOString().split('T')[0];
-      }
-      
-      return base44.entities.Inventario.create({
-        ...data,
-        codigo_interno: codigoInterno,
-        organization_id: effectiveOrgId,
-        garantia_proveedor_vence: garantiaVence
+      const res = await base44.functions.invoke('createInventoryItem', {
+        itemData: { ...data, organization_id: effectiveOrgId },
       });
+      return res.data?.data ?? res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
@@ -113,61 +80,11 @@ export default function Inventario() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      // Validar categoría
-      const categoria = categorias.find(c => c.id === data.categoria_id);
-      if (!categoria) {
-        throw new Error('Debe seleccionar una categoría válida');
-      }
-
-      // VALIDACIONES BLOQUEANTES
-      if (!categoria.permite_stock && data.cantidad_disponible > 0) {
-        throw new Error(`La categoría "${categoria.nombre}" no permite stock. Debe ser 0.`);
-      }
-
-      if (!categoria.es_vendible && data.precio_venta > 0) {
-        throw new Error(`La categoría "${categoria.nombre}" no es vendible. El precio debe ser 0.`);
-      }
-
-      if (categoria.es_vendible && !data.precio_venta) {
-        throw new Error(`La categoría "${categoria.nombre}" requiere precio de venta.`);
-      }
-
-      // Registrar historial de cambios críticos
-      const itemAnterior = items.find(i => i.id === id);
-      if (itemAnterior) {
-        const camposCriticos = [
-          { campo: 'costo_unitario', anterior: itemAnterior.costo_unitario, nuevo: data.costo_unitario },
-          { campo: 'precio_venta', anterior: itemAnterior.precio_venta, nuevo: data.precio_venta },
-          { campo: 'cantidad_disponible', anterior: itemAnterior.cantidad_disponible, nuevo: data.cantidad_disponible },
-          { campo: 'ubicacion', anterior: itemAnterior.ubicacion, nuevo: data.ubicacion },
-          { campo: 'estado', anterior: itemAnterior.estado, nuevo: data.estado },
-          { campo: 'categoria_id', anterior: itemAnterior.categoria_id, nuevo: data.categoria_id }
-        ];
-
-        for (const cambio of camposCriticos) {
-          if (cambio.anterior !== cambio.nuevo) {
-            await base44.entities.InventarioHistorial.create({
-              organization_id: effectiveOrgId,
-              inventario_id: id,
-              campo: cambio.campo,
-              valor_anterior: String(cambio.anterior || ''),
-              valor_nuevo: String(cambio.nuevo || ''),
-              modificado_por: user.id
-            });
-          }
-        }
-      }
-
-      // Calcular garantia_proveedor_vence si hay fecha_compra y meses
-      let garantiaVence = null;
-      if (data.fecha_compra && data.garantia_proveedor_meses > 0) {
-        const fechaCompra = new Date(data.fecha_compra);
-        garantiaVence = new Date(fechaCompra);
-        garantiaVence.setMonth(garantiaVence.getMonth() + data.garantia_proveedor_meses);
-        garantiaVence = garantiaVence.toISOString().split('T')[0];
-      }
-
-      return base44.entities.Inventario.update(id, { ...data, garantia_proveedor_vence: garantiaVence });
+      const res = await base44.functions.invoke('updateInventoryItem', {
+        id,
+        updateData: data,
+      });
+      return res.data?.data ?? res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });

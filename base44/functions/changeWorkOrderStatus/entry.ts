@@ -1,5 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// ─── LEGACY — CAMPOS AUXILIARES ÚNICAMENTE ────────────────────────────────────
+// Esta función ya NO controla el lifecycle de OrdenTrabajo.
+// Owner oficial del campo `estado`: transitionWorkOrderStatus (ORT-PILOTO).
+// Esta función solo puede manejar campos auxiliares:
+//   - estado_atencion
+//   - motivo_pausa
+//   - ultima_actividad_at
+// Cualquier intento de modificar `estado` será rechazado con 400.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const VALID_STATUSES = [
   'EN_COLA_REVISION', 'ASIGNADA', 'EN_REVISION', 'DIAGNOSTICADA',
   'COTIZADA', 'EN_REPARACION', 'FINALIZADA', 'ENTREGADA', 'CANCELADA'
@@ -24,13 +34,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'orden_trabajo_id es obligatorio' }, { status: 400 });
     }
 
-    // Evitar updates vacíos
-    if (!newStatus && estado_atencion === undefined && motivo_pausa === undefined && !ultima_actividad_at) {
-      return Response.json({ error: 'Debe informar al menos un campo para actualizar (newStatus, estado_atencion, motivo_pausa o ultima_actividad_at)' }, { status: 400 });
+    // ── BLOQUEO LIFECYCLE — campo `estado` protegido ──────────────────────────
+    // El lifecycle de OrdenTrabajo es ownership exclusivo de transitionWorkOrderStatus.
+    // Esta función no puede modificar el campo `estado` bajo ninguna circunstancia.
+    if (newStatus !== undefined && newStatus !== null) {
+      return Response.json({
+        error: 'El campo "estado" no puede ser modificado desde esta función. Usa transitionWorkOrderStatus para cambios de estado de la OT.',
+        rejected_field: 'newStatus',
+        owner: 'transitionWorkOrderStatus',
+      }, { status: 400 });
     }
+    // ─────────────────────────────────────────────────────────────────────────
 
-    if (newStatus && !VALID_STATUSES.includes(newStatus)) {
-      return Response.json({ error: `newStatus inválido. Valores permitidos: ${VALID_STATUSES.join(', ')}` }, { status: 400 });
+    // Evitar updates vacíos
+    if (estado_atencion === undefined && motivo_pausa === undefined && !ultima_actividad_at) {
+      return Response.json({ error: 'Debe informar al menos un campo para actualizar (estado_atencion, motivo_pausa o ultima_actividad_at)' }, { status: 400 });
     }
 
     if (estado_atencion !== undefined && !VALID_ESTADOS_ATENCION.includes(estado_atencion)) {
@@ -50,10 +68,7 @@ Deno.serve(async (req) => {
     const updatePayload = {
       ultima_actividad_at: ultima_actividad_at || new Date().toISOString(),
     };
-    if (newStatus) {
-      updatePayload.estado = newStatus;
-      updatePayload.ultima_actividad = `Estado cambiado a ${newStatus}`;
-    }
+    // newStatus bloqueado arriba — nunca llega aquí con valor
     if (estado_atencion !== undefined) updatePayload.estado_atencion = estado_atencion;
     if (motivo_pausa !== undefined) updatePayload.motivo_pausa = motivo_pausa || null;
 

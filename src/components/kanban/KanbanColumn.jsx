@@ -2,41 +2,23 @@ import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 import WorkOrderCard from './WorkOrderCard';
 
-const COLUMN_STYLES = {
-  PENDIENTE: 'bg-amber-50 border-amber-200',
-  EN_PROCESO: 'bg-blue-50 border-blue-200',
-  FINALIZADO: 'bg-emerald-50 border-emerald-200',
-};
+// KanbanColumn — Micro Bloque 3.1 — Única fuente oficial: KANBAN_COLUMNS (workOrderStatus.js)
+// Recibe `column` completo desde KANBAN_COLUMNS: { id, label, colorClass, headerClass, ... }
+// NO contiene configs hardcodeadas de columnas.
 
-const COLUMN_TITLES = {
-  PENDIENTE: 'Pendiente',
-  EN_PROCESO: 'En Proceso',
-  FINALIZADO: 'Finalizado',
-};
-
-const COLUMN_COUNT_COLORS = {
-  PENDIENTE: 'bg-amber-200 text-amber-800',
-  EN_PROCESO: 'bg-blue-200 text-blue-800',
-  FINALIZADO: 'bg-emerald-200 text-emerald-800',
-};
-
-export default function KanbanColumn({ columnId, workOrders, clientes, equipos, tecnicos = [], onCardClick }) {
-  const style = COLUMN_STYLES[columnId] || 'bg-slate-50 border-slate-200';
-  const title = COLUMN_TITLES[columnId] || columnId;
-  const countColor = COLUMN_COUNT_COLORS[columnId] || 'bg-slate-200 text-slate-700';
-
+export default function KanbanColumn({ column, workOrders, clientes = [], equipos = [], tecnicos = [], onCardClick }) {
   return (
-    <div className={`flex-1 min-w-[280px] max-w-sm rounded-2xl border ${style} flex flex-col`}>
+    <div className={`flex-1 min-w-[280px] max-w-sm rounded-2xl border ${column.colorClass} flex flex-col`}>
       {/* Column Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-inherit">
-        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide">{title}</h3>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${countColor}`}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-current/10">
+        <h3 className={`font-bold text-sm uppercase tracking-wide ${column.headerClass}`}>{column.label}</h3>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${column.colorClass} ${column.headerClass}`}>
           {workOrders.length}
         </span>
       </div>
 
       {/* Droppable area */}
-      <Droppable droppableId={columnId}>
+      <Droppable droppableId={column.id}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -51,14 +33,18 @@ export default function KanbanColumn({ columnId, workOrders, clientes, equipos, 
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
+                    style={{
+                      ...provided.draggableProps.style,
+                      opacity: snapshot.isDragging ? 0.85 : 1,
+                    }}
                     className={snapshot.isDragging ? 'rotate-1 shadow-lg ring-2 ring-emerald-400 rounded-xl' : ''}
                   >
                     <WorkOrderCard
-                     ot={ot}
-                     clientes={clientes}
-                     equipos={equipos}
-                     tecnicos={tecnicos}
-                     onClick={onCardClick}
+                      ot={ot}
+                      clientes={clientes}
+                      equipos={equipos}
+                      tecnicos={tecnicos}
+                      onClick={onCardClick}
                     />
                   </div>
                 )}

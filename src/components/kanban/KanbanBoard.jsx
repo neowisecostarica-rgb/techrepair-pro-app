@@ -4,11 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { KANBAN_COLUMNS, STATUS_TO_COLUMN } from '@/config/workOrderStatus';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { base44 } from '@/api/base44Client';
+import { useAuthContext } from '@/components/contexts/AuthContext';
 import WorkOrderCard from './WorkOrderCard';
 import { Loader2 } from 'lucide-react';
 
 export default function KanbanBoard({ onCardClick }) {
   const queryClient = useQueryClient();
+  const { effectiveOrgId } = useAuthContext();
   const [localOrdenes, setLocalOrdenes] = useState(null); // optimistic state
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -18,6 +20,14 @@ export default function KanbanBoard({ onCardClick }) {
       const res = await base44.functions.invoke('listWorkOrders', {});
       return res.data?.workOrders || res.data || [];
     },
+  });
+
+  // Técnicos: resolver nombres para mostrar en tarjetas
+  const { data: tecnicos = [] } = useQuery({
+    queryKey: ['kanban-tecnicos', effectiveOrgId],
+    queryFn: () => base44.entities.UserAccount.filter({ organization_id: effectiveOrgId }),
+    enabled: !!effectiveOrgId,
+    staleTime: 5 * 60 * 1000, // 5 min cache — datos poco cambiantes
   });
 
   // Usar estado local (optimista) si existe, si no el del servidor
@@ -131,8 +141,7 @@ export default function KanbanBoard({ onCardClick }) {
                             >
                               <WorkOrderCard
                                 ot={ot}
-                                clientes={[]}
-                                equipos={[]}
+                                tecnicos={tecnicos}
                                 onClick={onCardClick}
                               />
                             </div>

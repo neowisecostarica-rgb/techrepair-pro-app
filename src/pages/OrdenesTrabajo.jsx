@@ -393,12 +393,11 @@ function OrdenesTrabajoContent() {
 
     try {
       const tecnico = tecnicos.find(t => t.user_id === nuevoTecnicoId);
-      // Reasignación: actualizar técnico sin cambiar estado (solo campos no-lifecycle)
-      await base44.entities.OrdenTrabajo.update(reasignarOT.id, {
+      // EXPERIMENTO P1.2: Usando backend function para aislar freeze en OrdenTrabajo.update directo
+      await base44.functions.invoke('reassignWorkOrderTechnician', {
+        orden_trabajo_id: reasignarOT.id,
         tecnico_asignado_id: nuevoTecnicoId,
         tecnico_asignado_email: tecnico?.user_email || '',
-        ultima_actividad: `Reasignado a ${tecnico?.user_email || nuevoTecnicoId}. Motivo: ${motivoReasignacion}`,
-        ultima_actividad_at: new Date().toISOString(),
       });
 
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });

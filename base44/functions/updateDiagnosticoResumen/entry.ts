@@ -30,9 +30,13 @@ Deno.serve(async (req) => {
     }
 
     // 4. UPDATE PARCIAL — incluir estado existente para satisfacer el campo required
+    // Fallback defensivo: registros legacy pueden tener estado null
+    if (!ot.estado) {
+      console.warn(`[updateDiagnosticoResumen] OT ${ordenTrabajoId} tiene estado null/undefined — aplicando fallback EN_COLA_REVISION`);
+    }
     const updatedOT = await base44.asServiceRole.entities.OrdenTrabajo.update(ordenTrabajoId, {
       diagnostico_resumido,
-      estado: ot.estado
+      estado: ot.estado || 'EN_COLA_REVISION'
     });
 
     return Response.json({ success: true, data: updatedOT });

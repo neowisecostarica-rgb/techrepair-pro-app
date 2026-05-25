@@ -253,12 +253,13 @@ function OrdenesTrabajoContent() {
     });
   };
 
-  // P0.2: Hidratar cliente y equipo al editar
+  // P0.2: Hidratar cliente, equipo y motivo al editar
   useEffect(() => {
     if (editingOT && showModal) {
       setSelectedClienteId(editingOT.cliente_id);
       setSelectedEquipoId(editingOT.equipo_id);
       setSelectedPrioridad(editingOT.prioridad || 'normal');
+      setMotivoIngreso(editingOT.motivo_ingreso || '');
     }
   }, [editingOT, showModal]);
 
@@ -341,6 +342,11 @@ function OrdenesTrabajoContent() {
     }
 
     if (editingOT) {
+      if (!motivoIngreso.trim()) {
+        alert('El motivo de ingreso es obligatorio');
+        return;
+      }
+      data.motivo_ingreso = motivoIngreso.trim();
       updateMutation.mutate({ id: editingOT.id, data });
     } else {
       createMutation.mutate(data);
@@ -818,7 +824,7 @@ function OrdenesTrabajoContent() {
             <div className="space-y-2">
               <Label>Motivo de Ingreso *</Label>
               <MotivoIngresoInput
-                value={editingOT?.motivo_ingreso || motivoIngreso}
+                value={motivoIngreso}
                 onChange={setMotivoIngreso}
               />
             </div>

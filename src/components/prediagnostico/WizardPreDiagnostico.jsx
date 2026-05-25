@@ -105,7 +105,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
       const data = {
         organization_id: effectiveOrgId,
         orden_trabajo_id: ordenTrabajo.id,
-        estado_wizard: 'borrador',
+        estado: 'borrador',
         ...formData
       };
 
@@ -129,7 +129,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
       const dataCompleta = {
         organization_id: effectiveOrgId,
         orden_trabajo_id: ordenTrabajo.id,
-        estado_wizard: 'completado',
+        estado: 'completado',
         completado_por_user_id: userId,
         completado_at: new Date().toISOString(),
         ...formData

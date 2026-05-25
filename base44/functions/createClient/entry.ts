@@ -21,19 +21,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'tipo_cliente inválido' }, { status: 400 });
     }
 
-    // Prevención de duplicados por identificacion y telefono en la misma organización
-    const [porIdentificacion, porTelefono] = await Promise.all([
-      base44.entities.Cliente.filter({ organization_id: orgId, identificacion: identificacion.trim() }),
-      base44.entities.Cliente.filter({ organization_id: orgId, telefono: telefono.trim() }),
-    ]);
+    // TEMP FIX P0 — 2026-05-25: Verificaciones de duplicidad deshabilitadas temporalmente
+    // Hipótesis: Cliente.filter() causa timeout → 502. Rehabilitar tras confirmar fix.
+    // TODO: Reactivar verificación de duplicados una vez estabilizado el entorno.
 
-    if (porIdentificacion && porIdentificacion.length > 0) {
-      return Response.json({ error: 'Ya existe un cliente con esta identificación en su organización' }, { status: 409 });
-    }
-    if (porTelefono && porTelefono.length > 0) {
-      return Response.json({ error: 'Ya existe un cliente con este teléfono en su organización' }, { status: 409 });
-    }
+    console.log('[createClient] Iniciando creación de cliente', { orgId, nombre_completo, identificacion });
 
+    console.log('[createClient] Enviando a entity.create...');
     const cliente = await base44.entities.Cliente.create({
       organization_id: orgId,
       nombre_completo: nombre_completo.trim(),
@@ -45,8 +39,10 @@ Deno.serve(async (req) => {
       notas: notas?.trim() || undefined,
     });
 
+    console.log('[createClient] Cliente creado exitosamente', { id: cliente.id });
     return Response.json(cliente);
   } catch (error) {
+    console.error('[createClient] ERROR en catch:', error.message, error.stack || '');
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

@@ -63,8 +63,14 @@ function validatePayloadForTarget(targetStatus, ot, extra) {
       }
       break;
     case 'ENTREGADA':
-      // La validación de pago se hace en EntregarOT antes de llamar esta función
-      // Aquí solo validamos el estado base
+      // Enforcement defensivo backend — P0.1
+      // El frontend (EntregarOT.jsx) también valida, pero el backend es la última línea de defensa.
+      // No se mueve ni elimina la validación frontend.
+      if (!extra?.ventas_pagadas_verificadas) {
+        // extra.ventas_pagadas_verificadas se inyecta desde el bloque de validación inline
+        // (ver paso 9b más abajo)
+        return 'ENTREGADA: se requiere al menos una Venta en estado "pagada" asociada a esta OT';
+      }
       break;
     default:
       break;
@@ -181,6 +187,27 @@ Deno.serve(async (req) => {
 
     // ── 9. Validar datos mínimos requeridos ───────────────────────────────────
     const extra = { tecnico_asignado_id, tecnico_asignado_email };
+
+    // ── 9b. Enforcement P0.1: FINALIZADA → ENTREGADA requiere venta pagada ────
+    if (newStatus === 'ENTREGADA') {
+      const ventasPagadas = await base44.asServiceRole.entities.Venta.filter({
+        organization_id: orgId,
+        referencia_ot_id: orden_trabajo_id,
+        estado: 'pagada',
+      }, 1);
+
+      if (!ventasPagadas || ventasPagadas.length === 0) {
+        console.warn(`[transitionWorkOrderStatus] BLOQUEADO ENTREGADA — sin venta pagada. OT: ${orden_trabajo_id}`);
+        return Response.json({
+          error: 'No se puede entregar la OT: no existe ninguna Venta en estado "pagada" asociada a esta orden de trabajo. Realice el cobro en el Punto de Venta antes de continuar.',
+          code: 'ENTREGADA_SIN_PAGO',
+          orden_trabajo_id,
+        }, { status: 422 });
+      }
+
+      extra.ventas_pagadas_verificadas = true;
+    }
+
     const validationError = validatePayloadForTarget(newStatus, ot, extra);
     if (validationError) {
       return Response.json({ error: validationError }, { status: 422 });

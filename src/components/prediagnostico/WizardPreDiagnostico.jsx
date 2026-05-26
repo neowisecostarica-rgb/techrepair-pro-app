@@ -1,62 +1,174 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Save, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { generarResumenPreDiagnostico } from './generarResumen';
 
-const PROBLEMAS = {
-  no_enciende: 'No enciende',
-  lento: 'Lento / Con lentitud',
-  pantalla: 'Problema de pantalla',
-  ruido_temperatura: 'Ruido o sobrecalentamiento',
-  danio_fisico: 'Daño físico',
-  limpieza_revision: 'Limpieza o revisión general',
-  otro: 'Otro problema'
-};
+// ─── Constantes ──────────────────────────────────────────────────────────────
+
+const USOS = [
+  { key: 'hogar',   label: '🏠 Hogar' },
+  { key: 'trabajo', label: '💼 Trabajo' },
+  { key: 'empresa', label: '🏢 Empresa' },
+];
+
+const PROBLEMAS = [
+  { key: 'no_enciende',        label: '⚡ No enciende',           color: 'bg-red-100 border-red-400 text-red-800' },
+  { key: 'lento',              label: '🐢 Lento',                 color: 'bg-orange-100 border-orange-400 text-orange-800' },
+  { key: 'pantalla',           label: '🖥️ Pantalla',              color: 'bg-yellow-100 border-yellow-400 text-yellow-800' },
+  { key: 'ruido_temperatura',  label: '🌡️ Ruido / Temperatura',   color: 'bg-amber-100 border-amber-400 text-amber-800' },
+  { key: 'danio_fisico',       label: '💥 Daño físico',           color: 'bg-pink-100 border-pink-400 text-pink-800' },
+  { key: 'limpieza_revision',  label: '🧹 Limpieza / Revisión',   color: 'bg-blue-100 border-blue-400 text-blue-800' },
+  { key: 'otro',               label: '❓ Otro',                  color: 'bg-slate-100 border-slate-400 text-slate-800' },
+];
 
 const PREGUNTAS_POR_PROBLEMA = {
   no_enciende: [
-    { key: 'cuando_inicio', label: '¿Cuándo dejó de encender?', tipo: 'texto' },
-    { key: 'golpes_liquidos', label: '¿Sufrió golpes o contacto con líquidos?', tipo: 'sino' },
-    { key: 'intento_reparacion', label: '¿Se intentó reparar previamente?', tipo: 'sino' }
+    { key: 'cuando_inicio',      label: '¿Cuándo dejó de encender?',         tipo: 'chips', opciones: ['Hoy', 'Esta semana', 'Hace días', 'Gradual'] },
+    { key: 'golpes_liquidos',    label: '¿Golpes o contacto con líquidos?',  tipo: 'sino' },
+    { key: 'intento_reparacion', label: '¿Se intentó reparar antes?',        tipo: 'sino' },
   ],
   lento: [
-    { key: 'cuando_inicio', label: '¿Cuándo comenzó la lentitud?', tipo: 'texto' },
-    { key: 'software_reciente', label: '¿Se instaló software recientemente?', tipo: 'sino' },
-    { key: 'sobrecalentamiento', label: '¿El equipo se calienta en exceso?', tipo: 'sino' },
-    { key: 'respaldo_datos', label: '¿Tiene respaldo de información importante?', tipo: 'sino' }
+    { key: 'cuando_inicio',     label: '¿Cuándo comenzó la lentitud?',         tipo: 'chips', opciones: ['Hoy', 'Esta semana', 'Hace tiempo', 'Siempre ha sido lento'] },
+    { key: 'software_reciente', label: '¿Se instaló software recientemente?',  tipo: 'sino' },
+    { key: 'sobrecalentamiento', label: '¿Se calienta en exceso?',             tipo: 'sino' },
+    { key: 'respaldo_datos',    label: '¿Tiene respaldo de datos?',            tipo: 'sino' },
   ],
   pantalla: [
-    { key: 'tipo_problema_pantalla', label: '¿Qué problema presenta la pantalla?', tipo: 'opciones', opciones: ['No se ve nada', 'Líneas o manchas', 'Pantalla rota', 'Parpadea'] },
-    { key: 'golpes_liquidos', label: '¿Sufrió golpes o contacto con líquidos?', tipo: 'sino' }
+    { key: 'tipo_problema_pantalla', label: '¿Qué problema presenta?', tipo: 'chips', opciones: ['No se ve nada', 'Líneas o manchas', 'Pantalla rota', 'Parpadea'] },
+    { key: 'golpes_liquidos',        label: '¿Golpes o contacto con líquidos?', tipo: 'sino' },
   ],
   ruido_temperatura: [
-    { key: 'cuando_inicio', label: '¿Cuándo comenzó el problema?', tipo: 'texto' },
-    { key: 'tipo_ruido', label: '¿Qué tipo de ruido?', tipo: 'opciones', opciones: ['Ventilador fuerte', 'Pitidos', 'Clic repetitivo', 'Otro'] },
-    { key: 'sobrecalentamiento', label: '¿El equipo se calienta en exceso?', tipo: 'sino' }
+    { key: 'cuando_inicio', label: '¿Cuándo comenzó?',    tipo: 'chips', opciones: ['Hoy', 'Esta semana', 'Hace tiempo'] },
+    { key: 'tipo_ruido',    label: '¿Qué tipo de ruido?', tipo: 'chips', opciones: ['Ventilador fuerte', 'Pitidos', 'Clic repetitivo', 'Otro'] },
+    { key: 'sobrecalentamiento', label: '¿Se calienta en exceso?', tipo: 'sino' },
   ],
   danio_fisico: [
-    { key: 'tipo_danio', label: '¿Qué tipo de daño?', tipo: 'opciones', opciones: ['Pantalla rota', 'Carcasa dañada', 'Puerto dañado', 'Otro'] },
-    { key: 'como_ocurrio', label: '¿Cómo ocurrió?', tipo: 'texto' }
+    { key: 'tipo_danio',   label: '¿Tipo de daño?', tipo: 'chips', opciones: ['Pantalla rota', 'Carcasa dañada', 'Puerto dañado', 'Otro'] },
+    { key: 'como_ocurrio', label: '¿Cómo ocurrió?', tipo: 'chips', opciones: ['Caída', 'Líquido', 'Golpe', 'Desconocido'] },
   ],
   limpieza_revision: [
-    { key: 'ultima_limpieza', label: '¿Cuándo fue la última limpieza?', tipo: 'texto' },
-    { key: 'problemas_actuales', label: '¿Presenta algún problema actualmente?', tipo: 'sino' }
+    { key: 'ultima_limpieza',    label: '¿Cuándo fue la última limpieza?', tipo: 'chips', opciones: ['Nunca', 'Hace 6 meses', 'Hace 1 año', 'Hace más de 1 año'] },
+    { key: 'problemas_actuales', label: '¿Presenta algún problema?',       tipo: 'sino' },
   ],
   otro: [
     { key: 'descripcion_problema', label: 'Describe el problema', tipo: 'texto' },
-    { key: 'cuando_inicio', label: '¿Cuándo inició?', tipo: 'texto' }
-  ]
+    { key: 'cuando_inicio',        label: '¿Cuándo inició?',      tipo: 'chips', opciones: ['Hoy', 'Esta semana', 'Hace tiempo'] },
+  ],
 };
 
+const RIESGOS = ['ninguno', 'bajo', 'medio', 'alto'];
+
+const RIESGO_CONFIG = {
+  ninguno: { label: 'Ninguno', color: 'bg-slate-100 border-slate-300 text-slate-700' },
+  bajo:    { label: 'Bajo',    color: 'bg-green-100 border-green-400 text-green-800' },
+  medio:   { label: 'Medio',   color: 'bg-yellow-100 border-yellow-400 text-yellow-800' },
+  alto:    { label: 'Alto',    color: 'bg-red-100 border-red-400 text-red-800' },
+};
+
+// ─── Sub-componentes UI rápidos ───────────────────────────────────────────────
+
+function ChipGroup({ options, value, onChange, multi = false }) {
+  const selected = multi
+    ? (Array.isArray(value) ? value : [])
+    : value;
+
+  const toggle = (key) => {
+    if (multi) {
+      const arr = Array.isArray(selected) ? selected : [];
+      onChange(arr.includes(key) ? arr.filter(k => k !== key) : [...arr, key]);
+    } else {
+      onChange(selected === key ? '' : key);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => {
+        const key = opt.key ?? opt;
+        const label = opt.label ?? opt;
+        const customColor = opt.color;
+        const isSelected = multi ? selected.includes(key) : selected === key;
+
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => toggle(key)}
+            className={`
+              px-3 py-2 rounded-xl border-2 text-sm font-medium
+              transition-all duration-150 active:scale-95
+              min-h-[44px] min-w-[44px]
+              ${isSelected
+                ? customColor
+                  ? customColor + ' border-current ring-2 ring-offset-1 ring-current'
+                  : 'bg-emerald-100 border-emerald-500 text-emerald-800 ring-2 ring-offset-1 ring-emerald-400'
+                : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400'
+              }
+            `}
+          >
+            {isSelected && !multi && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1" />}
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SiNoToggle({ value, onChange }) {
+  return (
+    <div className="flex gap-3">
+      {[
+        { key: 'si', label: '✅ Sí', active: 'bg-emerald-100 border-emerald-500 text-emerald-800' },
+        { key: 'no', label: '❌ No', active: 'bg-slate-100 border-slate-500 text-slate-800' },
+      ].map(opt => (
+        <button
+          key={opt.key}
+          type="button"
+          onClick={() => onChange(opt.key)}
+          className={`
+            flex-1 py-3 rounded-xl border-2 text-sm font-semibold
+            transition-all duration-150 active:scale-95 min-h-[48px]
+            ${value === opt.key
+              ? opt.active
+              : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+            }
+          `}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      <div className="bg-slate-50 border-b border-slate-200 px-5 py-3">
+        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{title}</h3>
+      </div>
+      <div className="p-5 space-y-5">{children}</div>
+    </div>
+  );
+}
+
+function FieldLabel({ children, optional }) {
+  return (
+    <div className="flex items-center gap-2 mb-2">
+      <span className="text-sm font-medium text-slate-800">{children}</span>
+      {optional && <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">opcional</span>}
+    </div>
+  );
+}
+
+// ─── Wizard Principal ─────────────────────────────────────────────────────────
+
 export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, userId, onClose, onComplete }) {
-  const [paso, setPaso] = useState(1);
   const [saving, setSaving] = useState(false);
   const [preDiagnostico, setPreDiagnostico] = useState(null);
   const [formData, setFormData] = useState({
@@ -68,11 +180,19 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
     riesgo_fisico: 'ninguno',
     observaciones_riesgo: ''
   });
+  const [savedDraft, setSavedDraft] = useState(false);
 
-  // Cargar pre-diagnóstico existente si hay
   useEffect(() => {
     cargarPreDiagnostico();
   }, []);
+
+  // Reset feedback de guardado
+  useEffect(() => {
+    if (savedDraft) {
+      const t = setTimeout(() => setSavedDraft(false), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [savedDraft]);
 
   const cargarPreDiagnostico = async () => {
     try {
@@ -80,7 +200,6 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
         organization_id: effectiveOrgId,
         orden_trabajo_id: ordenTrabajo.id
       });
-
       if (existing.length > 0) {
         const pd = existing[0];
         setPreDiagnostico(pd);
@@ -99,24 +218,30 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
     }
   };
 
-  const guardarProgreso = async () => {
+  const buildPayload = (estado) => ({
+    organization_id: effectiveOrgId,
+    orden_trabajo_id: ordenTrabajo.id,
+    estado,
+    ...(estado === 'completado' ? {
+      completado_por_user_id: userId,
+      completado_at: new Date().toISOString(),
+    } : {}),
+    ...formData
+  });
+
+  const guardarBorrador = async () => {
     setSaving(true);
     try {
-      const data = {
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id,
-        estado: 'borrador',
-        ...formData
-      };
-
+      const data = buildPayload('borrador');
       if (preDiagnostico) {
         await base44.entities.PreDiagnostico.update(preDiagnostico.id, data);
       } else {
         const created = await base44.entities.PreDiagnostico.create(data);
         setPreDiagnostico(created);
       }
+      setSavedDraft(true);
     } catch (error) {
-      console.error('Error guardando progreso:', error);
+      console.error('Error guardando borrador:', error);
       alert('Error al guardar: ' + error.message);
     } finally {
       setSaving(false);
@@ -124,26 +249,21 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
   };
 
   const completarWizard = async () => {
+    if (!formData.problema_principal) {
+      alert('Selecciona el problema principal antes de completar.');
+      return;
+    }
     setSaving(true);
     try {
-      const dataCompleta = {
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id,
-        estado: 'completado',
-        completado_por_user_id: userId,
-        completado_at: new Date().toISOString(),
-        ...formData
-      };
-
-      let preDiagnosticoFinal;
+      const data = buildPayload('completado');
+      let pd;
       if (preDiagnostico) {
-        preDiagnosticoFinal = await base44.entities.PreDiagnostico.update(preDiagnostico.id, dataCompleta);
+        pd = await base44.entities.PreDiagnostico.update(preDiagnostico.id, data);
       } else {
-        preDiagnosticoFinal = await base44.entities.PreDiagnostico.create(dataCompleta);
+        pd = await base44.entities.PreDiagnostico.create(data);
       }
 
-      // Generar resumen y actualizar OT via function (SOT — no entities.update desde frontend)
-      const resumen = generarResumenPreDiagnostico(dataCompleta);
+      const resumen = generarResumenPreDiagnostico(data);
       await base44.functions.invoke('updateDiagnosticoResumen', {
         ordenTrabajoId: ordenTrabajo.id,
         diagnostico_resumido: resumen
@@ -158,298 +278,188 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
     }
   };
 
-  const handleSiguiente = async () => {
-    await guardarProgreso();
-    setPaso(paso + 1);
+  const setRespuesta = (key, value) => {
+    setFormData(prev => ({
+      ...prev,
+      respuestas: { ...prev.respuestas, [key]: value }
+    }));
   };
 
-  const handleAnterior = () => {
-    setPaso(paso - 1);
-  };
-
-  const preguntasActuales = formData.problema_principal 
+  const preguntasActuales = formData.problema_principal
     ? PREGUNTAS_POR_PROBLEMA[formData.problema_principal] || []
     : [];
 
+  const isComplete = !!formData.uso_principal && !!formData.problema_principal;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full max-h-[85vh]">
+
+      {/* Header fijo */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-white shrink-0">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Pre-Diagnóstico de Recepción</h2>
-          <p className="text-sm text-slate-500">
-            Captura lo que reporta el cliente para guiar al técnico
+          <h2 className="text-lg font-bold text-slate-900">Pre-Diagnóstico</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {ordenTrabajo.codigo_ot} · captura lo que reporta el cliente
           </p>
         </div>
-        <Badge variant="outline" className="text-lg px-4 py-2">
-          Paso {paso} de 4
-        </Badge>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
-      <Alert className="bg-blue-50 border-blue-200">
-        <AlertCircle className="w-4 h-4 text-blue-600" />
-        <AlertDescription className="text-blue-800 text-sm">
-          Este wizard NO es técnico. Solo captura los síntomas que reporta el cliente.
-        </AlertDescription>
-      </Alert>
+      {/* Contenido scrollable */}
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
 
-      {/* PASO 1: CONTEXTO */}
-      {paso === 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Contexto del Equipo</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>¿Para qué usa principalmente este equipo? *</Label>
-              <Select 
-                value={formData.uso_principal} 
-                onValueChange={(value) => setFormData({...formData, uso_principal: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar uso" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hogar">Uso personal / Hogar</SelectItem>
-                  <SelectItem value="trabajo">Trabajo (empleado)</SelectItem>
-                  <SelectItem value="empresa">Empresa (dueño/negocio)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <Alert className="bg-blue-50 border-blue-200 py-2">
+          <AlertCircle className="w-4 h-4 text-blue-600" />
+          <AlertDescription className="text-blue-800 text-xs">
+            Este pre-diagnóstico NO es técnico — captura síntomas del cliente.
+          </AlertDescription>
+        </Alert>
 
-            <div className="space-y-2">
-              <Label>¿Es un equipo crítico para el cliente?</Label>
-              <p className="text-xs text-slate-500">
-                (Lo necesita urgentemente para trabajar o estudiar)
-              </p>
-              <Select 
-                value={formData.equipo_critico ? 'si' : 'no'} 
-                onValueChange={(value) => setFormData({...formData, equipo_critico: value === 'si'})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="si">Sí, es crítico</SelectItem>
-                  <SelectItem value="no">No es crítico</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* SECCIÓN 1: CONTEXTO */}
+        <Section title="1 · Contexto del cliente">
+          <div>
+            <FieldLabel>¿Para qué usa el equipo?</FieldLabel>
+            <ChipGroup
+              options={USOS}
+              value={formData.uso_principal}
+              onChange={(v) => setFormData(prev => ({ ...prev, uso_principal: v }))}
+            />
+          </div>
 
-      {/* PASO 2: PROBLEMA PRINCIPAL */}
-      {paso === 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>¿Qué problema reporta el cliente?</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(PROBLEMAS).map(([key, label]) => (
-                <Button
-                  key={key}
-                  type="button"
-                  variant={formData.problema_principal === key ? 'default' : 'outline'}
-                  className={`justify-start text-left h-auto py-4 ${
-                    formData.problema_principal === key 
-                      ? 'bg-gradient-to-r from-emerald-500 to-blue-500' 
-                      : ''
-                  }`}
-                  onClick={() => setFormData({...formData, problema_principal: key, respuestas: {}})}
-                >
-                  {formData.problema_principal === key && <CheckCircle2 className="w-5 h-5 mr-2" />}
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          <div>
+            <FieldLabel>¿Equipo crítico para el cliente?</FieldLabel>
+            <p className="text-xs text-slate-500 mb-2">Lo necesita urgentemente para trabajar o estudiar</p>
+            <SiNoToggle
+              value={formData.equipo_critico ? 'si' : 'no'}
+              onChange={(v) => setFormData(prev => ({ ...prev, equipo_critico: v === 'si' }))}
+            />
+          </div>
+        </Section>
 
-      {/* PASO 3: PREGUNTAS GUIADAS */}
-      {paso === 3 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Preguntas Guiadas</CardTitle>
-            <p className="text-sm text-slate-500">
-              Basadas en el problema: <strong>{PROBLEMAS[formData.problema_principal]}</strong>
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        {/* SECCIÓN 2: PROBLEMA PRINCIPAL */}
+        <Section title="2 · Problema que reporta *">
+          <ChipGroup
+            options={PROBLEMAS}
+            value={formData.problema_principal}
+            onChange={(v) => setFormData(prev => ({ ...prev, problema_principal: v, respuestas: {} }))}
+          />
+          {!formData.problema_principal && (
+            <p className="text-xs text-amber-600 mt-1">⚠️ Requerido para completar</p>
+          )}
+        </Section>
+
+        {/* SECCIÓN 3: PREGUNTAS GUIADAS (dinámicas) */}
+        {preguntasActuales.length > 0 && (
+          <Section title="3 · Detalles del problema">
             {preguntasActuales.map((pregunta) => (
-              <div key={pregunta.key} className="space-y-2">
-                <Label>{pregunta.label}</Label>
-                
+              <div key={pregunta.key}>
+                <FieldLabel optional={pregunta.tipo !== 'sino'}>{pregunta.label}</FieldLabel>
+
                 {pregunta.tipo === 'sino' && (
-                  <Select 
-                    value={formData.respuestas[pregunta.key] || 'no'} 
-                    onValueChange={(value) => setFormData({
-                      ...formData, 
-                      respuestas: {...formData.respuestas, [pregunta.key]: value}
-                    })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="si">Sí</SelectItem>
-                      <SelectItem value="no">No</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SiNoToggle
+                    value={formData.respuestas[pregunta.key] || 'no'}
+                    onChange={(v) => setRespuesta(pregunta.key, v)}
+                  />
+                )}
+
+                {pregunta.tipo === 'chips' && (
+                  <ChipGroup
+                    options={pregunta.opciones}
+                    value={formData.respuestas[pregunta.key] || ''}
+                    onChange={(v) => setRespuesta(pregunta.key, v)}
+                  />
                 )}
 
                 {pregunta.tipo === 'texto' && (
                   <Textarea
                     value={formData.respuestas[pregunta.key] || ''}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      respuestas: {...formData.respuestas, [pregunta.key]: e.target.value}
-                    })}
-                    placeholder="Escribe aquí..."
+                    onChange={(e) => setRespuesta(pregunta.key, e.target.value)}
+                    placeholder="Describe brevemente..."
                     rows={2}
+                    className="text-sm"
                   />
-                )}
-
-                {pregunta.tipo === 'opciones' && (
-                  <Select 
-                    value={formData.respuestas[pregunta.key] || ''} 
-                    onValueChange={(value) => setFormData({
-                      ...formData, 
-                      respuestas: {...formData.respuestas, [pregunta.key]: value}
-                    })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pregunta.opciones.map(opcion => (
-                        <SelectItem key={opcion} value={opcion}>{opcion}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 )}
               </div>
             ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* PASO 4: RIESGOS */}
-      {paso === 4 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Evaluación de Riesgos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Riesgo de pérdida de datos</Label>
-              <p className="text-xs text-slate-500">
-                ¿Qué tan probable es que se pierdan datos durante la reparación?
-              </p>
-              <Select 
-                value={formData.riesgo_datos} 
-                onValueChange={(value) => setFormData({...formData, riesgo_datos: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ninguno">Ninguno</SelectItem>
-                  <SelectItem value="bajo">Bajo</SelectItem>
-                  <SelectItem value="medio">Medio</SelectItem>
-                  <SelectItem value="alto">Alto</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Riesgo físico del equipo</Label>
-              <p className="text-xs text-slate-500">
-                ¿El equipo tiene daños que podrían empeorar durante la manipulación?
-              </p>
-              <Select 
-                value={formData.riesgo_fisico} 
-                onValueChange={(value) => setFormData({...formData, riesgo_fisico: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ninguno">Ninguno</SelectItem>
-                  <SelectItem value="bajo">Bajo</SelectItem>
-                  <SelectItem value="medio">Medio</SelectItem>
-                  <SelectItem value="alto">Alto</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Observaciones adicionales sobre riesgos</Label>
-              <Textarea
-                value={formData.observaciones_riesgo}
-                onChange={(e) => setFormData({...formData, observaciones_riesgo: e.target.value})}
-                placeholder="Cualquier observación importante sobre riesgos..."
-                rows={3}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Navegación */}
-      <div className="flex justify-between pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={paso === 1 ? onClose : handleAnterior}
-          disabled={saving}
-        >
-          {paso === 1 ? 'Cancelar' : (
-            <>
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Anterior
-            </>
-          )}
-        </Button>
-
-        {paso < 4 ? (
-          <Button
-            onClick={handleSiguiente}
-            disabled={saving || (paso === 1 && !formData.uso_principal) || (paso === 2 && !formData.problema_principal)}
-            className="bg-gradient-to-r from-emerald-500 to-blue-500"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              <>
-                Siguiente
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button
-            onClick={completarWizard}
-            disabled={saving}
-            className="bg-gradient-to-r from-emerald-500 to-blue-500"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Completando...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Completar Pre-Diagnóstico
-              </>
-            )}
-          </Button>
+          </Section>
         )}
+
+        {/* SECCIÓN 4: RIESGOS */}
+        <Section title="4 · Evaluación de riesgos">
+          <div>
+            <FieldLabel optional>Riesgo de pérdida de datos</FieldLabel>
+            <ChipGroup
+              options={RIESGOS.map(r => ({ key: r, label: RIESGO_CONFIG[r].label, color: RIESGO_CONFIG[r].color }))}
+              value={formData.riesgo_datos}
+              onChange={(v) => setFormData(prev => ({ ...prev, riesgo_datos: v || 'ninguno' }))}
+            />
+          </div>
+
+          <div>
+            <FieldLabel optional>Riesgo físico del equipo</FieldLabel>
+            <ChipGroup
+              options={RIESGOS.map(r => ({ key: r, label: RIESGO_CONFIG[r].label, color: RIESGO_CONFIG[r].color }))}
+              value={formData.riesgo_fisico}
+              onChange={(v) => setFormData(prev => ({ ...prev, riesgo_fisico: v || 'ninguno' }))}
+            />
+          </div>
+
+          <div>
+            <FieldLabel optional>Observaciones adicionales</FieldLabel>
+            <Textarea
+              value={formData.observaciones_riesgo}
+              onChange={(e) => setFormData(prev => ({ ...prev, observaciones_riesgo: e.target.value }))}
+              placeholder="Observaciones sobre riesgos o custodia..."
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+        </Section>
+
+      </div>
+
+      {/* Footer fijo: actions */}
+      <div className="border-t border-slate-200 bg-white px-5 py-4 shrink-0">
+        {savedDraft && (
+          <div className="flex items-center gap-2 text-emerald-700 text-xs mb-3 bg-emerald-50 px-3 py-2 rounded-lg">
+            <CheckCircle2 className="w-4 h-4" />
+            Borrador guardado
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          {/* Guardar borrador */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={guardarBorrador}
+            disabled={saving}
+            className="flex-1 gap-2 min-h-[48px]"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Guardar borrador
+          </Button>
+
+          {/* Completar */}
+          <Button
+            type="button"
+            onClick={completarWizard}
+            disabled={saving || !isComplete}
+            className="flex-1 gap-2 min-h-[48px] bg-gradient-to-r from-emerald-500 to-blue-500 text-white disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
+            Completar
+          </Button>
+        </div>
       </div>
     </div>
   );

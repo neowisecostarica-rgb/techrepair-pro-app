@@ -1,3 +1,11 @@
+// ============================================================
+// LEGACY — DO NOT USE.
+// Replaced by OTEvent → processOTEvent official pipeline.
+// Do not reactivate without architecture review.
+// Official lifecycle owner: transitionWorkOrderStatus.
+// This function only handles auxiliary fields (estado_atencion,
+// motivo_pausa) and blocks any attempt to modify `estado`.
+// ============================================================
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // ─── LEGACY — CAMPOS AUXILIARES ÚNICAMENTE ────────────────────────────────────

@@ -1,3 +1,12 @@
+// ============================================================
+// LEGACY — DO NOT USE.
+// Replaced by OTEvent → processOTEvent official pipeline.
+// Do not reactivate without architecture review.
+// All email logic for CREATED, FINALIZADA, ENTREGADA, CANCELADA
+// is now owned by processOTEvent (Gateway — OTEvent Consumer).
+// Automations pointing here (Worker — OT Creada/Finalizada/Entregada)
+// have been archived and must NOT be reactivated.
+// ============================================================
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
 
 const EVENT_CONFIG = {

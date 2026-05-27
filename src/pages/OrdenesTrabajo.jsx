@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/components/ui/use-toast';
 import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -94,6 +95,7 @@ function OrdenesTrabajoContent() {
   const { user, userAccount } = useUserAccount();
   const { effectiveOrgId, effectiveRole } = useAuthContext();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // P0.1: Cache de estados de pago
   const [estadosPago, setEstadosPago] = useState({});
@@ -134,28 +136,11 @@ function OrdenesTrabajoContent() {
       return (response.data || []).map(normalizarOrden);
     },
     enabled: !!effectiveOrgId,
+    staleTime: 30 * 1000, // P0.4: 30s stale — evita re-fetch en cada navegación
   });
 
-  // P0.1: Cargar estados de pago para OTs visibles
-  useEffect(() => {
-    if (ordenes.length > 0 && effectiveOrgId) {
-      const cargarEstados = async () => {
-        const nuevosEstados = {};
-        for (const ot of ordenes.slice(0, 20)) {
-          try {
-            const estado = await obtenerEstadoPagoOT(ot.id, effectiveOrgId);
-            nuevosEstados[ot.id] = estado;
-          } catch (error) {
-            console.error(`Error cargando estado pago OT ${ot.id}:`, error);
-          }
-        }
-        setEstadosPago(nuevosEstados);
-      };
-      
-      const timer = setTimeout(cargarEstados, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [ordenes, effectiveOrgId]);
+  // P0.4: Se eliminó el loop de carga de estados de pago (N queries secuenciales).
+  // Los badges de pago en vista lista son opcionales — se pueden recuperar bajo demanda desde el detalle.
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes', effectiveOrgId],
@@ -165,6 +150,7 @@ function OrdenesTrabajoContent() {
       return (data || []).map(normalizarCliente);
     },
     enabled: !!effectiveOrgId,
+    staleTime: 2 * 60 * 1000, // P0.4: 2 min
   });
 
   const { data: equipos = [] } = useQuery({
@@ -175,6 +161,7 @@ function OrdenesTrabajoContent() {
       return (data || []).map(normalizarEquipo);
     },
     enabled: !!effectiveOrgId,
+    staleTime: 2 * 60 * 1000, // P0.4: 2 min
   });
 
   // branches y tecnicos aún desde base44 (no migrados)
@@ -184,17 +171,7 @@ function OrdenesTrabajoContent() {
     enabled: !!effectiveOrgId,
   });
 
-  const { data: diagnosticos = [] } = useQuery({
-    queryKey: ['diagnosticos', effectiveOrgId],
-    queryFn: () => base44.entities.Diagnostico.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId,
-  });
-
-  const { data: ventas = [] } = useQuery({
-    queryKey: ['ventas', effectiveOrgId],
-    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId }),
-    enabled: !!effectiveOrgId,
-  });
+  // P0.4: eliminadas queries de diagnosticos y ventas — no se usan en esta vista, causaban slowdown
 
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
@@ -393,22 +370,30 @@ function OrdenesTrabajoContent() {
 
     try {
       const tecnico = tecnicos.find(t => t.user_id === nuevoTecnicoId);
-      // EXPERIMENTO P1.2: Usando backend function para aislar freeze en OrdenTrabajo.update directo
-      await base44.functions.invoke('reassignWorkOrderTechnician', {
+      const res = await base44.functions.invoke('reassignWorkOrderTechnician', {
         orden_trabajo_id: reasignarOT.id,
         tecnico_asignado_id: nuevoTecnicoId,
         tecnico_asignado_email: tecnico?.user_email || '',
       });
 
+      // P0.3: verificar que el backend confirmó el cambio antes de cerrar
+      if (!res?.data?.success) {
+        throw new Error(res?.data?.error || 'La reasignación no fue confirmada por el servidor');
+      }
+
+      // P0.3 + P0.4: invalidar todas las query keys que muestran técnico
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['listWorkOrders'] });
+
       setShowReasignar(false);
       setReasignarOT(null);
       setNuevoTecnicoId('');
       setMotivoReasignacion('');
-      alert('✅ Técnico reasignado correctamente');
+      toast({ title: 'Técnico reasignado correctamente' });
     } catch (error) {
       console.error('Error reasignando técnico:', error);
-      alert('❌ Error al reasignar técnico: ' + error.message);
+      const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
+      toast({ variant: 'destructive', title: 'Error al reasignar técnico', description: msg });
     }
   };
 
@@ -1118,22 +1103,24 @@ function OrdenesTrabajoContent() {
                    selectedOT.estado === 'ASIGNADA' && 
                    selectedOT.tecnico_asignado_id === user?.id && (
                   <Button 
-                    onClick={async () => {
-                      try {
-                        await transicionarEstadoOT({
-                          ordenTrabajoId: selectedOT.id,
-                          nuevoEstado: 'EN_REVISION',
-                          effectiveOrgId: effectiveOrgId,
-                          userId: user?.id,
-                          userEmail: user?.email
-                        });
-                        queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
-                        setSelectedOT(null);
-                        alert('✅ Revisión iniciada correctamente');
-                      } catch (error) {
-                        alert('Error al iniciar revisión: ' + error.message);
-                      }
-                    }}
+                   onClick={async () => {
+                     try {
+                       await transicionarEstadoOT({
+                         ordenTrabajoId: selectedOT.id,
+                         nuevoEstado: 'EN_REVISION',
+                         effectiveOrgId: effectiveOrgId,
+                         userId: user?.id,
+                         userEmail: user?.email
+                       });
+                       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+                       queryClient.invalidateQueries({ queryKey: ['listWorkOrders'] });
+                       setSelectedOT(null);
+                       toast({ title: 'Revisión iniciada correctamente' });
+                     } catch (error) {
+                       const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
+                       toast({ variant: 'destructive', title: 'No se pudo iniciar revisión', description: msg });
+                     }
+                   }}
                     className="bg-gradient-to-r from-blue-500 to-indigo-500"
                   >
                     <Play className="w-4 h-4 mr-2" />

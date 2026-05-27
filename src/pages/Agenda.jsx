@@ -438,16 +438,18 @@ function AgendaContent() {
         </CardContent>
       </Card>
 
-      {/* Modal Crear/Editar Cita */}
+      {/* Modal Crear/Editar Cita — P0.2: responsive, max-height, botones siempre visibles */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl w-full flex flex-col" style={{ maxHeight: '90vh' }}>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="text-2xl font-bold">
               {editingCita ? 'Editar Evento' : 'Nuevo Evento'}
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="overflow-y-auto flex-1 pr-1">
+          <div className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               {/* P0.3 RBAC: Admin puede asignar técnico */}
               {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && (
@@ -609,7 +611,10 @@ function AgendaContent() {
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end pt-4">
+          </div>
+          </div>
+          {/* P0.2: botones siempre visibles al fondo */}
+          <div className="flex gap-3 justify-end pt-4 mt-2 border-t border-slate-200 shrink-0">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)} disabled={validando}>
                 Cancelar
               </Button>

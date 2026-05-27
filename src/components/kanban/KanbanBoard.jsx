@@ -7,12 +7,14 @@ import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import WorkOrderCard from './WorkOrderCard';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function KanbanBoard({ onCardClick }) {
   const queryClient = useQueryClient();
   const { effectiveOrgId } = useAuthContext();
   const [localOrdenes, setLocalOrdenes] = useState(null); // optimistic state
   const [errorMsg, setErrorMsg] = useState('');
+  const { toast } = useToast();
 
   const { data: fetchedOrdenes = [], isLoading } = useQuery({
     queryKey: ['listWorkOrders'],
@@ -74,12 +76,20 @@ export default function KanbanBoard({ onCardClick }) {
       await transicionarEstadoOT(draggableId, nuevoEstado);
       // Refrescar datos reales en background
       queryClient.invalidateQueries({ queryKey: ['listWorkOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
     } catch (error) {
       // Revertir a estado original
       setLocalOrdenes(ordenes.map(ot =>
         ot.id === draggableId ? { ...ot, estado: otAnterior.estado } : ot
       ));
-      setErrorMsg('No se pudo cambiar el estado: ' + (error.message || 'Error desconocido'));
+      // P0.1 — Extraer mensaje semántico del backend
+      const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
+      setErrorMsg(msg);
+      toast({
+        variant: 'destructive',
+        title: 'No se pudo cambiar el estado',
+        description: msg,
+      });
     }
   };
 

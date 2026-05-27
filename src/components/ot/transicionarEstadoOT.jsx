@@ -38,7 +38,16 @@ export async function transicionarEstadoOT(otIdOrParams, nuevoEstado, context) {
     newStatus: estadoNuevo,
     ...extra,
   });
-  return response.data;
+
+  // P0.1 — Si el backend devolvió un error semántico dentro del body, lanzarlo como mensaje legible
+  const data = response.data;
+  if (data && data.error) {
+    const err = new Error(data.error);
+    err.backendMessage = data.error;
+    throw err;
+  }
+
+  return data;
 }
 
 /**

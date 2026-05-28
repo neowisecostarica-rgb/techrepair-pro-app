@@ -1070,7 +1070,7 @@ function OrdenesTrabajoContent() {
 
                 {/* Reasignar Técnico */}
                 {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) &&
-                  ['EN_REVISION', 'DIAGNOSTICADA', 'PAUSADO', 'ESPERANDO'].includes(selectedOT.estado) && (
+                  !['ENTREGADA', 'CANCELADA'].includes(selectedOT.estado) && (
                   <Button 
                     onClick={() => {
                       setReasignarOT(selectedOT);

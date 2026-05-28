@@ -3,11 +3,12 @@
  * ============================================================
  * ARCHIVO:       functions/reassignWorkOrderTechnician.js
  * PROPÓSITO:     Reasignar el técnico responsable de una OrdenTrabajo.
- *                Aplica control de acceso por rol antes de ejecutar
- *                cualquier modificación.
+ *                Aplica control de acceso por rol REAL desde UserAccount
+ *                antes de ejecutar cualquier modificación.
  *
  * RESPONSABILIDADES:
  *   - Autenticar al usuario llamante
+ *   - Resolver rol REAL desde UserAccount (no user.role built-in)
  *   - Verificar que el rol del usuario esté autorizado para reasignar
  *   - Validar ownership de la OT dentro de la organización
  *   - Actualizar SOLO tecnico_asignado_id (y email opcional)
@@ -18,16 +19,15 @@
  *   - NO modifica ultima_actividad ni timestamps de lifecycle
  *
  * DEPENDENCIAS CRÍTICAS:
- *   - base44.auth.me() — fuente de verdad de identidad y rol
+ *   - base44.auth.me() — fuente de verdad de identidad
+ *   - UserAccount.role — fuente de verdad del rol operacional
  *   - base44.asServiceRole.entities.OrdenTrabajo — acceso a datos
- *   - UserAccount.role — campo de rol leído desde user.role
  *
  * ESTADO:        ACTIVE CORE
  *
  * RIESGOS CONOCIDOS:
- *   - Si user.role no está sincronizado correctamente con UserAccount,
- *     el enforcement puede fallar silenciosamente.
- *     Mitigación: la validación bloquea roles no listados explícitamente.
+ *   - Si UserAccount no existe para el user, la función retorna 403.
+ *     Esto es comportamiento correcto: sin UserAccount no hay contexto operacional.
  *
  * OWNER CONCEPTUAL: Operaciones / Branch Admin
  * ============================================================
@@ -35,21 +35,49 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// Roles autorizados para reasignar técnicos
-const ROLES_AUTORIZADOS = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'admin'];
+// Roles operacionales autorizados para reasignar técnicos
+const ROLES_AUTORIZADOS = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // 1. Auth
+    // 1. Auth — identidad del llamante
     const user = await base44.auth.me();
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Enforcement de roles — SOLO roles autorizados pueden reasignar
-    const userRole = user.role;
+    // 2. Resolver organization_id defensivamente
+    // Prioridad: impersonating > user.organization_id > buscar en UserAccount
+    let orgId = user.impersonating_org_id || user.organization_id;
+
+    // 3. Resolver UserAccount REAL para obtener rol operacional y org si falta
+    const userAccounts = await base44.asServiceRole.entities.UserAccount.filter({
+      user_id: user.id,
+    }, 5);
+
+    let userAccount = null;
+    if (userAccounts && userAccounts.length > 0) {
+      // Si hay impersonation o organization_id ya resuelto, buscar el account correcto
+      if (orgId) {
+        userAccount = userAccounts.find(a => a.organization_id === orgId) || userAccounts[0];
+      } else {
+        userAccount = userAccounts[0];
+        orgId = userAccount.organization_id;
+      }
+    }
+
+    if (!orgId) {
+      return Response.json({ error: 'organization_id no resuelto' }, { status: 403 });
+    }
+
+    if (!userAccount) {
+      return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
+    }
+
+    // 4. Enforcement de roles usando UserAccount.role REAL
+    const userRole = userAccount.role;
     if (!ROLES_AUTORIZADOS.includes(userRole)) {
       console.warn(`[reassignWorkOrderTechnician] Acceso denegado — rol: ${userRole}, user: ${user.email}`);
       return Response.json(
@@ -58,12 +86,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const orgId = user.organization_id || user.impersonating_org_id;
-    if (!orgId) {
-      return Response.json({ error: 'organization_id no resuelto' }, { status: 403 });
-    }
-
-    // 3. Payload
+    // 5. Payload
     let body;
     try {
       body = await req.json();
@@ -80,7 +103,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Validar ownership de la OT dentro de la organización
+    // 6. Validar ownership de la OT dentro de la organización
     const ordenes = await base44.asServiceRole.entities.OrdenTrabajo.filter({
       id: orden_trabajo_id,
       organization_id: orgId,
@@ -93,7 +116,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. Update MÍNIMO — solo tecnico_asignado_id
+    // 7. Update MÍNIMO — solo tecnico_asignado_id
     const updatePayload = { tecnico_asignado_id };
     if (tecnico_asignado_email) {
       updatePayload.tecnico_asignado_email = tecnico_asignado_email;

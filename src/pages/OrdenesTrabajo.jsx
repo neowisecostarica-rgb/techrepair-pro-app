@@ -1416,14 +1416,14 @@ function OrdenesTrabajoContent() {
               </div>
 
               <div className="space-y-2">
-                <Label>Motivo de Reasignación *</Label>
-                <Textarea
-                  value={motivoReasignacion}
-                  onChange={(e) => setMotivoReasignacion(e.target.value)}
-                  placeholder="Ej: Carga de trabajo, ausencia, urgencia, especialización..."
-                  rows={3}
-                />
-              </div>
+                 <Label>Motivo de Reasignación (opcional)</Label>
+                 <Textarea
+                   value={motivoReasignacion}
+                   onChange={(e) => setMotivoReasignacion(e.target.value)}
+                   placeholder="Ej: Carga de trabajo, ausencia, urgencia, especialización..."
+                   rows={3}
+                 />
+               </div>
 
               <div className="flex gap-3 justify-end pt-4">
                 <Button 
@@ -1441,7 +1441,7 @@ function OrdenesTrabajoContent() {
                 <Button 
                   onClick={handleReasignar}
                   className="bg-gradient-to-r from-purple-500 to-blue-500"
-                  disabled={!nuevoTecnicoId || !motivoReasignacion.trim() || reasignando}
+                  disabled={!nuevoTecnicoId || reasignando}
                 >
                   {reasignando ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Reasignando...</>

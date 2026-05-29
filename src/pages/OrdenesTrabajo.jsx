@@ -173,16 +173,15 @@ function OrdenesTrabajoContent() {
 
   // P0.4: eliminadas queries de diagnosticos y ventas — no se usan en esta vista, causaban slowdown
 
+  // P0.2-A: workforce técnico REAL — solo TECHNICIAN es asignable como técnico de OT
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({
+      return base44.entities.UserAccount.filter({
         organization_id: effectiveOrgId,
+        role: 'TECHNICIAN',
         active: true
       });
-      return accounts.filter(acc =>
-        acc.role === 'TECHNICIAN' || acc.role === 'ORG_ADMIN' || acc.role === 'BRANCH_ADMIN'
-      );
     },
     enabled: !!effectiveOrgId,
   });
@@ -350,6 +349,13 @@ function OrdenesTrabajoContent() {
   const equiposDelCliente = selectedClienteId 
     ? equipos.filter(e => e.cliente_id === selectedClienteId)
     : [];
+
+  // P0.2-A: helper para mostrar nombre del técnico asignado desde workforce oficial
+  const getTecnicoName = (tecnicoId) => {
+    if (!tecnicoId) return 'Sin asignar';
+    const tec = tecnicos.find(t => t.user_id === tecnicoId);
+    return tec ? (tec.user_email?.split('@')[0] || tec.user_email) : 'Técnico no encontrado';
+  };
 
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
@@ -995,6 +1001,10 @@ function OrdenesTrabajoContent() {
                 <div>
                   <p className="text-xs text-slate-500">Equipo</p>
                   <p className="font-medium">{getEquipoInfo(selectedOT.equipo_id)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Técnico Asignado</p>
+                  <p className="font-medium">{getTecnicoName(selectedOT.tecnico_asignado_id)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Fecha Ingreso</p>

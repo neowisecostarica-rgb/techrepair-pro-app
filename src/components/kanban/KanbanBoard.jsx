@@ -24,12 +24,15 @@ export default function KanbanBoard({ onCardClick }) {
     },
   });
 
-  // Técnicos: resolver nombres para mostrar en tarjetas
+  // P0.2-A: workforce técnico REAL — solo TECHNICIAN para resolución de nombres en tarjetas
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['kanban-tecnicos', effectiveOrgId],
-    queryFn: () => base44.entities.UserAccount.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.UserAccount.filter({
+      organization_id: effectiveOrgId,
+      role: 'TECHNICIAN',
+    }),
     enabled: !!effectiveOrgId,
-    staleTime: 5 * 60 * 1000, // 5 min cache — datos poco cambiantes
+    staleTime: 5 * 60 * 1000,
   });
 
   // Usar estado local (optimista) si existe, si no el del servidor

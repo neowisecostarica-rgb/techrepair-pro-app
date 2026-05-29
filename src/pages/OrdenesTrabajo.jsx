@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2, Loader2, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -128,7 +128,7 @@ function OrdenesTrabajoContent() {
     created_date: orden.created_date || orden.created_at,
   });
 
-  const { data: ordenes = [] } = useQuery({
+  const { data: ordenes = [], isLoading: isLoadingOrdenes } = useQuery({
     queryKey: ['ordenes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
@@ -136,7 +136,7 @@ function OrdenesTrabajoContent() {
       return (response.data || []).map(normalizarOrden);
     },
     enabled: !!effectiveOrgId,
-    staleTime: 30 * 1000, // P0.4: 30s stale — evita re-fetch en cada navegación
+    staleTime: 30 * 1000,
   });
 
   // P0.4: Se eliminó el loop de carga de estados de pago (N queries secuenciales).
@@ -368,12 +368,15 @@ function OrdenesTrabajoContent() {
     return `${equipo.marca || equipo.brand || ''} ${equipo.modelo || equipo.model || ''}`.trim() || 'Equipo sin identificar';
   };
 
+  const [reasignando, setReasignando] = useState(false);
+
   const handleReasignar = async () => {
     if (!reasignarOT || !nuevoTecnicoId || !motivoReasignacion.trim()) {
-      alert('Completa todos los campos requeridos');
+      toast({ variant: 'destructive', title: 'Completa todos los campos requeridos' });
       return;
     }
 
+    setReasignando(true);
     try {
       const tecnico = tecnicos.find(t => t.user_id === nuevoTecnicoId);
       const res = await base44.functions.invoke('reassignWorkOrderTechnician', {
@@ -382,12 +385,10 @@ function OrdenesTrabajoContent() {
         tecnico_asignado_email: tecnico?.user_email || '',
       });
 
-      // P0.3: verificar que el backend confirmó el cambio antes de cerrar
       if (!res?.data?.success) {
         throw new Error(res?.data?.error || 'La reasignación no fue confirmada por el servidor');
       }
 
-      // P0.3 + P0.4: invalidar todas las query keys que muestran técnico
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       queryClient.invalidateQueries({ queryKey: ['listWorkOrders'] });
 
@@ -395,11 +396,13 @@ function OrdenesTrabajoContent() {
       setReasignarOT(null);
       setNuevoTecnicoId('');
       setMotivoReasignacion('');
-      toast({ title: 'Técnico reasignado correctamente' });
+      toast({ title: '✅ Técnico reasignado correctamente', duration: 3000 });
     } catch (error) {
       console.error('Error reasignando técnico:', error);
       const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
-      toast({ variant: 'destructive', title: 'Error al reasignar técnico', description: msg });
+      toast({ variant: 'destructive', title: 'Error al reasignar técnico', description: msg, duration: 4000 });
+    } finally {
+      setReasignando(false);
     }
   };
 
@@ -451,8 +454,16 @@ function OrdenesTrabajoContent() {
       {/* Vista Lista */}
       {vistaActiva === 'lista' && <>
 
+      {/* Loading spinner */}
+      {isLoadingOrdenes && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mr-3" />
+          <span className="text-slate-500">Cargando órdenes...</span>
+        </div>
+      )}
+
       {/* Filtros */}
-      <Card className="border-0 shadow-lg">
+      {!isLoadingOrdenes && <Card className="border-0 shadow-lg">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -477,10 +488,10 @@ function OrdenesTrabajoContent() {
             </Select>
           </div>
         </CardContent>
-      </Card>
+        </Card>}
 
-      {/* Lista de Órdenes */}
-      <div className="grid gap-4">
+        {/* Lista de Órdenes */}
+        {!isLoadingOrdenes && <div className="grid gap-4">
         {ordenesFiltradas.map((orden) => {
           const config = estadoConfig[orden.estado] || estadoConfig.EN_COLA_REVISION;
           
@@ -514,7 +525,7 @@ function OrdenesTrabajoContent() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 items-center">
                       <Badge className={`${config.color} border-0`}>
                         {config.label}
                       </Badge>
@@ -529,6 +540,11 @@ function OrdenesTrabajoContent() {
                       {estadosPago[orden.id] && (
                         <BadgeEstadoPago status={estadosPago[orden.id].status} />
                       )}
+                      {/* P0.2-B: Técnico asignado en lista */}
+                      <span className="flex items-center gap-1 text-xs text-slate-500 ml-1">
+                        <User className="w-3 h-3" />
+                        {getTecnicoName(orden.tecnico_asignado_id)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -545,7 +561,7 @@ function OrdenesTrabajoContent() {
             </CardContent>
           </Card>
         )}
-      </div>
+      </div>}
       </> }{/* fin vistaActiva lista */}
 
       {/* Modal Crear OT */}
@@ -1084,7 +1100,8 @@ function OrdenesTrabajoContent() {
                   <Button 
                     onClick={() => {
                       setReasignarOT(selectedOT);
-                      setNuevoTecnicoId(selectedOT.tecnico_asignado_id || '');
+                      setNuevoTecnicoId(''); // P0.2-B: forzar selección explícita — no pre-cargar técnico actual
+                      setMotivoReasignacion('');
                       setShowReasignar(true);
                     }}
                     variant="outline"
@@ -1424,9 +1441,11 @@ function OrdenesTrabajoContent() {
                 <Button 
                   onClick={handleReasignar}
                   className="bg-gradient-to-r from-purple-500 to-blue-500"
-                  disabled={!nuevoTecnicoId || !motivoReasignacion.trim()}
+                  disabled={!nuevoTecnicoId || !motivoReasignacion.trim() || reasignando}
                 >
-                  Confirmar Reasignación
+                  {reasignando ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Reasignando...</>
+                  ) : 'Confirmar Reasignación'}
                 </Button>
               </div>
             </div>

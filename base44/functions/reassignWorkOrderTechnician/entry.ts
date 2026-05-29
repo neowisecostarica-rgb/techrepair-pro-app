@@ -147,6 +147,24 @@ Deno.serve(async (req) => {
         tecnico_asignado_email: tecnico_asignado_email || null,
         observacion: `Técnico asignado y OT movida a ASIGNADA por ${user.email}`,
       });
+
+      // Validar que la transición fue exitosa
+      const transitionData = transitionResult?.data ?? transitionResult;
+      if (!transitionData?.success) {
+        const errorMsg = transitionData?.error || 'transitionWorkOrderStatus no retornó success=true';
+        console.error(`[reassignWorkOrderTechnician] Transición ASIGNADA FALLÓ — OT: ${orden_trabajo_id} — Error: ${errorMsg}`);
+        return Response.json({
+          success: false,
+          error: `Técnico actualizado pero la transición de estado falló: ${errorMsg}`,
+          code: 'TRANSITION_FAILED',
+          orden_trabajo_id,
+          tecnico_asignado_id,
+          estado_anterior: estadoActual,
+          updated_ot: updatedOT,
+          transition_error: errorMsg,
+        }, { status: 422 });
+      }
+
       console.log(`[reassignWorkOrderTechnician] Transición ASIGNADA completada — OT: ${orden_trabajo_id}`);
     } else {
       console.log(`[reassignWorkOrderTechnician] Estado ${estadoActual} — solo se actualiza técnico, lifecycle intacto`);

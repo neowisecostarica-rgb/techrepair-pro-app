@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 300; // ms after dismiss animation before removing from DOM
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -110,7 +110,9 @@ function dispatch(action) {
   });
 }
 
-function toast({ ...props }) {
+const DEFAULT_DURATION = 5000; // ms
+
+function toast({ duration, ...props }) {
   const id = genId();
 
   const update = (props) =>
@@ -133,6 +135,12 @@ function toast({ ...props }) {
       },
     },
   });
+
+  // Auto-dismiss after duration (default 5s; pass duration=Infinity to disable)
+  const autoDismissMs = duration === Infinity ? null : (duration ?? DEFAULT_DURATION);
+  if (autoDismissMs !== null) {
+    setTimeout(dismiss, autoDismissMs);
+  }
 
   return {
     id,
@@ -161,4 +169,4 @@ function useToast() {
   };
 }
 
-export { useToast, toast }; 
+export { useToast, toast };

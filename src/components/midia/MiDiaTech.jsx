@@ -134,6 +134,11 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   
   const ordenesEsperando = ordenes.filter(o => o.estado_atencion === 'ESPERANDO');
 
+  // OTs asignadas al técnico que aún no han sido iniciadas (estado_atencion = null)
+  const ordenesPorIniciar = ordenes.filter(
+    o => o.estado === 'ASIGNADA' && !o.estado_atencion
+  );
+
   const tieneDiagnostico = (otId) => {
     return diagnosticos.some(d => d.orden_trabajo_id === otId);
   };
@@ -522,6 +527,105 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             </CardContent>
           </Card>
         )}
+      </div>
+
+      {/* Sección POR INICIAR */}
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">
+          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+            <Play className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Por Iniciar</h2>
+          <Badge variant="outline" className="ml-auto border-emerald-300 text-emerald-700 font-semibold">
+            {ordenesPorIniciar.length}
+          </Badge>
+        </div>
+
+        <div className="grid gap-4">
+          {ordenesPorIniciar.map((orden) => (
+            <Card key={orden.id} className="border-0 shadow-md hover:shadow-xl transition-all ring-1 ring-emerald-200">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white font-bold">
+                        <Play className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-lg">
+                          {getClienteName(orden.cliente_id)} — {getEquipoInfo(orden.equipo_id)}
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          {orden.codigo_ot} • {orden.motivo_ingreso}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <Badge className="bg-emerald-100 text-emerald-700 border-0">
+                        ASIGNADA
+                      </Badge>
+                      {estadosPago[orden.id] && (
+                        <BadgeEstadoPago status={estadosPago[orden.id].status} />
+                      )}
+                      <Badge className={`${
+                        orden.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
+                        orden.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
+                        'bg-slate-100 text-slate-700'
+                      } border-0 capitalize`}>
+                        {orden.prioridad}
+                      </Badge>
+                    </div>
+
+                    {orden.fecha_entrega_estimada && (
+                      <p className="text-sm text-slate-500">
+                        Entrega estimada: {orden.fecha_entrega_estimada}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      onClick={() => handleIniciarRevision(orden)}
+                      disabled={botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-500"
+                    >
+                      {botonesDeshabilitados[`iniciar_revision_${orden.id}`] ? (
+                        <>
+                          <Clock className="w-4 h-4 mr-2 animate-spin" />
+                          Iniciando...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 mr-2" />
+                          Iniciar Revisión
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => handleVerDetalle(orden)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-600"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Ver Detalle
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {ordenesPorIniciar.length === 0 && (
+            <Card className="border-0 shadow-md">
+              <CardContent className="p-8 text-center">
+                <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-400" />
+                <p className="text-slate-500">No hay órdenes pendientes de iniciar</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Sección PAUSADOS */}

@@ -11,12 +11,14 @@
  *   - Resolver rol REAL desde UserAccount (no user.role built-in)
  *   - Verificar que el rol del usuario esté autorizado para reasignar
  *   - Validar ownership de la OT dentro de la organización
- *   - Actualizar SOLO tecnico_asignado_id (y email opcional)
+ *   - Actualizar tecnico_asignado_id (y email opcional)
+ *   - Si estado actual es EN_COLA_REVISION → invocar transitionWorkOrderStatus
+ *     para mover la OT a ASIGNADA (genera OTEvent, mantiene trazabilidad)
+ *   - Para cualquier otro estado: solo actualiza técnico, NO toca lifecycle
  *
  * LÍMITES:
- *   - NO actualiza estado, lifecycle, OTEvent, ni analytics
- *   - NO invoca transitionWorkOrderStatus
- *   - NO modifica ultima_actividad ni timestamps de lifecycle
+ *   - NO modifica ultima_actividad ni timestamps de lifecycle directamente
+ *   - NO actualiza estado directamente (delega a transitionWorkOrderStatus)
  *
  * DEPENDENCIAS CRÍTICAS:
  *   - base44.auth.me() — fuente de verdad de identidad
@@ -116,7 +118,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 7. Update MÍNIMO — solo tecnico_asignado_id
+    const ot = ordenes[0];
+    const estadoActual = ot.estado;
+
+    // 7. Update — tecnico_asignado_id (y email opcional)
     const updatePayload = { tecnico_asignado_id };
     if (tecnico_asignado_email) {
       updatePayload.tecnico_asignado_email = tecnico_asignado_email;
@@ -127,13 +132,35 @@ Deno.serve(async (req) => {
       updatePayload
     );
 
-    console.log(`[reassignWorkOrderTechnician] OT ${orden_trabajo_id} reasignada por ${user.email} (${userRole})`);
+    console.log(`[reassignWorkOrderTechnician] OT ${orden_trabajo_id} reasignada a técnico ${tecnico_asignado_id} por ${user.email} (${userRole}). Estado actual: ${estadoActual}`);
+
+    // 8. Semántica de asignación: EN_COLA_REVISION → ASIGNADA
+    // REGLA: Solo aplica si el estado actual es EN_COLA_REVISION.
+    // Para cualquier otro estado, NO se toca el lifecycle.
+    let transitionResult = null;
+    if (estadoActual === 'EN_COLA_REVISION') {
+      console.log(`[reassignWorkOrderTechnician] Estado EN_COLA_REVISION detectado — invocando transitionWorkOrderStatus → ASIGNADA`);
+      transitionResult = await base44.asServiceRole.functions.invoke('transitionWorkOrderStatus', {
+        orden_trabajo_id,
+        newStatus: 'ASIGNADA',
+        tecnico_asignado_id,
+        tecnico_asignado_email: tecnico_asignado_email || null,
+        observacion: `Técnico asignado y OT movida a ASIGNADA por ${user.email}`,
+      });
+      console.log(`[reassignWorkOrderTechnician] Transición ASIGNADA completada — OT: ${orden_trabajo_id}`);
+    } else {
+      console.log(`[reassignWorkOrderTechnician] Estado ${estadoActual} — solo se actualiza técnico, lifecycle intacto`);
+    }
 
     return Response.json({
       success: true,
       orden_trabajo_id,
       tecnico_asignado_id,
+      estado_anterior: estadoActual,
+      estado_actual: estadoActual === 'EN_COLA_REVISION' ? 'ASIGNADA' : estadoActual,
+      lifecycle_transitioned: estadoActual === 'EN_COLA_REVISION',
       updated_ot: updatedOT,
+      transition_result: transitionResult,
     });
 
   } catch (error) {

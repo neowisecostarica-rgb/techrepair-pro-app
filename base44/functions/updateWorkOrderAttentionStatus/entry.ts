@@ -61,11 +61,16 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // ── 4. Resolver organization_id del usuario ─────────────────────────────────
-    const orgId = user.organization_id || user.impersonating_org_id;
+    // ── 4. Resolver organization_id — PATRÓN OFICIAL CONSOLIDADO ────────────────
+    let orgId = user.impersonating_org_id || user.organization_id;
+    if (!orgId && user.id) {
+      const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 1);
+      if (accounts && accounts.length > 0) orgId = accounts[0].organization_id || null;
+    }
     if (!orgId) {
       return Response.json({ error: 'organization_id no disponible en sesión' }, { status: 403 });
     }
+    // ── FIN PATRÓN OFICIAL ────────────────────────────────────────────────────
 
     // ── 5. Cargar OrdenTrabajo y validar ownership ──────────────────────────────
     let ot;

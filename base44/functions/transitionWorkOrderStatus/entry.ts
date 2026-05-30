@@ -88,11 +88,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    // ── 2. Resolver organization_id ───────────────────────────────────────────
-    const orgId = user.organization_id || user.impersonating_org_id || user.data?.impersonating_org_id;
+    // ── 2. Resolver organization_id — PATRÓN OFICIAL CONSOLIDADO ─────────────
+    let orgId = user.impersonating_org_id || user.organization_id || user.data?.impersonating_org_id;
+    if (!orgId && user.id) {
+      const fallbackAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 1);
+      if (fallbackAccounts && fallbackAccounts.length > 0) orgId = fallbackAccounts[0].organization_id || null;
+    }
     if (!orgId) {
       return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
     }
+    // ── FIN PATRÓN OFICIAL ────────────────────────────────────────────────────
 
     // ── 3. Resolver rol efectivo ──────────────────────────────────────────────
     // Para SUPER_ADMIN en impersonación, permitir todas las transiciones

@@ -6,8 +6,14 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const orgId = user.organization_id || user.impersonating_org_id;
+    // ── PATRÓN OFICIAL: RESOLUCIÓN CONSOLIDADA DE organization_id ──────────────
+    let orgId = user.impersonating_org_id || user.organization_id;
+    if (!orgId && user.id) {
+      const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 1);
+      if (accounts && accounts.length > 0) orgId = accounts[0].organization_id || null;
+    }
     if (!orgId) return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
+    // ── FIN PATRÓN OFICIAL ─────────────────────────────────────────────────────
 
     const [ordenes, clientes, equipos] = await Promise.all([
       base44.entities.OrdenTrabajo.filter({ organization_id: orgId }, '-created_date', 100),

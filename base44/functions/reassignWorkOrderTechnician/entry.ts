@@ -194,8 +194,9 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error(`[reassignWorkOrderTechnician] Error: ${error.message}`);
-    console.error(`[DIAG:reassign] *** CATCH — error completo:`, JSON.stringify(error, null, 2));
-    console.error(`[DIAG:reassign] *** stack:`, error.stack);
+    console.error(`[DIAG:reassign] *** CATCH — error.name:`, error.name);
+    console.error(`[DIAG:reassign] *** CATCH — error.message:`, error.message);
+    console.error(`[DIAG:reassign] *** CATCH — error.stack:`, error.stack);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

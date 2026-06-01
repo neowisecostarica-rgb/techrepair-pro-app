@@ -69,72 +69,25 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // ── 1. Auth ────────────────────────────────────────────────────────────────
-    const user = await base44.auth.me();
+    // ── 1. Auth — obtener runtimeUser del contexto de ejecución inmediato ──────
+    const runtimeUser = await base44.auth.me();
     console.log(`[DIAG:transition] ===== INICIO FUNCIÓN =====`);
-    console.log(`[DIAG:transition] RAW user completo:`, JSON.stringify(user, null, 2));
-    console.log(`[DIAG:transition] user.id:`, user?.id);
-    console.log(`[DIAG:transition] user.email:`, user?.email);
-    console.log(`[DIAG:transition] user.role (base44 app level):`, user?.role);
-    console.log(`[DIAG:transition] user.organization_id:`, user?.organization_id);
-    console.log(`[DIAG:transition] user.impersonating_org_id:`, user?.impersonating_org_id);
-    console.log(`[DIAG:transition] user.is_super_admin:`, user?.is_super_admin);
-    console.log(`[DIAG:transition] user.data completo:`, JSON.stringify(user?.data, null, 2));
+    console.log(`[DIAG:transition] RAW runtimeUser completo:`, JSON.stringify(runtimeUser, null, 2));
+    console.log(`[DIAG:transition] runtimeUser.id:`, runtimeUser?.id);
+    console.log(`[DIAG:transition] runtimeUser.email:`, runtimeUser?.email);
+    console.log(`[DIAG:transition] runtimeUser.role (base44 app level):`, runtimeUser?.role);
+    console.log(`[DIAG:transition] runtimeUser.organization_id:`, runtimeUser?.organization_id);
+    console.log(`[DIAG:transition] runtimeUser.impersonating_org_id:`, runtimeUser?.impersonating_org_id);
+    console.log(`[DIAG:transition] runtimeUser.is_super_admin:`, runtimeUser?.is_super_admin);
+    console.log(`[DIAG:transition] runtimeUser.data completo:`, JSON.stringify(runtimeUser?.data, null, 2));
 
-    if (!user) {
+    if (!runtimeUser) {
       return Response.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    // ── 2. Resolver organization_id ───────────────────────────────────────────
-    let orgId = user.impersonating_org_id || user.organization_id || user.data?.impersonating_org_id;
-    console.log(`[DIAG:transition] orgId paso1 (impersonating||org_id||data.impersonating):`, orgId);
-
-    if (!orgId && user.id) {
-      const fallbackAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 1);
-      console.log(`[DIAG:transition] fallback UserAccount.filter({ user_id: '${user?.id}' }) → count:`, fallbackAccounts?.length);
-      console.log(`[DIAG:transition] fallback UserAccount resultado:`, JSON.stringify(fallbackAccounts, null, 2));
-      if (fallbackAccounts && fallbackAccounts.length > 0) orgId = fallbackAccounts[0].organization_id || null;
-    }
-
-    console.log(`[DIAG:transition] orgId FINAL resuelto:`, orgId);
-
-    if (!orgId) {
-      console.error(`[DIAG:transition] *** 403: orgId no resuelto ***`);
-      return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
-    }
-
-    // ── 3. Resolver rol efectivo ──────────────────────────────────────────────
-    const isSuperAdmin = user.is_super_admin === true || user.data?.is_super_admin === true;
-    let effectiveRole = user.role;
-    console.log(`[DIAG:transition] isSuperAdmin:`, isSuperAdmin);
-    console.log(`[DIAG:transition] effectiveRole inicial (user.role):`, effectiveRole);
-
-    if (!isSuperAdmin) {
-      const accounts = await base44.asServiceRole.entities.UserAccount.filter({
-        user_id: user.id,
-        organization_id: orgId,
-      }, 1);
-      console.log(`[DIAG:transition] UserAccount.filter({ user_id: '${user?.id}', organization_id: '${orgId}' }) → count:`, accounts?.length);
-      console.log(`[DIAG:transition] UserAccount resultado completo:`, JSON.stringify(accounts, null, 2));
-
-      if (!accounts || accounts.length === 0) {
-        console.error(`[DIAG:transition] *** 403: accounts.length===0 — user_id=${user?.id}, orgId=${orgId} ***`);
-        return Response.json({ error: 'Usuario sin cuenta activa en esta organización' }, { status: 403 });
-      }
-
-      const account = accounts[0];
-      if (account.status === 'suspended') {
-        console.error(`[DIAG:transition] *** 403: cuenta suspendida — user_id=${user?.id} ***`);
-        return Response.json({ error: 'Cuenta suspendida' }, { status: 403 });
-      }
-
-      effectiveRole = account.role;
-      console.log(`[DIAG:transition] effectiveRole FINAL (de UserAccount):`, effectiveRole);
-    } else {
-      console.log(`[DIAG:transition] isSuperAdmin=true — saltando lookup de UserAccount`);
-    }
-
-    // ── 4. Parsear body ───────────────────────────────────────────────────────
+    // ── 2. Parsear body y detectar _callingUserContext ─────────────────────────
+    // IMPORTANTE: el body se parsea ANTES de resolver identidad para poder detectar
+    // si la llamada proviene de un contexto service role (otra función de backend).
     const body = await req.json();
     const {
       orden_trabajo_id,
@@ -142,7 +95,97 @@ Deno.serve(async (req) => {
       observacion,
       tecnico_asignado_id,
       tecnico_asignado_email,
+      _callingUserContext,
     } = body;
+
+    // ── 3. Resolver identidad efectiva ────────────────────────────────────────
+    // Si _callingUserContext está presente, la llamada proviene de otra función de backend
+    // vía base44.asServiceRole.functions.invoke(). En ese caso, runtimeUser es el service role
+    // y _callingUserContext contiene la identidad real del usuario que inició la acción.
+    // Si NO está presente, la llamada es directa desde frontend: usar runtimeUser y su UserAccount.
+    let effectiveUser;
+    let orgId;
+    let effectiveRole;
+    let isSuperAdmin;
+
+    if (_callingUserContext) {
+      // ── Rama A: Invocación desde otra función de backend (service role) ──────
+      console.log(`[DIAG:transition] _callingUserContext DETECTADO — usando identidad del llamante original`);
+      console.log(`[DIAG:transition] _callingUserContext:`, JSON.stringify(_callingUserContext, null, 2));
+
+      effectiveUser  = _callingUserContext;
+      orgId          = _callingUserContext.organization_id;
+      effectiveRole  = _callingUserContext.role;
+      isSuperAdmin   = _callingUserContext.is_super_admin === true;
+
+      if (!orgId) {
+        console.error(`[DIAG:transition] *** 403: _callingUserContext.organization_id ausente ***`);
+        return Response.json({ error: 'organization_id ausente en _callingUserContext' }, { status: 403 });
+      }
+      if (!effectiveRole) {
+        console.error(`[DIAG:transition] *** 403: _callingUserContext.role ausente ***`);
+        return Response.json({ error: 'role ausente en _callingUserContext' }, { status: 403 });
+      }
+
+      console.log(`[DIAG:transition] [Rama A] effectiveUser.id=${effectiveUser.id}, orgId=${orgId}, effectiveRole=${effectiveRole}, isSuperAdmin=${isSuperAdmin}`);
+
+    } else {
+      // ── Rama B: Invocación directa desde frontend — usar runtimeUser ──────────
+      // _callingUserContext es ignorado completamente si proviene de frontend (ya fue ignorado al no existir).
+      console.log(`[DIAG:transition] Sin _callingUserContext — usando runtimeUser de auth.me()`);
+
+      // Resolver organization_id
+      orgId = runtimeUser.impersonating_org_id || runtimeUser.organization_id || runtimeUser.data?.impersonating_org_id;
+      console.log(`[DIAG:transition] orgId paso1 (impersonating||org_id||data.impersonating):`, orgId);
+
+      if (!orgId && runtimeUser.id) {
+        const fallbackAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: runtimeUser.id }, 1);
+        console.log(`[DIAG:transition] fallback UserAccount.filter({ user_id: '${runtimeUser?.id}' }) → count:`, fallbackAccounts?.length);
+        console.log(`[DIAG:transition] fallback UserAccount resultado:`, JSON.stringify(fallbackAccounts, null, 2));
+        if (fallbackAccounts && fallbackAccounts.length > 0) orgId = fallbackAccounts[0].organization_id || null;
+      }
+
+      console.log(`[DIAG:transition] orgId FINAL resuelto:`, orgId);
+
+      if (!orgId) {
+        console.error(`[DIAG:transition] *** 403: orgId no resuelto ***`);
+        return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
+      }
+
+      // Resolver rol efectivo
+      isSuperAdmin  = runtimeUser.is_super_admin === true || runtimeUser.data?.is_super_admin === true;
+      effectiveRole = runtimeUser.role;
+      console.log(`[DIAG:transition] isSuperAdmin:`, isSuperAdmin);
+      console.log(`[DIAG:transition] effectiveRole inicial (runtimeUser.role):`, effectiveRole);
+
+      if (!isSuperAdmin) {
+        const accounts = await base44.asServiceRole.entities.UserAccount.filter({
+          user_id: runtimeUser.id,
+          organization_id: orgId,
+        }, 1);
+        console.log(`[DIAG:transition] UserAccount.filter({ user_id: '${runtimeUser?.id}', organization_id: '${orgId}' }) → count:`, accounts?.length);
+        console.log(`[DIAG:transition] UserAccount resultado completo:`, JSON.stringify(accounts, null, 2));
+
+        if (!accounts || accounts.length === 0) {
+          console.error(`[DIAG:transition] *** 403: accounts.length===0 — user_id=${runtimeUser?.id}, orgId=${orgId} ***`);
+          return Response.json({ error: 'Usuario sin cuenta activa en esta organización' }, { status: 403 });
+        }
+
+        const account = accounts[0];
+        if (account.status === 'suspended') {
+          console.error(`[DIAG:transition] *** 403: cuenta suspendida — user_id=${runtimeUser?.id} ***`);
+          return Response.json({ error: 'Cuenta suspendida' }, { status: 403 });
+        }
+
+        effectiveRole = account.role;
+        console.log(`[DIAG:transition] effectiveRole FINAL (de UserAccount):`, effectiveRole);
+      } else {
+        console.log(`[DIAG:transition] isSuperAdmin=true — saltando lookup de UserAccount`);
+      }
+
+      effectiveUser = runtimeUser;
+      console.log(`[DIAG:transition] [Rama B] effectiveUser.id=${effectiveUser?.id}, orgId=${orgId}, effectiveRole=${effectiveRole}, isSuperAdmin=${isSuperAdmin}`);
+    }
 
     if (!orden_trabajo_id) {
       return Response.json({ error: 'orden_trabajo_id es obligatorio' }, { status: 400 });
@@ -273,34 +316,34 @@ Deno.serve(async (req) => {
       const transitionType = TRANSITION_EVENT_MAP[newStatus];
 
       if (isCanonical) {
-        const existingCanonical = await base44.asServiceRole.entities.OTEvent.filter({
-          orden_trabajo_id: orden_trabajo_id,
-          tipo: newStatus,
-        }, 1);
-        if (!existingCanonical || existingCanonical.length === 0) {
-          await base44.asServiceRole.entities.OTEvent.create({
-            organization_id: orgId,
-            orden_trabajo_id: orden_trabajo_id,
-            tipo: newStatus,
-            created_by_user_id: user.id,
-            processed: false,
-            created_at: now,
-          });
-          console.log(`[transitionWorkOrderStatus] OTEvent canónico ${newStatus} — OT: ${orden_trabajo_id}`);
-        } else {
-          console.log(`[transitionWorkOrderStatus] OTEvent canónico ${newStatus} ya existe (idempotencia) — OT: ${orden_trabajo_id}`);
-        }
-      }
-
-      if (transitionType) {
+      const existingCanonical = await base44.asServiceRole.entities.OTEvent.filter({
+        orden_trabajo_id: orden_trabajo_id,
+        tipo: newStatus,
+      }, 1);
+      if (!existingCanonical || existingCanonical.length === 0) {
         await base44.asServiceRole.entities.OTEvent.create({
           organization_id: orgId,
           orden_trabajo_id: orden_trabajo_id,
-          tipo: transitionType,
-          created_by_user_id: user.id,
+          tipo: newStatus,
+          created_by_user_id: effectiveUser.id,
           processed: false,
           created_at: now,
         });
+        console.log(`[transitionWorkOrderStatus] OTEvent canónico ${newStatus} — OT: ${orden_trabajo_id}`);
+      } else {
+        console.log(`[transitionWorkOrderStatus] OTEvent canónico ${newStatus} ya existe (idempotencia) — OT: ${orden_trabajo_id}`);
+      }
+      }
+
+      if (transitionType) {
+      await base44.asServiceRole.entities.OTEvent.create({
+        organization_id: orgId,
+        orden_trabajo_id: orden_trabajo_id,
+        tipo: transitionType,
+        created_by_user_id: effectiveUser.id,
+        processed: false,
+        created_at: now,
+      });
         console.log(`[transitionWorkOrderStatus] OTEvent ${transitionType} — OT: ${orden_trabajo_id}`);
       }
 
@@ -308,8 +351,8 @@ Deno.serve(async (req) => {
       console.warn('[transitionWorkOrderStatus] trazabilidad_fallida:', traceError.message);
     }
 
-    console.log(`[transitionWorkOrderStatus] OK — OT: ${orden_trabajo_id}, ${currentStatus} → ${newStatus}, usuario: ${user.email}, rol: ${effectiveRole}`);
-    console.log(`[DIAG:transition] ===== RESPUESTA EXITOSA — user.id=${user?.id}, email=${user?.email}, effectiveRole=${effectiveRole}, orgId=${orgId} =====`);
+    console.log(`[transitionWorkOrderStatus] OK — OT: ${orden_trabajo_id}, ${currentStatus} → ${newStatus}, usuario: ${effectiveUser.email}, rol: ${effectiveRole}`);
+    console.log(`[DIAG:transition] ===== RESPUESTA EXITOSA — effectiveUser.id=${effectiveUser?.id}, email=${effectiveUser?.email}, effectiveRole=${effectiveRole}, orgId=${orgId} =====`);
 
     return Response.json({
       success: true,
@@ -317,7 +360,7 @@ Deno.serve(async (req) => {
       previous_status: currentStatus,
       new_status: newStatus,
       updated_at: now,
-      updated_by: user.email,
+      updated_by: effectiveUser.email,
       updated_by_role: effectiveRole,
       orden_trabajo: updatedOT,
     });

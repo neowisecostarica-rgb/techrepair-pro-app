@@ -135,12 +135,25 @@ Deno.serve(async (req) => {
       }));
       console.log(`[DIAG:reassign] CONTEXTO: asServiceRole.functions.invoke — NO lleva user token del llamante original`);
 
+      // Construir contexto del usuario original para propagarlo a transitionWorkOrderStatus.
+      // _callingUserContext es construido exclusivamente aquí en backend a partir de fuentes verificadas.
+      const callingUserContext = {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        organization_id: orgId,
+        role: userRole,
+        is_super_admin: user.is_super_admin === true || user.data?.is_super_admin === true,
+      };
+      console.log(`[DIAG:reassign] _callingUserContext construido:`, JSON.stringify(callingUserContext, null, 2));
+
       transitionResult = await base44.asServiceRole.functions.invoke('transitionWorkOrderStatus', {
         orden_trabajo_id,
         newStatus: 'ASIGNADA',
         tecnico_asignado_id,
         tecnico_asignado_email: tecnico_asignado_email || null,
         observacion: `Técnico asignado y OT movida a ASIGNADA por ${user.email}`,
+        _callingUserContext: callingUserContext,
       });
 
       console.log(`[DIAG:reassign] *** RESPUESTA COMPLETA de transitionWorkOrderStatus:`, JSON.stringify(transitionResult, null, 2));

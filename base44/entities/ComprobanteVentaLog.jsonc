@@ -1,0 +1,117 @@
+{
+  "name": "ComprobanteVentaLog",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "venta_id": {
+      "type": "string",
+      "description": "ID de la venta asociada"
+    },
+    "accion": {
+      "type": "string",
+      "enum": [
+        "reimpresion",
+        "reenvio_whatsapp",
+        "reenvio_email",
+        "impresion_original",
+        "envio_original"
+      ],
+      "description": "Tipo de acci\u00f3n realizada"
+    },
+    "canal": {
+      "type": "string",
+      "enum": [
+        "impresion",
+        "whatsapp",
+        "email"
+      ],
+      "description": "Canal utilizado"
+    },
+    "formato": {
+      "type": "string",
+      "enum": [
+        "80mm",
+        "a4",
+        "normal"
+      ],
+      "description": "Formato del comprobante"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID del usuario que ejecut\u00f3 la acci\u00f3n"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email del usuario que ejecut\u00f3 la acci\u00f3n"
+    },
+    "destinatario": {
+      "type": "string",
+      "description": "Email o tel\u00e9fono destino (si aplica)"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales"
+    }
+  },
+  "required": [
+    "organization_id",
+    "venta_id",
+    "accion",
+    "canal",
+    "user_id",
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

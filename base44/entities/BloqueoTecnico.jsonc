@@ -1,0 +1,120 @@
+{
+  "name": "BloqueoTecnico",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la orden de trabajo"
+    },
+    "tecnico_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico"
+    },
+    "tipo_bloqueo": {
+      "type": "string",
+      "enum": [
+        "falta_aprobacion",
+        "falta_repuesto",
+        "espera_cliente",
+        "otro"
+      ],
+      "description": "Tipo de bloqueo"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n del bloqueo"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "activo",
+        "resuelto"
+      ],
+      "default": "activo",
+      "description": "Estado del bloqueo"
+    },
+    "resuelto_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de resoluci\u00f3n"
+    },
+    "resuelto_por": {
+      "type": "string",
+      "description": "ID del usuario que resolvi\u00f3"
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "tecnico_id",
+    "tipo_bloqueo",
+    "descripcion",
+    "estado"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

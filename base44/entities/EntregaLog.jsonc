@@ -1,0 +1,114 @@
+{
+  "name": "EntregaLog",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la OT entregada"
+    },
+    "delivered_by_user_id": {
+      "type": "string",
+      "description": "ID del usuario que entreg\u00f3"
+    },
+    "delivered_by_role": {
+      "type": "string",
+      "description": "Rol del usuario que entreg\u00f3"
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp exacto de entrega"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "IP del dispositivo (si disponible)"
+    },
+    "checkbox_texto_legal": {
+      "type": "string",
+      "description": "Texto exacto del checkbox aceptado (inmutable)"
+    },
+    "nota_entrega": {
+      "type": "string",
+      "description": "Nota opcional de entrega"
+    },
+    "entrega_con_saldo_pendiente": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si se entreg\u00f3 con saldo pendiente"
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "delivered_by_user_id",
+    "delivered_by_role",
+    "delivered_at",
+    "checkbox_texto_legal"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

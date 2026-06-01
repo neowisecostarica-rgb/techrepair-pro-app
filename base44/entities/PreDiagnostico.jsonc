@@ -1,0 +1,102 @@
+{
+  "name": "PreDiagnostico",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la Orden de Trabajo asociada"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "borrador",
+        "completado"
+      ],
+      "description": "Estado del prediagn\u00f3stico"
+    },
+    "respuestas": {
+      "type": "object",
+      "description": "Respuestas del wizard"
+    },
+    "completado_por_user_id": {
+      "type": "string",
+      "description": "Usuario que complet\u00f3 el prediagn\u00f3stico"
+    },
+    "completado_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de finalizaci\u00f3n"
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "estado"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

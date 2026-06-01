@@ -1,0 +1,96 @@
+{
+  "name": "NoConformidad",
+  "type": "object",
+  "properties": {
+    "titulo": {
+      "type": "string",
+      "description": "T\u00edtulo de la no conformidad"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "queja_cliente",
+        "retrabajo",
+        "error_proceso",
+        "falla_calidad",
+        "otro"
+      ],
+      "description": "Tipo de no conformidad"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n detallada"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de OT relacionada"
+    },
+    "venta_id": {
+      "type": "string",
+      "description": "ID de venta relacionada"
+    },
+    "reportado_por": {
+      "type": "string",
+      "description": "Email de quien reporta"
+    },
+    "severidad": {
+      "type": "string",
+      "enum": [
+        "baja",
+        "media",
+        "alta",
+        "critica"
+      ],
+      "default": "media",
+      "description": "Severidad"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "abierta",
+        "en_analisis",
+        "en_correccion",
+        "cerrada",
+        "rechazada"
+      ],
+      "default": "abierta",
+      "description": "Estado"
+    },
+    "causa_raiz": {
+      "type": "string",
+      "description": "An\u00e1lisis de causa ra\u00edz"
+    },
+    "accion_correctiva": {
+      "type": "string",
+      "description": "Acci\u00f3n correctiva propuesta"
+    },
+    "responsable_accion": {
+      "type": "string",
+      "description": "Email del responsable de la acci\u00f3n"
+    },
+    "fecha_limite": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha l\u00edmite de correcci\u00f3n"
+    },
+    "fecha_cierre": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de cierre"
+    },
+    "verificacion_eficacia": {
+      "type": "string",
+      "description": "Verificaci\u00f3n de eficacia de la acci\u00f3n"
+    },
+    "leccion_aprendida": {
+      "type": "string",
+      "description": "Lecci\u00f3n aprendida"
+    }
+  },
+  "required": [
+    "titulo",
+    "tipo",
+    "descripcion",
+    "reportado_por"
+  ]
+}

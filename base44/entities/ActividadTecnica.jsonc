@@ -1,0 +1,160 @@
+{
+  "name": "ActividadTecnica",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la OT asociada"
+    },
+    "tecnico_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico (user_id)"
+    },
+    "tecnico_email": {
+      "type": "string",
+      "description": "Email del t\u00e9cnico (facilita queries)"
+    },
+    "tipo_actividad": {
+      "type": "string",
+      "enum": [
+        "diagnostico",
+        "reparacion",
+        "instalacion",
+        "prueba",
+        "limpieza",
+        "entrega",
+        "otro"
+      ],
+      "description": "Tipo de actividad realizada"
+    },
+    "subtipo": {
+      "type": "string",
+      "description": "Detalle espec\u00edfico (ej: Cambio pantalla iPhone 11)"
+    },
+    "inventario_id": {
+      "type": "string",
+      "description": "Repuesto principal asociado (nullable)"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "en_progreso",
+        "finalizada",
+        "bloqueada"
+      ],
+      "default": "en_progreso",
+      "description": "Estado de la actividad"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Inicio de la actividad"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fin de la actividad (nullable)"
+    },
+    "duracion_minutos": {
+      "type": "number",
+      "description": "Duraci\u00f3n calculada (NO editable manual)"
+    },
+    "causa_bloqueo": {
+      "type": "string",
+      "description": "Motivo de bloqueo (REQUIRED si estado=bloqueada)"
+    },
+    "resultado": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "reproceso",
+        "incompleto"
+      ],
+      "description": "Resultado de la actividad"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales del t\u00e9cnico"
+    },
+    "soft_deleted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Soft delete para auditor\u00eda"
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "tecnico_id",
+    "tecnico_email",
+    "tipo_actividad",
+    "estado",
+    "started_at"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

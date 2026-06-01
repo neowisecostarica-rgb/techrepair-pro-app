@@ -1,0 +1,135 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "ID de la sucursal (nullable)"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha del gasto"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Monto del gasto"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "alquiler",
+        "servicios",
+        "salarios",
+        "marketing",
+        "transporte",
+        "otros"
+      ],
+      "description": "Categor\u00eda del gasto"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "once",
+        "monthly"
+      ],
+      "default": "once",
+      "description": "Frecuencia del gasto"
+    },
+    "is_fixed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si es un gasto fijo"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n del gasto"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Usuario que cre\u00f3 el registro"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "tarjeta",
+        "transferencia"
+      ],
+      "description": "M\u00e9todo de pago (opcional)"
+    }
+  },
+  "required": [
+    "organization_id",
+    "date",
+    "amount",
+    "category",
+    "created_by"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

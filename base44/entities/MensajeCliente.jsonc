@@ -1,0 +1,138 @@
+{
+  "name": "MensajeCliente",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la OT relacionada (si aplica)"
+    },
+    "remitente_id": {
+      "type": "string",
+      "description": "ID del usuario que env\u00eda"
+    },
+    "remitente_nombre": {
+      "type": "string",
+      "description": "Nombre del remitente"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "estado_ot",
+        "cotizacion",
+        "seguimiento",
+        "general",
+        "recordatorio"
+      ],
+      "description": "Tipo de mensaje"
+    },
+    "plantilla_usada": {
+      "type": "string",
+      "description": "Nombre de la plantilla utilizada"
+    },
+    "asunto": {
+      "type": "string",
+      "description": "Asunto del mensaje"
+    },
+    "contenido": {
+      "type": "string",
+      "description": "Contenido del mensaje"
+    },
+    "canal": {
+      "type": "string",
+      "enum": [
+        "email",
+        "sms",
+        "whatsapp",
+        "sistema"
+      ],
+      "default": "email",
+      "description": "Canal de env\u00edo"
+    },
+    "enviado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si el mensaje fue enviado"
+    },
+    "enviado_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de env\u00edo"
+    },
+    "leido": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si el cliente lo ley\u00f3"
+    },
+    "leido_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de lectura"
+    }
+  },
+  "required": [
+    "organization_id",
+    "cliente_id",
+    "remitente_id",
+    "remitente_nombre",
+    "tipo",
+    "contenido"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "Partner",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre del partner/revendedor"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "reseller",
+        "affiliate"
+      ],
+      "description": "Tipo de partner"
+    },
+    "commission_type": {
+      "type": "string",
+      "enum": [
+        "percentage",
+        "fixed"
+      ],
+      "description": "Tipo de comisi\u00f3n"
+    },
+    "commission_value": {
+      "type": "number",
+      "description": "Valor de la comisi\u00f3n (porcentaje o monto fijo)"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Estado del partner"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "commission_type",
+    "commission_value"
+  ]
+}

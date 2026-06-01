@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // ─── STATE MACHINE OFICIAL ────────────────────────────────────────────────────
-// Fuente de verdad: DISCUSS semántico ONF TechRepairPro
 const ALLOWED_TRANSITIONS = {
   EN_COLA_REVISION: ['ASIGNADA', 'CANCELADA'],
   ASIGNADA:         ['EN_REVISION', 'CANCELADA'],
@@ -12,15 +11,12 @@ const ALLOWED_TRANSITIONS = {
   EN_REPARACION:    ['PRUEBAS', 'CANCELADA'],
   PRUEBAS:          ['FINALIZADA', 'EN_REPARACION'],
   FINALIZADA:       ['ENTREGADA'],
-  ENTREGADA:        [], // irreversible
-  CANCELADA:        [], // irreversible
+  ENTREGADA:        [],
+  CANCELADA:        [],
 };
 
-// Estados que bloquean CUALQUIER modificación
 const IRREVERSIBLE_STATES = ['ENTREGADA', 'CANCELADA'];
 
-// Roles autorizados por transición destino
-// undefined = cualquier rol autenticado puede hacerlo (se restringe más abajo si aplica)
 const AUTHORIZED_ROLES_FOR_TARGET = {
   ASIGNADA:      ['ORG_ADMIN', 'BRANCH_ADMIN'],
   EN_REVISION:   ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
@@ -34,8 +30,6 @@ const AUTHORIZED_ROLES_FOR_TARGET = {
   CANCELADA:     ['ORG_ADMIN', 'BRANCH_ADMIN'],
 };
 
-// Validaciones de datos mínimos requeridos por transición destino
-// Retorna null si OK, o string de error si falla
 function validatePayloadForTarget(targetStatus, ot, extra) {
   switch (targetStatus) {
     case 'ASIGNADA':
@@ -54,8 +48,6 @@ function validatePayloadForTarget(targetStatus, ot, extra) {
       }
       break;
     case 'APROBADA':
-      // Validación soft: se recomienda cliente_aprobado, pero puede venir como extra
-      // No bloqueamos hard aquí porque la aprobación viene del portal o ventas
       break;
     case 'EN_REPARACION':
       if (!ot.tecnico_asignado_id) {
@@ -63,12 +55,7 @@ function validatePayloadForTarget(targetStatus, ot, extra) {
       }
       break;
     case 'ENTREGADA':
-      // Enforcement defensivo backend — P0.1
-      // El frontend (EntregarOT.jsx) también valida, pero el backend es la última línea de defensa.
-      // No se mueve ni elimina la validación frontend.
       if (!extra?.ventas_pagadas_verificadas) {
-        // extra.ventas_pagadas_verificadas se inyecta desde el bloque de validación inline
-        // (ver paso 9b más abajo)
         return 'ENTREGADA: se requiere al menos una Venta en estado "pagada" asociada a esta OT';
       }
       break;
@@ -84,43 +71,67 @@ Deno.serve(async (req) => {
 
     // ── 1. Auth ────────────────────────────────────────────────────────────────
     const user = await base44.auth.me();
+    console.log(`[DIAG:transition] ===== INICIO FUNCIÓN =====`);
+    console.log(`[DIAG:transition] RAW user completo:`, JSON.stringify(user, null, 2));
+    console.log(`[DIAG:transition] user.id:`, user?.id);
+    console.log(`[DIAG:transition] user.email:`, user?.email);
+    console.log(`[DIAG:transition] user.role (base44 app level):`, user?.role);
+    console.log(`[DIAG:transition] user.organization_id:`, user?.organization_id);
+    console.log(`[DIAG:transition] user.impersonating_org_id:`, user?.impersonating_org_id);
+    console.log(`[DIAG:transition] user.is_super_admin:`, user?.is_super_admin);
+    console.log(`[DIAG:transition] user.data completo:`, JSON.stringify(user?.data, null, 2));
+
     if (!user) {
       return Response.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    // ── 2. Resolver organization_id — PATRÓN OFICIAL CONSOLIDADO ─────────────
+    // ── 2. Resolver organization_id ───────────────────────────────────────────
     let orgId = user.impersonating_org_id || user.organization_id || user.data?.impersonating_org_id;
+    console.log(`[DIAG:transition] orgId paso1 (impersonating||org_id||data.impersonating):`, orgId);
+
     if (!orgId && user.id) {
       const fallbackAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 1);
+      console.log(`[DIAG:transition] fallback UserAccount.filter({ user_id: '${user?.id}' }) → count:`, fallbackAccounts?.length);
+      console.log(`[DIAG:transition] fallback UserAccount resultado:`, JSON.stringify(fallbackAccounts, null, 2));
       if (fallbackAccounts && fallbackAccounts.length > 0) orgId = fallbackAccounts[0].organization_id || null;
     }
+
+    console.log(`[DIAG:transition] orgId FINAL resuelto:`, orgId);
+
     if (!orgId) {
+      console.error(`[DIAG:transition] *** 403: orgId no resuelto ***`);
       return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
     }
-    // ── FIN PATRÓN OFICIAL ────────────────────────────────────────────────────
 
     // ── 3. Resolver rol efectivo ──────────────────────────────────────────────
-    // Para SUPER_ADMIN en impersonación, permitir todas las transiciones
     const isSuperAdmin = user.is_super_admin === true || user.data?.is_super_admin === true;
-    let effectiveRole = user.role; // rol de Base44 app level
+    let effectiveRole = user.role;
+    console.log(`[DIAG:transition] isSuperAdmin:`, isSuperAdmin);
+    console.log(`[DIAG:transition] effectiveRole inicial (user.role):`, effectiveRole);
 
-    // Si no es super_admin, buscar rol en UserAccount
     if (!isSuperAdmin) {
       const accounts = await base44.asServiceRole.entities.UserAccount.filter({
         user_id: user.id,
         organization_id: orgId,
       }, 1);
+      console.log(`[DIAG:transition] UserAccount.filter({ user_id: '${user?.id}', organization_id: '${orgId}' }) → count:`, accounts?.length);
+      console.log(`[DIAG:transition] UserAccount resultado completo:`, JSON.stringify(accounts, null, 2));
 
       if (!accounts || accounts.length === 0) {
+        console.error(`[DIAG:transition] *** 403: accounts.length===0 — user_id=${user?.id}, orgId=${orgId} ***`);
         return Response.json({ error: 'Usuario sin cuenta activa en esta organización' }, { status: 403 });
       }
 
       const account = accounts[0];
       if (account.status === 'suspended') {
+        console.error(`[DIAG:transition] *** 403: cuenta suspendida — user_id=${user?.id} ***`);
         return Response.json({ error: 'Cuenta suspendida' }, { status: 403 });
       }
 
-      effectiveRole = account.role; // ORG_ADMIN, BRANCH_ADMIN, TECHNICIAN, SALES, etc.
+      effectiveRole = account.role;
+      console.log(`[DIAG:transition] effectiveRole FINAL (de UserAccount):`, effectiveRole);
+    } else {
+      console.log(`[DIAG:transition] isSuperAdmin=true — saltando lookup de UserAccount`);
     }
 
     // ── 4. Parsear body ───────────────────────────────────────────────────────
@@ -129,7 +140,6 @@ Deno.serve(async (req) => {
       orden_trabajo_id,
       newStatus,
       observacion,
-      // Datos adicionales opcionales para ciertas transiciones
       tecnico_asignado_id,
       tecnico_asignado_email,
     } = body;
@@ -181,7 +191,9 @@ Deno.serve(async (req) => {
     // ── 8. Validar rol para el estado destino ─────────────────────────────────
     if (!isSuperAdmin) {
       const rolesPermitidos = AUTHORIZED_ROLES_FOR_TARGET[newStatus];
+      console.log(`[DIAG:transition] Validando rol para target '${newStatus}' — rolesPermitidos:`, rolesPermitidos, `— effectiveRole:`, effectiveRole);
       if (rolesPermitidos && !rolesPermitidos.includes(effectiveRole)) {
+        console.error(`[DIAG:transition] *** 403: rol '${effectiveRole}' no permitido para '${newStatus}' — rolesPermitidos: [${rolesPermitidos.join(', ')}] ***`);
         return Response.json({
           error: `Tu rol "${effectiveRole}" no tiene permiso para mover la OT a "${newStatus}". Roles permitidos: [${rolesPermitidos.join(', ')}]`,
           required_roles: rolesPermitidos,
@@ -193,7 +205,6 @@ Deno.serve(async (req) => {
     // ── 9. Validar datos mínimos requeridos ───────────────────────────────────
     const extra = { tecnico_asignado_id, tecnico_asignado_email };
 
-    // ── 9b. Enforcement P0.1: FINALIZADA → ENTREGADA requiere venta pagada ────
     if (newStatus === 'ENTREGADA') {
       const ventasPagadas = await base44.asServiceRole.entities.Venta.filter({
         organization_id: orgId,
@@ -226,7 +237,6 @@ Deno.serve(async (req) => {
       ultima_actividad_at: now,
     };
 
-    // Datos adicionales por transición
     if (newStatus === 'ASIGNADA' && tecnico_asignado_id) {
       updatePayload.tecnico_asignado_id = tecnico_asignado_id;
       if (tecnico_asignado_email) {
@@ -246,22 +256,7 @@ Deno.serve(async (req) => {
     // ── 11. Ejecutar actualización ────────────────────────────────────────────
     const updatedOT = await base44.asServiceRole.entities.OrdenTrabajo.update(orden_trabajo_id, updatePayload);
 
-    // ── 12. OTEvent oficial — ownership: transitionWorkOrderStatus ───────────────
-    // Modelo aprobado ONF-v2 Bloque 0B.1a
-    //
-    // EVENTOS CANÓNICOS (idempotencia estricta: 1 por OT):
-    //   FINALIZADA → solo cuando newStatus es FINALIZADA
-    //   ENTREGADA  → solo cuando newStatus es ENTREGADA
-    //   CANCELADA  → solo cuando newStatus es CANCELADA
-    //
-    // EVENTOS TRANSICIÓN (siempre se crean, no son idempotentes por diseño):
-    //   TRANSITION_ASIGNADA, TRANSITION_EN_REVISION, TRANSITION_DIAGNOSTICADA,
-    //   TRANSITION_COTIZADA, TRANSITION_APROBADA, TRANSITION_EN_REPARACION, TRANSITION_PRUEBAS
-    //
-    // CREATED → ownership exclusivo de createWorkOrder (Bloque 0B.1a)
-    // NO existen: TRANSITION_FINALIZADA, TRANSITION_ENTREGADA, TRANSITION_CANCELADA
-    // processPostSaleActions sigue siendo dueño exclusivo de SALE_COMPLETED
-
+    // ── 12. OTEvent ───────────────────────────────────────────────────────────
     const CANONICAL_EVENTS = ['FINALIZADA', 'ENTREGADA', 'CANCELADA'];
     const TRANSITION_EVENT_MAP = {
       ASIGNADA:      'TRANSITION_ASIGNADA',
@@ -277,8 +272,6 @@ Deno.serve(async (req) => {
       const isCanonical = CANONICAL_EVENTS.includes(newStatus);
       const transitionType = TRANSITION_EVENT_MAP[newStatus];
 
-      // ── A. CANÓNICOS (FINALIZADA, ENTREGADA, CANCELADA): idempotencia estricta ─
-      // NOTA: CREATED es ownership exclusivo de createWorkOrder (Bloque 0B.1a)
       if (isCanonical) {
         const existingCanonical = await base44.asServiceRole.entities.OTEvent.filter({
           orden_trabajo_id: orden_trabajo_id,
@@ -299,7 +292,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // ── C. TRANSICIÓN: eventos intermedios, sin idempotencia (permiten historial) ─
       if (transitionType) {
         await base44.asServiceRole.entities.OTEvent.create({
           organization_id: orgId,
@@ -313,11 +305,11 @@ Deno.serve(async (req) => {
       }
 
     } catch (traceError) {
-      // Trazabilidad no debe romper el flujo principal
       console.warn('[transitionWorkOrderStatus] trazabilidad_fallida:', traceError.message);
     }
 
     console.log(`[transitionWorkOrderStatus] OK — OT: ${orden_trabajo_id}, ${currentStatus} → ${newStatus}, usuario: ${user.email}, rol: ${effectiveRole}`);
+    console.log(`[DIAG:transition] ===== RESPUESTA EXITOSA — user.id=${user?.id}, email=${user?.email}, effectiveRole=${effectiveRole}, orgId=${orgId} =====`);
 
     return Response.json({
       success: true,
@@ -332,6 +324,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('[transitionWorkOrderStatus] Error:', error.message);
+    console.error(`[DIAG:transition] *** CATCH — error.stack:`, error.stack);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

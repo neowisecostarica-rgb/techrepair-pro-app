@@ -1,0 +1,111 @@
+{
+  "name": "Notificacion",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID del usuario espec\u00edfico (nullable)"
+    },
+    "role_target": {
+      "type": "string",
+      "enum": [
+        "TECHNICIAN",
+        "ADMIN",
+        "CASHIER",
+        "ORG_ADMIN"
+      ],
+      "description": "Rol objetivo (nullable)"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "critica",
+        "importante",
+        "info"
+      ],
+      "description": "Tipo de notificaci\u00f3n"
+    },
+    "mensaje": {
+      "type": "string",
+      "description": "Mensaje de la notificaci\u00f3n"
+    },
+    "referencia_ot_id": {
+      "type": "string",
+      "description": "ID de la orden de trabajo relacionada (nullable)"
+    },
+    "accion_sugerida": {
+      "type": "string",
+      "description": "Acci\u00f3n sugerida (nullable)"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "vista",
+        "resuelta"
+      ],
+      "default": "pendiente",
+      "description": "Estado de la notificaci\u00f3n"
+    }
+  },
+  "required": [
+    "organization_id",
+    "tipo",
+    "mensaje",
+    "estado"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "is_super_admin": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag de plataforma para Super Admin (8b)"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n a la que pertenece el usuario"
+    },
+    "impersonating_org_id": {
+      "type": "string",
+      "description": "ID de organizaci\u00f3n siendo impersonada (temporal)"
+    },
+    "impersonating_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Inicio de impersonaci\u00f3n"
+    }
+  },
+  "required": [
+    "impersonating_org_id",
+    "impersonating_started_at"
+  ]
+}

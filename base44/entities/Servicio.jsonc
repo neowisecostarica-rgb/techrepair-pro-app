@@ -1,0 +1,105 @@
+{
+  "name": "Servicio",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "nombre": {
+      "type": "string",
+      "description": "Nombre del servicio"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n del servicio"
+    },
+    "precio": {
+      "type": "number",
+      "description": "Precio del servicio"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Estado del servicio"
+    },
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "diagnostico",
+        "reparacion",
+        "mantenimiento",
+        "instalacion",
+        "otros"
+      ],
+      "description": "Categor\u00eda del servicio"
+    }
+  },
+  "required": [
+    "organization_id",
+    "nombre",
+    "precio"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

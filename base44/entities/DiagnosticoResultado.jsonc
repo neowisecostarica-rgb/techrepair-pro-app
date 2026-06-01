@@ -1,0 +1,91 @@
+{
+  "name": "DiagnosticoResultado",
+  "type": "object",
+  "properties": {
+    "diagnostico_id": {
+      "type": "string",
+      "description": "ID del diagn\u00f3stico"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "categoria": {
+      "type": "string",
+      "description": "Categor\u00eda del item de checklist (ej: Hardware, Software, Bater\u00eda)"
+    },
+    "descripcion_item": {
+      "type": "string",
+      "description": "Descripci\u00f3n del item revisado"
+    },
+    "resultado": {
+      "type": "string",
+      "enum": [
+        "OK",
+        "Fallo",
+        "N_A"
+      ],
+      "description": "Resultado de la revisi\u00f3n"
+    },
+    "observaciones": {
+      "type": "string",
+      "description": "Observaciones adicionales del t\u00e9cnico"
+    }
+  },
+  "required": [
+    "diagnostico_id",
+    "organization_id",
+    "descripcion_item",
+    "resultado"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

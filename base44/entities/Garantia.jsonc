@@ -1,0 +1,138 @@
+{
+  "name": "Garantia",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "origen_tipo": {
+      "type": "string",
+      "enum": [
+        "OT",
+        "VENTA"
+      ],
+      "description": "Tipo de origen (Orden de Trabajo o Venta)"
+    },
+    "origen_id": {
+      "type": "string",
+      "description": "ID de la orden de trabajo o venta que genera la garant\u00eda"
+    },
+    "public_access_token": {
+      "type": "string",
+      "description": "Token \u00fanico para acceso p\u00fablico sin autenticaci\u00f3n"
+    },
+    "fecha_emision": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de emisi\u00f3n de la garant\u00eda"
+    },
+    "fecha_inicio": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de inicio de vigencia de la garant\u00eda"
+    },
+    "fecha_fin": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de fin de vigencia de la garant\u00eda"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "ACTIVA",
+        "VENCIDA",
+        "ANULADA"
+      ],
+      "default": "ACTIVA",
+      "description": "Estado actual de la garant\u00eda"
+    },
+    "texto_snapshot": {
+      "type": "string",
+      "description": "Texto completo e inmutable de la boleta de garant\u00eda"
+    },
+    "creado_por": {
+      "type": "string",
+      "description": "ID del usuario que gener\u00f3 la garant\u00eda"
+    }
+  },
+  "required": [
+    "organization_id",
+    "cliente_id",
+    "origen_tipo",
+    "origen_id",
+    "public_access_token",
+    "fecha_emision",
+    "fecha_inicio",
+    "fecha_fin",
+    "estado",
+    "texto_snapshot",
+    "creado_por"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

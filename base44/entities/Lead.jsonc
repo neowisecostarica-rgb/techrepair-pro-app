@@ -1,0 +1,143 @@
+{
+  "name": "Lead",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nombre completo del lead"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Correo electr\u00f3nico"
+    },
+    "phone": {
+      "type": "string",
+      "description": "N\u00famero de tel\u00e9fono"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "website",
+        "referral",
+        "social_media",
+        "phone",
+        "walk_in",
+        "other"
+      ],
+      "default": "other",
+      "description": "Fuente del lead"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "qualified",
+        "proposal",
+        "negotiation",
+        "won",
+        "lost"
+      ],
+      "default": "new",
+      "description": "Estado del lead en el funnel"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "ID del usuario asignado (SALES)"
+    },
+    "assigned_to_name": {
+      "type": "string",
+      "description": "Nombre del usuario asignado"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas sobre el lead"
+    },
+    "converted_to_cliente_id": {
+      "type": "string",
+      "description": "ID del cliente al que se convirti\u00f3 (si aplica)"
+    },
+    "converted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de conversi\u00f3n"
+    },
+    "lost_reason": {
+      "type": "string",
+      "description": "Raz\u00f3n de p\u00e9rdida (si status=lost)"
+    }
+  },
+  "required": [
+    "organization_id",
+    "name",
+    "phone",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

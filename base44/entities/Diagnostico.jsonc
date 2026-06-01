@@ -1,0 +1,164 @@
+{
+  "name": "Diagnostico",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la orden de trabajo"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "equipo_id": {
+      "type": "string",
+      "description": "ID del equipo"
+    },
+    "tecnico_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico que realiza el diagn\u00f3stico"
+    },
+    "tipo_diagnostico": {
+      "type": "string",
+      "enum": [
+        "rapido",
+        "completo",
+        "especifico"
+      ],
+      "description": "Tipo de diagn\u00f3stico realizado"
+    },
+    "estado_diagnostico": {
+      "type": "string",
+      "enum": [
+        "iniciado",
+        "en_proceso",
+        "completado"
+      ],
+      "default": "iniciado",
+      "description": "Estado del diagn\u00f3stico"
+    },
+    "conclusion_tecnica": {
+      "type": "string",
+      "description": "Conclusi\u00f3n t\u00e9cnica detallada"
+    },
+    "resumen_cliente": {
+      "type": "string",
+      "description": "Resumen para el cliente en lenguaje no t\u00e9cnico"
+    },
+    "nivel_riesgo": {
+      "type": "string",
+      "enum": [
+        "bajo",
+        "medio",
+        "alto",
+        "critico"
+      ],
+      "description": "Nivel de riesgo identificado"
+    },
+    "propuesta_precio_total": {
+      "type": "number",
+      "description": "Precio total estimado de la reparaci\u00f3n"
+    },
+    "propuesta_precio_detalle": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "descripcion": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number"
+          },
+          "precio_unitario": {
+            "type": "number"
+          },
+          "subtotal": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Detalle de precios por \u00edtem"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de completado del diagn\u00f3stico"
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "cliente_id",
+    "equipo_id",
+    "tecnico_id",
+    "tipo_diagnostico",
+    "estado_diagnostico"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

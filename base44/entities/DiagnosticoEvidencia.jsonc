@@ -1,0 +1,89 @@
+{
+  "name": "DiagnosticoEvidencia",
+  "type": "object",
+  "properties": {
+    "diagnostico_id": {
+      "type": "string",
+      "description": "ID del diagn\u00f3stico"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "foto",
+        "nota"
+      ],
+      "description": "Tipo de evidencia"
+    },
+    "url": {
+      "type": "string",
+      "description": "URL de la foto (si tipo es foto)"
+    },
+    "contenido_texto": {
+      "type": "string",
+      "description": "Contenido de texto (si tipo es nota)"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n o pie de foto/nota"
+    }
+  },
+  "required": [
+    "diagnostico_id",
+    "organization_id",
+    "tipo"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "name": "DiagnosticoTecnico",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la orden de trabajo (FK)"
+    },
+    "tecnico_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico que realiza el diagn\u00f3stico"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "borrador",
+        "listo_aprobacion"
+      ],
+      "default": "borrador",
+      "description": "Estado del diagn\u00f3stico t\u00e9cnico"
+    },
+    "tipo_intervencion": {
+      "type": "string",
+      "enum": [
+        "diagnostico_tecnico",
+        "mantenimiento_preventivo",
+        "mantenimiento_correctivo",
+        "limpieza",
+        "reparacion_puntual",
+        "revision_general",
+        "otro"
+      ],
+      "description": "Tipo de intervenci\u00f3n t\u00e9cnica a realizar"
+    },
+    "componentes_revisar": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Componentes seleccionados para revisi\u00f3n"
+    },
+    "pruebas_realizadas": {
+      "type": "object",
+      "description": "Resultados de pruebas t\u00e9cnicas ejecutadas"
+    },
+    "hallazgos": {
+      "type": "object",
+      "description": "Problemas detectados y detalles t\u00e9cnicos"
+    },
+    "causa_probable": {
+      "type": "string",
+      "description": "Causa t\u00e9cnica probable del problema"
+    },
+    "trabajo_recomendado": {
+      "type": "string",
+      "description": "Trabajo t\u00e9cnico recomendado para solucionar el problema"
+    },
+    "riesgos_no_reparar": {
+      "type": "string",
+      "description": "Riesgos si no se realiza la reparaci\u00f3n"
+    },
+    "tiempo_estimado_horas": {
+      "type": "number",
+      "description": "Tiempo estimado en horas para completar el trabajo"
+    },
+    "repuestos_requeridos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "inventario_id": {
+            "type": "string"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Lista de repuestos requeridos para la reparaci\u00f3n"
+    },
+    "fecha_inicio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha y hora de inicio del diagn\u00f3stico"
+    },
+    "fecha_completado": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha y hora de completaci\u00f3n del diagn\u00f3stico"
+    },
+    "bloqueado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si el diagn\u00f3stico est\u00e1 bloqueado para edici\u00f3n"
+    },
+    "credito_consumido_finalizacion": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag idempotente: si ya se consumi\u00f3 cr\u00e9dito al finalizar (P0 FASE 2)"
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "tecnico_id",
+    "estado"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

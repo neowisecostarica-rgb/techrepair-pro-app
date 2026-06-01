@@ -1,0 +1,132 @@
+{
+  "name": "SolicitudTecnica",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la orden de trabajo"
+    },
+    "tecnico_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico que solicita"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "repuesto",
+        "suministro",
+        "herramienta"
+      ],
+      "description": "Tipo de solicitud"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n de lo solicitado"
+    },
+    "cantidad": {
+      "type": "number",
+      "default": 1,
+      "description": "Cantidad solicitada"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "requested",
+        "approved",
+        "rejected",
+        "fulfilled"
+      ],
+      "default": "draft",
+      "description": "Estado de la solicitud"
+    },
+    "motivo_rechazo": {
+      "type": "string",
+      "description": "Motivo de rechazo (si aplica)"
+    },
+    "aprobado_por": {
+      "type": "string",
+      "description": "ID del usuario que aprob\u00f3"
+    },
+    "aprobado_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de aprobaci\u00f3n"
+    },
+    "entregado_por": {
+      "type": "string",
+      "description": "ID del usuario que entreg\u00f3"
+    },
+    "entregado_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de entrega"
+    },
+    "inventario_id": {
+      "type": "string",
+      "description": "ID del item de inventario (si aplica)"
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "tecnico_id",
+    "tipo",
+    "descripcion",
+    "estado"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

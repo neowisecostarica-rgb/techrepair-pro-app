@@ -1,0 +1,160 @@
+{
+  "name": "Cita",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "diagnostico",
+        "reparacion",
+        "entrega",
+        "soporte_remoto",
+        "soporte_sitio",
+        "consulta",
+        "reunion_interna",
+        "bloqueo_personal"
+      ],
+      "description": "Tipo de cita o evento"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de la cita"
+    },
+    "hora_inicio": {
+      "type": "string",
+      "description": "Hora de inicio (HH:MM)"
+    },
+    "hora_fin": {
+      "type": "string",
+      "description": "Hora de fin (HH:MM)"
+    },
+    "tecnico_asignado_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico asignado"
+    },
+    "tecnico_asignado_email": {
+      "type": "string",
+      "description": "Email del t\u00e9cnico asignado"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "programada",
+        "confirmada",
+        "en_curso",
+        "completada",
+        "cancelada",
+        "no_asistio"
+      ],
+      "default": "programada",
+      "description": "Estado de la cita"
+    },
+    "motivo": {
+      "type": "string",
+      "description": "Motivo de la cita"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de OT relacionada (obligatorio si tipo es diagnostico/reparacion)"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales"
+    },
+    "recordatorio_enviado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si se envi\u00f3 recordatorio"
+    },
+    "enlace_videollamada": {
+      "type": "string",
+      "description": "Enlace para soporte remoto"
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "ID del usuario que cre\u00f3 el evento"
+    },
+    "created_by_role": {
+      "type": "string",
+      "description": "Rol del usuario que cre\u00f3"
+    }
+  },
+  "required": [
+    "organization_id",
+    "tipo",
+    "fecha",
+    "hora_inicio",
+    "tecnico_asignado_id"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "SuperAdminAudit",
+  "type": "object",
+  "properties": {
+    "super_admin_id": {
+      "type": "string",
+      "description": "ID del Super Admin"
+    },
+    "super_admin_email": {
+      "type": "string",
+      "description": "Email del Super Admin"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "view_org_list",
+        "view_org_detail",
+        "impersonate_start",
+        "impersonate_end",
+        "activate_org",
+        "deactivate_org",
+        "view_logs",
+        "actividad_started",
+        "actividad_finished",
+        "actividad_blocked"
+      ],
+      "description": "Acci\u00f3n realizada"
+    },
+    "target_organization_id": {
+      "type": "string",
+      "description": "ID de organizaci\u00f3n afectada (nullable)"
+    },
+    "target_organization_name": {
+      "type": "string",
+      "description": "Nombre de organizaci\u00f3n afectada"
+    },
+    "context": {
+      "type": "string",
+      "description": "Contexto adicional de la acci\u00f3n"
+    },
+    "ip_address": {
+      "type": "string",
+      "description": "Direcci\u00f3n IP (opcional)"
+    }
+  },
+  "required": [
+    "super_admin_id",
+    "super_admin_email",
+    "action"
+  ]
+}

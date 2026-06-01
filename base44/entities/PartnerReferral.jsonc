@@ -1,0 +1,22 @@
+{
+  "name": "PartnerReferral",
+  "type": "object",
+  "properties": {
+    "partner_id": {
+      "type": "string",
+      "description": "ID del partner"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n referida"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas adicionales sobre el referido (opcional)"
+    }
+  },
+  "required": [
+    "partner_id",
+    "organization_id"
+  ]
+}

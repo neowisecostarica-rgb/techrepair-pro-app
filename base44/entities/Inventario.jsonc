@@ -1,0 +1,217 @@
+{
+  "name": "Inventario",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "codigo_interno": {
+      "type": "string",
+      "description": "C\u00f3digo interno \u00fanico generado autom\u00e1ticamente (visible/imprimible)"
+    },
+    "codigo_barras": {
+      "type": "string",
+      "description": "C\u00f3digo de barras externo del producto (opcional, \u00fanico por organizaci\u00f3n)"
+    },
+    "sku": {
+      "type": "string",
+      "description": "C\u00f3digo SKU opcional (\u00fanico por organizaci\u00f3n)"
+    },
+    "nombre": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n detallada"
+    },
+    "categoria_id": {
+      "type": "string",
+      "description": "ID de la categor\u00eda (FK a CategoriaInventario)"
+    },
+    "tipo_item": {
+      "type": "string",
+      "enum": [
+        "producto",
+        "servicio_diagnostico",
+        "servicio_estandar"
+      ],
+      "default": "producto",
+      "description": "Tipo de \u00edtem (fuente de verdad para POS)"
+    },
+    "marca": {
+      "type": "string",
+      "description": "Marca del producto"
+    },
+    "modelo": {
+      "type": "string",
+      "description": "Modelo del producto"
+    },
+    "cantidad_disponible": {
+      "type": "number",
+      "default": 0,
+      "description": "Cantidad disponible en stock"
+    },
+    "cantidad_reservada": {
+      "type": "number",
+      "default": 0,
+      "description": "Cantidad reservada para OT"
+    },
+    "ubicacion": {
+      "type": "string",
+      "enum": [
+        "bodega",
+        "vitrina",
+        "taller",
+        "otro"
+      ],
+      "default": "bodega",
+      "description": "Ubicaci\u00f3n f\u00edsica"
+    },
+    "costo_unitario": {
+      "type": "number",
+      "description": "Costo unitario"
+    },
+    "precio_venta": {
+      "type": "number",
+      "description": "Precio de venta (requerido si vendible)"
+    },
+    "punto_reorden": {
+      "type": "number",
+      "default": 5,
+      "description": "Punto de reorden"
+    },
+    "proveedor": {
+      "type": "string",
+      "description": "Proveedor principal"
+    },
+    "fecha_compra": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de compra al proveedor"
+    },
+    "documento_compra": {
+      "type": "string",
+      "description": "Factura o referencia de compra (opcional)"
+    },
+    "garantia_proveedor_meses": {
+      "type": "number",
+      "description": "Duraci\u00f3n de garant\u00eda del proveedor en meses"
+    },
+    "garantia_proveedor_vence": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de vencimiento de garant\u00eda (calculado autom\u00e1ticamente)"
+    },
+    "numero_serie": {
+      "type": "string",
+      "description": "N\u00famero de serie (para items individuales)"
+    },
+    "compatibilidades": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Modelos compatibles"
+    },
+    "fecha_ultimo_movimiento": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha del \u00faltimo movimiento"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "activo",
+        "descontinuado",
+        "agotado"
+      ],
+      "default": "activo",
+      "description": "Estado del producto"
+    },
+    "co2_evitado": {
+      "type": "number",
+      "default": 0,
+      "description": "CO\u2082 evitado en kg (para reciclaje)"
+    },
+    "valor_recuperado": {
+      "type": "number",
+      "default": 0,
+      "description": "Valor econ\u00f3mico recuperado (para reciclaje)"
+    },
+    "notas_reciclaje": {
+      "type": "string",
+      "description": "Notas sobre destino del material (para reciclaje)"
+    }
+  },
+  "required": [
+    "organization_id",
+    "codigo_interno",
+    "nombre",
+    "categoria_id",
+    "costo_unitario"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

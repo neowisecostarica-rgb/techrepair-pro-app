@@ -1,0 +1,112 @@
+{
+  "name": "Supplier",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nombre del proveedor"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Nombre del contacto"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Tel\u00e9fono de contacto"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email del proveedor (opcional)"
+    },
+    "address": {
+      "type": "string",
+      "description": "Direcci\u00f3n f\u00edsica (opcional)"
+    },
+    "tax_id": {
+      "type": "string",
+      "description": "C\u00e9dula jur\u00eddica o identificaci\u00f3n fiscal"
+    },
+    "payment_terms_days": {
+      "type": "number",
+      "default": 30,
+      "description": "D\u00edas de cr\u00e9dito por defecto"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Estado del proveedor"
+    }
+  },
+  "required": [
+    "organization_id",
+    "name",
+    "phone"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

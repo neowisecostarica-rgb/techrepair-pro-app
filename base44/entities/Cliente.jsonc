@@ -1,0 +1,113 @@
+{
+  "name": "Cliente",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "nombre_completo": {
+      "type": "string",
+      "description": "Nombre completo del cliente"
+    },
+    "identificacion": {
+      "type": "string",
+      "description": "C\u00e9dula, pasaporte o ID fiscal (identidad \u00fanica)"
+    },
+    "tipo_cliente": {
+      "type": "string",
+      "enum": [
+        "individual",
+        "empresa"
+      ],
+      "default": "individual",
+      "description": "Tipo de cliente"
+    },
+    "telefono": {
+      "type": "string",
+      "description": "N\u00famero de tel\u00e9fono principal"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Correo electr\u00f3nico (opcional)"
+    },
+    "direccion": {
+      "type": "string",
+      "description": "Direcci\u00f3n f\u00edsica (opcional)"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales sobre el cliente"
+    }
+  },
+  "required": [
+    "organization_id",
+    "nombre_completo",
+    "identificacion",
+    "telefono",
+    "tipo_cliente"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

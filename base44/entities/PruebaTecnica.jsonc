@@ -1,0 +1,110 @@
+{
+  "name": "PruebaTecnica",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la orden de trabajo"
+    },
+    "tecnico_id": {
+      "type": "string",
+      "description": "ID del t\u00e9cnico que realiza la prueba"
+    },
+    "tipo_prueba": {
+      "type": "string",
+      "enum": [
+        "funcional",
+        "stress",
+        "rendimiento",
+        "calidad",
+        "visual"
+      ],
+      "description": "Tipo de prueba realizada"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n de la prueba"
+    },
+    "resultado": {
+      "type": "string",
+      "enum": [
+        "exitoso",
+        "fallido",
+        "parcial"
+      ],
+      "description": "Resultado de la prueba"
+    },
+    "observaciones": {
+      "type": "string",
+      "description": "Observaciones adicionales"
+    },
+    "evidencia_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs de evidencias (fotos/videos)"
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "tecnico_id",
+    "tipo_prueba",
+    "resultado"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

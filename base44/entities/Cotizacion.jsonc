@@ -1,0 +1,300 @@
+{
+  "name": "Cotizacion",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID del vendedor"
+    },
+    "vendedor_nombre": {
+      "type": "string",
+      "description": "Nombre del vendedor"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la OT relacionada (si aplica)"
+    },
+    "diagnostico_tecnico_id": {
+      "type": "string",
+      "description": "ID del diagn\u00f3stico t\u00e9cnico asociado"
+    },
+    "version": {
+      "type": "string",
+      "description": "Versi\u00f3n de la cotizaci\u00f3n (ej: v1.0, v1.1)"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "producto",
+              "servicio",
+              "repuesto",
+              "mano_obra",
+              "otro"
+            ]
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number"
+          },
+          "precio_unitario": {
+            "type": "number"
+          },
+          "descuento_porcentaje": {
+            "type": "number",
+            "default": 0
+          },
+          "subtotal": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Items de la cotizaci\u00f3n"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal antes de descuentos e impuestos"
+    },
+    "descuento_total": {
+      "type": "number",
+      "default": 0,
+      "description": "Descuento total aplicado"
+    },
+    "impuesto": {
+      "type": "number",
+      "description": "Monto de impuestos"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total de la cotizaci\u00f3n"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "borrador",
+        "enviada",
+        "aprobada",
+        "rechazada",
+        "vencida"
+      ],
+      "default": "borrador",
+      "description": "Estado de la cotizaci\u00f3n"
+    },
+    "estado_conversion": {
+      "type": "string",
+      "enum": [
+        "SIN_CONVERTIR",
+        "EN_PROCESO_FACTURACION",
+        "CONVERTIDA"
+      ],
+      "default": "SIN_CONVERTIR",
+      "description": "Estado del proceso de conversi\u00f3n a venta"
+    },
+    "venta_id": {
+      "type": "string",
+      "description": "ID de la venta generada al convertir (nullable)"
+    },
+    "convertida_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de conversi\u00f3n a venta"
+    },
+    "convertida_por": {
+      "type": "string",
+      "description": "ID del usuario que convirti\u00f3"
+    },
+    "requiere_aprobacion": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si requiere aprobaci\u00f3n por descuento alto"
+    },
+    "aprobada_por": {
+      "type": "string",
+      "description": "ID del usuario que aprob\u00f3"
+    },
+    "aprobada_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de aprobaci\u00f3n"
+    },
+    "enviada_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de env\u00edo al cliente"
+    },
+    "ultimo_envio": {
+      "type": "object",
+      "description": "Registro del \u00faltimo env\u00edo realizado",
+      "properties": {
+        "canal": {
+          "type": "string",
+          "enum": [
+            "link",
+            "whatsapp",
+            "correo"
+          ],
+          "description": "Canal utilizado para el env\u00edo"
+        },
+        "fecha": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Fecha y hora del env\u00edo"
+        },
+        "enviado_por": {
+          "type": "string",
+          "description": "ID del usuario que realiz\u00f3 el env\u00edo"
+        },
+        "enviado_por_nombre": {
+          "type": "string",
+          "description": "Nombre del usuario que realiz\u00f3 el env\u00edo"
+        }
+      }
+    },
+    "historial_envios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "canal": {
+            "type": "string",
+            "enum": [
+              "link",
+              "whatsapp",
+              "correo"
+            ]
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "enviado_por": {
+            "type": "string"
+          },
+          "enviado_por_nombre": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Historial completo de todos los env\u00edos"
+    },
+    "valida_hasta": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de vencimiento"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales"
+    },
+    "contenido_aprobado_snapshot": {
+      "type": "object",
+      "description": "Snapshot legal inmutable del contenido aprobado"
+    },
+    "ip_aprobacion": {
+      "type": "string",
+      "description": "IP desde donde se aprob\u00f3 la cotizaci\u00f3n"
+    },
+    "terminos_version_aceptada": {
+      "type": "string",
+      "description": "Versi\u00f3n de t\u00e9rminos y condiciones aceptada"
+    },
+    "cliente_rechazo_motivo": {
+      "type": "string",
+      "description": "Motivo de rechazo del cliente"
+    },
+    "public_access_token": {
+      "type": "string",
+      "description": "Token \u00fanico para acceso p\u00fablico sin autenticaci\u00f3n"
+    },
+    "public_access_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de expiraci\u00f3n del token p\u00fablico"
+    }
+  },
+  "required": [
+    "organization_id",
+    "cliente_id",
+    "vendedor_id",
+    "vendedor_nombre",
+    "items",
+    "total",
+    "estado"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

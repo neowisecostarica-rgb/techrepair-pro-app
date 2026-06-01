@@ -1,0 +1,90 @@
+{
+  "name": "Reciclaje",
+  "type": "object",
+  "properties": {
+    "tipo_residuo": {
+      "type": "string",
+      "enum": [
+        "electronico",
+        "plastico",
+        "metal",
+        "papel",
+        "bateria",
+        "otro"
+      ],
+      "description": "Tipo de residuo"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n del residuo"
+    },
+    "peso_kg": {
+      "type": "number",
+      "description": "Peso en kilogramos"
+    },
+    "cantidad_unidades": {
+      "type": "number",
+      "description": "Cantidad de unidades"
+    },
+    "origen": {
+      "type": "string",
+      "enum": [
+        "reparacion",
+        "desecho_cliente",
+        "equipo_obsoleto",
+        "otros"
+      ],
+      "description": "Origen del residuo"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de OT relacionada"
+    },
+    "accion": {
+      "type": "string",
+      "enum": [
+        "reciclado",
+        "reutilizado",
+        "donado",
+        "desecho_seguro",
+        "pendiente"
+      ],
+      "default": "pendiente",
+      "description": "Acci\u00f3n tomada"
+    },
+    "destino": {
+      "type": "string",
+      "description": "Destino del residuo"
+    },
+    "empresa_recicladora": {
+      "type": "string",
+      "description": "Empresa recicladora"
+    },
+    "fecha_proceso": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de procesamiento"
+    },
+    "huella_carbono_evitada_kg": {
+      "type": "number",
+      "description": "Kg de CO2 evitados"
+    },
+    "valor_recuperado": {
+      "type": "number",
+      "description": "Valor econ\u00f3mico recuperado"
+    },
+    "certificado_url": {
+      "type": "string",
+      "description": "URL del certificado de reciclaje"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas adicionales"
+    }
+  },
+  "required": [
+    "tipo_residuo",
+    "descripcion",
+    "accion"
+  ]
+}

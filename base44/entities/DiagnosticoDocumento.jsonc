@@ -1,0 +1,87 @@
+{
+  "name": "DiagnosticoDocumento",
+  "type": "object",
+  "properties": {
+    "diagnostico_id": {
+      "type": "string",
+      "description": "ID del diagn\u00f3stico"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "version": {
+      "type": "string",
+      "description": "Versi\u00f3n del documento (ej: v1, v2)"
+    },
+    "formato": {
+      "type": "string",
+      "enum": [
+        "pdf"
+      ],
+      "default": "pdf",
+      "description": "Formato del documento"
+    },
+    "url_documento": {
+      "type": "string",
+      "description": "URL del documento generado"
+    }
+  },
+  "required": [
+    "diagnostico_id",
+    "organization_id",
+    "version",
+    "formato",
+    "url_documento"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

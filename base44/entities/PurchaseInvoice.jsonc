@@ -1,0 +1,119 @@
+{
+  "name": "PurchaseInvoice",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "ID de la sucursal"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "ID del proveedor (FK Supplier)"
+    },
+    "invoice_number": {
+      "type": "string",
+      "description": "N\u00famero de factura del proveedor"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de la factura"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de vencimiento"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Monto total de la factura"
+    },
+    "paid_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Monto pagado acumulado"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas adicionales"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Usuario que cre\u00f3 el registro"
+    }
+  },
+  "required": [
+    "organization_id",
+    "supplier_id",
+    "date",
+    "due_date",
+    "total_amount",
+    "created_by"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

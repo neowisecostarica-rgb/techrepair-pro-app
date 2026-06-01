@@ -1,0 +1,117 @@
+{
+  "name": "VentaItem",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "venta_id": {
+      "type": "string",
+      "description": "ID de la venta"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "producto",
+        "servicio"
+      ],
+      "description": "Tipo de item"
+    },
+    "referencia_id": {
+      "type": "string",
+      "description": "ID del inventario o servicio"
+    },
+    "descripcion": {
+      "type": "string",
+      "description": "Descripci\u00f3n del item"
+    },
+    "cantidad": {
+      "type": "number",
+      "description": "Cantidad"
+    },
+    "precio_unitario": {
+      "type": "number",
+      "description": "Precio unitario"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal del item"
+    },
+    "costo_unitario_snapshot": {
+      "type": "number",
+      "description": "Costo unitario del producto al momento de la venta (snapshot para c\u00e1lculo de margen hist\u00f3rico)"
+    }
+  },
+  "required": [
+    "organization_id",
+    "venta_id",
+    "tipo",
+    "descripcion",
+    "cantidad",
+    "precio_unitario",
+    "subtotal"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

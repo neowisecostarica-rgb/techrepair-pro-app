@@ -1,0 +1,100 @@
+{
+  "name": "CategoriaInventario",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "nombre": {
+      "type": "string",
+      "description": "Nombre de la categor\u00eda (ej: Servicios, Repuestos)"
+    },
+    "permite_stock": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si la categor\u00eda permite manejar stock"
+    },
+    "permite_precio": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si la categor\u00eda permite precio de venta"
+    },
+    "es_vendible": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si los productos de esta categor\u00eda pueden venderse"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Estado de la categor\u00eda"
+    }
+  },
+  "required": [
+    "organization_id",
+    "nombre"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.data.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "data.is_super_admin": "true"
+          }
+        }
+      ]
+    }
+  }
+}

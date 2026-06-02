@@ -42,6 +42,7 @@ import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { crearOrdenTrabajo } from '@/components/ot/crearOrdenTrabajo';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
+import OTOperationalLayer from '@/components/ot/OTOperationalLayer';
 
 import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 const estadoConfig = WORK_ORDER_STATUSES;
@@ -950,8 +951,9 @@ function OrdenesTrabajoContent() {
             </div>
           ) : selectedOT && (
             <Tabs defaultValue="general" className="mt-4">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="operacional">Operacional</TabsTrigger>
                 <TabsTrigger value="actividades">Actividades</TabsTrigger>
               </TabsList>
 
@@ -1234,6 +1236,10 @@ function OrdenesTrabajoContent() {
                   </Button>
                 )}
               </div>
+              </TabsContent>
+
+              <TabsContent value="operacional" className="space-y-4 mt-4">
+                <OTOperationalLayer ot={selectedOT} />
               </TabsContent>
 
               <TabsContent value="actividades" className="space-y-4">

@@ -55,7 +55,18 @@ export default function OrdenesTrabajo() {
   );
 }
 
+
+
 function OrdenesTrabajoContent() {
+  // P0-A.1 SOT: TECHNICIAN no debe usar esta vista como centro de trabajo
+  const { effectiveRole: roleCheck } = useAuthContext();
+  const navigateCheck = useNavigate();
+  useEffect(() => {
+    if (roleCheck === 'TECHNICIAN') {
+      navigateCheck('/MiDia', { replace: true });
+    }
+  }, [roleCheck, navigateCheck]);
+
   const [showModal, setShowModal] = useState(false);
   const [editingOT, setEditingOT] = useState(null);
   const [selectedOT, setSelectedOT] = useState(null);

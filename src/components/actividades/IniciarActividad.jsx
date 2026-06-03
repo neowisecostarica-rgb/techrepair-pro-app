@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '../contexts/AuthContext';
 import { Play } from 'lucide-react';
+import { cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +69,14 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
         soft_deleted: false
       });
 
-      // D) Auditoría
+      // D) Sincronizar estado_atencion de la OT → ACTIVO
+      await cambiarEstadoAtencionOT({
+        ordenTrabajoId: ordenTrabajoId,
+        nuevoEstadoAtencion: 'ACTIVO',
+        observaciones: `Actividad iniciada: ${tipoActividad}`,
+      });
+
+      // E) Auditoría
       await base44.entities.SuperAdminAudit.create({
         super_admin_id: user.id,
         super_admin_email: user.email,

@@ -12,6 +12,7 @@ import { AlertTriangle, Shield, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { withOrgId } from '@/components/hooks/useOrgData';
+import { cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccount }) {
   const [showModal, setShowModal] = useState(false);
@@ -24,9 +25,22 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
   });
 
   const createBloqueoMutation = useMutation({
-    mutationFn: (data) => base44.entities.BloqueoTecnico.create(withOrgId(data, userAccount)),
+    mutationFn: async (data) => {
+      const bloqueo = await base44.entities.BloqueoTecnico.create(withOrgId(data, userAccount));
+      // Sincronizar estado_atencion de la OT → ESPERANDO al reportar bloqueo activo
+      await cambiarEstadoAtencionOT({
+        ordenTrabajoId: ordenTrabajoId,
+        nuevoEstadoAtencion: 'ESPERANDO',
+        motivoPausa: data.tipo_bloqueo === 'falta_repuesto' ? 'esperando_repuesto'
+          : data.tipo_bloqueo === 'espera_cliente' ? 'esperando_cliente'
+          : 'otro',
+        observaciones: `Bloqueo reportado: ${data.descripcion}`,
+      });
+      return bloqueo;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bloqueos-tecnicos'] });
+      queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
       setShowModal(false);
     },
   });

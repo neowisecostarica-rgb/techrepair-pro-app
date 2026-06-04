@@ -54,12 +54,15 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   const [transicionEnCurso, setTransicionEnCurso] = useState(false);
   const [estadosPago, setEstadosPago] = useState({});
 
+  // SOT v1: Mi Día es bandeja de ejecución técnica pura.
+  // Estados válidos: ASIGNADA, EN_REVISION, EN_REPARACION, PRUEBAS.
+  // DIAGNOSTICADA, APROBADA, FINALIZADA, ENTREGADA, CANCELADA → fuera de Mi Día.
   const { data: ordenes = [] } = useQuery({
     queryKey: ['mis-ordenes', user?.id, effectiveOrgId],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
       organization_id: effectiveOrgId,
       tecnico_asignado_id: user.id,
-      estado: { $nin: ['ENTREGADA', 'CANCELADA'] }
+      estado: { $in: ['ASIGNADA', 'EN_REVISION', 'EN_REPARACION', 'PRUEBAS'] }
     }),
     enabled: !!user?.id && !!effectiveOrgId,
   });
@@ -134,9 +137,11 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   
   const ordenesEsperando = ordenes.filter(o => o.estado_atencion === 'ESPERANDO');
 
-  // OTs asignadas al técnico que aún no han sido iniciadas (estado_atencion = null)
+  // OTs ejecutables por el técnico que aún no han sido iniciadas.
+  // ASIGNADA sin estado_atencion = pendientes de iniciar revisión.
+  // EN_REPARACION / PRUEBAS sin estado_atencion = regresaron de pausa administrativa.
   const ordenesPorIniciar = ordenes.filter(
-    o => o.estado === 'ASIGNADA' && !o.estado_atencion
+    o => ['ASIGNADA', 'EN_REPARACION', 'PRUEBAS'].includes(o.estado) && !o.estado_atencion
   );
 
   const tieneDiagnostico = (otId) => {
@@ -327,6 +332,31 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     }
   };
 
+  // Transición genérica para EN_REPARACION → PRUEBAS y PRUEBAS → FINALIZADA
+  const handleTransicion = async (orden, nuevoEstado, btnKey) => {
+    const key = `${btnKey}_${orden.id}`;
+    if (botonesDeshabilitados[key] || transicionEnCurso) return;
+
+    setBotonesDeshabilitados(prev => ({ ...prev, [key]: true }));
+    setTransicionEnCurso(true);
+
+    try {
+      await transicionarEstadoOT({
+        ordenTrabajoId: orden.id,
+        nuevoEstado,
+        effectiveOrgId,
+        userId: user?.id,
+        userEmail: user?.email
+      });
+      await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      setTransicionEnCurso(false);
+    } catch (error) {
+      alert('Error al cambiar estado: ' + error.message);
+      setBotonesDeshabilitados(prev => ({ ...prev, [key]: false }));
+      setTransicionEnCurso(false);
+    }
+  };
+
   const handleVerDetalle = (orden) => {
     setSelectedOT(orden);
     setShowDetalleOT(true);
@@ -448,6 +478,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                     </div>
                   ) : (
                     <>
+                      {/* ASIGNADA → Iniciar Revisión */}
                       {ordenActiva.estado === 'ASIGNADA' && (
                         <Button
                           onClick={() => handleIniciarRevision(ordenActiva)}
@@ -455,19 +486,14 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                           className="bg-gradient-to-r from-emerald-500 to-blue-500"
                         >
                           {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
-                            <>
-                              <Clock className="w-4 h-4 mr-2 animate-spin" />
-                              Iniciando...
-                            </>
+                            <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
                           ) : (
-                            <>
-                              <Play className="w-4 h-4 mr-2" />
-                              Iniciar Revisión
-                            </>
+                            <><Play className="w-4 h-4 mr-2" />Iniciar Revisión</>
                           )}
                         </Button>
                       )}
-                      
+
+                      {/* EN_REVISION → Registrar Diagnóstico */}
                       {ordenActiva.estado === 'EN_REVISION' && (
                         <Button
                           onClick={() => handleIniciarDiagnostico(ordenActiva)}
@@ -478,18 +504,39 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                             ? 'Continuar Diagnóstico'
                             : diagnosticoListo(ordenActiva.id)
                             ? 'Ver Diagnóstico'
-                            : 'Realizar Diagnóstico'}
+                            : 'Registrar Diagnóstico'}
                         </Button>
                       )}
 
-                      {!['ASIGNADA', 'EN_REVISION'].includes(ordenActiva.estado) && (
-                        <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700 text-center">
-                          ℹ️ {ordenActiva.estado === 'DIAGNOSTICADA' ? 'Diagnóstico completado - esperando cotización' :
-                              ordenActiva.estado === 'COTIZADA' ? 'Esperando aprobación del cliente' :
-                              ordenActiva.estado === 'EN_REPARACION' ? 'En proceso de reparación' :
-                              ordenActiva.estado === 'FINALIZADA' ? 'Trabajo finalizado - esperando entrega' :
-                              'Sin acción disponible'}
-                        </div>
+                      {/* EN_REPARACION → Finalizar Reparación */}
+                      {ordenActiva.estado === 'EN_REPARACION' && (
+                        <Button
+                          onClick={() => handleTransicion(ordenActiva, 'PRUEBAS', 'finalizar_reparacion')}
+                          disabled={botonesDeshabilitados[`finalizar_reparacion_${ordenActiva.id}`] || transicionEnCurso}
+                          className="bg-gradient-to-r from-blue-500 to-indigo-500"
+                        >
+                          {botonesDeshabilitados[`finalizar_reparacion_${ordenActiva.id}`] ? (
+                            <><Clock className="w-4 h-4 mr-2 animate-spin" />Finalizando...</>
+                          ) : (
+                            <><CheckCircle className="w-4 h-4 mr-2" />Finalizar Reparación</>
+                          )}
+                        </Button>
+                      )}
+
+                      {/* PRUEBAS → Validar Calidad */}
+                      {/* P1: Pendiente implementar Checklist QA antes de habilitar esta transición */}
+                      {ordenActiva.estado === 'PRUEBAS' && (
+                        <Button
+                          onClick={() => handleTransicion(ordenActiva, 'FINALIZADA', 'validar_calidad')}
+                          disabled={botonesDeshabilitados[`validar_calidad_${ordenActiva.id}`] || transicionEnCurso}
+                          className="bg-gradient-to-r from-purple-500 to-pink-500"
+                        >
+                          {botonesDeshabilitados[`validar_calidad_${ordenActiva.id}`] ? (
+                            <><Clock className="w-4 h-4 mr-2 animate-spin" />Validando...</>
+                          ) : (
+                            <><CheckCircle className="w-4 h-4 mr-2" />Validar Calidad</>
+                          )}
+                        </Button>
                       )}
                     </>
                   )}
@@ -585,23 +632,45 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Button
-                      onClick={() => handleIniciarRevision(orden)}
-                      disabled={botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso}
-                      className="bg-gradient-to-r from-emerald-500 to-teal-500"
-                    >
-                      {botonesDeshabilitados[`iniciar_revision_${orden.id}`] ? (
-                        <>
-                          <Clock className="w-4 h-4 mr-2 animate-spin" />
-                          Iniciando...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-4 h-4 mr-2" />
-                          Iniciar Revisión
-                        </>
-                      )}
-                    </Button>
+                    {orden.estado === 'ASIGNADA' && (
+                      <Button
+                        onClick={() => handleIniciarRevision(orden)}
+                        disabled={botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso}
+                        className="bg-gradient-to-r from-emerald-500 to-teal-500"
+                      >
+                        {botonesDeshabilitados[`iniciar_revision_${orden.id}`] ? (
+                          <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
+                        ) : (
+                          <><Play className="w-4 h-4 mr-2" />Iniciar Revisión</>
+                        )}
+                      </Button>
+                    )}
+                    {orden.estado === 'EN_REPARACION' && (
+                      <Button
+                        onClick={() => handleTransicion(orden, 'PRUEBAS', 'finalizar_reparacion')}
+                        disabled={botonesDeshabilitados[`finalizar_reparacion_${orden.id}`] || transicionEnCurso}
+                        className="bg-gradient-to-r from-blue-500 to-indigo-500"
+                      >
+                        {botonesDeshabilitados[`finalizar_reparacion_${orden.id}`] ? (
+                          <><Clock className="w-4 h-4 mr-2 animate-spin" />Finalizando...</>
+                        ) : (
+                          <><CheckCircle className="w-4 h-4 mr-2" />Finalizar Reparación</>
+                        )}
+                      </Button>
+                    )}
+                    {orden.estado === 'PRUEBAS' && (
+                      <Button
+                        onClick={() => handleTransicion(orden, 'FINALIZADA', 'validar_calidad')}
+                        disabled={botonesDeshabilitados[`validar_calidad_${orden.id}`] || transicionEnCurso}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500"
+                      >
+                        {botonesDeshabilitados[`validar_calidad_${orden.id}`] ? (
+                          <><Clock className="w-4 h-4 mr-2 animate-spin" />Validando...</>
+                        ) : (
+                          <><CheckCircle className="w-4 h-4 mr-2" />Validar Calidad</>
+                        )}
+                      </Button>
+                    )}
                     <Button
                       onClick={() => handleVerDetalle(orden)}
                       variant="ghost"

@@ -464,7 +464,22 @@ function OrdenesTrabajoContent() {
       )}
 
       {/* Vista Lista */}
-      {vistaActiva === 'lista' && <>
+      {vistaActiva === 'lista' && <Tabs defaultValue="todas" className="w-full"><>
+
+      {/* Tabs de navegación */}
+      <TabsList className="mb-2">
+        <TabsTrigger value="todas">Todas las OTs</TabsTrigger>
+        <TabsTrigger value="pendiente-cliente">
+          Pendiente Cliente
+          {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length > 0 && (
+            <span className="ml-2 bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+              {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length}
+            </span>
+          )}
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="todas">
 
       {/* Loading spinner */}
       {isLoadingOrdenes && (
@@ -574,7 +589,87 @@ function OrdenesTrabajoContent() {
           </Card>
         )}
       </div>}
-      </> }{/* fin vistaActiva lista */}
+
+      </TabsContent>
+
+      {/* ── TAB: PENDIENTE CLIENTE ── */}
+      <TabsContent value="pendiente-cliente">
+        {isLoadingOrdenes && (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-amber-500 mr-3" />
+            <span className="text-slate-500">Cargando órdenes...</span>
+          </div>
+        )}
+        {!isLoadingOrdenes && (
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-2 text-amber-800 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>
+                Estas órdenes tienen diagnóstico técnico completo y están esperando decisión del cliente (aprobación o rechazo).
+              </span>
+            </div>
+
+            {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').map((orden) => {
+              const config = estadoConfig[orden.estado] || estadoConfig.EN_COLA_REVISION;
+              return (
+                <Card
+                  key={orden.id}
+                  className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer border-l-4 border-l-amber-400"
+                  onClick={() => setSelectedOT(orden)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold text-xs">
+                            OT
+                          </div>
+                          <div>
+                            <p className="text-xs font-mono text-amber-600 font-bold mb-1">
+                              {orden.codigo_ot || 'OT-LEGACY'}
+                            </p>
+                            <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
+                            <p className="text-sm text-slate-600 font-medium">{orden.motivo_ingreso}</p>
+                            <p className="text-xs text-slate-500">{getEquipoInfo(orden.equipo_id)}</p>
+                            <p className="text-xs text-slate-400">
+                              Diagnóstico: {format(new Date(orden.fecha_diagnostico || orden.updated_date || orden.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <Badge className={`${config.color} border-0`}>{config.label}</Badge>
+                          <Badge className={`${
+                            orden.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
+                            orden.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
+                            'bg-slate-100 text-slate-700'
+                          } border-0 capitalize`}>
+                            {orden.prioridad}
+                          </Badge>
+                          <span className="flex items-center gap-1 text-xs text-slate-500 ml-1">
+                            <User className="w-3 h-3" />
+                            {getTecnicoName(orden.tecnico_asignado_id)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length === 0 && (
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-12 text-center">
+                  <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-emerald-300" />
+                  <p className="text-slate-400">No hay órdenes esperando decisión del cliente</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+      </TabsContent>
+
+      </></Tabs>}{/* fin vistaActiva lista */}
 
       {/* Modal Crear OT */}
       <Dialog open={showModal && !selectedOT} onOpenChange={setShowModal}>

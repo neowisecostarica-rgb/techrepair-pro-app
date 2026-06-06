@@ -12,11 +12,14 @@ import { useToast } from '@/components/ui/use-toast';
 /**
  * Formulario canónico de cliente - ÚNICO componente para crear/editar clientes
  * Usado tanto en módulo Clientes como en OT
+ * mode="quick" → solo nombre_completo, identificacion, telefono, tipo_cliente (sin email/dirección/notas)
+ * mode="full"  → todos los campos (default)
  */
 export default function FormularioCliente({ 
   cliente = null, 
   onGuardar, 
-  onCancelar 
+  onCancelar,
+  mode = 'full'
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -161,34 +164,38 @@ export default function FormularioCliente({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Email</Label>
-        <Input
-          type="email"
-          value={formData.email}
-          onChange={(e) => handleFieldChange('email', e.target.value)}
-          placeholder="correo@ejemplo.com"
-        />
-      </div>
+      {mode === 'full' && (
+        <>
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleFieldChange('email', e.target.value)}
+              placeholder="correo@ejemplo.com"
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label>Dirección</Label>
-        <Input
-          value={formData.direccion}
-          onChange={(e) => handleFieldChange('direccion', e.target.value)}
-          placeholder="Dirección física del cliente"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label>Dirección</Label>
+            <Input
+              value={formData.direccion}
+              onChange={(e) => handleFieldChange('direccion', e.target.value)}
+              placeholder="Dirección física del cliente"
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label>Notas</Label>
-        <Textarea
-          value={formData.notas}
-          onChange={(e) => handleFieldChange('notas', e.target.value)}
-          placeholder="Información adicional sobre el cliente"
-          rows={3}
-        />
-      </div>
+          <div className="space-y-2">
+            <Label>Notas</Label>
+            <Textarea
+              value={formData.notas}
+              onChange={(e) => handleFieldChange('notas', e.target.value)}
+              placeholder="Información adicional sobre el cliente"
+              rows={3}
+            />
+          </div>
+        </>
+      )}
 
       <div className="flex justify-end gap-3 pt-4">
         <Button 

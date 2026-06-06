@@ -58,14 +58,7 @@ export default function OrdenesTrabajo() {
 
 
 function OrdenesTrabajoContent() {
-  // P0-A.1 SOT: TECHNICIAN no debe usar esta vista como centro de trabajo
-  const { effectiveRole: roleCheck } = useAuthContext();
-  const navigateCheck = useNavigate();
-  useEffect(() => {
-    if (roleCheck === 'TECHNICIAN') {
-      navigateCheck('/MiDia', { replace: true });
-    }
-  }, [roleCheck, navigateCheck]);
+  // TECHNICIAN accede en modo consulta — sin redirección
 
   const [showModal, setShowModal] = useState(false);
   const [editingOT, setEditingOT] = useState(null);
@@ -447,13 +440,15 @@ function OrdenesTrabajoContent() {
           >
             Kanban
           </Button>
-          <Button
-            onClick={() => { setEditingOT(null); setShowModal(true); }}
-            className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Nueva OT
-          </Button>
+          {effectiveRole !== 'TECHNICIAN' && (
+            <Button
+              onClick={() => { setEditingOT(null); setShowModal(true); }}
+              className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Nueva OT
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1303,7 +1298,7 @@ function OrdenesTrabajoContent() {
                 )}
 
 
-                {(selectedOT.estado === 'DIAGNOSTICADA' || selectedOT.estado === 'FINALIZADA') && (
+                {effectiveRole !== 'TECHNICIAN' && (selectedOT.estado === 'DIAGNOSTICADA' || selectedOT.estado === 'FINALIZADA') && (
                   <Button 
                     onClick={() => handleCobrarTrabajo(selectedOT)}
                     className="bg-gradient-to-r from-green-500 to-emerald-500"
@@ -1327,7 +1322,7 @@ function OrdenesTrabajoContent() {
                   />
                 )}
                 
-                {selectedOT.estado !== 'ENTREGADA' && (
+                {effectiveRole !== 'TECHNICIAN' && selectedOT.estado !== 'ENTREGADA' && (
                   <Button 
                     onClick={() => {
                       setEditingOT(selectedOT);

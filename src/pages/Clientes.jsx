@@ -13,6 +13,7 @@ import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
 import { base44 } from '@/api/base44Client';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
+import ClientePerfilHeader from '@/components/clientes/ClientePerfilHeader';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
 import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
@@ -294,7 +295,17 @@ function ClientesContent() {
           </DialogHeader>
           {selectedCliente && user && (
             <Tabs defaultValue="seguimiento" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              {/* ── Customer 360 Header ── */}
+              <ClientePerfilHeader
+                cliente={selectedCliente}
+                onEditarCliente={() => {
+                  setShowDetalleModal(false);
+                  setEditingCliente(selectedCliente);
+                  setShowModal(true);
+                }}
+              />
+
+              <TabsList className="grid w-full grid-cols-3 mt-4">
                 <TabsTrigger value="seguimiento">
                   <History className="w-4 h-4 mr-2" />
                   Seguimiento
@@ -310,25 +321,6 @@ function ClientesContent() {
               </TabsList>
 
               <TabsContent value="seguimiento" className="space-y-4">
-                <Card className="border-0 shadow-sm">
-                  <CardContent className="p-6">
-                    <h3 className="font-bold text-slate-900 mb-2">{selectedCliente.nombre_completo}</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-slate-500">Email</p>
-                        <p className="text-slate-900">{selectedCliente.email || '-'}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Teléfono</p>
-                        <p className="text-slate-900">{selectedCliente.telefono}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Tipo</p>
-                        <Badge className="capitalize">{selectedCliente.tipo}</Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
                 <SeguimientoCliente clienteId={selectedCliente.id} />
               </TabsContent>
 

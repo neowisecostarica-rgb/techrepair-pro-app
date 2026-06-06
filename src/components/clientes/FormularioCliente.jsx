@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
 
 /**
  * Formulario canónico de cliente - ÚNICO componente para crear/editar clientes
@@ -17,6 +18,7 @@ export default function FormularioCliente({
   onGuardar, 
   onCancelar 
 }) {
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -60,19 +62,35 @@ export default function FormularioCliente({
 
     setSaving(true);
     try {
-      const response = await base44.functions.invoke('createClient', {
-        nombre_completo: formData.nombre_completo,
-        identificacion: formData.identificacion,
-        tipo_cliente: formData.tipo_cliente,
-        telefono: formData.telefono,
-        email: formData.email || undefined,
-        direccion: formData.direccion || undefined,
-        notas: formData.notas || undefined,
-      });
-      onGuardar(response.data);
+      if (cliente) {
+        // EDICIÓN
+        const response = await base44.functions.invoke('updateClient', {
+          cliente_id: cliente.id,
+          nombre_completo: formData.nombre_completo,
+          tipo_cliente: formData.tipo_cliente,
+          telefono: formData.telefono,
+          email: formData.email || undefined,
+          direccion: formData.direccion || undefined,
+          notas: formData.notas || undefined,
+        });
+        toast({ title: 'Cliente actualizado', description: `${formData.nombre_completo} fue actualizado correctamente.` });
+        onGuardar(response.data);
+      } else {
+        // CREACIÓN
+        const response = await base44.functions.invoke('createClient', {
+          nombre_completo: formData.nombre_completo,
+          identificacion: formData.identificacion,
+          tipo_cliente: formData.tipo_cliente,
+          telefono: formData.telefono,
+          email: formData.email || undefined,
+          direccion: formData.direccion || undefined,
+          notas: formData.notas || undefined,
+        });
+        onGuardar(response.data);
+      }
     } catch (error) {
-      console.error('Error creando cliente:', error);
-      setApiError('Error al crear cliente: ' + error.message);
+      console.error('Error guardando cliente:', error);
+      setApiError((cliente ? 'Error al actualizar cliente: ' : 'Error al crear cliente: ') + error.message);
     } finally {
       setSaving(false);
     }
@@ -80,15 +98,6 @@ export default function FormularioCliente({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {cliente && (
-        <Alert className="bg-amber-50 border-amber-200">
-          <AlertCircle className="w-4 h-4 text-amber-600" />
-          <AlertDescription className="text-amber-800">
-            La edición de clientes estará disponible próximamente.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {apiError && (
         <Alert className="bg-red-50 border-red-200">
           <AlertCircle className="w-4 h-4 text-red-600" />
@@ -104,7 +113,6 @@ export default function FormularioCliente({
             onChange={(e) => handleFieldChange('nombre_completo', e.target.value)}
             placeholder="Nombre completo del cliente"
             required
-            disabled={!!cliente}
           />
         </div>
 
@@ -200,7 +208,7 @@ export default function FormularioCliente({
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={saving || !!cliente} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
           {saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

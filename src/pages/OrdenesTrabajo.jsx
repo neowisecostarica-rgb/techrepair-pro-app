@@ -402,7 +402,6 @@ function OrdenesTrabajoContent() {
       }
 
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['listWorkOrders'] });
 
       setShowReasignar(false);
       setReasignarOT(null);
@@ -1248,7 +1247,6 @@ function OrdenesTrabajoContent() {
                          userEmail: user?.email
                        });
                        queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
-                       queryClient.invalidateQueries({ queryKey: ['listWorkOrders'] });
                        setSelectedOT(null);
                        toast({ title: 'Revisión iniciada correctamente' });
                      } catch (error) {

@@ -1,3 +1,31 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * SFHS: ModalDetalleOT
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * STATUS: ORPHAN / FUTURE
+ * CONNECTED_TO_ACTIVE_FLOW: NO
+ * USED_BY: NONE
+ * 
+ * ⚠️ IMPORTANT:
+ * Este componente NO está importado ni renderizado en el proyecto activo.
+ * El detalle OT visible actualmente (en pages/OrdenesTrabajo.jsx) está
+ * implementado como código hardcoded dentro del Dialog modal de esa página.
+ *
+ * DO_NOT_USE_FOR:
+ * - No utilizar para el detalle OT activo de pages/OrdenesTrabajo.jsx
+ * - No conectar a menos que se realice una migración funcional completa
+ *
+ * NOTES:
+ * - Este componente fue diseñado con estructura SFHS (5 bloques colapsables)
+ * - Propósito futuro: Reemplazar la implementación hardcoded cuando se 
+ *   complete la migración de funcionalidad desde OrdenesTrabajo.jsx
+ * - Actualmente actúa como un visor pasivo de solo lectura (read-only)
+ * 
+ * AUDITORÍA: Última revisión - 2026-06-08
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';

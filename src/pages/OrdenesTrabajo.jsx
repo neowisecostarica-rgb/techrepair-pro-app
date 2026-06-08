@@ -1066,8 +1066,117 @@ function OrdenesTrabajoContent() {
                 <TabsTrigger value="actividades">Actividades</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="general" className="space-y-6">
-                {/* Diagnóstico Técnico Listo */}
+              <TabsContent value="general" className="space-y-4">
+
+                {/* ── BLOQUE 1: SIGUIENTE ACCIÓN (P0.2-B.1) ─────────────────── */}
+                {(() => {
+                  // Determinar la acción principal según estado y rol — sin lógica nueva
+                  const s = selectedOT.estado;
+                  const esTecnicoPropio = effectiveRole === 'TECHNICIAN' && selectedOT.tecnico_asignado_id === user?.id;
+                  const esAdmin = ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole);
+                  const esAdminOVentas = ['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole);
+                  const noTecnico = effectiveRole !== 'TECHNICIAN';
+
+                  let accion = null;
+
+                  if (s === 'ASIGNADA' && esTecnicoPropio) {
+                    accion = {
+                      label: 'Iniciar Revisión',
+                      desc: 'El equipo está asignado y listo para comenzar la revisión técnica.',
+                      color: 'from-blue-500 to-indigo-500',
+                      icon: '▶',
+                      handler: async () => {
+                        try {
+                          await transicionarEstadoOT({ ordenTrabajoId: selectedOT.id, nuevoEstado: 'EN_REVISION', effectiveOrgId, userId: user?.id, userEmail: user?.email });
+                          queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+                          setSelectedOT(null);
+                          toast({ title: 'Revisión iniciada correctamente' });
+                        } catch (error) {
+                          const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
+                          toast({ variant: 'destructive', title: 'No se pudo iniciar revisión', description: msg });
+                        }
+                      }
+                    };
+                  } else if (s === 'ASIGNADA' && !esTecnicoPropio && s === 'ASIGNADA') {
+                    accion = {
+                      label: 'Iniciar Diagnóstico Técnico',
+                      desc: 'La OT está asignada. Iniciar el diagnóstico técnico detallado.',
+                      color: 'from-purple-500 to-blue-500',
+                      icon: '🔬',
+                      handler: () => { setDiagnosticoTecnicoOT(selectedOT); setShowDiagnosticoTecnico(true); setSelectedOT(null); }
+                    };
+                  } else if (s === 'EN_COLA_REVISION' && esAdminOVentas) {
+                    accion = {
+                      label: 'Completar Pre-Diagnóstico',
+                      desc: 'Registrar la información inicial del problema antes de asignar al técnico.',
+                      color: 'from-blue-500 to-indigo-500',
+                      icon: '📋',
+                      handler: () => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }
+                    };
+                  } else if ((s === 'DIAGNOSTICADA' || s === 'COTIZADA') && esAdminOVentas) {
+                    accion = {
+                      label: 'Gestionar Cotización',
+                      desc: 'El diagnóstico está listo. Crear o revisar la cotización para el cliente.',
+                      color: 'from-emerald-500 to-blue-500',
+                      icon: '💰',
+                      handler: () => { setCotizacionOT(selectedOT); setShowCotizacion(true); setSelectedOT(null); }
+                    };
+                  } else if ((s === 'DIAGNOSTICADA' || s === 'FINALIZADA') && noTecnico) {
+                    accion = {
+                      label: 'Cobrar Trabajo',
+                      desc: 'La reparación está lista. Proceder al cobro en el punto de venta.',
+                      color: 'from-green-500 to-emerald-500',
+                      icon: '💳',
+                      handler: () => handleCobrarTrabajo(selectedOT)
+                    };
+                  } else if (s === 'FINALIZADA') {
+                    accion = {
+                      label: 'Entregar Equipo',
+                      desc: 'El trabajo está finalizado y pagado. Proceder a la entrega al cliente.',
+                      color: 'from-emerald-500 to-teal-500',
+                      icon: '📦',
+                      isEntregarOT: true
+                    };
+                  } else if (['ENTREGADA', 'CANCELADA'].includes(s)) {
+                    accion = null; // OT cerrada — no hay siguiente acción
+                  }
+
+                  if (!accion) return null;
+
+                  return (
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-4 text-white">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Siguiente Acción</p>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-white text-sm leading-snug">{accion.desc}</p>
+                        </div>
+                        {accion.isEntregarOT ? (
+                          <EntregarOT
+                            ordenTrabajo={selectedOT}
+                            effectiveOrgId={effectiveOrgId}
+                            userId={user?.id}
+                            userEmail={user?.email}
+                            effectiveRole={effectiveRole}
+                            onSuccess={() => {
+                              queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+                              setSelectedOT(null);
+                            }}
+                          />
+                        ) : (
+                          <Button
+                            onClick={accion.handler}
+                            className={`bg-gradient-to-r ${accion.color} shrink-0 font-semibold shadow-lg`}
+                          >
+                            <span className="mr-2">{accion.icon}</span>
+                            {accion.label}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ── BLOQUE 2: DIAGNÓSTICO TÉCNICO COMPLETADO ──────────────── */}
                 {selectedOT.estado === 'DIAGNOSTICADA' && (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
@@ -1076,274 +1185,223 @@ function OrdenesTrabajoContent() {
                           <CheckCircle2 className="w-5 h-5" />
                           Diagnóstico Técnico Completo
                         </h4>
-                        <p className="text-sm text-emerald-700">
-                          El diagnóstico técnico está listo para revisión
-                        </p>
+                        <p className="text-sm text-emerald-700">El diagnóstico técnico está listo para revisión</p>
                       </div>
                       <Button
-                        onClick={() => {
-                          window.location.href = `/resumen-diagnostico?ot_id=${selectedOT.id}&diagnostico_id=${selectedOT.diagnostico_tecnico_id || 'N/A'}`;
-                        }}
+                        onClick={() => { window.location.href = `/resumen-diagnostico?ot_id=${selectedOT.id}&diagnostico_id=${selectedOT.diagnostico_tecnico_id || 'N/A'}`; }}
                         className="bg-gradient-to-r from-emerald-500 to-blue-500"
                         size="sm"
                       >
                         <FileText className="w-4 h-4 mr-2" />
-                        Ver Diagnóstico Técnico
+                        Ver Diagnóstico
                       </Button>
                     </div>
                   </div>
                 )}
 
-                {/* Pre-Diagnóstico Resumen */}
-                {selectedOT.diagnostico_resumido && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-blue-900 mb-2">Pre-Diagnóstico de Recepción</h4>
-                    <p className="text-sm text-blue-800 whitespace-pre-wrap">
-                      {selectedOT.diagnostico_resumido}
+                {/* ── BLOQUE 3: DATOS GENERALES ─────────────────────────────── */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
+                  <div>
+                    <p className="text-xs text-slate-500">Estado</p>
+                    <Badge className={`${estadoConfig[selectedOT.estado]?.color} border-0 mt-1`}>
+                      {estadoConfig[selectedOT.estado]?.label}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Prioridad</p>
+                    <Badge className={`${
+                      selectedOT.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
+                      selectedOT.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
+                      'bg-slate-100 text-slate-700'
+                    } border-0 capitalize mt-1`}>
+                      {selectedOT.prioridad}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Cliente</p>
+                    <p className="font-medium">{getClienteName(selectedOT.cliente_id)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Equipo</p>
+                    <p className="font-medium">{getEquipoInfo(selectedOT.equipo_id)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Técnico Asignado</p>
+                    <p className="font-medium">{getTecnicoName(selectedOT.tecnico_asignado_id)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Fecha Ingreso</p>
+                    <p className="font-medium">
+                      {format(new Date(selectedOT.fecha_ingreso || selectedOT.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
                     </p>
                   </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
-                <div>
-                  <p className="text-xs text-slate-500">Estado</p>
-                  <Badge className={`${estadoConfig[selectedOT.estado]?.color} border-0 mt-1`}>
-                    {estadoConfig[selectedOT.estado]?.label}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Prioridad</p>
-                  <Badge className={`${
-                    selectedOT.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
-                    selectedOT.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
-                    'bg-slate-100 text-slate-700'
-                  } border-0 capitalize mt-1`}>
-                    {selectedOT.prioridad}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Cliente</p>
-                  <p className="font-medium">{getClienteName(selectedOT.cliente_id)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Equipo</p>
-                  <p className="font-medium">{getEquipoInfo(selectedOT.equipo_id)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Técnico Asignado</p>
-                  <p className="font-medium">{getTecnicoName(selectedOT.tecnico_asignado_id)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Fecha Ingreso</p>
-                  <p className="font-medium">
-                    {format(new Date(selectedOT.fecha_ingreso || selectedOT.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
-                  </p>
-                </div>
-                {/* P0.3: PIN visible para técnicos y admins */}
-                {selectedOT.contrasena_ingreso && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && (
-                  <div className="col-span-2">
-                    <p className="text-xs text-slate-500">🔒 Contraseña / PIN del Equipo</p>
-                    <p className="font-mono font-bold text-emerald-600 text-lg">{selectedOT.contrasena_ingreso}</p>
-                    <p className="text-xs text-slate-400 mt-1">Visible solo para personal autorizado</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-slate-500">Motivo de Ingreso</Label>
-                  <p className="font-medium text-slate-900 mt-1">{selectedOT.motivo_ingreso}</p>
+                  {/* P0.3: PIN visible para técnicos y admins */}
+                  {selectedOT.contrasena_ingreso && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-slate-500">🔒 Contraseña / PIN del Equipo</p>
+                      <p className="font-mono font-bold text-emerald-600 text-lg">{selectedOT.contrasena_ingreso}</p>
+                      <p className="text-xs text-slate-400 mt-1">Visible solo para personal autorizado</p>
+                    </div>
+                  )}
                 </div>
 
-                {selectedOT.observaciones_ingreso && (
+                {/* ── BLOQUE 4: DETALLE INGRESO ─────────────────────────────── */}
+                <div className="space-y-3">
                   <div>
-                    <Label className="text-slate-500">Observaciones</Label>
-                    <p className="text-slate-700 mt-1">{selectedOT.observaciones_ingreso}</p>
+                    <Label className="text-slate-500">Motivo de Ingreso</Label>
+                    <p className="font-medium text-slate-900 mt-1">{selectedOT.motivo_ingreso}</p>
                   </div>
-                )}
 
-                {/* P0.3: Información adicional del equipo en recepción */}
-                {(selectedOT.serie_ingreso || selectedOT.accesorios_ingreso || selectedOT.estado_fisico_ingreso) && (
-                  <div className="border-t border-slate-200 pt-4">
-                    <Label className="text-slate-500 mb-3 block">Información de Recepción</Label>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      {selectedOT.serie_ingreso && (
-                        <div>
-                          <span className="text-slate-500">Serie/IMEI:</span>
-                          <p className="font-medium">{selectedOT.serie_ingreso}</p>
-                        </div>
+                  {selectedOT.observaciones_ingreso && (
+                    <div>
+                      <Label className="text-slate-500">Observaciones</Label>
+                      <p className="text-slate-700 mt-1">{selectedOT.observaciones_ingreso}</p>
+                    </div>
+                  )}
+
+                  {selectedOT.diagnostico_resumido && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <h4 className="font-semibold text-blue-900 mb-1 text-sm">Pre-Diagnóstico de Recepción</h4>
+                      <p className="text-sm text-blue-800 whitespace-pre-wrap">{selectedOT.diagnostico_resumido}</p>
+                    </div>
+                  )}
+
+                  {/* P0.3: Información adicional del equipo en recepción */}
+                  {(selectedOT.serie_ingreso || selectedOT.accesorios_ingreso || selectedOT.estado_fisico_ingreso) && (
+                    <div className="border-t border-slate-200 pt-3">
+                      <Label className="text-slate-500 mb-2 block">Recepción del Equipo</Label>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        {selectedOT.serie_ingreso && (
+                          <div>
+                            <span className="text-slate-500">Serie/IMEI:</span>
+                            <p className="font-medium">{selectedOT.serie_ingreso}</p>
+                          </div>
+                        )}
+                        {selectedOT.estado_fisico_ingreso && (
+                          <div>
+                            <span className="text-slate-500">Estado físico:</span>
+                            <p className="font-medium capitalize">{selectedOT.estado_fisico_ingreso}</p>
+                          </div>
+                        )}
+                        {selectedOT.accesorios_ingreso && (
+                          <div className="col-span-2">
+                            <span className="text-slate-500">Accesorios:</span>
+                            <p className="font-medium">{selectedOT.accesorios_ingreso}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── BLOQUE 5: ACCIONES REORGANIZADAS ─────────────────────── */}
+                <div className="border-t border-slate-200 pt-4 space-y-3">
+
+                  {/* Grupo A — Flujo Operativo */}
+                  {(() => {
+                    const botonesFlujoPrimario = [];
+
+                    if (selectedOT.estado === 'ASIGNADA') {
+                      botonesFlujoPrimario.push(
+                        <Button key="diag" onClick={() => { setDiagnosticoTecnicoOT(selectedOT); setShowDiagnosticoTecnico(true); setSelectedOT(null); }} className="bg-gradient-to-r from-purple-500 to-blue-500">
+                          🔬 Iniciar Diagnóstico Técnico
+                        </Button>
+                      );
+                    }
+                    if (effectiveRole === 'TECHNICIAN' && selectedOT.estado === 'ASIGNADA' && selectedOT.tecnico_asignado_id === user?.id) {
+                      botonesFlujoPrimario.push(
+                        <Button key="revision" onClick={async () => {
+                          try {
+                            await transicionarEstadoOT({ ordenTrabajoId: selectedOT.id, nuevoEstado: 'EN_REVISION', effectiveOrgId, userId: user?.id, userEmail: user?.email });
+                            queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+                            setSelectedOT(null);
+                            toast({ title: 'Revisión iniciada correctamente' });
+                          } catch (error) {
+                            const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
+                            toast({ variant: 'destructive', title: 'No se pudo iniciar revisión', description: msg });
+                          }
+                        }} className="bg-gradient-to-r from-blue-500 to-indigo-500">
+                          <Play className="w-4 h-4 mr-2" />Iniciar Revisión
+                        </Button>
+                      );
+                    }
+                    if (['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && selectedOT.estado === 'EN_COLA_REVISION') {
+                      botonesFlujoPrimario.push(
+                        <Button key="prediag" onClick={() => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }} className="bg-gradient-to-r from-blue-500 to-indigo-500">
+                          📋 Editar Pre-Diagnóstico
+                        </Button>
+                      );
+                    }
+                    if (['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && ['DIAGNOSTICADA', 'COTIZADA'].includes(selectedOT.estado)) {
+                      botonesFlujoPrimario.push(
+                        <Button key="cot" onClick={() => { setCotizacionOT(selectedOT); setShowCotizacion(true); setSelectedOT(null); }} className="bg-gradient-to-r from-emerald-500 to-blue-500">
+                          💰 Gestionar Cotización
+                        </Button>
+                      );
+                    }
+                    if (effectiveRole !== 'TECHNICIAN' && (selectedOT.estado === 'DIAGNOSTICADA' || selectedOT.estado === 'FINALIZADA')) {
+                      botonesFlujoPrimario.push(
+                        <Button key="cobrar" onClick={() => handleCobrarTrabajo(selectedOT)} className="bg-gradient-to-r from-green-500 to-emerald-500">
+                          💳 Cobrar Trabajo
+                        </Button>
+                      );
+                    }
+                    if (selectedOT.estado === 'FINALIZADA') {
+                      botonesFlujoPrimario.push(
+                        <EntregarOT key="entregar"
+                          ordenTrabajo={selectedOT}
+                          effectiveOrgId={effectiveOrgId}
+                          userId={user?.id}
+                          userEmail={user?.email}
+                          effectiveRole={effectiveRole}
+                          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] }); setSelectedOT(null); }}
+                        />
+                      );
+                    }
+
+                    return botonesFlujoPrimario.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Flujo Operativo</p>
+                        <div className="flex flex-wrap gap-2">{botonesFlujoPrimario}</div>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  {/* Grupo B — Gestión */}
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Gestión</p>
+                    <div className="flex flex-wrap gap-2">
+                      {effectiveRole !== 'TECHNICIAN' && selectedOT.estado !== 'ENTREGADA' && (
+                        <Button variant="outline" onClick={() => { setEditingOT(selectedOT); setSelectedOT(null); setShowModal(true); }}>
+                          ✏️ Editar
+                        </Button>
                       )}
-                      {selectedOT.estado_fisico_ingreso && (
-                        <div>
-                          <span className="text-slate-500">Estado físico:</span>
-                          <p className="font-medium capitalize">{selectedOT.estado_fisico_ingreso}</p>
-                        </div>
+                      {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && !['ENTREGADA', 'CANCELADA'].includes(selectedOT.estado) && (
+                        <Button variant="outline" className="border-purple-500 text-purple-700 hover:bg-purple-50"
+                          onClick={() => { setReasignarOT(selectedOT); setNuevoTecnicoId(''); setMotivoReasignacion(''); setShowReasignar(true); }}>
+                          🔄 Reasignar Técnico
+                        </Button>
                       )}
-                      {selectedOT.accesorios_ingreso && (
-                        <div className="col-span-2">
-                          <span className="text-slate-500">Accesorios:</span>
-                          <p className="font-medium">{selectedOT.accesorios_ingreso}</p>
-                        </div>
+                      {['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole) && (
+                        <AgendarDesdeOT
+                          ordenTrabajo={selectedOT}
+                          effectiveOrgId={effectiveOrgId}
+                          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['citas'] }); }}
+                        />
                       )}
+                      {selectedOT.public_access_token && ['DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION', 'FINALIZADA'].includes(selectedOT.estado) && (
+                        <Button variant="outline" className="border-blue-500 text-blue-700 hover:bg-blue-50"
+                          onClick={() => handleCopiarLink(selectedOT)}>
+                          📋 Copiar Link Cliente
+                        </Button>
+                      )}
+                      <Button variant="outline" onClick={() => setSelectedOT(null)}>
+                        Cerrar
+                      </Button>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-200 flex-wrap">
-                <Button variant="outline" onClick={() => setSelectedOT(null)}>
-                  Cerrar
-                </Button>
-                {/* P0.4: Link cliente solo visible post-diagnóstico */}
-                {selectedOT.public_access_token && ['DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION', 'FINALIZADA'].includes(selectedOT.estado) && (
-                  <Button 
-                    onClick={() => handleCopiarLink(selectedOT)}
-                    variant="outline"
-                    className="border-blue-500 text-blue-700 hover:bg-blue-50"
-                  >
-                    📋 Copiar Link Cliente
-                  </Button>
-                )}
-
-                {/* Reasignar Técnico */}
-                {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) &&
-                  !['ENTREGADA', 'CANCELADA'].includes(selectedOT.estado) && (
-                  <Button 
-                    onClick={() => {
-                      setReasignarOT(selectedOT);
-                      setNuevoTecnicoId(''); // P0.2-B: forzar selección explícita — no pre-cargar técnico actual
-                      setMotivoReasignacion('');
-                      setShowReasignar(true);
-                    }}
-                    variant="outline"
-                    className="border-purple-500 text-purple-700 hover:bg-purple-50"
-                  >
-                    🔄 Reasignar Técnico
-                  </Button>
-                )}
-                
-                {/* Botón Diagnóstico Técnico — visible cuando OT está ASIGNADA */}
-                {selectedOT.estado === 'ASIGNADA' && (
-                  <Button
-                    onClick={() => {
-                      setDiagnosticoTecnicoOT(selectedOT);
-                      setShowDiagnosticoTecnico(true);
-                      setSelectedOT(null);
-                    }}
-                    className="bg-gradient-to-r from-purple-500 to-blue-500"
-                  >
-                    🔬 Iniciar Diagnóstico Técnico
-                  </Button>
-                )}
-
-                {/* P0.1: Botón "Iniciar Revisión" para técnicos cuando OT está ASIGNADA */}
-                 {effectiveRole === 'TECHNICIAN' && 
-                   selectedOT.estado === 'ASIGNADA' && 
-                   selectedOT.tecnico_asignado_id === user?.id && (
-                  <Button 
-                   onClick={async () => {
-                     try {
-                       await transicionarEstadoOT({
-                         ordenTrabajoId: selectedOT.id,
-                         nuevoEstado: 'EN_REVISION',
-                         effectiveOrgId: effectiveOrgId,
-                         userId: user?.id,
-                         userEmail: user?.email
-                       });
-                       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
-                       setSelectedOT(null);
-                       toast({ title: 'Revisión iniciada correctamente' });
-                     } catch (error) {
-                       const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
-                       toast({ variant: 'destructive', title: 'No se pudo iniciar revisión', description: msg });
-                     }
-                   }}
-                    className="bg-gradient-to-r from-blue-500 to-indigo-500"
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    Iniciar Revisión
-                  </Button>
-                )}
-
-                {/* P0.2: Pre-Diagnóstico - Editar (ya existe siempre) */}
-                {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && 
-                  selectedOT.estado === 'EN_COLA_REVISION' && (
-                  <Button 
-                    onClick={() => {
-                      setPreDiagnosticoOT(selectedOT);
-                      setShowPreDiagnostico(true);
-                      setSelectedOT(null);
-                    }}
-                    className="bg-gradient-to-r from-blue-500 to-indigo-500"
-                  >
-                    📋 Editar Pre-Diagnóstico
-                  </Button>
-                )}
-
-                {/* Gestionar Cotización */}
-                {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) && 
-                  ['DIAGNOSTICADA', 'COTIZADA'].includes(selectedOT.estado) && (
-                  <Button 
-                    onClick={() => {
-                      setCotizacionOT(selectedOT);
-                      setShowCotizacion(true);
-                      setSelectedOT(null);
-                    }}
-                    className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                  >
-                    💰 Gestionar Cotización
-                  </Button>
-                )}
-                
-                {/* P0.3: Integrar AgendarDesdeOT */}
-                {['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole) && (
-                  <AgendarDesdeOT 
-                    ordenTrabajo={selectedOT} 
-                    effectiveOrgId={effectiveOrgId}
-                    onSuccess={() => {
-                      queryClient.invalidateQueries({ queryKey: ['citas'] });
-                    }}
-                  />
-                )}
-
-
-                {effectiveRole !== 'TECHNICIAN' && (selectedOT.estado === 'DIAGNOSTICADA' || selectedOT.estado === 'FINALIZADA') && (
-                  <Button 
-                    onClick={() => handleCobrarTrabajo(selectedOT)}
-                    className="bg-gradient-to-r from-green-500 to-emerald-500"
-                  >
-                    💳 Cobrar Trabajo
-                  </Button>
-                )}
-                
-                {/* FASE 4: Entregar OT */}
-                {selectedOT.estado === 'FINALIZADA' && (
-                  <EntregarOT
-                    ordenTrabajo={selectedOT}
-                    effectiveOrgId={effectiveOrgId}
-                    userId={user?.id}
-                    userEmail={user?.email}
-                    effectiveRole={effectiveRole}
-                    onSuccess={() => {
-                      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
-                      setSelectedOT(null);
-                    }}
-                  />
-                )}
-                
-                {effectiveRole !== 'TECHNICIAN' && selectedOT.estado !== 'ENTREGADA' && (
-                  <Button 
-                    onClick={() => {
-                      setEditingOT(selectedOT);
-                      setSelectedOT(null);
-                      setShowModal(true);
-                    }}
-                    className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                  >
-                    Editar
-                  </Button>
-                )}
-              </div>
               </TabsContent>
 
               <TabsContent value="operacional" className="space-y-4 mt-4">

@@ -20,6 +20,7 @@ import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
 import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
 import MensajesMotivacionVentas from '../components/ventas/MensajesMotivacionVentas';
+import AtencionRequerida from '@/components/clientes/AtencionRequerida';
 
 export default function Clientes() {
   return (
@@ -306,6 +307,8 @@ function ClientesContent() {
                   setShowModal(true);
                 }}
               />
+
+              <AtencionRequerida clienteId={selectedCliente.id} />
 
               <ResumenEjecutivo clienteId={selectedCliente.id} />
 

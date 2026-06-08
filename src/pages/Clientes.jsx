@@ -3,11 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, User, Mail, Phone, Building2, History, MessageSquare, FileText } from 'lucide-react';
+import { Plus, Search, Mail, Phone, History, MessageSquare, FileText, Pencil, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
@@ -76,8 +74,8 @@ function ClientesContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Clientes (CRM)</h1>
-          <p className="text-slate-500">Gestión de clientes y su historial</p>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Clientes</h1>
+          <p className="text-slate-500">Expedientes de clientes y contexto operativo</p>
         </div>
         <Button
           onClick={() => { setEditingCliente(null); setShowModal(true); }}
@@ -106,64 +104,66 @@ function ClientesContent() {
       {/* Grid de Clientes */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {clientesFiltrados.map((cliente) => (
-          <Card 
-            key={cliente.id} 
+          <Card
+            key={cliente.id}
             className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer group"
-            onClick={() => setSelectedCliente(cliente)}
+            onClick={() => {
+              setSelectedCliente(cliente);
+              setShowDetalleModal(true);
+            }}
           >
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl">
+                <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0">
                   {cliente.nombre_completo?.charAt(0) || 'C'}
                 </div>
-                <Badge className={`${
-                  cliente.tipo === 'empresa' ? 'bg-blue-100 text-blue-700' :
-                  cliente.tipo === 'institucional' ? 'bg-purple-100 text-purple-700' :
-                  'bg-slate-100 text-slate-700'
-                } border-0`}>
-                  {cliente.tipo}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className={`${
+                    cliente.tipo === 'empresa' ? 'bg-blue-100 text-blue-700' :
+                    cliente.tipo === 'institucional' ? 'bg-purple-100 text-purple-700' :
+                    'bg-slate-100 text-slate-700'
+                  } border-0`}>
+                    {cliente.tipo}
+                  </Badge>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingCliente(cliente);
+                      setShowModal(true);
+                    }}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    title="Editar cliente"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               <h3 className="font-bold text-slate-900 text-lg mb-3 group-hover:text-emerald-600 transition-colors">
                 {cliente.nombre_completo}
               </h3>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Mail className="w-4 h-4 text-slate-400" />
-                  {cliente.email || 'Sin email'}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Phone className="w-4 h-4 text-slate-400" />
+              <div className="space-y-1.5">
+                {cliente.email && (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="truncate">{cliente.email}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   {cliente.telefono}
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-4">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingCliente(cliente);
-                    setShowModal(true);
-                  }}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Editar
-                </Button>
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedCliente(cliente);
-                    setShowDetalleModal(true);
-                  }}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <History className="w-4 h-4 mr-2" />
-                  Historial
-                </Button>
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                <span className="text-xs text-slate-400">
+                  Cliente desde {new Date(cliente.created_date).toLocaleDateString('es-CR', { month: 'short', year: 'numeric' })}
+                </span>
+                <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 group-hover:gap-2 transition-all">
+                  Ver expediente
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -194,103 +194,7 @@ function ClientesContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Historial Cliente (OLD - KEEPING FOR NOW) */}
-      <Dialog open={false} onOpenChange={() => {}}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">
-              OLD FORM
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={() => {}} className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="nombre_completo">Nombre Completo *</Label>
-                <Input
-                  id="nombre_completo"
-                  name="nombre_completo"
-                  defaultValue={editingCliente?.nombre_completo}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  type="email"
-                  id="email"
-                  name="email"
-                  defaultValue={editingCliente?.email}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono *</Label>
-                <Input
-                  id="telefono"
-                  name="telefono"
-                  defaultValue={editingCliente?.telefono}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="identificacion">Identificación</Label>
-                <Input
-                  id="identificacion"
-                  name="identificacion"
-                  defaultValue={editingCliente?.identificacion}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tipo">Tipo de Cliente</Label>
-                <Select name="tipo" defaultValue={editingCliente?.tipo || 'individual'}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="individual">Individual</SelectItem>
-                    <SelectItem value="empresa">Empresa</SelectItem>
-                    <SelectItem value="institucional">Institucional</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="direccion">Dirección</Label>
-                <Input
-                  id="direccion"
-                  name="direccion"
-                  defaultValue={editingCliente?.direccion}
-                />
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="notas">Notas</Label>
-                <Input
-                  id="notas"
-                  name="notas"
-                  defaultValue={editingCliente?.notas}
-                  placeholder="Notas adicionales..."
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-gradient-to-r from-emerald-500 to-blue-500">
-                {editingCliente ? 'Actualizar' : 'Crear'} Cliente
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal Historial Cliente */}
+      {/* Modal Expediente Cliente */}
       <Dialog open={showDetalleModal} onOpenChange={setShowDetalleModal}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

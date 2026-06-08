@@ -15,6 +15,7 @@ import { base44 } from '@/api/base44Client';
 import FormularioCliente from '@/components/clientes/FormularioCliente';
 import ClientePerfilHeader from '@/components/clientes/ClientePerfilHeader';
 import ResumenEjecutivo from '@/components/clientes/ResumenEjecutivo';
+import EquiposCliente from '@/components/clientes/EquiposCliente';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
 import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
@@ -307,6 +308,8 @@ function ClientesContent() {
               />
 
               <ResumenEjecutivo clienteId={selectedCliente.id} />
+
+              <EquiposCliente clienteId={selectedCliente.id} />
 
               <TabsList className="grid w-full grid-cols-3 mt-4">
                 <TabsTrigger value="seguimiento">

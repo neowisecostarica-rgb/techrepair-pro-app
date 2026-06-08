@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -10,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MessageSquare, Send, Mail, CheckCircle } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { withOrgId } from '@/components/hooks/useOrgData';
 
@@ -103,73 +102,65 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, user, u
 
   return (
     <>
-      <Card className="border-0 shadow-md">
-        <CardHeader className="border-b border-slate-100">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-blue-600" />
-              Comunicación con Cliente
-            </CardTitle>
-            <Button onClick={() => setShowModal(true)} size="sm">
-              <Send className="w-4 h-4 mr-2" />
-              Nuevo Mensaje
+      {/* ── Shell visual homologado ── */}
+      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+
+        {/* Header compacto unificado */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+          <MessageSquare className="w-3.5 h-3.5 text-orange-500" />
+          <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Comunicación</span>
+          <span className="text-xs text-slate-400 tabular-nums">{mensajes.length}</span>
+          <div className="ml-auto">
+            <Button onClick={() => setShowModal(true)} size="sm" variant="outline"
+              className="h-6 px-2 text-[11px] border-slate-200 text-slate-600 hover:text-slate-900">
+              <Send className="w-3 h-3 mr-1" />
+              Nuevo
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          {mensajes.length === 0 ? (
-            <div className="text-center py-8 text-slate-400">
-              <MessageSquare className="w-12 h-12 mx-auto mb-3" />
-              <p>No hay mensajes registrados</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {mensajes.map((mensaje) => {
-                const config = tipoConfig[mensaje.tipo] || tipoConfig.general;
-                
-                return (
-                  <div key={mensaje.id} className="p-4 bg-slate-50 rounded-lg">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Badge className={`${config.color} border-0 text-xs`}>
-                          {config.label}
-                        </Badge>
-                        {mensaje.enviado && (
-                          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            Enviado
-                          </Badge>
-                        )}
-                        {mensaje.leido && (
-                          <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
-                            Leído
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400">
-                        {formatDistanceToNow(new Date(mensaje.created_date), { addSuffix: true, locale: es })}
-                      </p>
-                    </div>
-                    <p className="font-medium text-sm text-slate-900 mb-1">{mensaje.asunto}</p>
-                    <p className="text-sm text-slate-600 mb-2 whitespace-pre-line">{mensaje.contenido}</p>
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-slate-400" />
-                      <p className="text-xs text-slate-500">
-                        Por {mensaje.remitente_nombre} • {mensaje.canal}
-                      </p>
-                    </div>
-                    {mensaje.plantilla_usada && (
-                      <p className="text-xs text-slate-400 mt-1">
-                        Plantilla: {mensaje.plantilla_usada}
-                      </p>
+        </div>
+
+        {/* Lista */}
+        {mensajes.length === 0 ? (
+          <div className="px-4 py-3 text-xs text-slate-400 italic">Sin mensajes registrados</div>
+        ) : (
+          <div className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
+            {mensajes.map((mensaje) => {
+              const config = tipoConfig[mensaje.tipo] || tipoConfig.general;
+              return (
+                <div key={mensaje.id} className="px-4 py-2.5 hover:bg-slate-50/70 transition-colors">
+                  {/* Fila principal */}
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 text-xs font-medium text-slate-800 truncate" title={mensaje.asunto}>
+                      {mensaje.asunto || '(sin asunto)'}
+                    </span>
+                    <Badge className={`${config.color} border-0 text-[10px] px-1.5 py-0 leading-tight shrink-0`}>
+                      {config.label}
+                    </Badge>
+                    {mensaje.enviado && (
+                      <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" title="Enviado" />
                     )}
+                    {mensaje.leido && (
+                      <Mail className="w-3 h-3 text-blue-400 shrink-0" title="Leído" />
+                    )}
+                    <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
+                      {format(new Date(mensaje.created_date), 'dd/MM/yy', { locale: es })}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  {/* Cuerpo truncado + metadatos */}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="flex-1 text-[10px] text-slate-400 truncate" title={mensaje.contenido}>
+                      {mensaje.contenido?.slice(0, 80)}
+                    </span>
+                    <span className="text-[10px] text-slate-400 shrink-0">
+                      {mensaje.canal} · {mensaje.remitente_nombre?.split(' ')[0]}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl">

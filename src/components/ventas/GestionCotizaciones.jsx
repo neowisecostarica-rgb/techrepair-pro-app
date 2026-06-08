@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -557,137 +557,115 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   return (
     <>
-      <Card className="border-0 shadow-md">
-        <CardHeader className="border-b border-slate-100">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600" />
-              Cotizaciones
-            </CardTitle>
-            <Button onClick={() => setShowModal(true)} size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Nueva Cotización
+      {/* ── Shell visual homologado ── */}
+      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+
+        {/* Header compacto unificado */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+          <FileText className="w-3.5 h-3.5 text-purple-600" />
+          <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Cotizaciones</span>
+          <span className="text-xs text-slate-400 tabular-nums">{cotizaciones.length}</span>
+          <div className="ml-auto">
+            <Button onClick={() => setShowModal(true)} size="sm" variant="outline"
+              className="h-6 px-2 text-[11px] border-slate-200 text-slate-600 hover:text-slate-900">
+              <Plus className="w-3 h-3 mr-1" />
+              Nueva
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          {cotizaciones.length === 0 ? (
-            <div className="text-center py-8 text-slate-400">
-              <FileText className="w-12 h-12 mx-auto mb-3" />
-              <p>No hay cotizaciones registradas</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {cotizaciones.map((cot) => {
-                const config = estadoConfig[cot.estado];
-                const conversionConfig = estadoConversionConfig[cot.estado_conversion || 'SIN_CONVERTIR'];
-                
-                return (
-                  <div key={cot.id} className="p-4 bg-slate-50 rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <Badge className={`${config.color} border-0 text-xs`}>
-                            {config.label}
-                          </Badge>
-                          {cot.estado_conversion && cot.estado_conversion !== 'SIN_CONVERTIR' && (
-                            <Badge className={`${conversionConfig.color} border-0 text-xs`}>
-                              {conversionConfig.label}
-                            </Badge>
-                          )}
-                          {cot.requiere_aprobacion && !cot.aprobada_por && (
-                            <Badge className="bg-yellow-100 text-yellow-700 border-0 text-xs flex items-center gap-1">
-                              <AlertCircle className="w-3 h-3" />
-                              Requiere Aprobación
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="font-medium text-slate-900">Total: ₡{cot.total.toLocaleString()}</p>
-                        <p className="text-sm text-slate-600">{cot.items.length} items</p>
-                        {cot.valida_hasta && (
-                          <p className="text-xs text-slate-500">
-                            Válida hasta: {format(new Date(cot.valida_hasta), 'dd/MM/yyyy')}
-                          </p>
-                        )}
-                        {cot.convertida_at && (
-                          <p className="text-xs text-purple-600 mt-1">
-                            Convertida el {format(new Date(cot.convertida_at), 'dd/MM/yyyy HH:mm')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        {cot.estado === 'borrador' && (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => handleEditar(cot)}>
-                              Editar
-                            </Button>
-                            <Button size="sm" onClick={() => handleEnviar(cot)}>
-                              <Send className="w-4 h-4 mr-2" />
-                              Enviar
-                            </Button>
-                          </>
-                        )}
-                        {cot.estado === 'aprobada' && cot.estado_conversion === 'SIN_CONVERTIR' && (
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleConvertirEnFactura(cot)}
-                            disabled={convertirEnFacturaMutation.isPending}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                          >
-                            <ShoppingCart className="w-4 h-4 mr-2" />
-                            Convertir en Factura
-                          </Button>
-                        )}
-                        {(cot.estado === 'enviada' || cot.estado === 'aprobada') && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => copiarLink(cot)}
-                              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-                            >
-                              <LinkIcon className="w-4 h-4 mr-2" />
-                              Copiar Link
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => descargarPDF(cot, cliente, organization)}
-                            >
-                              <Download className="w-4 h-4 mr-2" />
-                              PDF
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => imprimirCotizacion(cot)}
-                            >
-                              <Printer className="w-4 h-4 mr-2" />
-                              Imprimir
-                            </Button>
-                          </>
-                        )}
-                        {cot.estado === 'enviada' && cliente && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
+        </div>
+
+        {/* Lista */}
+        {cotizaciones.length === 0 ? (
+          <div className="px-4 py-3 text-xs text-slate-400 italic">Sin cotizaciones registradas</div>
+        ) : (
+          <div className="divide-y divide-slate-50">
+            {cotizaciones.map((cot) => {
+              const config = estadoConfig[cot.estado];
+              const conversionConfig = estadoConversionConfig[cot.estado_conversion || 'SIN_CONVERTIR'];
+              return (
+                <div key={cot.id} className="px-4 py-2.5 hover:bg-slate-50/70 transition-colors">
+                  {/* Fila principal */}
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 text-xs font-medium text-slate-800 truncate">
+                      ₡{cot.total?.toLocaleString()} · {cot.items?.length} ítems
+                    </span>
+                    <Badge className={`${config?.color} border-0 text-[10px] px-1.5 py-0 leading-tight shrink-0`}>
+                      {config?.label}
+                    </Badge>
+                    {cot.estado_conversion && cot.estado_conversion !== 'SIN_CONVERTIR' && (
+                      <Badge className={`${conversionConfig?.color} border-0 text-[10px] px-1.5 py-0 leading-tight shrink-0`}>
+                        {conversionConfig?.label}
+                      </Badge>
+                    )}
+                    {cot.requiere_aprobacion && !cot.aprobada_por && (
+                      <AlertCircle className="w-3 h-3 text-yellow-500 shrink-0" title="Requiere aprobación" />
+                    )}
+                    <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
+                      {format(new Date(cot.created_date), 'dd/MM/yy')}
+                    </span>
+                  </div>
+                  {/* Metadatos secundarios */}
+                  <div className="flex items-center gap-2 mt-1">
+                    {cot.valida_hasta && (
+                      <span className="text-[10px] text-slate-400">
+                        Válida: {format(new Date(cot.valida_hasta), 'dd/MM/yy')}
+                      </span>
+                    )}
+                    {cot.convertida_at && (
+                      <span className="text-[10px] text-purple-500">
+                        Convertida {format(new Date(cot.convertida_at), 'dd/MM/yy')}
+                      </span>
+                    )}
+                    {/* Acciones compactas */}
+                    <div className="ml-auto flex items-center gap-1">
+                      {cot.estado === 'borrador' && (
+                        <>
+                          <button onClick={() => handleEditar(cot)}
+                            className="text-[10px] text-slate-500 hover:text-slate-800 underline">Editar</button>
+                          <span className="text-slate-300">·</span>
+                          <button onClick={() => handleEnviar(cot)}
+                            className="text-[10px] text-blue-600 hover:text-blue-800 underline">Enviar</button>
+                        </>
+                      )}
+                      {cot.estado === 'aprobada' && cot.estado_conversion === 'SIN_CONVERTIR' && (
+                        <button
+                          onClick={() => handleConvertirEnFactura(cot)}
+                          disabled={convertirEnFacturaMutation.isPending}
+                          className="text-[10px] text-emerald-600 hover:text-emerald-800 underline disabled:opacity-50">
+                          Convertir
+                        </button>
+                      )}
+                      {(cot.estado === 'enviada' || cot.estado === 'aprobada') && (
+                        <>
+                          <button onClick={() => copiarLink(cot)}
+                            className="text-[10px] text-slate-500 hover:text-slate-800 underline">Link</button>
+                          <span className="text-slate-300">·</span>
+                          <button onClick={() => descargarPDF(cot, cliente, organization)}
+                            className="text-[10px] text-slate-500 hover:text-slate-800 underline">PDF</button>
+                          <span className="text-slate-300">·</span>
+                          <button onClick={() => imprimirCotizacion(cot)}
+                            className="text-[10px] text-slate-500 hover:text-slate-800 underline">Imprimir</button>
+                        </>
+                      )}
+                      {cot.estado === 'enviada' && cliente && (
+                        <>
+                          <span className="text-slate-300">·</span>
+                          <button
                             onClick={() => enviarSeguimientoMutation.mutate({ cotizacion: cot, cliente })}
                             disabled={enviarSeguimientoMutation.isPending}
-                            className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                          >
-                            <MessageSquare className="w-4 h-4 mr-2" />
+                            className="text-[10px] text-purple-600 hover:text-purple-800 underline disabled:opacity-50">
                             Seguimiento
-                          </Button>
-                        )}
-                      </div>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

@@ -118,20 +118,19 @@ function ClientesContent() {
                   {cliente.nombre_completo?.charAt(0) || 'C'}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className={`${
-                    cliente.tipo === 'empresa' ? 'bg-blue-100 text-blue-700' :
-                    cliente.tipo === 'institucional' ? 'bg-purple-100 text-purple-700' :
-                    'bg-slate-100 text-slate-700'
-                  } border-0`}>
-                    {cliente.tipo}
-                  </Badge>
+                  {cliente.tipo_cliente === 'empresa' && (
+                    <Badge className="bg-blue-100 text-blue-700 border-0">Empresa</Badge>
+                  )}
+                  {cliente.tipo_cliente === 'institucional' && (
+                    <Badge className="bg-purple-100 text-purple-700 border-0">Institucional</Badge>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setEditingCliente(cliente);
                       setShowModal(true);
                     }}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors"
                     title="Editar cliente"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -156,10 +155,7 @@ function ClientesContent() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                <span className="text-xs text-slate-400">
-                  Cliente desde {new Date(cliente.created_date).toLocaleDateString('es-CR', { month: 'short', year: 'numeric' })}
-                </span>
+              <div className="flex items-center justify-end mt-4 pt-4 border-t border-slate-100">
                 <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 group-hover:gap-2 transition-all">
                   Ver expediente
                   <ChevronRight className="w-3.5 h-3.5" />

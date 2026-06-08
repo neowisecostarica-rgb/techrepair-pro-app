@@ -145,74 +145,52 @@ export default function OTOperationalLayer({ ot }) {
   const NextIcon = nextAction?.icon || AlertCircle;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
 
-      {/* 1. Estado de Diagnóstico */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Estado de Diagnóstico</p>
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            {ot.diagnostico_habilitado ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            ) : (
-              <Circle className="w-4 h-4 text-slate-400" />
-            )}
-            <span className="text-sm font-medium text-slate-700">Revisión pagada:</span>
-            <Badge className={ot.diagnostico_habilitado
-              ? 'bg-emerald-100 text-emerald-800 border-0'
-              : 'bg-slate-100 text-slate-600 border-0'
-            }>
-              {ot.diagnostico_habilitado ? '✓ Habilitado' : 'Pendiente de pago'}
-            </Badge>
+      {/* ── Siguiente Acción — ARRIBA DE TODO (decisión inmediata) ─────────── */}
+      {nextAction && (
+        <div className={`rounded-lg border px-3 py-2.5 ${nextAction.color}`}>
+          <div className="flex items-start gap-2.5">
+            <NextIcon className={`w-4 h-4 mt-0.5 shrink-0 ${nextAction.iconColor}`} />
+            <div>
+              <p className="font-semibold text-sm leading-tight">{nextAction.title}</p>
+              <p className="text-xs mt-0.5 opacity-80 leading-relaxed">{nextAction.description}</p>
+            </div>
           </div>
-          {ot.revision_pagada_at && (
-            <span className="text-xs text-slate-500 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              Pagado el {format(new Date(ot.revision_pagada_at), "dd MMM yyyy HH:mm", { locale: es })}
-            </span>
-          )}
         </div>
-      </div>
+      )}
 
-      {/* 2. Timeline Operacional */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Progreso del Flujo</p>
+      {/* ── Timeline compacta (una sola línea) ──────────────────────────────── */}
+      <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
         <div className="flex items-center gap-0">
           {TIMELINE_STEPS.map((step, index) => {
             const status = getStepStatus(step, ot.estado);
             const Icon = step.icon;
             const isLast = index === TIMELINE_STEPS.length - 1;
-
             return (
               <React.Fragment key={step.id}>
-                <div className="flex flex-col items-center gap-1 min-w-[60px]">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                    status === 'done'
-                      ? 'bg-emerald-500 border-emerald-500 text-white'
-                      : status === 'current'
-                      ? 'bg-blue-500 border-blue-500 text-white shadow-md ring-2 ring-blue-200'
-                      : 'bg-white border-slate-300 text-slate-400'
+                <div className="flex flex-col items-center gap-0.5 min-w-[44px]">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
+                    status === 'done'    ? 'bg-emerald-500 border-emerald-500 text-white'
+                    : status === 'current' ? 'bg-blue-500 border-blue-500 text-white ring-2 ring-blue-200'
+                    : 'bg-white border-slate-200 text-slate-300'
                   }`}>
-                    {status === 'done' ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      <Icon className="w-4 h-4" />
-                    )}
+                    {status === 'done'
+                      ? <CheckCircle2 className="w-3 h-3" />
+                      : <Icon className="w-3 h-3" />
+                    }
                   </div>
-                  <span className={`text-[10px] text-center leading-tight font-medium ${
-                    status === 'current' ? 'text-blue-600' :
-                    status === 'done' ? 'text-emerald-600' :
-                    'text-slate-400'
-                  }`}>
-                    {step.label}
-                  </span>
+                  <span className={`text-[9px] text-center leading-tight ${
+                    status === 'current' ? 'text-blue-600 font-semibold'
+                    : status === 'done'  ? 'text-emerald-500'
+                    : 'text-slate-300'
+                  }`}>{step.label}</span>
                 </div>
                 {!isLast && (
-                  <div className={`flex-1 h-0.5 mb-4 ${
-                    getStepStatus(TIMELINE_STEPS[index + 1], ot.estado) !== 'pending' || 
+                  <div className={`flex-1 h-px mb-3.5 ${
+                    getStepStatus(TIMELINE_STEPS[index + 1], ot.estado) !== 'pending' ||
                     getStepStatus(step, ot.estado) === 'done'
-                      ? 'bg-emerald-400'
-                      : 'bg-slate-200'
+                      ? 'bg-emerald-400' : 'bg-slate-200'
                   }`} />
                 )}
               </React.Fragment>
@@ -221,19 +199,27 @@ export default function OTOperationalLayer({ ot }) {
         </div>
       </div>
 
-      {/* 3. Siguiente Acción Recomendada */}
-      {nextAction && (
-        <div className={`rounded-xl border p-4 ${nextAction.color}`}>
-          <p className="text-xs font-semibold uppercase tracking-wide mb-2 opacity-70">Siguiente Acción</p>
-          <div className="flex items-start gap-3">
-            <NextIcon className={`w-5 h-5 mt-0.5 shrink-0 ${nextAction.iconColor}`} />
-            <div>
-              <p className="font-semibold text-sm">{nextAction.title}</p>
-              <p className="text-xs mt-1 opacity-80 leading-relaxed">{nextAction.description}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Estado diagnóstico — fila compacta ──────────────────────────────── */}
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-100 bg-slate-50/60">
+        {ot.diagnostico_habilitado
+          ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+          : <Circle className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+        }
+        <span className="text-xs text-slate-600">Revisión:</span>
+        <Badge className={`border-0 text-[10px] px-1.5 py-0 ${
+          ot.diagnostico_habilitado
+            ? 'bg-emerald-100 text-emerald-700'
+            : 'bg-slate-100 text-slate-500'
+        }`}>
+          {ot.diagnostico_habilitado ? '✓ Habilitado' : 'Pendiente de pago'}
+        </Badge>
+        {ot.revision_pagada_at && (
+          <span className="text-[10px] text-slate-400 ml-auto">
+            {format(new Date(ot.revision_pagada_at), "dd MMM HH:mm", { locale: es })}
+          </span>
+        )}
+      </div>
+
     </div>
   );
 }

@@ -214,6 +214,11 @@ function OrdenesTrabajoContent() {
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       setShowModal(false);
       resetForm();
+      toast({ title: 'Orden de trabajo creada', description: 'La recepción del equipo fue registrada correctamente.' });
+    },
+    onError: (error) => {
+      const msg = error?.response?.data?.error || error?.message || 'Error desconocido';
+      toast({ variant: 'destructive', title: 'Error al crear la orden', description: msg });
     },
   });
 
@@ -1024,9 +1029,13 @@ function OrdenesTrabajoContent() {
               <Button 
                 type="submit" 
                 className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                disabled={!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)) || !motivoIngreso)}
+                disabled={createMutation.isPending || (!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)) || !motivoIngreso))}
               >
-                {editingOT ? 'Actualizar' : 'Registrar Recepción'}
+                {createMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Registrando...</>
+                ) : (
+                  editingOT ? 'Actualizar' : 'Registrar Recepción'
+                )}
               </Button>
             </div>
           </form>

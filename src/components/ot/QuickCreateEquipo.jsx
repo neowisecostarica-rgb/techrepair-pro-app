@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCreated }) {
+  const { toast } = useToast();
   const [tipo, setTipo] = useState('');
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
@@ -34,6 +36,7 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
         modelo: modelo.trim() || undefined,
         serie: serie.trim() || undefined,
       });
+      toast({ title: 'Equipo creado', description: `${marca.trim()} ${modelo.trim() || ''}`.trim() + ' fue registrado correctamente.' });
       onCreated(response.data);
       setTipo('');
       setMarca('');
@@ -47,6 +50,7 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
       } else {
         setError('Error al crear equipo: ' + msg);
       }
+      toast({ title: 'Error al crear equipo', description: msg || 'Ocurrió un error inesperado.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }

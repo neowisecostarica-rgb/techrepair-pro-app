@@ -1097,10 +1097,10 @@ function OrdenesTrabajoContent() {
                         }
                       }
                     };
-                  } else if (s === 'ASIGNADA' && !esTecnicoPropio && s === 'ASIGNADA') {
+                  } else if (s === 'EN_REVISION') {
                     accion = {
                       label: 'Iniciar Diagnóstico Técnico',
-                      desc: 'La OT está asignada. Iniciar el diagnóstico técnico detallado.',
+                      desc: 'La revisión está en curso. Iniciar el diagnóstico técnico detallado.',
                       color: 'from-purple-500 to-blue-500',
                       icon: '🔬',
                       handler: () => { setDiagnosticoTecnicoOT(selectedOT); setShowDiagnosticoTecnico(true); setSelectedOT(null); }
@@ -1301,7 +1301,7 @@ function OrdenesTrabajoContent() {
                   {(() => {
                     const botonesFlujoPrimario = [];
 
-                    if (selectedOT.estado === 'ASIGNADA') {
+                    if (selectedOT.estado === 'EN_REVISION') {
                       botonesFlujoPrimario.push(
                         <Button key="diag" onClick={() => { setDiagnosticoTecnicoOT(selectedOT); setShowDiagnosticoTecnico(true); setSelectedOT(null); }} className="bg-gradient-to-r from-purple-500 to-blue-500">
                           🔬 Iniciar Diagnóstico Técnico

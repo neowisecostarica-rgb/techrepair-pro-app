@@ -43,6 +43,7 @@ import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { crearOrdenTrabajo } from '@/components/ot/crearOrdenTrabajo';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
 import OTOperationalLayer from '@/components/ot/OTOperationalLayer';
+import DiagnosticoDocumentoA4 from '@/components/diagnostico/DiagnosticoDocumentoA4';
 
 import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 const estadoConfig = WORK_ORDER_STATUSES;
@@ -379,6 +380,30 @@ function OrdenesTrabajoContent() {
   };
 
   const [reasignando, setReasignando] = useState(false);
+
+  // P0.2-E: Estado para visualización de diagnóstico
+  const [showPreviewDiagnostico, setShowPreviewDiagnostico] = useState(false);
+  const [diagnosticoPreviewData, setDiagnosticoPreviewData] = useState(null);
+  const [loadingDiagnosticoPreview, setLoadingDiagnosticoPreview] = useState(false);
+
+  const handleVerDiagnostico = async (ot) => {
+    setLoadingDiagnosticoPreview(true);
+    const [diagResults, clienteResults, equipoResults, tecnicoResults] = await Promise.all([
+      base44.entities.DiagnosticoTecnico.filter({ organization_id: ot.organization_id, orden_trabajo_id: ot.id, bloqueado: false }),
+      base44.entities.Cliente.filter({ id: ot.cliente_id }),
+      base44.entities.Equipo.filter({ id: ot.equipo_id }),
+      base44.entities.UserAccount.filter({ user_id: ot.tecnico_asignado_id, organization_id: ot.organization_id }),
+    ]);
+    setDiagnosticoPreviewData({
+      diagnostico: diagResults[0] || null,
+      cliente: clienteResults[0] || null,
+      equipo: equipoResults[0] || null,
+      tecnico: tecnicoResults[0] || null,
+      ordenTrabajo: ot,
+    });
+    setLoadingDiagnosticoPreview(false);
+    setShowPreviewDiagnostico(true);
+  };
 
   const handleReasignar = async () => {
     if (!reasignarOT || !nuevoTecnicoId || !motivoReasignacion.trim()) {
@@ -1188,11 +1213,16 @@ function OrdenesTrabajoContent() {
                         <p className="text-sm text-emerald-700">El diagnóstico técnico está listo para revisión</p>
                       </div>
                       <Button
-                        onClick={() => { window.location.href = `/resumen-diagnostico?ot_id=${selectedOT.id}&diagnostico_id=${selectedOT.diagnostico_tecnico_id || 'N/A'}`; }}
+                        onClick={() => handleVerDiagnostico(selectedOT)}
                         className="bg-gradient-to-r from-emerald-500 to-blue-500"
                         size="sm"
+                        disabled={loadingDiagnosticoPreview}
                       >
-                        <FileText className="w-4 h-4 mr-2" />
+                        {loadingDiagnosticoPreview ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileText className="w-4 h-4 mr-2" />
+                        )}
                         Ver Diagnóstico
                       </Button>
                     </div>
@@ -1534,6 +1564,29 @@ function OrdenesTrabajoContent() {
           setShowInlineEquipo(false);
         }}
       />
+
+      {/* P0.2-E: Dialog Visualización Diagnóstico */}
+      <Dialog open={showPreviewDiagnostico} onOpenChange={(open) => { if (!open) { setShowPreviewDiagnostico(false); setDiagnosticoPreviewData(null); } }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Diagnóstico Técnico</DialogTitle>
+          </DialogHeader>
+          {loadingDiagnosticoPreview ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mr-3" />
+              <span className="text-slate-500">Cargando diagnóstico...</span>
+            </div>
+          ) : diagnosticoPreviewData ? (
+            <DiagnosticoDocumentoA4
+              ordenTrabajo={diagnosticoPreviewData.ordenTrabajo}
+              diagnostico={diagnosticoPreviewData.diagnostico}
+              cliente={diagnosticoPreviewData.cliente}
+              equipo={diagnosticoPreviewData.equipo}
+              tecnico={diagnosticoPreviewData.tecnico}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Reasignar Técnico */}
       <Dialog open={showReasignar} onOpenChange={setShowReasignar}>

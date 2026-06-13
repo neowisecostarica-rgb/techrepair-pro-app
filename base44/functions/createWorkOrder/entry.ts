@@ -69,6 +69,81 @@ Deno.serve(async (req) => {
       fecha_ingreso: new Date().toISOString(),
     });
 
+    // ── DMR ORCHESTRATION — Atomicidad por Compensación (P0.1-I2) ──────────────
+    // Estrategia: OT ya persiste. Si DMR falla → DELETE OT (rollback) + audit.
+    // Si OTEvent falla → no rollbackear OT (degradación aceptada, log suficiente).
+    try {
+      const dmrResult = await base44.functions.invoke('dmrOrchestrator', {
+        otId: orden.id,
+        orgId,
+        ot: {
+          motivo_ingreso: orden.motivo_ingreso,
+          tipo_ingreso: orden.tipo_ingreso,
+          prioridad: orden.prioridad,
+          accesorios_ingreso: orden.accesorios_ingreso,
+          serie_ingreso: orden.serie_ingreso,
+          observaciones_ingreso: orden.observaciones_ingreso,
+          codigo_ot: orden.codigo_ot,
+          fecha_ingreso: orden.fecha_ingreso,
+          terminos_aceptados: body.terminos_aceptados,
+          terminos_aceptados_at: body.terminos_aceptados_at,
+          terminos_version: body.terminos_version,
+          terminos_texto_snapshot: body.terminos_texto_snapshot
+        },
+        cliente: clientes[0],
+        equipo: equipos[0]
+      });
+
+      if (!dmrResult?.data?.success) {
+        throw new Error(dmrResult?.data?.error || 'dmrOrchestrator retornó fallo sin mensaje');
+      }
+
+      console.log(`[createWorkOrder] DMR creado — ${dmrResult.data.dmrNumber} | OT: ${orden.id}`);
+    } catch (dmrError) {
+      // ── COMPENSACIÓN: rollback manual de la OT ───────────────────────────
+      console.error(`[createWorkOrder] DMR falló — iniciando rollback OT: ${orden.id} | Error: ${dmrError.message}`);
+      let rollbackStatus = 'NOT_ATTEMPTED';
+      let rollbackErrorMsg = null;
+
+      try {
+        await base44.asServiceRole.entities.OrdenTrabajo.delete(orden.id);
+        rollbackStatus = 'SUCCESS';
+        console.log(`[createWorkOrder] Rollback OT exitoso — OT eliminada: ${orden.id}`);
+      } catch (rollbackError) {
+        rollbackStatus = 'FAILED';
+        rollbackErrorMsg = rollbackError.message;
+        console.error(`[createWorkOrder] CRÍTICO: Rollback OT FALLÓ — OT HUÉRFANA: ${orden.id} | ${rollbackError.message}`);
+      }
+
+      // ── Log de compensación en SuperAdminAudit (siempre) ─────────────────
+      try {
+        await base44.asServiceRole.entities.SuperAdminAudit.create({
+          action: rollbackStatus === 'FAILED' ? 'DMR_ROLLBACK_FAILED_OT_ORPHAN' : 'DMR_CREATION_FAILED',
+          target_organization_id: orgId,
+          details: JSON.stringify({
+            orden_trabajo_id_intentada: orden.id,
+            codigo_ot: orden.codigo_ot,
+            dmr_error: dmrError.message,
+            rollback_ot: rollbackStatus,
+            rollback_error: rollbackErrorMsg,
+            reported_by: user.id,
+            accion_requerida: rollbackStatus === 'FAILED' ? 'REVISION_MANUAL_OT_HUERFANA' : null,
+            timestamp: new Date().toISOString()
+          })
+        });
+      } catch (auditError) {
+        console.error(`[createWorkOrder] Audit log de compensación falló: ${auditError.message}`);
+      }
+
+      // Propagar error al usuario — la operación completa se considera fallida
+      return Response.json({
+        error: 'No se pudo crear el Documento Maestro de Recepción. La operación fue revertida.',
+        detail: dmrError.message,
+        rollback: rollbackStatus
+      }, { status: 500 });
+    }
+    // ── FIN DMR ORCHESTRATION ─────────────────────────────────────────────────
+
     // ── OTEvent CREATED — ownership exclusivo de createWorkOrder (Bloque 0B.1a) ──
     // Idempotencia: verificar antes de crear para soportar reintentos seguros.
     // Si falla: NO rollbackear la OT — loggear y permitir continuidad operacional.

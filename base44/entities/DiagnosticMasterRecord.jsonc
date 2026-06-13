@@ -1,0 +1,242 @@
+{
+  "name": "DiagnosticMasterRecord",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "orden_trabajo_id": {
+      "type": "string",
+      "description": "ID de la Orden de Trabajo vinculada (FK inmutable)"
+    },
+    "dmr_number": {
+      "type": "string",
+      "description": "N\u00famero \u00fanico de documento (DMR-YYYY-NNNNNN). Inmutable tras creaci\u00f3n."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de creaci\u00f3n del documento. Inmutable."
+    },
+    "document_status": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "REPLACED",
+        "VOIDED"
+      ],
+      "default": "ACTIVE",
+      "description": "Estado administrativo del documento. \u00danico campo mutable junto a campos de auditor\u00eda."
+    },
+    "version": {
+      "type": "integer",
+      "default": 1,
+      "description": "N\u00famero de versi\u00f3n documental (1-based). Inmutable tras creaci\u00f3n."
+    },
+    "replaces_dmr_id": {
+      "type": "string",
+      "description": "ID del DMR anterior que este documento reemplaza (unidireccional). Null en v1."
+    },
+    "cliente_snapshot": {
+      "type": "object",
+      "description": "Snapshot inmutable del cliente al momento de recepci\u00f3n.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "nombre_completo": {
+          "type": "string"
+        },
+        "identificacion": {
+          "type": "string"
+        },
+        "telefono": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
+      }
+    },
+    "activo_snapshot": {
+      "type": "object",
+      "description": "Snapshot inmutable del equipo al momento de recepci\u00f3n.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "tipo": {
+          "type": "string"
+        },
+        "marca": {
+          "type": "string"
+        },
+        "modelo": {
+          "type": "string"
+        },
+        "serie": {
+          "type": "string"
+        },
+        "estado_fisico": {
+          "type": "string"
+        }
+      }
+    },
+    "contexto_recepcion": {
+      "type": "object",
+      "description": "Snapshot del contexto operativo al ingreso (motivo, tipo_ingreso, accesorios, prioridad).",
+      "properties": {
+        "motivo_ingreso": {
+          "type": "string"
+        },
+        "tipo_ingreso": {
+          "type": "string"
+        },
+        "prioridad": {
+          "type": "string"
+        },
+        "accesorios_ingreso": {
+          "type": "string"
+        },
+        "serie_ingreso": {
+          "type": "string"
+        },
+        "observaciones_ingreso": {
+          "type": "string"
+        },
+        "codigo_ot": {
+          "type": "string"
+        },
+        "fecha_ingreso": {
+          "type": "string"
+        }
+      }
+    },
+    "legal_snapshot": {
+      "type": "object",
+      "description": "Snapshot del acuerdo legal aceptado al momento de recepci\u00f3n.",
+      "properties": {
+        "terminos_aceptados": {
+          "type": "boolean"
+        },
+        "terminos_aceptados_at": {
+          "type": "string"
+        },
+        "terminos_version": {
+          "type": "string"
+        },
+        "terminos_texto_snapshot": {
+          "type": "string"
+        }
+      }
+    },
+    "diagnostico_snapshot": {
+      "type": "object",
+      "description": "Snapshot del pre-diagn\u00f3stico capturado en recepci\u00f3n (nullable)."
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "URL del PDF generado del documento (nullable hasta generaci\u00f3n)."
+    },
+    "pdf_hash": {
+      "type": "string",
+      "description": "Hash SHA-256 del PDF para verificaci\u00f3n de integridad (nullable)."
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "ID del usuario que cre\u00f3 el documento. Inmutable."
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de firma del documento (nullable)."
+    },
+    "signed_by": {
+      "type": "string",
+      "description": "ID del usuario que firm\u00f3 (nullable)."
+    },
+    "voided_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de anulaci\u00f3n (nullable). Solo admin."
+    },
+    "voided_by": {
+      "type": "string",
+      "description": "ID del usuario que anul\u00f3 (nullable). Solo admin."
+    },
+    "replaced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de reemplazo por nueva versi\u00f3n (nullable)."
+    },
+    "replaced_by": {
+      "type": "string",
+      "description": "ID del nuevo DMR que reemplaza a este (nullable)."
+    }
+  },
+  "required": [
+    "organization_id",
+    "orden_trabajo_id",
+    "dmr_number",
+    "created_at",
+    "document_status",
+    "version",
+    "cliente_snapshot",
+    "activo_snapshot",
+    "contexto_recepcion",
+    "created_by_user_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "is_super_admin": true
+      }
+    }
+  }
+}

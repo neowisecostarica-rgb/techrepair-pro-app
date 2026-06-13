@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster"
+import ExpedienteOT from './pages/ExpedienteOT';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
@@ -44,6 +45,15 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
+      {/* ── Expediente OT — ruta con parámetro dinámico ── */}
+      <Route
+        path="/expediente/:id"
+        element={
+          <LayoutWrapper currentPageName="ExpedienteOT">
+            <ExpedienteOT />
+          </LayoutWrapper>
+        }
+      />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

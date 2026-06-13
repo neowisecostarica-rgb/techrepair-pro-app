@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2, Loader2, User } from 'lucide-react';
+import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2, Loader2, User, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -597,6 +597,16 @@ function OrdenesTrabajoContent() {
                         {getTecnicoName(orden.tecnico_asignado_id)}
                       </span>
                     </div>
+                  </div>
+                  {/* Link al Expediente Completo */}
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/expediente/${orden.id}`); }}
+                      className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-1 hover:underline"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Ver expediente completo
+                    </button>
                   </div>
                 </div>
               </CardContent>

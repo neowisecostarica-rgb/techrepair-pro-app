@@ -29,9 +29,11 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Wrench, Phone, ChevronDown, ChevronUp, User, PackageOpen, ClipboardList, CheckCircle2, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, Wrench, Phone, ChevronDown, ChevronUp, User, PackageOpen, ClipboardList, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 
 // ── Bloque colapsable liviano ──────────────────────────────────────────────────
@@ -63,6 +65,7 @@ function Dato({ label, children }) {
 }
 
 export default function ModalDetalleOT({ ot, cliente, tecnico, onClose }) {
+  const navigate = useNavigate();
   if (!ot) return null;
 
   const config  = WORK_ORDER_STATUSES[ot.estado] || { color: 'bg-slate-100 text-slate-700', label: ot.estado };
@@ -87,9 +90,23 @@ export default function ModalDetalleOT({ ot, cliente, tecnico, onClose }) {
                 <Badge className={`${prioBadge} border-0 text-xs`}>{ot.prioridad}</Badge>
               )}
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 shrink-0">
-              <Clock className="w-3 h-3" />
-              <span>{diasTaller}d en taller</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                <Clock className="w-3 h-3" />
+                <span>{diasTaller}d en taller</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-7 px-2.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => {
+                  onClose?.();
+                  navigate(`/expediente/${ot.id}`);
+                }}
+              >
+                <ExternalLink className="w-3 h-3 mr-1" />
+                Ver Expediente Completo
+              </Button>
             </div>
           </div>
 

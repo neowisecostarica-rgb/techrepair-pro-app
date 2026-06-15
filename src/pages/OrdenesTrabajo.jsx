@@ -1081,7 +1081,20 @@ function OrdenesTrabajoContent() {
       <Dialog open={!!selectedOT} onOpenChange={() => setSelectedOT(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Detalle de Orden de Trabajo</DialogTitle>
+            <div className="flex items-center justify-between gap-3 pr-8">
+              <DialogTitle className="text-2xl font-bold">Detalle de Orden de Trabajo</DialogTitle>
+              {selectedOT && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs h-7 px-2.5"
+                  onClick={() => { setSelectedOT(null); navigate(`/expediente/${selectedOT.id}`); }}
+                >
+                  <ExternalLink className="w-3 h-3 mr-1" />
+                  Abrir Expediente
+                </Button>
+              )}
+            </div>
           </DialogHeader>
 
           {selectedOT && selectedOT.organization_id !== effectiveOrgId ? (

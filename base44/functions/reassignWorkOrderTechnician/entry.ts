@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
       estado_actual: estadoActual === 'EN_COLA_REVISION' ? 'ASIGNADA' : estadoActual,
       lifecycle_transitioned: estadoActual === 'EN_COLA_REVISION',
       updated_ot: updatedOT,
-      transition_result: transitionResult,
+      transition_result: transitionResult ? { success: transitionResult?.data?.success ?? true } : null,
     });
 
   } catch (error) {

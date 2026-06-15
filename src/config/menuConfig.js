@@ -111,7 +111,7 @@ export const MENU_ITEMS = [
     path: 'ColaRevision',
     icon: FileText,
     category: 'TALLER',
-    roles: TECH_ROLES,
+    roles: SALES_ROLES,
   },
   {
     label: 'Agenda',

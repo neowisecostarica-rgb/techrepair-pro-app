@@ -71,6 +71,8 @@ function OrdenesTrabajoContent() {
   const [showDiagnosticoTecnico, setShowDiagnosticoTecnico] = useState(false);
   const [diagnosticoTecnicoOT, setDiagnosticoTecnicoOT] = useState(null);
   const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
+  // FIX P0: cache de prediagnósticos por OT para evitar mostrar "Completar" si ya existe
+  const [preDiagnosticosCache, setPreDiagnosticosCache] = useState({});
   const [showCotizacion, setShowCotizacion] = useState(false);
   const [cotizacionOT, setCotizacionOT] = useState(null);
   const [vistaActiva, setVistaActiva] = useState('lista');
@@ -105,6 +107,20 @@ function OrdenesTrabajoContent() {
   
   // P0.1: Cache de estados de pago
   const [estadosPago, setEstadosPago] = useState({});
+
+  // FIX P0: Cargar prediagnóstico cuando se abre el modal de detalle de OT EN_COLA_REVISION
+  useEffect(() => {
+    if (!selectedOT || selectedOT.estado !== 'EN_COLA_REVISION') return;
+    if (preDiagnosticosCache[selectedOT.id] !== undefined) return; // ya cargado
+    base44.entities.PreDiagnostico.filter({ orden_trabajo_id: selectedOT.id })
+      .then((results) => {
+        const tienePreDiag = results && results.length > 0;
+        setPreDiagnosticosCache(prev => ({ ...prev, [selectedOT.id]: tienePreDiag }));
+      })
+      .catch(() => {
+        setPreDiagnosticosCache(prev => ({ ...prev, [selectedOT.id]: false }));
+      });
+  }, [selectedOT?.id, selectedOT?.estado]);
 
   // Normalizadores SOT: mantienen la UI histórica intacta aunque el backend use nombres canónicos en inglés.
   const normalizarCliente = (cliente) => ({
@@ -1154,13 +1170,25 @@ function OrdenesTrabajoContent() {
                       handler: () => { setDiagnosticoTecnicoOT(selectedOT); setShowDiagnosticoTecnico(true); setSelectedOT(null); }
                     };
                   } else if (s === 'EN_COLA_REVISION' && esAdminOVentas) {
-                    accion = {
-                      label: 'Completar Pre-Diagnóstico',
-                      desc: 'Registrar la información inicial del problema antes de asignar al técnico.',
-                      color: 'from-blue-500 to-indigo-500',
-                      icon: '📋',
-                      handler: () => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }
-                    };
+                    // FIX P0: Si ya existe prediagnóstico, NO pedir completar — mostrar acción alternativa
+                    const tienePreDiag = preDiagnosticosCache[selectedOT.id];
+                    if (!tienePreDiag) {
+                      accion = {
+                        label: 'Completar Pre-Diagnóstico',
+                        desc: 'Registrar la información inicial del problema antes de asignar al técnico.',
+                        color: 'from-blue-500 to-indigo-500',
+                        icon: '📋',
+                        handler: () => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }
+                      };
+                    } else {
+                      accion = {
+                        label: 'Editar Pre-Diagnóstico',
+                        desc: 'Pre-diagnóstico ya registrado. Puedes editarlo o continuar con la asignación al técnico.',
+                        color: 'from-indigo-500 to-purple-500',
+                        icon: '✏️',
+                        handler: () => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }
+                      };
+                    }
                   } else if ((s === 'DIAGNOSTICADA' || s === 'COTIZADA') && esAdminOVentas) {
                     accion = {
                       label: 'Gestionar Cotización',

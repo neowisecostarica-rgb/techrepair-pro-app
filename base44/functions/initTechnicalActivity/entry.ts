@@ -126,6 +126,28 @@ Deno.serve(async (req) => {
       }, { status: 422 });
     }
 
+    // ── BLINDAJE: tipo=diagnostico requiere diagnostico_habilitado ─────────────
+    // El diagnóstico técnico solo puede iniciarse si fue habilitado comercialmente.
+    // El Centro de Mando es el único orquestador legítimo de esta transición.
+    if (tipo_actividad === 'diagnostico' && !ot.diagnostico_habilitado) {
+      const MOTIVOS_DESCRIPCION = {
+        PENDIENTE_PAGO: 'Revisión pendiente de pago',
+        PENDIENTE_AUTORIZACION_GERENCIA: 'Pendiente de autorización gerencial',
+        EN_GARANTIA_VERIFICACION: 'En verificación de garantía',
+        CLIENTE_CORPORATIVO_CREDITO: 'Cliente corporativo — requiere aprobación de crédito',
+        OTRO: 'Diagnóstico bloqueado — contactar administración',
+      };
+      const motivo = ot.motivo_bloqueo_diagnostico || 'PENDIENTE_PAGO';
+      const descripcion = MOTIVOS_DESCRIPCION[motivo] || MOTIVOS_DESCRIPCION['OTRO'];
+      console.warn(`[initTechnicalActivity] BLOQUEO DIAGNÓSTICO: OT=${orden_trabajo_id}, motivo=${motivo}`);
+      return Response.json({
+        error: `Diagnóstico bloqueado: ${descripcion}`,
+        codigo: 'DIAGNOSTICO_NO_HABILITADO',
+        motivo_bloqueo: motivo,
+        descripcion_bloqueo: descripcion,
+      }, { status: 403 });
+    }
+
     // ── 5. REGLA 1: Buscar actividad NO FINALIZADA para esta OT (idempotencia) ──
     const actividadesOT = await base44.asServiceRole.entities.ActividadTecnica.filter({
       organization_id: orgId,

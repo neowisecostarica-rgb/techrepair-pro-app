@@ -216,7 +216,18 @@
     "diagnostico_habilitado": {
       "type": "boolean",
       "default": false,
-      "description": "Si el diagn\u00f3stico t\u00e9cnico est\u00e1 habilitado (revisi\u00f3n pagada)"
+      "description": "Si el diagn\u00f3stico t\u00e9cnico est\u00e1 habilitado (revisi\u00f3n pagada o autorizada)"
+    },
+    "motivo_bloqueo_diagnostico": {
+      "type": "string",
+      "enum": [
+        "PENDIENTE_PAGO",
+        "PENDIENTE_AUTORIZACION_GERENCIA",
+        "EN_GARANTIA_VERIFICACION",
+        "CLIENTE_CORPORATIVO_CREDITO",
+        "OTRO"
+      ],
+      "description": "Motivo por el cual el diagn\u00f3stico est\u00e1 bloqueado (cat\u00e1logo controlado). Null si no hay bloqueo."
     },
     "revision_pagada_at": {
       "type": "string",

@@ -96,7 +96,7 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="diagnostico">Diagnóstico</SelectItem>
+                  {/* diagnostico está excluido — solo el Centro de Mando puede iniciarlo */}
                   <SelectItem value="reparacion">Reparación</SelectItem>
                   <SelectItem value="instalacion">Instalación</SelectItem>
                   <SelectItem value="prueba">Prueba</SelectItem>

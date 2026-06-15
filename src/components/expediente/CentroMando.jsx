@@ -11,9 +11,10 @@
  */
 
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2, Lock } from 'lucide-react';
 import { differenceInHours, differenceInDays } from 'date-fns';
 import { ESTADO_SOT as ESTADO_SOT_CONFIG } from '@/config/workflowConfig';
+import { MOTIVOS_BLOQUEO } from '@/config/motivosBloqueo';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
@@ -103,10 +104,18 @@ export default function CentroMando({ ot, effectiveRole }) {
                        : riesgos.find(r => r.nivel === 'medio') ? 'medio'
                        : riesgos.length > 0 ? 'info' : null;
 
-  // ── Acción "Iniciar Revisión" — solo ASIGNADA + roles técnicos ────────────
+  // ── Bloqueo operativo de diagnóstico ─────────────────────────────────────
+  const diagnosticoBloqueado = !ot.diagnostico_habilitado
+    && ['EN_COLA_REVISION', 'ASIGNADA', 'EN_REVISION'].includes(ot.estado);
+  const motivoBloqueo = ot.motivo_bloqueo_diagnostico
+    ? (MOTIVOS_BLOQUEO[ot.motivo_bloqueo_diagnostico] || MOTIVOS_BLOQUEO.OTRO)
+    : MOTIVOS_BLOQUEO.PENDIENTE_PAGO;
+
+  // ── Acción "Iniciar Revisión" — solo ASIGNADA + roles técnicos + habilitado ─
   const puedeIniciarRevision = ot.estado === 'ASIGNADA'
     && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'].includes(effectiveRole)
-    && ot.tecnico_asignado_id === user?.id;
+    && ot.tecnico_asignado_id === user?.id
+    && ot.diagnostico_habilitado;
 
   const handleIniciarRevision = async () => {
     setIniciando(true);
@@ -135,7 +144,23 @@ export default function CentroMando({ ot, effectiveRole }) {
 
   return (
     <div className="space-y-3">
-      {/* ── Botón Iniciar Revisión (solo cuando aplica) ───────────────────── */}
+      {/* ── Panel de Bloqueo Operativo (diagnóstico no habilitado) ──────────── */}
+      {diagnosticoBloqueado && (
+        <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <Lock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-900">
+              Bloqueo Operativo: {motivoBloqueo.label}
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">{motivoBloqueo.descripcion}</p>
+            <p className="text-xs text-amber-600 mt-1 font-medium">
+              Acción requerida ({motivoBloqueo.rol_responsable}): {motivoBloqueo.accion}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Botón Iniciar Revisión (solo cuando aplica y sin bloqueo) ────────── */}
       {puedeIniciarRevision && (
         <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
           <div className="flex-1">
@@ -155,6 +180,19 @@ export default function CentroMando({ ot, effectiveRole }) {
               <><Play className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
             )}
           </Button>
+        </div>
+      )}
+
+      {/* ── Técnico asignado sin diagnóstico habilitado (vista informativa) ──── */}
+      {ot.estado === 'ASIGNADA'
+        && effectiveRole === 'TECHNICIAN'
+        && ot.tecnico_asignado_id === user?.id
+        && !ot.diagnostico_habilitado && (
+        <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+          <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+          <p className="text-xs text-slate-500">
+            No puedes iniciar la revisión hasta que el área de ventas o administración habilite el diagnóstico.
+          </p>
         </div>
       )}
 

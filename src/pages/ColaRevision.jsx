@@ -164,6 +164,7 @@ function ColaRevisionContent() {
                   index={index}
                   clientes={clientes}
                   equipos={equipos}
+                  tecnicos={tecnicos}
                 />
               </div>
               <Button
@@ -203,6 +204,7 @@ function ColaRevisionContent() {
               index={index}
               clientes={clientes}
               equipos={equipos}
+              tecnicos={tecnicos}
             />
           ))}
 

@@ -8,8 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '../contexts/AuthContext';
 import { Play } from 'lucide-react';
-import { cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
 
+/**
+ * IniciarActividad — P0.2-C
+ * Toda creación de actividad técnica pasa por initTechnicalActivity (orquestador backend).
+ * El orquestador garantiza:
+ *   - Idempotencia por OT (máx 1 actividad no finalizada)
+ *   - Restricción de técnico con estado_atencion ACTIVO en otra OT
+ *   - Orden correcto: transitionOT → crear actividad → setear ACTIVO
+ */
 export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
   const [open, setOpen] = useState(false);
   const [tipoActividad, setTipoActividad] = useState('');
@@ -29,70 +36,25 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
 
   const iniciarMutation = useMutation({
     mutationFn: async () => {
-      // A) Validar OT aún abierta
-      const ots = await base44.entities.OrdenTrabajo.filter({ id: ordenTrabajoId });
-      if (ots.length === 0) {
-        throw new Error('Orden de trabajo no encontrada');
-      }
-      const ot = ots[0];
-      if (['CERRADA', 'CANCELADA', 'FINALIZADA', 'ENTREGADA'].includes(ot.estado)) {
-        throw new Error('No se puede iniciar actividad en OT cerrada o cancelada');
-      }
-
-      // B) Validar "solo una actividad en progreso por técnico"
-      const actividadesActivas = await base44.entities.ActividadTecnica.filter({
-        organization_id: effectiveOrgId,
-        tecnico_id: user.id,
-        estado: 'en_progreso',
-        soft_deleted: false
-      });
-      if (actividadesActivas.length > 0) {
-        throw new Error('Ya tienes una actividad en progreso. Finalízala primero.');
-      }
-
-      // C) Crear ActividadTecnica
-      const nuevaActividad = await base44.entities.ActividadTecnica.create({
-        organization_id: effectiveOrgId,
+      // Delegar al orquestador backend — contiene toda la lógica de validación,
+      // transición de OT, creación de actividad y actualización de estado_atencion.
+      const response = await base44.functions.invoke('initTechnicalActivity', {
         orden_trabajo_id: ordenTrabajoId,
         tecnico_id: user.id,
-        tecnico_email: user.email,
         tipo_actividad: tipoActividad,
         subtipo: subtipo || '',
         inventario_id: inventarioId || null,
-        estado: 'en_progreso',
-        started_at: new Date().toISOString(),
-        ended_at: null,
-        duracion_minutos: null,
-        causa_bloqueo: '',
-        resultado: null,
-        notas: '',
-        soft_deleted: false
       });
 
-      // D) Sincronizar estado_atencion de la OT → ACTIVO
-      await cambiarEstadoAtencionOT({
-        ordenTrabajoId: ordenTrabajoId,
-        nuevoEstadoAtencion: 'ACTIVO',
-        observaciones: `Actividad iniciada: ${tipoActividad}`,
-      });
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'Error al iniciar la actividad técnica');
+      }
 
-      // E) Auditoría
-      await base44.entities.SuperAdminAudit.create({
-        super_admin_id: user.id,
-        super_admin_email: user.email,
-        action: 'actividad_started',
-        target_organization_id: effectiveOrgId,
-        context: JSON.stringify({
-          actividad_id: nuevaActividad.id,
-          orden_trabajo_id: ordenTrabajoId,
-          tipo_actividad: tipoActividad
-        })
-      });
-
-      return nuevaActividad;
+      return response.data.actividad;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
+      queryClient.invalidateQueries({ queryKey: ['expediente-ot'] });
       setOpen(false);
       setTipoActividad('');
       setSubtipo('');

@@ -10,10 +10,14 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import React from 'react';
-import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2 } from 'lucide-react';
 import { differenceInHours, differenceInDays } from 'date-fns';
 import { ESTADO_SOT as ESTADO_SOT_CONFIG } from '@/config/workflowConfig';
+import { useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { useAuthContext } from '@/components/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 // ── Mapa de iconos: resuelve iconName (string) → componente Lucide ─────────
 const ICON_MAP = { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package };
@@ -83,7 +87,12 @@ function MiniCard({ icon: Icon, label, children, className = '' }) {
   );
 }
 
-export default function CentroMando({ ot }) {
+export default function CentroMando({ ot, effectiveRole }) {
+  const [iniciando, setIniciando] = useState(false);
+  const [errorInicio, setErrorInicio] = useState(null);
+  const { user } = useAuthContext();
+  const queryClient = useQueryClient();
+
   if (!ot) return null;
 
   const sot = ESTADO_SOT[ot.estado] || ESTADO_SOT.EN_COLA_REVISION;
@@ -94,7 +103,61 @@ export default function CentroMando({ ot }) {
                        : riesgos.find(r => r.nivel === 'medio') ? 'medio'
                        : riesgos.length > 0 ? 'info' : null;
 
+  // ── Acción "Iniciar Revisión" — solo ASIGNADA + roles técnicos ────────────
+  const puedeIniciarRevision = ot.estado === 'ASIGNADA'
+    && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'].includes(effectiveRole)
+    && ot.tecnico_asignado_id === user?.id;
+
+  const handleIniciarRevision = async () => {
+    setIniciando(true);
+    setErrorInicio(null);
+    try {
+      const response = await base44.functions.invoke('initTechnicalActivity', {
+        orden_trabajo_id: ot.id,
+        tecnico_id: user.id,
+        tipo_actividad: 'diagnostico',
+        subtipo: 'Inicio de revisión técnica',
+      });
+
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'Error al iniciar la revisión');
+      }
+
+      // Refrescar datos del expediente y actividades
+      queryClient.invalidateQueries({ queryKey: ['expediente-ot', ot.id] });
+      queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
+    } catch (err) {
+      setErrorInicio(err.message || 'Error al iniciar revisión');
+    } finally {
+      setIniciando(false);
+    }
+  };
+
   return (
+    <div className="space-y-3">
+      {/* ── Botón Iniciar Revisión (solo cuando aplica) ───────────────────── */}
+      {puedeIniciarRevision && (
+        <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-emerald-900">Esta OT está lista para revisión</p>
+            <p className="text-xs text-emerald-700">Inicia la revisión para registrar tu tiempo técnico y mover la OT a EN_REVISION.</p>
+            {errorInicio && <p className="text-xs text-red-600 mt-1">{errorInicio}</p>}
+          </div>
+          <Button
+            onClick={handleIniciarRevision}
+            disabled={iniciando}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+            size="sm"
+          >
+            {iniciando ? (
+              <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Iniciando...</>
+            ) : (
+              <><Play className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
+            )}
+          </Button>
+        </div>
+      )}
+
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
       {/* ── Próxima Acción (del SOT) ─────────────────────────────────────── */}
@@ -144,6 +207,7 @@ export default function CentroMando({ ot }) {
         )}
       </MiniCard>
 
+    </div>
     </div>
   );
 }

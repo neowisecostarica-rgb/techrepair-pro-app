@@ -80,29 +80,41 @@ function ColaRevisionContent() {
     staleTime: 2 * 60 * 1000,
   });
 
-  // ── FIX: Usar reassignWorkOrderTechnician — mismo contrato que OrdenesTrabajo ──
+  // ── FIX P1: Usar reassignWorkOrderTechnician con sanitización anti-circular ──
   const asignarMutation = useMutation({
     mutationFn: async ({ ordenId, tecnicoId }) => {
+      console.log('[asignarMutation] → entrada mutationFn', { ordenId, tecnicoId });
       const tecnico = tecnicos.find(t => t.user_id === tecnicoId);
       const res = await base44.functions.invoke('reassignWorkOrderTechnician', {
         orden_trabajo_id: ordenId,
         tecnico_asignado_id: tecnicoId,
         tecnico_asignado_email: tecnico?.user_email || '',
       });
-      if (!res?.data?.success) {
-        throw new Error(res?.data?.error || 'La asignación no fue confirmada por el servidor');
+      // Extraer SOLO los datos planos — nunca retornar el objeto Axios completo
+      const data = res?.data ?? {};
+      console.log('[asignarMutation] → salida mutationFn success:', data?.success);
+      if (!data?.success) {
+        const errMsg = typeof data?.error === 'string' ? data.error : 'La asignación no fue confirmada por el servidor';
+        throw new Error(errMsg);
       }
-      return res.data;
+      // Retornar objeto plano serializable — nunca el objeto res de Axios
+      return { success: true, orden_trabajo_id: ordenId };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+    onSuccess: (_result) => {
+      console.log('[asignarMutation] → onSuccess');
+      // Limpiar estado ANTES de invalidar para evitar referencias circulares en cache
       setShowAsignarModal(false);
       setSelectedOT(null);
       setTecnicoSeleccionado('');
+      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       toast({ title: '✅ Técnico asignado correctamente', duration: 3000 });
     },
     onError: (error) => {
-      const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
+      console.log('[asignarMutation] → onError');
+      // Extraer únicamente el string del mensaje — nunca serializar el objeto error completo
+      const msg = typeof error?.message === 'string' && error.message
+        ? error.message
+        : 'Error al asignar técnico';
       toast({ variant: 'destructive', title: 'Error al asignar técnico', description: msg, duration: 4000 });
     },
   });

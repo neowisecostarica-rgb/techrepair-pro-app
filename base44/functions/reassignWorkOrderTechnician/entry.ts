@@ -156,8 +156,7 @@ Deno.serve(async (req) => {
         _callingUserContext: callingUserContext,
       });
 
-      console.log(`[DIAG:reassign] *** RESPUESTA COMPLETA de transitionWorkOrderStatus:`, JSON.stringify(transitionResult, null, 2));
-
+      // NOTA: transitionResult es un objeto Axios con referencias circulares — NO usar JSON.stringify sobre él directamente.
       // Validar que la transición fue exitosa
       const transitionData = transitionResult?.data ?? transitionResult;
       if (!transitionData?.success) {

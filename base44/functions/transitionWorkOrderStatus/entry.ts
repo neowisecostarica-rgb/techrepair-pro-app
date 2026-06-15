@@ -130,60 +130,65 @@ Deno.serve(async (req) => {
       console.log(`[DIAG:transition] [Rama A] effectiveUser.id=${effectiveUser.id}, orgId=${orgId}, effectiveRole=${effectiveRole}, isSuperAdmin=${isSuperAdmin}`);
 
     } else {
-      // ── Rama B: Invocación directa desde frontend — usar runtimeUser ──────────
-      // _callingUserContext es ignorado completamente si proviene de frontend (ya fue ignorado al no existir).
-      console.log(`[DIAG:transition] Sin _callingUserContext — usando runtimeUser de auth.me()`);
+      // ── Rama B: Invocación directa desde frontend — usar UserAccount como SOT ──
+      // runtimeUser se usa ÚNICAMENTE para identificar al usuario (id, email).
+      // organization_id, role y branch_id se resuelven SIEMPRE desde UserAccount.
+      console.log(`[DIAG:transition] Sin _callingUserContext — resolviendo identidad desde UserAccount (SOT)`);
 
-      // Resolver organization_id
-      orgId = runtimeUser.impersonating_org_id || runtimeUser.organization_id || runtimeUser.data?.impersonating_org_id;
-      console.log(`[DIAG:transition] orgId paso1 (impersonating||org_id||data.impersonating):`, orgId);
-
-      if (!orgId && runtimeUser.id) {
-        const fallbackAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: runtimeUser.id }, 1);
-        console.log(`[DIAG:transition] fallback UserAccount.filter({ user_id: '${runtimeUser?.id}' }) → count:`, fallbackAccounts?.length);
-        console.log(`[DIAG:transition] fallback UserAccount resultado:`, JSON.stringify(fallbackAccounts, null, 2));
-        if (fallbackAccounts && fallbackAccounts.length > 0) orgId = fallbackAccounts[0].organization_id || null;
-      }
-
-      console.log(`[DIAG:transition] orgId FINAL resuelto:`, orgId);
-
-      if (!orgId) {
-        console.error(`[DIAG:transition] *** 403: orgId no resuelto ***`);
-        return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
-      }
-
-      // Resolver rol efectivo
-      isSuperAdmin  = runtimeUser.is_super_admin === true || runtimeUser.data?.is_super_admin === true;
-      effectiveRole = runtimeUser.role;
+      isSuperAdmin = runtimeUser.is_super_admin === true || runtimeUser.data?.is_super_admin === true;
       console.log(`[DIAG:transition] isSuperAdmin:`, isSuperAdmin);
-      console.log(`[DIAG:transition] effectiveRole inicial (runtimeUser.role):`, effectiveRole);
 
-      if (!isSuperAdmin) {
-        const accounts = await base44.asServiceRole.entities.UserAccount.filter({
+      if (isSuperAdmin) {
+        // SUPER_ADMIN: usar org del token de impersonación
+        orgId = runtimeUser.impersonating_org_id || runtimeUser.organization_id;
+        effectiveRole = 'SUPER_ADMIN';
+        effectiveUser = runtimeUser;
+        console.log(`[DIAG:transition] isSuperAdmin=true — orgId desde token:`, orgId);
+      } else {
+        // USUARIO NORMAL: UserAccount es la ÚNICA fuente de verdad para orgId y role
+        // Usar hint del token (impersonating_org_id o organization_id) para seleccionar
+        // la cuenta correcta en caso de usuarios multi-org.
+        const orgHint = runtimeUser.impersonating_org_id || runtimeUser.organization_id || null;
+        console.log(`[DIAG:transition] orgHint del token (solo para selección):`, orgHint);
+
+        const userAccounts = await base44.asServiceRole.entities.UserAccount.filter({
           user_id: runtimeUser.id,
-          organization_id: orgId,
-        }, 1);
-        console.log(`[DIAG:transition] UserAccount.filter({ user_id: '${runtimeUser?.id}', organization_id: '${orgId}' }) → count:`, accounts?.length);
-        console.log(`[DIAG:transition] UserAccount resultado completo:`, JSON.stringify(accounts, null, 2));
+        }, 5);
+        console.log(`[DIAG:transition] UserAccount.filter({ user_id: '${runtimeUser?.id}' }) → count:`, userAccounts?.length);
+        console.log(`[DIAG:transition] UserAccount resultado completo:`, JSON.stringify(userAccounts, null, 2));
 
-        if (!accounts || accounts.length === 0) {
-          console.error(`[DIAG:transition] *** 403: accounts.length===0 — user_id=${runtimeUser?.id}, orgId=${orgId} ***`);
-          return Response.json({ error: 'Usuario sin cuenta activa en esta organización' }, { status: 403 });
+        if (!userAccounts || userAccounts.length === 0) {
+          console.error(`[DIAG:transition] *** 403: UserAccount no encontrado — user_id=${runtimeUser?.id} ***`);
+          return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
         }
 
-        const account = accounts[0];
+        // Seleccionar cuenta: preferir la que coincide con el hint del token, sino tomar la primera
+        let account = null;
+        if (orgHint) {
+          account = userAccounts.find(a => a.organization_id === orgHint) || userAccounts[0];
+        } else {
+          account = userAccounts[0];
+        }
+        console.log(`[DIAG:transition] UserAccount seleccionado:`, JSON.stringify(account, null, 2));
+
         if (account.status === 'suspended') {
           console.error(`[DIAG:transition] *** 403: cuenta suspendida — user_id=${runtimeUser?.id} ***`);
           return Response.json({ error: 'Cuenta suspendida' }, { status: 403 });
         }
 
+        orgId = account.organization_id;
         effectiveRole = account.role;
-        console.log(`[DIAG:transition] effectiveRole FINAL (de UserAccount):`, effectiveRole);
-      } else {
-        console.log(`[DIAG:transition] isSuperAdmin=true — saltando lookup de UserAccount`);
+        effectiveUser = runtimeUser;
+
+        console.log(`[DIAG:transition] orgId FINAL (desde UserAccount):`, orgId);
+        console.log(`[DIAG:transition] effectiveRole FINAL (desde UserAccount):`, effectiveRole);
       }
 
-      effectiveUser = runtimeUser;
+      if (!orgId) {
+        console.error(`[DIAG:transition] *** 403: orgId no resuelto tras consulta UserAccount ***`);
+        return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
+      }
+
       console.log(`[DIAG:transition] [Rama B] effectiveUser.id=${effectiveUser?.id}, orgId=${orgId}, effectiveRole=${effectiveRole}, isSuperAdmin=${isSuperAdmin}`);
     }
 

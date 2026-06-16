@@ -46,12 +46,20 @@ function validatePayloadForTarget(targetStatus, ot, extra) {
       if (!ot.tecnico_asignado_id) {
         return 'La OT debe tener un técnico asignado para marcar como diagnosticada';
       }
+      // GUARDA DOCUMENTAL P0.2-C: Requiere DiagnosticoDocumento emitido
+      if (extra?._doc_emitido_verificado !== true) {
+        return 'DIAGNOSTICADA_SIN_DOCUMENTO';
+      }
       break;
     case 'APROBADA':
       break;
     case 'EN_REPARACION':
       if (!ot.tecnico_asignado_id) {
         return 'La OT debe tener un técnico asignado para iniciar reparación';
+      }
+      // GUARDA COMERCIAL P0.2-C: Requiere aprobación del cliente
+      if (extra?._aprobacion_cliente_verificada !== true) {
+        return 'EN_REPARACION_SIN_APROBACION';
       }
       break;
     case 'ENTREGADA':
@@ -252,6 +260,60 @@ Deno.serve(async (req) => {
 
     // ── 9. Validar datos mínimos requeridos ───────────────────────────────────
     const extra = { tecnico_asignado_id, tecnico_asignado_email };
+
+    // ── GUARDA P0.2-C: DIAGNOSTICADA requiere DiagnosticoDocumento emitido ───
+    if (newStatus === 'DIAGNOSTICADA') {
+      // Buscar DiagnosticoTecnico activo de esta OT
+      const diagActivos = await base44.asServiceRole.entities.DiagnosticoTecnico.filter({
+        orden_trabajo_id: orden_trabajo_id,
+        bloqueado: false,
+      }, 1);
+      const diagId = diagActivos?.[0]?.id;
+
+      if (!diagId) {
+        return Response.json({
+          error: 'No existe un diagnóstico técnico activo para esta OT. El técnico debe completar el diagnóstico antes de continuar.',
+          code: 'DIAGNOSTICADA_SIN_DIAGNOSTICO_TECNICO',
+        }, { status: 422 });
+      }
+
+      const docs = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
+        diagnostico_id: diagId,
+      }, 5);
+      const docEmitido = docs?.find(d => d.estado === 'EMITIDO' || d.estado === 'ENVIADO');
+
+      if (!docEmitido) {
+        return Response.json({
+          error: 'Se requiere emitir el Documento de Diagnóstico antes de marcar la OT como DIAGNOSTICADA. Ve al Expediente → Panel Operativo → Emitir Documento.',
+          code: 'DIAGNOSTICADA_SIN_DOCUMENTO_EMITIDO',
+        }, { status: 422 });
+      }
+      extra._doc_emitido_verificado = true;
+    }
+
+    // ── GUARDA P0.2-C: EN_REPARACION requiere aprobación del cliente ──────────
+    if (newStatus === 'EN_REPARACION') {
+      const diagActivos = await base44.asServiceRole.entities.DiagnosticoTecnico.filter({
+        orden_trabajo_id: orden_trabajo_id,
+        bloqueado: false,
+      }, 1);
+      const diagId = diagActivos?.[0]?.id;
+
+      if (diagId) {
+        const docs = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
+          diagnostico_id: diagId,
+        }, 5);
+        const docConAprobacion = docs?.find(d => d.aprobacion_status === 'APROBADA');
+
+        if (!docConAprobacion) {
+          return Response.json({
+            error: 'Se requiere la aprobación del cliente antes de iniciar la reparación. Registra la aprobación en el Expediente → Panel Operativo.',
+            code: 'EN_REPARACION_SIN_APROBACION_CLIENTE',
+          }, { status: 422 });
+        }
+        extra._aprobacion_cliente_verificada = true;
+      }
+    }
 
     if (newStatus === 'ENTREGADA') {
       const ventasPagadas = await base44.asServiceRole.entities.Venta.filter({

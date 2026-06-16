@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import ListaActividades from '@/components/actividades/ListaActividades';
+import PanelOperativoDiagnostico from '@/components/expediente/PanelOperativoDiagnostico';
 
 // ── Bloque colapsable reutilizable ─────────────────────────────────────────
 function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge, children }) {
@@ -51,7 +52,7 @@ function Dato({ label, children }) {
   );
 }
 
-export default function ExpedienteTecnico({ ot, organizationId, effectiveRole }) {
+export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, cliente, equipo, tecnico }) {
   // ── DMR activo ────────────────────────────────────────────────────────────
   const { data: dmrList = [], isLoading: loadingDMR } = useQuery({
     queryKey: ['expediente-dmr', ot.id],
@@ -64,7 +65,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole })
   });
   const dmr = dmrList[0] || null;
 
-  // ── Prediagnóstico ────────────────────────────────────────────────────────
+  // ── Panel Operativo necesita prediag ──────────────────────────────────────
   const { data: prediagList = [] } = useQuery({
     queryKey: ['expediente-prediag', ot.id],
     queryFn: () => base44.entities.PreDiagnostico.filter({ orden_trabajo_id: ot.id }),
@@ -96,6 +97,17 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole })
 
   return (
     <div className="space-y-3">
+
+      {/* ── Panel Operativo de Diagnóstico — P0.2-C ───────────────────────── */}
+      <PanelOperativoDiagnostico
+        ot={ot}
+        organizationId={organizationId}
+        effectiveRole={effectiveRole}
+        cliente={cliente}
+        equipo={equipo}
+        tecnico={tecnico}
+        prediag={prediag}
+      />
 
       {/* ── DMR — Solo lectura ────────────────────────────────────────────── */}
       <Bloque

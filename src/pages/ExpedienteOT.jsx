@@ -186,6 +186,9 @@ function ExpedienteOTContent() {
             ot={ot}
             organizationId={effectiveOrgId}
             effectiveRole={effectiveRole}
+            cliente={cliente}
+            equipo={equipo}
+            tecnico={tecnico}
           />
         </TabsContent>
 

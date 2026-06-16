@@ -243,8 +243,10 @@ export default function WizardDiagnosticoTecnico({
         ts: new Date().toISOString() 
       });
 
-      // Redirigir automáticamente al Resumen de Diagnóstico
-      window.location.href = createPageUrl('ResumenDiagnostico') + `?ot_id=${ordenTrabajo.id}&diagnostico_id=${diagnosticoFinal.id || diagnostico?.id}`;
+      // Notificar al componente padre (Expediente) para controlar el flujo
+      if (onComplete) {
+        onComplete(diagnosticoFinal || diagnostico);
+      }
     } catch (error) {
       console.error('Error completando diagnóstico:', error);
       alert('Error al completar: ' + error.message);

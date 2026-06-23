@@ -204,7 +204,7 @@ export default function PanelOperativoDiagnostico({
     }
   };
 
-  // Marcar como enviado
+  // Marcar como enviado — registra trazabilidad completa
   const handleMarcarEnviado = async (canal) => {
     if (!docActivo) return;
     setActionLoading(true);
@@ -212,8 +212,9 @@ export default function PanelOperativoDiagnostico({
     try {
       await base44.entities.DiagnosticoDocumento.update(docActivo.id, {
         estado: 'ENVIADO',
+        canal_envio: canal,
         enviado_at: new Date().toISOString(),
-        enviado_canal: canal,
+        enviado_por: user?.id || null,
       });
       invalidarPanel();
     } catch (e) {
@@ -223,15 +224,16 @@ export default function PanelOperativoDiagnostico({
     }
   };
 
-  // Reenviar: mantiene estado ENVIADO, solo actualiza timestamp
+  // Reenviar: mantiene estado ENVIADO, actualiza trazabilidad de reenvío
   const handleReenviar = async (canal) => {
     if (!docActivo) return;
     setActionLoading(true);
     setActionError(null);
     try {
       await base44.entities.DiagnosticoDocumento.update(docActivo.id, {
+        canal_envio: canal,
         enviado_at: new Date().toISOString(),
-        enviado_canal: canal,
+        enviado_por: user?.id || null,
       });
       invalidarPanel();
     } catch (e) {
@@ -497,7 +499,7 @@ export default function PanelOperativoDiagnostico({
                         await base44.entities.DiagnosticoDocumento.update(docActivo.id, {
                           aprobacion_status: 'APROBADA',
                           aprobacion_at: new Date().toISOString(),
-                          aprobacion_canal: 'MANUAL',
+                          metodo_aprobacion: 'VERBAL',
                         });
                         invalidarPanel();
                       } catch (e) { setActionError(e.message); }
@@ -517,7 +519,7 @@ export default function PanelOperativoDiagnostico({
                         await base44.entities.DiagnosticoDocumento.update(docActivo.id, {
                           aprobacion_status: 'RECHAZADA',
                           aprobacion_at: new Date().toISOString(),
-                          aprobacion_canal: 'MANUAL',
+                          metodo_aprobacion: 'VERBAL',
                         });
                         invalidarPanel();
                       } catch (e) { setActionError(e.message); }

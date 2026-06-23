@@ -17,7 +17,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Loader2, ChevronDown, ChevronUp, FileText,
-  CheckCircle2, Circle, Camera, ClipboardList, Shield
+  CheckCircle2, Circle, Camera, ClipboardList, Shield,
+  Send, MessageSquare, Mail, Ban, Clock, XCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import ListaActividades from '@/components/actividades/ListaActividades';
@@ -83,6 +84,15 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
   });
   const diag = diagList[0] || null;
 
+  // ── DiagnosticoDocumento activo ───────────────────────────────────────────
+  const { data: docList = [] } = useQuery({
+    queryKey: ['expediente-diag-doc', diag?.id],
+    queryFn: () => base44.entities.DiagnosticoDocumento.filter({ diagnostico_id: diag.id }),
+    enabled: !!diag?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+  const docActivo = docList.find(d => d.estado !== 'ANULADO') || null;
+
   // ── Evidencias ────────────────────────────────────────────────────────────
   const { data: evidencias = [] } = useQuery({
     queryKey: ['expediente-evidencias', diag?.id],
@@ -108,6 +118,71 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
         tecnico={tecnico}
         prediag={prediag}
       />
+
+      {/* ── Estado Documental — Trazabilidad de Envío ────────────────────── */}
+      {docActivo && (
+        <Bloque
+          label="Estado del Documento Diagnóstico"
+          icon={Send}
+          accentClass="bg-purple-50 text-purple-700"
+          defaultOpen={true}
+          badge={
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+              docActivo.estado === 'ENVIADO'  ? 'bg-purple-100 text-purple-700' :
+              docActivo.estado === 'EMITIDO'  ? 'bg-amber-100 text-amber-700'  :
+              docActivo.estado === 'ANULADO'  ? 'bg-red-100 text-red-600'      :
+              'bg-slate-100 text-slate-500'
+            }`}>
+              {docActivo.estado === 'ENVIADO' ? 'Enviado' :
+               docActivo.estado === 'EMITIDO' ? 'Emitido' :
+               docActivo.estado === 'ANULADO' ? 'Anulado' : docActivo.estado}
+            </span>
+          }
+        >
+          <div className="space-y-1">
+            <Dato label="Estado">{docActivo.estado}</Dato>
+            <Dato label="Versión">{docActivo.version || '—'}</Dato>
+            {docActivo.emitido_at && (
+              <Dato label="Emitido">
+                {format(new Date(docActivo.emitido_at), "dd MMM yyyy HH:mm", { locale: es })}
+              </Dato>
+            )}
+            {docActivo.canal_envio && (
+              <Dato label="Canal de envío">
+                <span className="inline-flex items-center gap-1">
+                  {docActivo.canal_envio === 'WHATSAPP' && <MessageSquare className="w-3 h-3 text-green-600" />}
+                  {docActivo.canal_envio === 'EMAIL'    && <Mail className="w-3 h-3 text-blue-600" />}
+                  {docActivo.canal_envio === 'MANUAL'   && <FileText className="w-3 h-3 text-slate-500" />}
+                  {docActivo.canal_envio === 'WHATSAPP' ? 'WhatsApp' : docActivo.canal_envio === 'EMAIL' ? 'Correo' : 'Manual'}
+                </span>
+              </Dato>
+            )}
+            {docActivo.enviado_at && (
+              <Dato label="Enviado el">
+                {format(new Date(docActivo.enviado_at), "dd MMM yyyy HH:mm", { locale: es })}
+              </Dato>
+            )}
+            {docActivo.metodo_aprobacion && (
+              <Dato label="Método aprobación">
+                {{ VERBAL: 'Verbal', WHATSAPP_CONFIRM: 'Confirmación WhatsApp', FIRMA_FISICA: 'Firma física', PORTAL_DIGITAL: 'Portal digital' }[docActivo.metodo_aprobacion] || docActivo.metodo_aprobacion}
+              </Dato>
+            )}
+            {docActivo.aprobacion_status && docActivo.aprobacion_status !== 'PENDIENTE' && (
+              <Dato label="Aprobación doc.">
+                <span className={`inline-flex items-center gap-1 ${
+                  docActivo.aprobacion_status === 'APROBADA'  ? 'text-emerald-700' :
+                  docActivo.aprobacion_status === 'RECHAZADA' ? 'text-red-600' : 'text-slate-500'
+                }`}>
+                  {docActivo.aprobacion_status === 'APROBADA'  && <CheckCircle2 className="w-3 h-3" />}
+                  {docActivo.aprobacion_status === 'RECHAZADA' && <XCircle className="w-3 h-3" />}
+                  {docActivo.aprobacion_status === 'EXPIRADA'  && <Clock className="w-3 h-3" />}
+                  {docActivo.aprobacion_status}
+                </span>
+              </Dato>
+            )}
+          </div>
+        </Bloque>
+      )}
 
       {/* ── DMR — Solo lectura ────────────────────────────────────────────── */}
       <Bloque

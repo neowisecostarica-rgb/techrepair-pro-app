@@ -11,11 +11,11 @@
  */
 
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2, Lock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2, Lock, Send, FileText } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { differenceInHours, differenceInDays } from 'date-fns';
 import { ESTADO_SOT as ESTADO_SOT_CONFIG } from '@/config/workflowConfig';
 import { MOTIVOS_BLOQUEO } from '@/config/motivosBloqueo';
-import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -88,11 +88,41 @@ function MiniCard({ icon: Icon, label, children, className = '' }) {
   );
 }
 
+// ── Config visual estado documental ──────────────────────────────────────
+const DOC_ESTADO_CONFIG = {
+  NO_EXISTE: { label: 'Sin documento',     color: 'bg-slate-50 border-slate-200 text-slate-500',   icon: FileText  },
+  BORRADOR:  { label: 'Borrador',          color: 'bg-blue-50 border-blue-200 text-blue-700',      icon: FileText  },
+  EMITIDO:   { label: 'Emitido',           color: 'bg-amber-50 border-amber-200 text-amber-700',   icon: FileText  },
+  ENVIADO:   { label: 'Enviado al cliente',color: 'bg-purple-50 border-purple-200 text-purple-700',icon: Send      },
+  ANULADO:   { label: 'Anulado',           color: 'bg-red-50 border-red-200 text-red-600',         icon: FileText  },
+};
+
+const CANAL_LABEL = { WHATSAPP: 'WhatsApp', EMAIL: 'Correo', MANUAL: 'Manual' };
+
 export default function CentroMando({ ot, effectiveRole }) {
   const [iniciando, setIniciando] = useState(false);
   const [errorInicio, setErrorInicio] = useState(null);
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
+
+  // ── Diagnóstico Documental (para separar estado documental del comercial) ─
+  const { data: diagList = [] } = useQuery({
+    queryKey: ['panel-diag-tecnico', ot?.id],
+    queryFn: () => base44.entities.DiagnosticoTecnico.filter({ orden_trabajo_id: ot.id, bloqueado: false }),
+    enabled: !!ot?.id,
+    staleTime: 30_000,
+  });
+  const diagId = diagList[0]?.id || null;
+
+  const { data: docList = [] } = useQuery({
+    queryKey: ['panel-diag-doc', ot?.id],
+    queryFn: () => base44.entities.DiagnosticoDocumento.filter({ diagnostico_id: diagId }),
+    enabled: !!diagId,
+    staleTime: 30_000,
+  });
+  const docActivo = docList.find(d => d.estado !== 'ANULADO') || null;
+  const docEstado = docActivo?.estado || (diagList[0] ? 'BORRADOR' : 'NO_EXISTE');
+  const docCfg = DOC_ESTADO_CONFIG[docEstado] || DOC_ESTADO_CONFIG.NO_EXISTE;
 
   if (!ot) return null;
 
@@ -195,6 +225,31 @@ export default function CentroMando({ ot, effectiveRole }) {
           </p>
         </div>
       )}
+
+      {/* ── Estado Documental (separado del estado comercial) ─────────────── */}
+      {['EN_REVISION', 'DIAGNOSTICADA', 'COTIZADA', 'APROBADA'].includes(ot.estado) && (() => {
+        const DocIcon = docCfg.icon;
+        return (
+          <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border text-xs ${docCfg.color}`}>
+            <DocIcon className="w-3.5 h-3.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="font-semibold">Documento diagnóstico: </span>
+              <span>{docCfg.label}</span>
+              {docActivo?.enviado_at && (
+                <span className="text-[10px] opacity-70 ml-2">
+                  · Enviado vía {CANAL_LABEL[docActivo.canal_envio] || docActivo.canal_envio || '—'}
+                  {' '}el {new Date(docActivo.enviado_at).toLocaleDateString('es-CR', { day: '2-digit', month: 'short' })}
+                </span>
+              )}
+            </div>
+            {ot.cliente_aprobado && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px] shrink-0">
+                <CheckCircle2 className="w-3 h-3" /> Comercialmente aprobado
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 

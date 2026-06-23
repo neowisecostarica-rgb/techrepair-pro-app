@@ -29,6 +29,7 @@ import {
   CheckCircle2, XCircle, Clock, MessageSquare, Mail,
   Loader2, AlertCircle, ChevronRight
 } from 'lucide-react';
+import { useAuthContext } from '@/components/contexts/AuthContext';
 import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';
 import DiagnosticoDocumentoA4 from '@/components/diagnostico/DiagnosticoDocumentoA4';
 
@@ -119,6 +120,7 @@ export default function PanelOperativoDiagnostico({
   const [documentoOpen, setDocumentoOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError]     = useState(null);
+  const { user } = useAuthContext();
 
   // ── Queries ────────────────────────────────────────────────────────────────
   const { data: diagList = [], isLoading: loadingDiag } = useQuery({

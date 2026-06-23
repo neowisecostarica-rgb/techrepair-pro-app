@@ -4,7 +4,7 @@
   "properties": {
     "diagnostico_id": {
       "type": "string",
-      "description": "ID del diagn\u00f3stico"
+      "description": "ID del diagn\u00f3stico t\u00e9cnico asociado"
     },
     "organization_id": {
       "type": "string",
@@ -25,6 +25,78 @@
     "url_documento": {
       "type": "string",
       "description": "URL del documento generado"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "EMITIDO",
+        "ENVIADO",
+        "ANULADO"
+      ],
+      "default": "EMITIDO",
+      "description": "Estado del ciclo de vida documental"
+    },
+    "emitido_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de emisi\u00f3n del documento"
+    },
+    "snapshot_data": {
+      "type": "object",
+      "description": "Snapshot inmutable del diagn\u00f3stico al momento de emisi\u00f3n"
+    },
+    "aprobacion_status": {
+      "type": "string",
+      "enum": [
+        "PENDIENTE",
+        "APROBADA",
+        "RECHAZADA",
+        "EXPIRADA"
+      ],
+      "default": "PENDIENTE",
+      "description": "Estado de aprobaci\u00f3n del documento (dimensi\u00f3n independiente del estado documental)"
+    },
+    "aprobacion_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de la aprobaci\u00f3n o rechazo del cliente"
+    },
+    "aprobacion_canal": {
+      "type": "string",
+      "description": "Canal por el que se registr\u00f3 la respuesta de aprobaci\u00f3n (legacy)"
+    },
+    "anulado_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de anulaci\u00f3n del documento"
+    },
+    "canal_envio": {
+      "type": "string",
+      "enum": [
+        "WHATSAPP",
+        "EMAIL",
+        "MANUAL"
+      ],
+      "description": "Canal utilizado para el \u00faltimo env\u00edo del documento al cliente"
+    },
+    "enviado_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp del \u00faltimo env\u00edo del documento al cliente"
+    },
+    "enviado_por": {
+      "type": "string",
+      "description": "ID del usuario que realiz\u00f3 el env\u00edo"
+    },
+    "metodo_aprobacion": {
+      "type": "string",
+      "enum": [
+        "VERBAL",
+        "WHATSAPP_CONFIRM",
+        "FIRMA_FISICA",
+        "PORTAL_DIGITAL"
+      ],
+      "description": "M\u00e9todo mediante el cual el cliente otorg\u00f3 su aprobaci\u00f3n (opcional, para auditor\u00eda)"
     }
   },
   "required": [
@@ -38,11 +110,14 @@
     "create": {
       "$or": [
         {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
         },
         {
           "user_condition": {
-            "data.is_super_admin": "true"
+            "is_super_admin": true
           }
         }
       ]
@@ -50,11 +125,14 @@
     "read": {
       "$or": [
         {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
         },
         {
           "user_condition": {
-            "data.is_super_admin": "true"
+            "is_super_admin": true
           }
         }
       ]
@@ -62,11 +140,14 @@
     "update": {
       "$or": [
         {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
         },
         {
           "user_condition": {
-            "data.is_super_admin": "true"
+            "is_super_admin": true
           }
         }
       ]
@@ -74,11 +155,14 @@
     "delete": {
       "$or": [
         {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
+          "organization_id": "{{user.organization_id}}"
+        },
+        {
+          "organization_id": "{{user.impersonating_org_id}}"
         },
         {
           "user_condition": {
-            "data.is_super_admin": "true"
+            "is_super_admin": true
           }
         }
       ]

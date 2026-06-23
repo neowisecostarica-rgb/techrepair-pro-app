@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Loader2, GitCommitHorizontal, Wrench, CreditCard,
-  MessageCircle, ChevronDown, ChevronUp, AlertCircle
+  MessageCircle, ChevronDown, ChevronUp, AlertCircle, Archive
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,13 @@ const CATEGORIA_CONFIG = {
     dotClass: 'bg-amber-500',
     lineClass: 'border-amber-200',
   },
+  custodia: {
+    label: 'Custodia',
+    icon: Archive,
+    badgeClass: 'bg-orange-100 text-orange-700',
+    dotClass: 'bg-orange-500',
+    lineClass: 'border-orange-200',
+  },
 };
 
 // ── Labels de OTEvent ─────────────────────────────────────────────────────
@@ -67,6 +74,10 @@ const OT_EVENT_LABELS = {
   TRANSITION_APROBADA:      'Reparación Aprobada',
   TRANSITION_EN_REPARACION: 'Reparación Iniciada',
   TRANSITION_PRUEBAS:       'En Pruebas de Calidad',
+  // ── Custodia (P1-A.3-I2) ──────────────────────────────────────────────
+  CUSTODIA_CONTACTO:        'Contacto de Custodia Registrado',
+  CUSTODIA_ABANDONO:        'Abandono Declarado',
+  CUSTODIA_DISPOSICION:     'Disposición Final Realizada',
 };
 
 // ── Actividad tipo labels ─────────────────────────────────────────────────
@@ -81,14 +92,18 @@ const ACTIVIDAD_LABELS = {
 };
 
 // ── Normalizar eventos a formato unificado ────────────────────────────────
+const CUSTODIA_TIPOS = new Set(['CUSTODIA_CONTACTO', 'CUSTODIA_ABANDONO', 'CUSTODIA_DISPOSICION']);
+
 function normalizarOTEvents(events = []) {
   return events.map(e => ({
     id: `ot-${e.id}`,
-    categoria: e.tipo === 'SALE_COMPLETED' ? 'comercial' : 'estado',
+    categoria: CUSTODIA_TIPOS.has(e.tipo) ? 'custodia'
+             : e.tipo === 'SALE_COMPLETED' ? 'comercial'
+             : 'estado',
     titulo: OT_EVENT_LABELS[e.tipo] || e.tipo,
     detalle: e.tipo === 'SALE_COMPLETED' && e.venta_total
       ? `Total: ₡${Number(e.venta_total).toLocaleString('es-CR')}`
-      : null,
+      : (e.detalle || null),
     timestamp: e.created_at || e.created_date,
   }));
 }
@@ -163,6 +178,7 @@ const FILTROS = [
   { key: 'estado', label: 'Estados' },
   { key: 'actividad', label: 'Técnico' },
   { key: 'comercial', label: 'Comercial' },
+  { key: 'custodia', label: 'Custodia' },
 ];
 
 export default function TimelineViewer({ ordenTrabajoId, organizationId }) {

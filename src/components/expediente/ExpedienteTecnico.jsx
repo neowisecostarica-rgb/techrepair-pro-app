@@ -24,6 +24,7 @@ import { calcularCustodia, CUSTODIA_CONFIG } from '@/lib/custodiaEngine';
 import { Badge } from '@/components/ui/badge';
 import ListaActividades from '@/components/actividades/ListaActividades';
 import PanelOperativoDiagnostico from '@/components/expediente/PanelOperativoDiagnostico';
+import AccionesCustodia from '@/components/expediente/AccionesCustodia';
 
 // ── Bloque colapsable reutilizable ─────────────────────────────────────────
 function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge, children }) {
@@ -54,7 +55,7 @@ function Dato({ label, children }) {
   );
 }
 
-export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, cliente, equipo, tecnico }) {
+export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, cliente, equipo, tecnico, onOTUpdated }) {
   // ── DMR activo ────────────────────────────────────────────────────────────
   const { data: dmrList = [], isLoading: loadingDMR } = useQuery({
     queryKey: ['expediente-dmr', ot.id],
@@ -430,6 +431,9 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
                 </div>
               )}
             </div>
+
+            {/* ── Acciones operativas de Custodia ──────────────────────── */}
+            <AccionesCustodia ot={ot} onUpdated={onOTUpdated} />
           </Bloque>
         );
       })()}

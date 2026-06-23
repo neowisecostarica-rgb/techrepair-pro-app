@@ -24,7 +24,10 @@
         "TRANSITION_COTIZADA",
         "TRANSITION_APROBADA",
         "TRANSITION_EN_REPARACION",
-        "TRANSITION_PRUEBAS"
+        "TRANSITION_PRUEBAS",
+        "CUSTODIA_CONTACTO",
+        "CUSTODIA_ABANDONO",
+        "CUSTODIA_DISPOSICION"
       ],
       "description": "Tipo de evento generado"
     },
@@ -39,6 +42,10 @@
     "tipo_concepto": {
       "type": "string",
       "description": "tipo_concepto de la venta (solo para SALE_COMPLETED)"
+    },
+    "detalle": {
+      "type": "string",
+      "description": "Detalle adicional del evento (para eventos de custodia: observaciones del registro)"
     },
     "created_by_user_id": {
       "type": "string",

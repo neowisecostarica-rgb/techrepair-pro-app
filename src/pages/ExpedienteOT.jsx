@@ -12,7 +12,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
@@ -37,7 +37,13 @@ export default function ExpedienteOT() {
 function ExpedienteOTContent() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { effectiveOrgId, effectiveRole, user } = useAuthContext();
+
+  // Callback para que los subcomponentes (AccionesCustodia) refresquen la OT
+  const handleOTUpdated = () => {
+    queryClient.invalidateQueries({ queryKey: ['expediente-ot', id] });
+  };
 
   // ── Carga de OT principal ─────────────────────────────────────────────────
   const { data: ot, isLoading: loadingOT, isError } = useQuery({
@@ -189,6 +195,7 @@ function ExpedienteOTContent() {
             cliente={cliente}
             equipo={equipo}
             tecnico={tecnico}
+            onOTUpdated={handleOTUpdated}
           />
         </TabsContent>
 

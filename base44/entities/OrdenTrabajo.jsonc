@@ -162,7 +162,7 @@
     "fecha_cierre": {
       "type": "string",
       "format": "date-time",
-      "description": "Fecha de cierre de la OT"
+      "description": "Fecha de cierre de la OT (se fija al pasar a FINALIZADA)"
     },
     "created_by_user_id": {
       "type": "string",
@@ -257,6 +257,36 @@
       "type": "boolean",
       "default": false,
       "description": "Flag de idempotencia: email de cancelaci\u00f3n ya enviado"
+    },
+    "estado_custodia": {
+      "type": "string",
+      "enum": [
+        "NORMAL",
+        "EN_CUSTODIA",
+        "ABANDONO_DECLARADO",
+        "DISPOSICION_FINAL"
+      ],
+      "default": "NORMAL",
+      "description": "Estado de custodia del equipo. Dimensi\u00f3n paralela al workflow de OT. Aplica solo cuando estado = FINALIZADA."
+    },
+    "fecha_inicio_custodia": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp en que el equipo entr\u00f3 formalmente en custodia (se fija al alcanzar 8 d\u00edas desde fecha_cierre)."
+    },
+    "fecha_ultimo_contacto": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u00daltimo intento de contacto al cliente para retirar el equipo."
+    },
+    "fecha_abandono": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha en que se declar\u00f3 el abandono del equipo."
+    },
+    "abandono_observaciones": {
+      "type": "string",
+      "description": "Observaciones o contexto del abandono declarado."
     }
   },
   "required": [

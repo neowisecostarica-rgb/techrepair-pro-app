@@ -11,7 +11,7 @@
  */
 
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2, Lock, Send, FileText } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2, Lock, Send, FileText, Archive } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { differenceInHours, differenceInDays } from 'date-fns';
 import { ESTADO_SOT as ESTADO_SOT_CONFIG } from '@/config/workflowConfig';
@@ -19,6 +19,7 @@ import { MOTIVOS_BLOQUEO } from '@/config/motivosBloqueo';
 import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { calcularCustodia, CUSTODIA_CONFIG } from '@/lib/custodiaEngine';
 
 // ── Mapa de iconos: resuelve iconName (string) → componente Lucide ─────────
 const ICON_MAP = { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package };
@@ -245,6 +246,29 @@ export default function CentroMando({ ot, effectiveRole }) {
             {ot.cliente_aprobado && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px] shrink-0">
                 <CheckCircle2 className="w-3 h-3" /> Comercialmente aprobado
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* ── Bloque Estado Custodia (solo OT FINALIZADA) ───────────────────── */}
+      {ot.estado === 'FINALIZADA' && (() => {
+        const { estadoCustodia, diasCustodia, elegibleAbandono } = calcularCustodia(ot);
+        const cfg = CUSTODIA_CONFIG[estadoCustodia] || CUSTODIA_CONFIG.NORMAL;
+        return (
+          <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border ${cfg.color}`}>
+            <Archive className="w-3.5 h-3.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="font-semibold text-xs">Estado Custodia: </span>
+              <span className="text-xs">{cfg.label}</span>
+              {diasCustodia !== null && (
+                <span className="text-[10px] opacity-70 ml-2">· {diasCustodia} días desde cierre</span>
+              )}
+            </div>
+            {elegibleAbandono && estadoCustodia !== 'ABANDONO_DECLARADO' && estadoCustodia !== 'DISPOSICION_FINAL' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold text-[10px] shrink-0">
+                Elegible abandono
               </span>
             )}
           </div>

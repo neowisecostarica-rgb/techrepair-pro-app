@@ -18,8 +18,9 @@ import { es } from 'date-fns/locale';
 import {
   Loader2, ChevronDown, ChevronUp, FileText,
   CheckCircle2, Circle, Camera, ClipboardList, Shield,
-  Send, MessageSquare, Mail, Ban, Clock, XCircle
+  Send, MessageSquare, Mail, Ban, Clock, XCircle, Archive
 } from 'lucide-react';
+import { calcularCustodia, CUSTODIA_CONFIG } from '@/lib/custodiaEngine';
 import { Badge } from '@/components/ui/badge';
 import ListaActividades from '@/components/actividades/ListaActividades';
 import PanelOperativoDiagnostico from '@/components/expediente/PanelOperativoDiagnostico';
@@ -375,6 +376,63 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
           </div>
         </Bloque>
       )}
+
+      {/* ── Custodia y Abandono (solo OT FINALIZADA) ─────────────────────── */}
+      {ot.estado === 'FINALIZADA' && (() => {
+        const { estadoCustodia, diasCustodia, elegibleAbandono } = calcularCustodia(ot);
+        const cfg = CUSTODIA_CONFIG[estadoCustodia] || CUSTODIA_CONFIG.NORMAL;
+        return (
+          <Bloque
+            label="Custodia y Abandono"
+            icon={Archive}
+            accentClass="bg-amber-50 text-amber-800"
+            defaultOpen={true}
+            badge={
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.badgeClass}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                {cfg.label}
+              </span>
+            }
+          >
+            <div className="space-y-1">
+              <Dato label="Estado Custodia">
+                <span className={`inline-flex items-center gap-1 font-semibold ${cfg.color.split(' ').find(c => c.startsWith('text-'))}`}>
+                  {cfg.label}
+                </span>
+              </Dato>
+              {diasCustodia !== null && (
+                <Dato label="Días en custodia">{diasCustodia} días</Dato>
+              )}
+              {ot.fecha_inicio_custodia && (
+                <Dato label="Inicio custodia">
+                  {format(new Date(ot.fecha_inicio_custodia), "dd MMM yyyy HH:mm", { locale: es })}
+                </Dato>
+              )}
+              {ot.fecha_ultimo_contacto && (
+                <Dato label="Último contacto">
+                  {format(new Date(ot.fecha_ultimo_contacto), "dd MMM yyyy HH:mm", { locale: es })}
+                </Dato>
+              )}
+              {ot.fecha_abandono && (
+                <Dato label="Fecha abandono">
+                  {format(new Date(ot.fecha_abandono), "dd MMM yyyy HH:mm", { locale: es })}
+                </Dato>
+              )}
+              {ot.abandono_observaciones && (
+                <Dato label="Observaciones">{ot.abandono_observaciones}</Dato>
+              )}
+              {elegibleAbandono && !ot.fecha_abandono && (
+                <div className="mt-2 flex items-center gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  <Clock className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                  <p className="text-xs text-red-700">
+                    Este equipo lleva más de 30 días finalizado. Elegible para declarar abandono.
+                  </p>
+                </div>
+              )}
+            </div>
+          </Bloque>
+        );
+      })()}
 
       {/* ── Actividades (componente existente reutilizado) ────────────────── */}
       <Bloque

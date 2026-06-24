@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Body inválido' }, { status: 400 });
     }
 
-    const { orden_trabajo_id, tecnico_asignado_id, tecnico_asignado_email } = body;
+    const { orden_trabajo_id, tecnico_asignado_id, tecnico_asignado_email, motivo } = body;
 
     if (!orden_trabajo_id || !tecnico_asignado_id) {
       return Response.json(
@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
         tecnico_anterior_id: tecnicoAnteriorId,
         tecnico_nuevo_id: tecnico_asignado_id,
         usuario_ejecutor: user.email,
+        motivo: motivo || null,
         timestamp: new Date().toISOString(),
       }),
       created_by_user_id: user.id,

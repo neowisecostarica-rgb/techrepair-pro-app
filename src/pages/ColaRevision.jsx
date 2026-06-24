@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Inbox, UserPlus, Loader2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '@/components/guards/PageGuard';
 import WorkOrderCard from '@/components/kanban/WorkOrderCard';
@@ -28,6 +29,7 @@ function ColaRevisionContent() {
   const [showAsignarModal, setShowAsignarModal] = useState(false);
   const [selectedOT, setSelectedOT] = useState(null);
   const [tecnicoSeleccionado, setTecnicoSeleccionado] = useState('');
+  const [motivoReasignacion, setMotivoReasignacion] = useState('');
   const queryClient = useQueryClient();
   const { effectiveOrgId } = useAuthContext();
   const { toast } = useToast();
@@ -89,6 +91,7 @@ function ColaRevisionContent() {
         orden_trabajo_id: ordenId,
         tecnico_asignado_id: tecnicoId,
         tecnico_asignado_email: tecnico?.user_email || '',
+        motivo: motivoReasignacion.trim() || null,
       });
       // Extraer SOLO los datos planos — nunca retornar el objeto Axios completo
       const data = res?.data ?? {};
@@ -101,13 +104,13 @@ function ColaRevisionContent() {
       return { success: true, orden_trabajo_id: ordenId };
     },
     onSuccess: (_result) => {
-      console.log('[asignarMutation] → onSuccess');
-      // Limpiar estado ANTES de invalidar para evitar referencias circulares en cache
+      // Cerrar y limpiar TODO antes de invalidar caché
       setShowAsignarModal(false);
       setSelectedOT(null);
       setTecnicoSeleccionado('');
-      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+      setMotivoReasignacion('');
       toast({ title: '✅ Técnico asignado correctamente', duration: 3000 });
+      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
     },
     onError: (error) => {
       console.log('[asignarMutation] → onError');
@@ -122,6 +125,7 @@ function ColaRevisionContent() {
   const handleAsignar = (orden) => {
     setSelectedOT(orden);
     setTecnicoSeleccionado('');
+    setMotivoReasignacion('');
     setShowAsignarModal(true);
   };
 
@@ -219,7 +223,7 @@ function ColaRevisionContent() {
       </div>
 
       {/* Modal Asignar */}
-      <Dialog open={showAsignarModal} onOpenChange={(open) => { if (!open) { setShowAsignarModal(false); setSelectedOT(null); setTecnicoSeleccionado(''); } }}>
+      <Dialog open={showAsignarModal} onOpenChange={(open) => { if (!open) { setShowAsignarModal(false); setSelectedOT(null); setTecnicoSeleccionado(''); setMotivoReasignacion(''); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Asignar Técnico</DialogTitle>
@@ -249,14 +253,19 @@ function ColaRevisionContent() {
               </Select>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-700">
-                La orden quedará asignada al técnico seleccionado y aparecerá en su "Mi Día".
-              </p>
+            <div className="space-y-2">
+              <Label>Motivo de reasignación <span className="text-slate-400 font-normal">(opcional)</span></Label>
+              <Textarea
+                value={motivoReasignacion}
+                onChange={e => setMotivoReasignacion(e.target.value)}
+                placeholder="Ej: Técnico con mayor especialización, carga de trabajo..."
+                rows={2}
+                className="resize-none text-sm"
+              />
             </div>
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button variant="outline" onClick={() => { setShowAsignarModal(false); setSelectedOT(null); setTecnicoSeleccionado(''); }}>
+              <Button variant="outline" onClick={() => { setShowAsignarModal(false); setSelectedOT(null); setTecnicoSeleccionado(''); setMotivoReasignacion(''); }}>
                 Cancelar
               </Button>
               <Button

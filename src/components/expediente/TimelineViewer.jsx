@@ -96,18 +96,55 @@ const ACTIVIDAD_LABELS = {
 // ── Normalizar eventos a formato unificado ────────────────────────────────
 const CUSTODIA_TIPOS = new Set(['CUSTODIA_CONTACTO', 'CUSTODIA_ABANDONO', 'CUSTODIA_DISPOSICION']);
 
-function normalizarOTEvents(events = []) {
-  return events.map(e => ({
-    id: `ot-${e.id}`,
-    categoria: CUSTODIA_TIPOS.has(e.tipo) ? 'custodia'
-             : e.tipo === 'SALE_COMPLETED' ? 'comercial'
-             : 'estado',
-    titulo: OT_EVENT_LABELS[e.tipo] || e.tipo,
-    detalle: e.tipo === 'SALE_COMPLETED' && e.venta_total
-      ? `Total: ₡${Number(e.venta_total).toLocaleString('es-CR')}`
-      : (e.detalle || null),
-    timestamp: e.created_at || e.created_date,
-  }));
+function formatearReasignacion(detalle, tecnicos = []) {
+  let data = {};
+  try {
+    data = typeof detalle === 'string' ? JSON.parse(detalle) : (detalle || {});
+  } catch { /* fallback a objeto vacío */ }
+
+  const resolverNombre = (userId) => {
+    if (!userId) return null;
+    const found = tecnicos.find(t => t.user_id === userId);
+    return found ? (found.user_email?.split('@')[0] || found.user_email) : null;
+  };
+
+  const nombreAnterior = resolverNombre(data.tecnico_anterior_id);
+  const nombreNuevo = resolverNombre(data.tecnico_nuevo_id);
+  const ejecutor = data.usuario_ejecutor || null;
+  const motivo = data.motivo || null;
+
+  const lineas = [
+    nombreAnterior ? `De: ${nombreAnterior}` : (data.tecnico_anterior_id ? `De: técnico anterior` : null),
+    nombreNuevo    ? `A: ${nombreNuevo}`      : (data.tecnico_nuevo_id    ? `A: técnico nuevo`     : null),
+    ejecutor       ? `Por: ${ejecutor}`       : null,
+    motivo         ? `Motivo: ${motivo}`      : null,
+  ].filter(Boolean);
+
+  return lineas.length > 0 ? lineas.join('\n') : (ejecutor ? `Por: ${ejecutor}` : 'Reasignación de técnico');
+}
+
+function normalizarOTEvents(events = [], tecnicos = []) {
+  return events.map(e => {
+    const base = {
+      id: `ot-${e.id}`,
+      categoria: CUSTODIA_TIPOS.has(e.tipo) ? 'custodia'
+               : e.tipo === 'SALE_COMPLETED' ? 'comercial'
+               : 'estado',
+      titulo: OT_EVENT_LABELS[e.tipo] || e.tipo,
+      timestamp: e.created_at || e.created_date,
+    };
+
+    if (e.tipo === 'TRANSITION_REASIGNADA') {
+      return { ...base, detalle: formatearReasignacion(e.detalle, tecnicos) };
+    }
+
+    return {
+      ...base,
+      detalle: e.tipo === 'SALE_COMPLETED' && e.venta_total
+        ? `Total: ₡${Number(e.venta_total).toLocaleString('es-CR')}`
+        : (e.detalle || null),
+    };
+  });
 }
 
 function normalizarActividades(actividades = []) {
@@ -167,7 +204,11 @@ function TimelineItem({ item, isLast }) {
         <p className="text-sm font-semibold text-slate-800 leading-snug">{item.titulo}</p>
 
         {item.detalle && (
-          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{item.detalle}</p>
+          <div className="text-xs text-slate-500 mt-0.5 leading-relaxed space-y-0.5">
+            {item.detalle.split('\n').map((linea, i) => (
+              <p key={i}>{linea}</p>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -205,11 +246,19 @@ export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
     staleTime: 30 * 1000,
   });
 
+  // ── Técnicos para resolver nombres en reasignaciones ─────────────────
+  const { data: tecnicos = [] } = useQuery({
+    queryKey: ['timeline-tecnicos', organizationId],
+    queryFn: () => base44.entities.UserAccount.filter({ organization_id: organizationId, role: 'TECHNICIAN' }),
+    enabled: !!organizationId,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const isLoading = loadingEvents || loadingActs;
 
   // ── Construir timeline unificado ──────────────────────────────────────
   const todosLosItems = [
-    ...normalizarOTEvents(otEvents),
+    ...normalizarOTEvents(otEvents, tecnicos),
     ...normalizarActividades(actividades),
   ].sort((a, b) => {
     const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;

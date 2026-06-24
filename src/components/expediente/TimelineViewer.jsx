@@ -75,6 +75,8 @@ const OT_EVENT_LABELS = {
   TRANSITION_EN_REPARACION: 'Reparación Iniciada',
   TRANSITION_PRUEBAS:       'En Pruebas de Calidad',
   // ── Custodia (P1-A.3-I2) ──────────────────────────────────────────────
+  TRANSITION_REASIGNADA:    'Técnico Reasignado',
+  // ── Custodia (P1-A.3-I2) ──────────────────────────────────────────────
   CUSTODIA_CONTACTO:        'Contacto de Custodia Registrado',
   CUSTODIA_ABANDONO:        'Abandono Declarado',
   CUSTODIA_DISPOSICION:     'Disposición Final Realizada',

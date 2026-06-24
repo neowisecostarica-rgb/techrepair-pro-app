@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
 
     const ot = ordenes[0];
     const estadoActual = ot.estado;
+    const tecnicoAnteriorId = ot.tecnico_asignado_id || null;
 
     // 7. Update — tecnico_asignado_id (y email opcional)
     const updatePayload = { tecnico_asignado_id };
@@ -123,6 +124,21 @@ Deno.serve(async (req) => {
       updatePayload
     );
     console.log(`[DIAG:reassign] *** DESPUÉS de OrdenTrabajo.update — resultado:`, JSON.stringify(updatedOT, null, 2));
+
+    // 8. Registrar OTEvent de trazabilidad — TRANSITION_REASIGNADA
+    await base44.asServiceRole.entities.OTEvent.create({
+      organization_id: orgId,
+      orden_trabajo_id,
+      tipo: 'TRANSITION_REASIGNADA',
+      detalle: JSON.stringify({
+        tecnico_anterior_id: tecnicoAnteriorId,
+        tecnico_nuevo_id: tecnico_asignado_id,
+        usuario_ejecutor: user.email,
+        timestamp: new Date().toISOString(),
+      }),
+      created_by_user_id: user.id,
+      created_at: new Date().toISOString(),
+    });
 
     console.log(`[reassignWorkOrderTechnician] OT ${orden_trabajo_id} reasignada a técnico ${tecnico_asignado_id} por ${user.email} (${userRole}). Estado actual: ${estadoActual}`);
 

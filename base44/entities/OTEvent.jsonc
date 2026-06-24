@@ -19,6 +19,7 @@
         "CANCELADA",
         "SALE_COMPLETED",
         "TRANSITION_ASIGNADA",
+        "TRANSITION_REASIGNADA",
         "TRANSITION_EN_REVISION",
         "TRANSITION_DIAGNOSTICADA",
         "TRANSITION_COTIZADA",
@@ -45,7 +46,7 @@
     },
     "detalle": {
       "type": "string",
-      "description": "Detalle adicional del evento (para eventos de custodia: observaciones del registro)"
+      "description": "Detalle adicional del evento. Para TRANSITION_REASIGNADA: JSON con tecnico_anterior_id, tecnico_nuevo_id, usuario_ejecutor, timestamp."
     },
     "created_by_user_id": {
       "type": "string",

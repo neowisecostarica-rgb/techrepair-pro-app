@@ -247,6 +247,44 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
               </div>
             )}
 
+            {/* ── Pre-Diagnóstico de Recepción (desde diagnostico_snapshot del DMR) ── */}
+            {dmr.diagnostico_snapshot && Object.keys(dmr.diagnostico_snapshot).length > 0 && (
+              <div>
+                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Pre-Diagnóstico de Recepción</p>
+                <div className="bg-blue-50 rounded-lg p-2 space-y-0.5">
+                  {dmr.diagnostico_snapshot.accesorios_ingreso && (
+                    <Dato label="Accesorios">{dmr.diagnostico_snapshot.accesorios_ingreso}</Dato>
+                  )}
+                  {dmr.diagnostico_snapshot.estado_fisico_ingreso && (
+                    <Dato label="Estado físico" className="capitalize">{dmr.diagnostico_snapshot.estado_fisico_ingreso}</Dato>
+                  )}
+                  {dmr.diagnostico_snapshot.danos_visibles && (
+                    <Dato label="Daños visibles">{dmr.diagnostico_snapshot.danos_visibles}</Dato>
+                  )}
+                  {dmr.diagnostico_snapshot.observaciones_recepcion && (
+                    <Dato label="Observaciones">{dmr.diagnostico_snapshot.observaciones_recepcion}</Dato>
+                  )}
+                  {dmr.diagnostico_snapshot.riesgos_recepcion && (
+                    <Dato label="Riesgos">{dmr.diagnostico_snapshot.riesgos_recepcion}</Dato>
+                  )}
+                  {dmr.diagnostico_snapshot.checklist_recepcion && (
+                    <Dato label="Checklist">{
+                      Array.isArray(dmr.diagnostico_snapshot.checklist_recepcion)
+                        ? dmr.diagnostico_snapshot.checklist_recepcion.join(', ')
+                        : String(dmr.diagnostico_snapshot.checklist_recepcion)
+                    }</Dato>
+                  )}
+                  {/* Campos adicionales no mapeados explícitamente */}
+                  {Object.entries(dmr.diagnostico_snapshot)
+                    .filter(([k]) => !['accesorios_ingreso','estado_fisico_ingreso','danos_visibles','observaciones_recepcion','riesgos_recepcion','checklist_recepcion'].includes(k))
+                    .map(([k, v]) => (
+                      <Dato key={k} label={k.replace(/_/g, ' ')}>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</Dato>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
+
             {dmr.legal_snapshot?.terminos_aceptados && (
               <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />

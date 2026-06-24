@@ -223,6 +223,8 @@ function OrdenesTrabajoContent() {
     }
   }, [terminos]);
 
+  const [guardandoOT, setGuardandoOT] = useState(false);
+
   const createMutation = useMutation({
     mutationFn: async (data) => {
       return crearOrdenTrabajo(data);
@@ -231,9 +233,11 @@ function OrdenesTrabajoContent() {
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       setShowModal(false);
       resetForm();
+      setGuardandoOT(false);
       toast({ title: 'Orden de trabajo creada', description: 'La recepción del equipo fue registrada correctamente.' });
     },
     onError: (error) => {
+      setGuardandoOT(false);
       const msg = error?.response?.data?.error || error?.message || 'Error desconocido';
       toast({ variant: 'destructive', title: 'Error al crear la orden', description: msg });
     },
@@ -352,6 +356,7 @@ function OrdenesTrabajoContent() {
       data.motivo_ingreso = motivoIngreso.trim();
       updateMutation.mutate({ id: editingOT.id, data });
     } else {
+      setGuardandoOT(true);
       createMutation.mutate(data);
     }
   };
@@ -1080,10 +1085,10 @@ function OrdenesTrabajoContent() {
               <Button 
                 type="submit" 
                 className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                disabled={createMutation.isPending || (!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)) || !motivoIngreso))}
+                disabled={guardandoOT || createMutation.isPending || (!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)) || !motivoIngreso))}
               >
-                {createMutation.isPending ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Registrando...</>
+                {(guardandoOT || createMutation.isPending) ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>
                 ) : (
                   editingOT ? 'Actualizar' : 'Registrar Recepción'
                 )}

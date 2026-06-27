@@ -178,6 +178,31 @@ export default function WizardDiagnosticoTecnico({
         diagnostico_resumido: resumenTecnico
       });
 
+      // GAP-001 FIX: Cerrar actividad técnica activa antes de transicionar la OT.
+      // Behavioral Contract: Si no existe actividad activa, la operación es silenciosa (no falla).
+      try {
+        const actividadesAbiertas = await base44.entities.ActividadTecnica.filter({
+          orden_trabajo_id: ordenTrabajo.id,
+          tecnico_id: tecnicoId,
+          estado: 'activa',
+        });
+        if (actividadesAbiertas.length > 0) {
+          const actividadActiva = actividadesAbiertas[0];
+          const ahora = new Date().toISOString();
+          const duracion = actividadActiva.started_at
+            ? Math.round((new Date(ahora) - new Date(actividadActiva.started_at)) / 60000)
+            : null;
+          await base44.entities.ActividadTecnica.update(actividadActiva.id, {
+            estado: 'finalizada',
+            ended_at: ahora,
+            ...(duracion !== null ? { duracion_minutos: duracion } : {}),
+          });
+        }
+      } catch (actError) {
+        // Fallo no-bloqueante: loguear pero no interrumpir la transición de OT
+        console.warn('GAP-001: Error al cerrar ActividadTecnica (no bloqueante):', actError);
+      }
+
       // FASE 1: Transición centralizada de estado
       await transicionarEstadoOT(ordenTrabajo.id, 'DIAGNOSTICADA', {
         userId: tecnicoId,

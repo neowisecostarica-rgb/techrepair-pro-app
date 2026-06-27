@@ -120,7 +120,16 @@ function formatearReasignacion(detalle, tecnicos = []) {
     motivo         ? `Motivo: ${motivo}`      : null,
   ].filter(Boolean);
 
-  return lineas.length > 0 ? lineas.join('\n') : (ejecutor ? `Por: ${ejecutor}` : 'Reasignación de técnico');
+  // GAP-004 FIX: Behavioral Contract — fallbacks explícitos para motivo nulo/vacío
+  // y detalle malformado. Siempre retorna texto legible.
+  if (lineas.length === 0) {
+    return 'Reasignación de técnico sin detalles registrados';
+  }
+  // Si motivo es nulo, añadir nota explícita solo si hay otros datos disponibles
+  if (!motivo && lineas.length > 0) {
+    lineas.push('Sin motivo registrado');
+  }
+  return lineas.join('\n');
 }
 
 function normalizarOTEvents(events = [], tecnicos = []) {

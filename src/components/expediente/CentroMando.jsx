@@ -135,6 +135,8 @@ export default function CentroMando({ ot, effectiveRole }) {
                        : riesgos.find(r => r.nivel === 'medio') ? 'medio'
                        : riesgos.length > 0 ? 'info' : null;
 
+
+
   // ── Bloqueo operativo de diagnóstico ─────────────────────────────────────
   const diagnosticoBloqueado = !ot.diagnostico_habilitado
     && ['EN_COLA_REVISION', 'ASIGNADA', 'EN_REVISION'].includes(ot.estado);
@@ -243,7 +245,7 @@ export default function CentroMando({ ot, effectiveRole }) {
                 </span>
               )}
             </div>
-            {ot.cliente_aprobado && (
+            {clienteAprobado && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-[10px] shrink-0">
                 <CheckCircle2 className="w-3 h-3" /> Comercialmente aprobado
               </span>

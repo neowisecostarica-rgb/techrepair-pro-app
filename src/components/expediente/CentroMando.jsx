@@ -127,6 +127,8 @@ export default function CentroMando({ ot, effectiveRole }) {
 
   if (!ot) return null;
 
+  const clienteAprobado = Boolean(ot?.cliente_aprobado);
+
   const sot = ESTADO_SOT[ot.estado] || ESTADO_SOT.EN_COLA_REVISION;
   const SotIcon = sot.icon;
   const riesgos = evaluarRiesgos(ot);

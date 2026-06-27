@@ -366,6 +366,33 @@ Deno.serve(async (req) => {
     // ── 11. Ejecutar actualización ────────────────────────────────────────────
     const updatedOT = await base44.asServiceRole.entities.OrdenTrabajo.update(orden_trabajo_id, updatePayload);
 
+    // ── 11.5 Cierre de ActividadTecnica (efecto secundario de DIAGNOSTICADA) ──
+    // El evento oficial que finaliza el trabajo técnico es la transición exitosa a DIAGNOSTICADA.
+    // El motor de transición es el único propietario de este cierre (SRP).
+    if (newStatus === 'DIAGNOSTICADA') {
+      try {
+        const actividadesAbiertas = await base44.asServiceRole.entities.ActividadTecnica.filter({
+          orden_trabajo_id: orden_trabajo_id,
+          estado: 'abierto',
+        }, 10);
+
+        if (actividadesAbiertas && actividadesAbiertas.length > 0) {
+          for (const actividad of actividadesAbiertas) {
+            await base44.asServiceRole.entities.ActividadTecnica.update(actividad.id, {
+              estado: 'cerrado',
+              fecha_fin: now,
+            });
+          }
+          console.log(`[transitionWorkOrderStatus] ActividadTecnica cerrada(s): ${actividadesAbiertas.length} — OT: ${orden_trabajo_id}`);
+        } else {
+          console.log(`[transitionWorkOrderStatus] Sin actividades abiertas para cerrar — OT: ${orden_trabajo_id}`);
+        }
+      } catch (actErr) {
+        // Non-blocking: el cierre de actividad no puede revertir la transición ya exitosa
+        console.warn(`[transitionWorkOrderStatus] Fallo al cerrar ActividadTecnica (non-blocking): ${actErr.message}`);
+      }
+    }
+
     // ── 12. OTEvent ───────────────────────────────────────────────────────────
     const CANONICAL_EVENTS = ['FINALIZADA', 'ENTREGADA', 'CANCELADA'];
     const TRANSITION_EVENT_MAP = {

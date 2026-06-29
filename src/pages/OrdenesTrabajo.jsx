@@ -114,8 +114,9 @@ function OrdenesTrabajoContent() {
     if (preDiagnosticosCache[selectedOT.id] !== undefined) return; // ya cargado
     base44.entities.PreDiagnostico.filter({ orden_trabajo_id: selectedOT.id })
       .then((results) => {
-        const tienePreDiag = results && results.length > 0;
-        setPreDiagnosticosCache(prev => ({ ...prev, [selectedOT.id]: tienePreDiag }));
+        // UX-001: guardar el objeto para distinguir borrador vs completado
+        const preDiag = results && results.length > 0 ? results[0] : false;
+        setPreDiagnosticosCache(prev => ({ ...prev, [selectedOT.id]: preDiag }));
       })
       .catch(() => {
         setPreDiagnosticosCache(prev => ({ ...prev, [selectedOT.id]: false }));
@@ -1175,25 +1176,32 @@ function OrdenesTrabajoContent() {
                       handler: () => { setDiagnosticoTecnicoOT(selectedOT); setShowDiagnosticoTecnico(true); setSelectedOT(null); }
                     };
                   } else if (s === 'EN_COLA_REVISION' && esAdminOVentas) {
-                    // FIX P0: Si ya existe prediagnóstico, NO pedir completar — mostrar acción alternativa
-                    const tienePreDiag = preDiagnosticosCache[selectedOT.id];
+                    // UX-001: Texto contextual según estado del prediagnóstico
+                    const preInfo = preDiagnosticosCache[selectedOT.id];
+                    const preDiagObj = preInfo && typeof preInfo === 'object' ? preInfo : null;
+                    const tienePreDiag = !!preInfo;
+
+                    let preDiagLabel, preDiagDesc, preDiagIcon;
                     if (!tienePreDiag) {
-                      accion = {
-                        label: 'Completar Pre-Diagnóstico',
-                        desc: 'Registrar la información inicial del problema antes de asignar al técnico.',
-                        color: 'from-blue-500 to-indigo-500',
-                        icon: '📋',
-                        handler: () => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }
-                      };
+                      preDiagLabel = 'Completar Pre-Diagnóstico';
+                      preDiagDesc = 'Registrar la información inicial del problema antes de asignar al técnico.';
+                      preDiagIcon = '📋';
+                    } else if (preDiagObj?.estado === 'borrador') {
+                      preDiagLabel = 'Continuar Pre-Diagnóstico';
+                      preDiagDesc = 'Pre-diagnóstico iniciado. Continuar completando la información.';
+                      preDiagIcon = '📝';
                     } else {
-                      accion = {
-                        label: 'Editar Pre-Diagnóstico',
-                        desc: 'Pre-diagnóstico ya registrado. Puedes editarlo o continuar con la asignación al técnico.',
-                        color: 'from-indigo-500 to-purple-500',
-                        icon: '✏️',
-                        handler: () => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }
-                      };
+                      preDiagLabel = 'Editar Pre-Diagnóstico';
+                      preDiagDesc = 'Pre-diagnóstico registrado. Puedes editarlo o continuar con la asignación al técnico.';
+                      preDiagIcon = '✏️';
                     }
+                    accion = {
+                      label: preDiagLabel,
+                      desc: preDiagDesc,
+                      color: 'from-blue-500 to-indigo-500',
+                      icon: preDiagIcon,
+                      handler: () => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }
+                    };
                   } else if ((s === 'DIAGNOSTICADA' || s === 'COTIZADA') && esAdminOVentas) {
                     accion = {
                       label: 'Gestionar Cotización',
@@ -1395,7 +1403,7 @@ function OrdenesTrabajoContent() {
                       {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && !['ENTREGADA', 'CANCELADA'].includes(selectedOT.estado) && (
                         <Button variant="outline" className="border-purple-500 text-purple-700 hover:bg-purple-50"
                           onClick={() => { setReasignarOT(selectedOT); setNuevoTecnicoId(''); setMotivoReasignacion(''); setShowReasignar(true); }}>
-                          🔄 Reasignar Técnico
+                          🔄 {selectedOT.tecnico_asignado_id ? 'Reasignar Técnico' : 'Asignar Técnico'}
                         </Button>
                       )}
                       {['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole) && (

@@ -1130,9 +1130,8 @@ function OrdenesTrabajoContent() {
             </div>
           ) : selectedOT && (
             <Tabs defaultValue="general" className="mt-4">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="operacional">Operacional</TabsTrigger>
                 <TabsTrigger value="actividades">Actividades</TabsTrigger>
               </TabsList>
 
@@ -1295,48 +1294,53 @@ function OrdenesTrabajoContent() {
 
                 {/* ── BLOQUE 3: DATOS GENERALES ─────────────────────────────── */}
                 <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
-                  <div>
-                    <p className="text-xs text-slate-500">Estado</p>
-                    <Badge className={`${estadoConfig[selectedOT.estado]?.color} border-0 mt-1`}>
-                      {estadoConfig[selectedOT.estado]?.label}
-                    </Badge>
+                <div>
+                  <p className="text-xs text-slate-500">Estado</p>
+                  <Badge className={`${estadoConfig[selectedOT.estado]?.color} border-0 mt-1`}>
+                    {estadoConfig[selectedOT.estado]?.label}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Prioridad</p>
+                  <Badge className={`${
+                    selectedOT.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
+                    selectedOT.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
+                    'bg-slate-100 text-slate-700'
+                  } border-0 capitalize mt-1`}>
+                    {selectedOT.prioridad}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Cliente</p>
+                  <p className="font-medium">{getClienteName(selectedOT.cliente_id)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Equipo</p>
+                  <p className="font-medium">{getEquipoInfo(selectedOT.equipo_id)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Técnico Asignado</p>
+                  <p className="font-medium">{getTecnicoName(selectedOT.tecnico_asignado_id)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Fecha Ingreso</p>
+                  <p className="font-medium">
+                    {format(new Date(selectedOT.fecha_ingreso || selectedOT.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
+                  </p>
+                </div>
+                {/* P0.3: PIN visible para técnicos y admins */}
+                {selectedOT.contrasena_ingreso && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-500">🔒 Contraseña / PIN del Equipo</p>
+                    <p className="font-mono font-bold text-emerald-600 text-lg">{selectedOT.contrasena_ingreso}</p>
+                    <p className="text-xs text-slate-400 mt-1">Visible solo para personal autorizado</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Prioridad</p>
-                    <Badge className={`${
-                      selectedOT.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
-                      selectedOT.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
-                      'bg-slate-100 text-slate-700'
-                    } border-0 capitalize mt-1`}>
-                      {selectedOT.prioridad}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Cliente</p>
-                    <p className="font-medium">{getClienteName(selectedOT.cliente_id)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Equipo</p>
-                    <p className="font-medium">{getEquipoInfo(selectedOT.equipo_id)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Técnico Asignado</p>
-                    <p className="font-medium">{getTecnicoName(selectedOT.tecnico_asignado_id)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500">Fecha Ingreso</p>
-                    <p className="font-medium">
-                      {format(new Date(selectedOT.fecha_ingreso || selectedOT.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
-                    </p>
-                  </div>
-                  {/* P0.3: PIN visible para técnicos y admins */}
-                  {selectedOT.contrasena_ingreso && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && (
-                    <div className="col-span-2">
-                      <p className="text-xs text-slate-500">🔒 Contraseña / PIN del Equipo</p>
-                      <p className="font-mono font-bold text-emerald-600 text-lg">{selectedOT.contrasena_ingreso}</p>
-                      <p className="text-xs text-slate-400 mt-1">Visible solo para personal autorizado</p>
-                    </div>
-                  )}
+                )}
+                </div>
+
+                {/* ── LB-006: CAPA OPERACIONAL (integrada desde pestaña Operacional) ── */}
+                <div className="border-t border-slate-100 pt-3">
+                <OTOperationalLayer ot={selectedOT} />
                 </div>
 
                 {/* ── BLOQUE 4: DETALLE INGRESO ─────────────────────────────── */}
@@ -1400,6 +1404,18 @@ function OrdenesTrabajoContent() {
                           ✏️ Editar
                         </Button>
                       )}
+                      {/* LB-006: Botón Editar Pre-Diagnóstico — solo cuando existe y es editable */}
+                      {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) &&
+                        selectedOT.estado === 'EN_COLA_REVISION' &&
+                        preDiagnosticosCache[selectedOT.id] && (
+                        <Button
+                          variant="outline"
+                          className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                          onClick={() => { setPreDiagnosticoOT(selectedOT); setShowPreDiagnostico(true); setSelectedOT(null); }}
+                        >
+                          ✏️ Editar Pre-Diagnóstico
+                        </Button>
+                      )}
                       {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && !['ENTREGADA', 'CANCELADA'].includes(selectedOT.estado) && (
                         <Button variant="outline" className="border-purple-500 text-purple-700 hover:bg-purple-50"
                           onClick={() => { setReasignarOT(selectedOT); setNuevoTecnicoId(''); setMotivoReasignacion(''); setShowReasignar(true); }}>
@@ -1426,10 +1442,6 @@ function OrdenesTrabajoContent() {
                   </div>
                 </div>
 
-              </TabsContent>
-
-              <TabsContent value="operacional" className="space-y-4 mt-4">
-                <OTOperationalLayer ot={selectedOT} />
               </TabsContent>
 
               <TabsContent value="actividades" className="space-y-4">
@@ -1663,8 +1675,8 @@ function OrdenesTrabajoContent() {
                   disabled={!nuevoTecnicoId || reasignando}
                 >
                   {reasignando ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Reasignando...</>
-                  ) : 'Confirmar Reasignación'}
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Confirmando...</>
+                  ) : 'Confirmar'}
                 </Button>
               </div>
             </div>

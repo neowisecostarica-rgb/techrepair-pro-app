@@ -138,9 +138,92 @@ const NEXT_ACTION_MAP = {
   },
 };
 
-export default function OTOperationalLayer({ ot }) {
+// ── Indicadores críticos para variant="card" ─────────────────────────────────
+const CRITICAL_BADGE = {
+  EN_COLA_REVISION: { label: 'Sin asignar',           className: 'bg-blue-100 text-blue-700'    },
+  ASIGNADA:         { label: 'En espera de revisión',  className: 'bg-amber-100 text-amber-700'  },
+  COTIZADA:         { label: 'Esperando cliente',      className: 'bg-blue-100 text-blue-700'    },
+  FINALIZADA:       { label: 'Lista para entrega',     className: 'bg-emerald-100 text-emerald-700' },
+  CANCELADA:        { label: 'Cancelada',              className: 'bg-red-100 text-red-700'      },
+};
+
+// ── Shared: Timeline visual ───────────────────────────────────────────────────
+function OTTimeline({ ot }) {
+  return (
+    <div className="flex items-center gap-0 w-full">
+      {TIMELINE_STEPS.map((step, index) => {
+        const status = getStepStatus(step, ot.estado);
+        const Icon = step.icon;
+        const isLast = index === TIMELINE_STEPS.length - 1;
+        return (
+          <React.Fragment key={step.id}>
+            <div className="flex flex-col items-center gap-0.5 min-w-[44px]">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
+                status === 'done'    ? 'bg-emerald-500 border-emerald-500 text-white'
+                : status === 'current' ? 'bg-blue-500 border-blue-500 text-white ring-2 ring-blue-200'
+                : 'bg-white border-slate-200 text-slate-300'
+              }`}>
+                {status === 'done'
+                  ? <CheckCircle2 className="w-3 h-3" />
+                  : <Icon className="w-3 h-3" />
+                }
+              </div>
+              <span className={`text-[9px] text-center leading-tight ${
+                status === 'current' ? 'text-blue-600 font-semibold'
+                : status === 'done'  ? 'text-emerald-500'
+                : 'text-slate-300'
+              }`}>{step.label}</span>
+            </div>
+            {!isLast && (
+              <div className={`flex-1 h-px mb-3.5 ${
+                getStepStatus(TIMELINE_STEPS[index + 1], ot.estado) !== 'pending' ||
+                getStepStatus(step, ot.estado) === 'done'
+                  ? 'bg-emerald-400' : 'bg-slate-200'
+              }`} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function OTOperationalLayer({ ot, variant = 'default' }) {
   if (!ot) return null;
 
+  // ── variant="card": Vista Ejecutiva ─────────────────────────────────────────
+  if (variant === 'card') {
+    const criticalBadge = CRITICAL_BADGE[ot.estado];
+    const showPagoPendiente = !ot.diagnostico_habilitado &&
+      ['EN_COLA_REVISION', 'ASIGNADA'].includes(ot.estado);
+
+    return (
+      <div className="space-y-1.5">
+        {/* Timeline visual */}
+        <div className="rounded-md border border-slate-100 bg-slate-50/60 px-2 py-1.5">
+          <OTTimeline ot={ot} />
+        </div>
+
+        {/* Indicadores críticos — solo cuando hay algo relevante */}
+        {(showPagoPendiente || criticalBadge) && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {showPagoPendiente && (
+              <Badge className="bg-orange-100 text-orange-700 border-0 text-[10px] px-1.5 py-0">
+                ⚠ Pago pendiente
+              </Badge>
+            )}
+            {criticalBadge && !showPagoPendiente && (
+              <Badge className={`border-0 text-[10px] px-1.5 py-0 ${criticalBadge.className}`}>
+                {criticalBadge.label}
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── variant="default": Panel completo (sin cambios) ──────────────────────────
   const nextAction = NEXT_ACTION_MAP[ot.estado];
   const NextIcon = nextAction?.icon || AlertCircle;
 
@@ -163,39 +246,7 @@ export default function OTOperationalLayer({ ot }) {
       {/* ── Timeline compacta (una sola línea) ──────────────────────────────── */}
       <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
         <div className="flex items-center gap-0">
-          {TIMELINE_STEPS.map((step, index) => {
-            const status = getStepStatus(step, ot.estado);
-            const Icon = step.icon;
-            const isLast = index === TIMELINE_STEPS.length - 1;
-            return (
-              <React.Fragment key={step.id}>
-                <div className="flex flex-col items-center gap-0.5 min-w-[44px]">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
-                    status === 'done'    ? 'bg-emerald-500 border-emerald-500 text-white'
-                    : status === 'current' ? 'bg-blue-500 border-blue-500 text-white ring-2 ring-blue-200'
-                    : 'bg-white border-slate-200 text-slate-300'
-                  }`}>
-                    {status === 'done'
-                      ? <CheckCircle2 className="w-3 h-3" />
-                      : <Icon className="w-3 h-3" />
-                    }
-                  </div>
-                  <span className={`text-[9px] text-center leading-tight ${
-                    status === 'current' ? 'text-blue-600 font-semibold'
-                    : status === 'done'  ? 'text-emerald-500'
-                    : 'text-slate-300'
-                  }`}>{step.label}</span>
-                </div>
-                {!isLast && (
-                  <div className={`flex-1 h-px mb-3.5 ${
-                    getStepStatus(TIMELINE_STEPS[index + 1], ot.estado) !== 'pending' ||
-                    getStepStatus(step, ot.estado) === 'done'
-                      ? 'bg-emerald-400' : 'bg-slate-200'
-                  }`} />
-                )}
-              </React.Fragment>
-            );
-          })}
+          <OTTimeline ot={ot} />
         </div>
       </div>
 

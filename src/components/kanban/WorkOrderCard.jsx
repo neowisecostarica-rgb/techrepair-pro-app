@@ -2,6 +2,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 import { Clock, User, Wrench } from 'lucide-react';
+import OTOperationalLayer from '@/components/ot/OTOperationalLayer';
 import { differenceInHours, differenceInDays } from 'date-fns';
 
 // ── Antigüedad ────────────────────────────────────────────────────────────────
@@ -158,6 +159,11 @@ export default function WorkOrderCard({ ot, tecnicos = [], onClick }) {
           )}
         </div>
       ) : null}
+
+      {/* ── Vista Ejecutiva: Timeline + indicadores críticos ─────────────────── */}
+      <div className="border-t border-slate-100 mt-2 pt-2" onClick={e => e.stopPropagation()}>
+        <OTOperationalLayer ot={ot} variant="card" />
+      </div>
     </div>
   );
 }

@@ -248,6 +248,41 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
     }
   };
 
+  // Detecta qué campos cambiaron respecto al estado original cargado
+  const detectarCamposModificados = (original, nuevo) => {
+    const camposAuditar = ['uso_principal', 'equipo_critico', 'problema_principal', 'riesgo_datos', 'riesgo_fisico', 'observaciones_riesgo'];
+    const modificados = camposAuditar.filter(campo => {
+      const valorOriginal = original?.[campo];
+      const valorNuevo = nuevo[campo];
+      return JSON.stringify(valorOriginal) !== JSON.stringify(valorNuevo);
+    });
+    // También comparar respuestas
+    if (JSON.stringify(original?.respuestas) !== JSON.stringify(nuevo.respuestas)) {
+      modificados.push('respuestas');
+    }
+    return modificados;
+  };
+
+  const registrarEventoEdicion = async (camposModificados) => {
+    try {
+      await base44.entities.OTEvent.create({
+        organization_id: effectiveOrgId,
+        orden_trabajo_id: ordenTrabajo.id,
+        tipo: 'PRE_DIAGNOSTICO_EDITADO',
+        created_by_user_id: userId,
+        created_at: new Date().toISOString(),
+        detalle: JSON.stringify({
+          campos_modificados: camposModificados,
+          usuario_ejecutor: userId,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    } catch (error) {
+      // Non-blocking: la auditoría no debe impedir la operación
+      console.warn('No se pudo registrar evento PRE_DIAGNOSTICO_EDITADO:', error);
+    }
+  };
+
   const completarWizard = async () => {
     if (!formData.problema_principal) {
       alert('Selecciona el problema principal antes de completar.');
@@ -256,11 +291,13 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
     setSaving(true);
     try {
       const data = buildPayload('completado');
-      let pd;
+      const esEdicion = !!preDiagnostico;
+      const camposModificados = esEdicion ? detectarCamposModificados(preDiagnostico, formData) : [];
+
       if (preDiagnostico) {
-        pd = await base44.entities.PreDiagnostico.update(preDiagnostico.id, data);
+        await base44.entities.PreDiagnostico.update(preDiagnostico.id, data);
       } else {
-        pd = await base44.entities.PreDiagnostico.create(data);
+        await base44.entities.PreDiagnostico.create(data);
       }
 
       const resumen = generarResumenPreDiagnostico(data);
@@ -268,6 +305,11 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
         ordenTrabajoId: ordenTrabajo.id,
         diagnostico_resumido: resumen
       });
+
+      // Registrar evento de auditoría solo si es una edición (prediagnóstico ya existía)
+      if (esEdicion) {
+        await registrarEventoEdicion(camposModificados);
+      }
 
       onComplete();
     } catch (error) {

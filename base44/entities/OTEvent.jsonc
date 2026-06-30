@@ -28,7 +28,8 @@
         "TRANSITION_PRUEBAS",
         "CUSTODIA_CONTACTO",
         "CUSTODIA_ABANDONO",
-        "CUSTODIA_DISPOSICION"
+        "CUSTODIA_DISPOSICION",
+        "PRE_DIAGNOSTICO_EDITADO"
       ],
       "description": "Tipo de evento generado"
     },
@@ -46,7 +47,7 @@
     },
     "detalle": {
       "type": "string",
-      "description": "Detalle adicional del evento. Para TRANSITION_REASIGNADA: JSON con tecnico_anterior_id, tecnico_nuevo_id, usuario_ejecutor, timestamp."
+      "description": "Detalle adicional del evento. Para TRANSITION_REASIGNADA: JSON con tecnico_anterior_id, tecnico_nuevo_id, usuario_ejecutor, timestamp. Para PRE_DIAGNOSTICO_EDITADO: JSON con campos_modificados, usuario_ejecutor, timestamp."
     },
     "created_by_user_id": {
       "type": "string",

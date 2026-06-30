@@ -1406,7 +1406,7 @@ function OrdenesTrabajoContent() {
                       )}
                       {/* LB-006: Botón Editar Pre-Diagnóstico — solo cuando existe y es editable */}
                       {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) &&
-                        selectedOT.estado === 'EN_COLA_REVISION' &&
+                        ['EN_COLA_REVISION', 'ASIGNADA'].includes(selectedOT.estado) &&
                         preDiagnosticosCache[selectedOT.id] && (
                         <Button
                           variant="outline"

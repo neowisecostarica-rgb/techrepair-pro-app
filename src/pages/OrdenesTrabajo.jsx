@@ -71,8 +71,6 @@ function OrdenesTrabajoContent() {
   const [showDiagnosticoTecnico, setShowDiagnosticoTecnico] = useState(false);
   const [diagnosticoTecnicoOT, setDiagnosticoTecnicoOT] = useState(null);
   const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
-  // FIX P0: cache de prediagnósticos por OT para evitar mostrar "Completar" si ya existe
-  const [preDiagnosticosCache, setPreDiagnosticosCache] = useState({});
   const [showCotizacion, setShowCotizacion] = useState(false);
   const [cotizacionOT, setCotizacionOT] = useState(null);
   const [vistaActiva, setVistaActiva] = useState('lista');
@@ -107,21 +105,6 @@ function OrdenesTrabajoContent() {
   
   // P0.1: Cache de estados de pago
   const [estadosPago, setEstadosPago] = useState({});
-
-  // FIX P0: Cargar prediagnóstico cuando se abre el modal de detalle de OT EN_COLA_REVISION
-  useEffect(() => {
-    if (!selectedOT || selectedOT.estado !== 'EN_COLA_REVISION') return;
-    if (preDiagnosticosCache[selectedOT.id] !== undefined) return; // ya cargado
-    base44.entities.PreDiagnostico.filter({ orden_trabajo_id: selectedOT.id })
-      .then((results) => {
-        // UX-001: guardar el objeto para distinguir borrador vs completado
-        const preDiag = results && results.length > 0 ? results[0] : false;
-        setPreDiagnosticosCache(prev => ({ ...prev, [selectedOT.id]: preDiag }));
-      })
-      .catch(() => {
-        setPreDiagnosticosCache(prev => ({ ...prev, [selectedOT.id]: false }));
-      });
-  }, [selectedOT?.id, selectedOT?.estado]);
 
   // Normalizadores SOT: mantienen la UI histórica intacta aunque el backend use nombres canónicos en inglés.
   const normalizarCliente = (cliente) => ({
@@ -223,6 +206,15 @@ function OrdenesTrabajoContent() {
       setTerminosActivos(terminos[0]);
     }
   }, [terminos]);
+
+  // RC2-GOLD-FIX-01: única fuente de verdad para el PreDiagnóstico de la OT seleccionada
+  const { data: preDiagSelectedOT } = useQuery({
+    queryKey: ['prediagnostico', selectedOT?.id],
+    queryFn: () => base44.entities.PreDiagnostico.filter({ orden_trabajo_id: selectedOT.id })
+      .then(results => (results && results.length > 0 ? results[0] : null)),
+    enabled: !!selectedOT?.id && selectedOT?.estado === 'EN_COLA_REVISION',
+    staleTime: 0,
+  });
 
   const [guardandoOT, setGuardandoOT] = useState(false);
 
@@ -1175,10 +1167,9 @@ function OrdenesTrabajoContent() {
                       handler: () => { setDiagnosticoTecnicoOT(selectedOT); setShowDiagnosticoTecnico(true); setSelectedOT(null); }
                     };
                   } else if (s === 'EN_COLA_REVISION' && esAdminOVentas) {
-                    // UX-001: Texto contextual según estado del prediagnóstico
-                    const preInfo = preDiagnosticosCache[selectedOT.id];
-                    const preDiagObj = preInfo && typeof preInfo === 'object' ? preInfo : null;
-                    const tienePreDiag = !!preInfo;
+                    // RC2-GOLD-FIX-01: fuente única — useQuery preDiagSelectedOT
+                    const preDiagObj = preDiagSelectedOT || null;
+                    const tienePreDiag = !!preDiagSelectedOT;
 
                     let preDiagLabel, preDiagDesc, preDiagIcon;
                     if (!tienePreDiag) {
@@ -1407,7 +1398,7 @@ function OrdenesTrabajoContent() {
                       {/* LB-006: Botón Editar Pre-Diagnóstico — solo cuando existe y es editable */}
                       {['ORG_ADMIN', 'SALES', 'BRANCH_ADMIN'].includes(effectiveRole) &&
                         ['EN_COLA_REVISION', 'ASIGNADA'].includes(selectedOT.estado) &&
-                        preDiagnosticosCache[selectedOT.id] && (
+                        preDiagSelectedOT && (
                         <Button
                           variant="outline"
                           className="border-blue-300 text-blue-700 hover:bg-blue-50"
@@ -1477,6 +1468,7 @@ function OrdenesTrabajoContent() {
                 setShowPreDiagnostico(false);
                 setPreDiagnosticoOT(null);
                 queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+                queryClient.invalidateQueries({ queryKey: ['prediagnostico', preDiagnosticoOT?.id] });
               }}
             />
           )}

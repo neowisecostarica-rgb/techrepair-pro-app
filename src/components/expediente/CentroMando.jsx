@@ -147,18 +147,26 @@ export default function CentroMando({ ot, effectiveRole }) {
     : MOTIVOS_BLOQUEO.PENDIENTE_PAGO;
 
   // ── Acción "Iniciar Revisión" — solo ASIGNADA + roles técnicos + habilitado ─
+  // ORG_ADMIN y BRANCH_ADMIN pueden iniciar revisión aunque no sean el técnico asignado (superconjunto operativo)
+  const esAdminOSupervisor = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'].includes(effectiveRole);
+  const esTecnicoAsignado  = effectiveRole === 'TECHNICIAN' && ot.tecnico_asignado_id === user?.id;
   const puedeIniciarRevision = ot.estado === 'ASIGNADA'
-    && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'].includes(effectiveRole)
-    && ot.tecnico_asignado_id === user?.id
+    && (esAdminOSupervisor || esTecnicoAsignado)
     && ot.diagnostico_habilitado;
 
   const handleIniciarRevision = async () => {
     setIniciando(true);
     setErrorInicio(null);
     try {
+      // Para ORG_ADMIN/BRANCH_ADMIN: usar el técnico asignado a la OT como tecnico_id
+      // Para TECHNICIAN: usar el propio user.id
+      const tecnicoIdParaActividad = esAdminOSupervisor
+        ? (ot.tecnico_asignado_id || user.id)
+        : user.id;
+
       const response = await base44.functions.invoke('initTechnicalActivity', {
         orden_trabajo_id: ot.id,
-        tecnico_id: user.id,
+        tecnico_id: tecnicoIdParaActividad,
         tipo_actividad: 'diagnostico',
         subtipo: 'Inicio de revisión técnica',
       });
@@ -167,9 +175,10 @@ export default function CentroMando({ ot, effectiveRole }) {
         throw new Error(response?.data?.error || 'Error al iniciar la revisión');
       }
 
-      // Refrescar datos del expediente y actividades
+      // RC2-GOLD-02: Invalidar OT principal para actualizar estado sin F5
       queryClient.invalidateQueries({ queryKey: ['expediente-ot', ot.id] });
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-diag-tecnico', ot.id] });
     } catch (err) {
       setErrorInicio(err.message || 'Error al iniciar revisión');
     } finally {
@@ -220,8 +229,7 @@ export default function CentroMando({ ot, effectiveRole }) {
 
       {/* ── Técnico asignado sin diagnóstico habilitado (vista informativa) ──── */}
       {ot.estado === 'ASIGNADA'
-        && effectiveRole === 'TECHNICIAN'
-        && ot.tecnico_asignado_id === user?.id
+        && esTecnicoAsignado
         && !ot.diagnostico_habilitado && (
         <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
           <Lock className="w-4 h-4 text-slate-400 shrink-0" />

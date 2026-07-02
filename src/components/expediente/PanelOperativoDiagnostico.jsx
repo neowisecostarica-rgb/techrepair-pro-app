@@ -122,6 +122,13 @@ export default function PanelOperativoDiagnostico({
   const [actionError, setActionError]     = useState(null);
   const { user } = useAuthContext();
 
+  // RC2-GOLD-05: Para ORG_ADMIN/BRANCH_ADMIN, el tecnicoId del wizard es el técnico asignado a la OT.
+  // Si no hay técnico asignado, usa el propio user.id como fallback.
+  const esAdminOperativo = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'].includes(effectiveRole);
+  const tecnicoIdEfectivo = esAdminOperativo
+    ? (tecnico?.user_id || tecnico?.id || user?.id)
+    : (user?.id);
+
   // ── Queries ────────────────────────────────────────────────────────────────
   const { data: diagList = [], isLoading: loadingDiag } = useQuery({
     queryKey: ['panel-diag-tecnico', ot.id],
@@ -156,6 +163,8 @@ export default function PanelOperativoDiagnostico({
     queryClient.invalidateQueries({ queryKey: ['panel-diag-tecnico', ot.id] });
     queryClient.invalidateQueries({ queryKey: ['panel-diag-doc', ot.id] });
     queryClient.invalidateQueries({ queryKey: ['expediente-diag-tecnico', ot.id] });
+    // RC2-GOLD-02: invalidar OT raíz para sincronizar CentroMando sin F5
+    queryClient.invalidateQueries({ queryKey: ['expediente-ot', ot.id] });
   };
 
   // ── Calcular estado documental ─────────────────────────────────────────────
@@ -585,7 +594,7 @@ export default function PanelOperativoDiagnostico({
             ordenTrabajo={ot}
             preDiagnostico={prediag}
             effectiveOrgId={organizationId}
-            tecnicoId={tecnico?.user_id || tecnico?.id}
+            tecnicoId={tecnicoIdEfectivo}
             onClose={() => setWizardOpen(false)}
             onComplete={handleWizardComplete}
           />

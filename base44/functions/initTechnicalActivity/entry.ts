@@ -171,17 +171,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── ORG_ADMIN override: usar el técnico asignado a la OT como actor técnico ─
+    // Cuando el ejecutor es ORG_ADMIN, delega la actividad al técnico asignado.
+    // El comportamiento del TECHNICIAN asignado permanece idéntico.
+    let efectiveTecnicoId = tecnico_id;
+    if (effectiveRole === 'ORG_ADMIN' && ot.tecnico_asignado_id) {
+      efectiveTecnicoId = ot.tecnico_asignado_id;
+      console.log(`[initTechnicalActivity] ORG_ADMIN override — delegando actividad al técnico asignado ${efectiveTecnicoId}`);
+    }
+
     // ── 6. REGLA 2: Validar técnico sin otra OT con estado_atencion ACTIVO ─────
     // Buscar si el técnico ya tiene una OT diferente con estado_atencion ACTIVO
     const otsTecnicoActivo = await base44.asServiceRole.entities.OrdenTrabajo.filter({
       organization_id: orgId,
-      tecnico_asignado_id: tecnico_id,
+      tecnico_asignado_id: efectiveTecnicoId,
       estado_atencion: 'ACTIVO',
     });
 
     const otraOTActiva = otsTecnicoActivo.find(o => o.id !== orden_trabajo_id);
     if (otraOTActiva) {
-      console.warn(`[initTechnicalActivity] BLOQUEO: técnico ${tecnico_id} ya tiene estado_atencion ACTIVO en OT ${otraOTActiva.id}`);
+      console.warn(`[initTechnicalActivity] BLOQUEO: técnico ${efectiveTecnicoId} ya tiene estado_atencion ACTIVO en OT ${otraOTActiva.id}`);
       return Response.json({
         error: `El técnico ya tiene una actividad activa en la OT ${otraOTActiva.codigo_ot || otraOTActiva.id}. Finalice o pause esa actividad antes de continuar.`,
         codigo: 'TECNICO_ACTIVO_OTRA_OT',
@@ -233,7 +242,7 @@ Deno.serve(async (req) => {
     const nuevaActividad = await base44.asServiceRole.entities.ActividadTecnica.create({
       organization_id: orgId,
       orden_trabajo_id,
-      tecnico_id,
+      tecnico_id: efectiveTecnicoId,
       tecnico_email: tecnicoEmail,
       tipo_actividad,
       subtipo: subtipo || '',

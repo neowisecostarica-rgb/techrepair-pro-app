@@ -498,7 +498,7 @@ function OrdenesTrabajoContent() {
 
       {/* Vista Kanban */}
       {vistaActiva === 'kanban' && (
-        <KanbanBoard onCardClick={(ot) => navigate(`/expediente/${ot.id}`)} />
+        <KanbanBoard onCardClick={(ot) => setSelectedOT(ot)} />
       )}
 
       {/* Vista Lista */}
@@ -564,7 +564,7 @@ function OrdenesTrabajoContent() {
             <Card 
               key={orden.id} 
               className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer"
-              onClick={() => navigate(`/expediente/${orden.id}`)}
+              onClick={() => setSelectedOT(orden)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -611,9 +611,9 @@ function OrdenesTrabajoContent() {
                     </div>
                   </div>
                   <div className="mt-3 flex justify-end">
-                    <span className="text-xs text-emerald-600 flex items-center gap-1">
-                      <ExternalLink className="w-3 h-3" />
-                      Abrir expediente
+                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
+                      Ver detalle
                     </span>
                   </div>
                 </div>
@@ -657,7 +657,7 @@ function OrdenesTrabajoContent() {
                 <Card
                   key={orden.id}
                   className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer"
-                  onClick={() => navigate(`/expediente/${orden.id}`)}
+                  onClick={() => setSelectedOT(orden)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">

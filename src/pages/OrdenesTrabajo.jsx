@@ -498,7 +498,7 @@ function OrdenesTrabajoContent() {
 
       {/* Vista Kanban */}
       {vistaActiva === 'kanban' && (
-        <KanbanBoard onCardClick={(ot) => setSelectedOT(ot)} />
+        <KanbanBoard onCardClick={(ot) => navigate(`/expediente/${ot.id}`)} />
       )}
 
       {/* Vista Lista */}
@@ -564,7 +564,7 @@ function OrdenesTrabajoContent() {
             <Card 
               key={orden.id} 
               className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer"
-              onClick={() => setSelectedOT(orden)}
+              onClick={() => navigate(`/expediente/${orden.id}`)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -601,26 +601,20 @@ function OrdenesTrabajoContent() {
                       } border-0 capitalize`}>
                         {orden.prioridad}
                       </Badge>
-                      {/* P0.1: Badge estado de pago */}
                       {estadosPago[orden.id] && (
                         <BadgeEstadoPago status={estadosPago[orden.id].status} />
                       )}
-                      {/* P0.2-B: Técnico asignado en lista */}
                       <span className="flex items-center gap-1 text-xs text-slate-500 ml-1">
                         <User className="w-3 h-3" />
                         {getTecnicoName(orden.tecnico_asignado_id)}
                       </span>
                     </div>
                   </div>
-                  {/* Link al Expediente Completo */}
                   <div className="mt-3 flex justify-end">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/expediente/${orden.id}`); }}
-                      className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-1 hover:underline"
-                    >
+                    <span className="text-xs text-emerald-600 flex items-center gap-1">
                       <ExternalLink className="w-3 h-3" />
-                      Ver expediente completo
-                    </button>
+                      Abrir expediente
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -662,25 +656,25 @@ function OrdenesTrabajoContent() {
               return (
                 <Card
                   key={orden.id}
-                  className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer border-l-4 border-l-amber-400"
-                  onClick={() => setSelectedOT(orden)}
+                  className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer"
+                  onClick={() => navigate(`/expediente/${orden.id}`)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold text-xs">
+                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-xs">
                             OT
                           </div>
                           <div>
-                            <p className="text-xs font-mono text-amber-600 font-bold mb-1">
+                            <p className="text-xs font-mono text-emerald-600 font-bold mb-1">
                               {orden.codigo_ot || 'OT-LEGACY'}
                             </p>
                             <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
                             <p className="text-sm text-slate-600 font-medium">{orden.motivo_ingreso}</p>
                             <p className="text-xs text-slate-500">{getEquipoInfo(orden.equipo_id)}</p>
                             <p className="text-xs text-slate-400">
-                              Diagnóstico: {format(new Date(orden.fecha_diagnostico || orden.updated_date || orden.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
+                              Ingreso: {format(new Date(orden.fecha_ingreso || orden.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
                             </p>
                           </div>
                         </div>
@@ -698,6 +692,12 @@ function OrdenesTrabajoContent() {
                             {getTecnicoName(orden.tecnico_asignado_id)}
                           </span>
                         </div>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <span className="text-xs text-emerald-600 flex items-center gap-1">
+                          <ExternalLink className="w-3 h-3" />
+                          Abrir expediente
+                        </span>
                       </div>
                     </div>
                   </CardContent>

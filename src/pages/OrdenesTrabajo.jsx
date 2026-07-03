@@ -295,7 +295,12 @@ function OrdenesTrabajoContent() {
       alert('No se pueden crear órdenes sin términos configurados');
       return;
     }
-    
+
+    // Activar indicador de carga inmediatamente para el flujo de creación (Recepción)
+    if (!editingOT) {
+      setGuardandoOT(true);
+    }
+
     const formData = new FormData(e.target);
     let equipoIdFinal = selectedEquipoId;
 
@@ -312,6 +317,7 @@ function OrdenesTrabajoContent() {
         equipoIdFinal = equipoResponse.data.id;
         queryClient.invalidateQueries({ queryKey: ['equipos'] });
       } catch (error) {
+        setGuardandoOT(false);
         alert('Error al crear el equipo: ' + error.message);
         return;
       }

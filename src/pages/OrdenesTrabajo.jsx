@@ -562,7 +562,7 @@ function OrdenesTrabajoContent() {
         </Card>}
 
         {/* Lista de Órdenes */}
-        {!isLoadingOrdenes && <div className="grid gap-4">
+        {!isLoadingOrdenes && <div className="space-y-4">
         {ordenesFiltradas.map((orden) => {
           const config = estadoConfig[orden.estado] || estadoConfig.EN_COLA_REVISION;
           
@@ -617,9 +617,9 @@ function OrdenesTrabajoContent() {
                     </div>
                   </div>
                   <div className="mt-3 flex justify-end">
-                    <span className="text-xs text-slate-400 flex items-center gap-1">
-                      <FileText className="w-3 h-3" />
-                      Ver detalle
+                    <span className="text-xs text-emerald-600 flex items-center gap-1">
+                      <ExternalLink className="w-3 h-3" />
+                      Abrir expediente
                     </span>
                   </div>
                 </div>

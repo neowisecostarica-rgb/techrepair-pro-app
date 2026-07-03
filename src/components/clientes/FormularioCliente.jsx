@@ -154,7 +154,7 @@ export default function FormularioCliente({
             </div>
 
             <div className="space-y-2">
-              <Label>Identificación (Cédula/Pasaporte/RUT) *</Label>
+              <Label>Identificación *</Label>
               <Input
                 value={formData.identificacion}
                 onChange={(e) => handleFieldChange('identificacion', e.target.value)}
@@ -218,7 +218,7 @@ export default function FormularioCliente({
               </div>
 
               <div className="space-y-2">
-                <Label>Identificación (Cédula/Pasaporte/RUT) *</Label>
+                <Label>Identificación *</Label>
                 <Input
                   value={formData.identificacion}
                   onChange={(e) => handleFieldChange('identificacion', e.target.value)}

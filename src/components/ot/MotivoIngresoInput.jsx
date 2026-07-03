@@ -3,11 +3,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 
 const MOTIVOS_COMUNES = [
+  { value: 'Diagnóstico', label: 'Diagnóstico' },
   { value: 'Revisión general', label: 'Revisión general' },
-  { value: 'Cambio de pantalla', label: 'Cambio de pantalla' },
-  { value: 'Problema de encendido', label: 'Problema de encendido' },
-  { value: 'Batería', label: 'Batería' },
-  { value: 'Lento / Rendimiento', label: 'Lento / Rendimiento' },
+  { value: 'Mantenimiento preventivo', label: 'Mantenimiento preventivo' },
+  { value: 'Mantenimiento correctivo', label: 'Mantenimiento correctivo' },
+  { value: 'Problema de funcionamiento', label: 'Problema de funcionamiento' },
+  { value: 'Instalación / Configuración', label: 'Instalación / Configuración' },
+  { value: 'Actualización', label: 'Actualización' },
+  { value: 'Limpieza', label: 'Limpieza' },
+  { value: 'Garantía', label: 'Garantía' },
   { value: '__otro__', label: 'Otro...' },
 ];
 

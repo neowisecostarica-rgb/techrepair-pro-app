@@ -49,7 +49,7 @@ function Bloque({ label, accent, icon: Icon, defaultOpen = true, children }) {
         <span className="text-[11px] font-semibold uppercase tracking-wide flex-1">{label}</span>
         {open ? <ChevronUp className="w-3.5 h-3.5 opacity-50" /> : <ChevronDown className="w-3.5 h-3.5 opacity-50" />}
       </button>
-      {open && <div className="px-3 py-2.5 bg-white">{children}</div>}
+      {open && <div className="px-3 py-2 bg-white">{children}</div>}
     </div>
   );
 }
@@ -81,7 +81,7 @@ export default function ModalDetalleOT({ ot, cliente, tecnico, onClose }) {
       <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto p-0 gap-0">
 
         {/* ══ STICKY HEADER — Bloque 0: Identificación rápida ══════════════════ */}
-        <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3">
+        <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm font-mono font-bold text-emerald-600">{ot.codigo_ot}</span>
@@ -124,7 +124,7 @@ export default function ModalDetalleOT({ ot, cliente, tecnico, onClose }) {
           )}
         </div>
 
-        <div className="p-3 space-y-2">
+        <div className="p-3 space-y-1.5">
 
           {/* ══ BLOQUE 1: Resumen Ejecutivo ══════════════════════════════════════ */}
           <Bloque label="Resumen Ejecutivo" accent="bg-slate-50 text-slate-600" icon={CheckCircle2} defaultOpen={true}>
@@ -172,12 +172,12 @@ export default function ModalDetalleOT({ ot, cliente, tecnico, onClose }) {
             <Bloque label="Diagnóstico" accent="bg-blue-50 text-blue-700" icon={ClipboardList} defaultOpen={true}>
               {ot.motivo_ingreso && <Dato label="Motivo">{ot.motivo_ingreso}</Dato>}
               {ot.diagnostico_resumido && (
-                <div className="mt-1.5 text-xs text-slate-700 bg-emerald-50 border border-emerald-100 rounded px-2.5 py-2 leading-relaxed">
+                <div className="mt-1.5 text-xs text-slate-700 bg-emerald-50 border border-emerald-100 rounded px-2.5 py-1.5 leading-relaxed">
                   {ot.diagnostico_resumido}
                 </div>
               )}
               {ot.observaciones_ingreso && (
-                <div className="mt-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded px-2.5 py-2 leading-relaxed">
+                <div className="mt-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded px-2.5 py-1.5 leading-relaxed">
                   {ot.observaciones_ingreso}
                 </div>
               )}

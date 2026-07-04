@@ -228,11 +228,11 @@ export default function OTOperationalLayer({ ot, variant = 'default' }) {
   const NextIcon = nextAction?.icon || AlertCircle;
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
 
       {/* ── Siguiente Acción — ARRIBA DE TODO (decisión inmediata) ─────────── */}
       {nextAction && (
-        <div className={`rounded-lg border px-3 py-2.5 ${nextAction.color}`}>
+        <div className={`rounded-lg border px-3 py-2 ${nextAction.color}`}>
           <div className="flex items-start gap-2.5">
             <NextIcon className={`w-4 h-4 mt-0.5 shrink-0 ${nextAction.iconColor}`} />
             <div>
@@ -244,14 +244,14 @@ export default function OTOperationalLayer({ ot, variant = 'default' }) {
       )}
 
       {/* ── Timeline compacta (una sola línea) ──────────────────────────────── */}
-      <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+      <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-1.5">
         <div className="flex items-center gap-0">
           <OTTimeline ot={ot} />
         </div>
       </div>
 
       {/* ── Estado diagnóstico — fila compacta ──────────────────────────────── */}
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-100 bg-slate-50/60">
+      <div className="flex items-center gap-2 px-3 py-1 rounded-lg border border-slate-100 bg-slate-50/60">
         {ot.diagnostico_habilitado
           ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
           : <Circle className="w-3.5 h-3.5 text-slate-300 shrink-0" />

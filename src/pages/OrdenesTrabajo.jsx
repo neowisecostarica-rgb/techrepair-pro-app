@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2, Loader2, User, ExternalLink } from 'lucide-react';
+import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2, Loader2, User, ExternalLink, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,7 +21,7 @@ import WizardDiagnostico from '@/components/diagnostico/WizardDiagnostico';
 import WizardPreDiagnostico from '@/components/prediagnostico/WizardPreDiagnostico';
 import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';
 import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
 import AgendarDesdeOT from '@/components/ot/AgendarDesdeOT';
@@ -616,11 +616,25 @@ function OrdenesTrabajoContent() {
                       </span>
                     </div>
                   </div>
-                  <div className="mt-3 flex justify-end">
-                    <span className="text-xs text-emerald-600 flex items-center gap-1">
+                  <div className="mt-3 flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2.5 text-xs"
+                      onClick={(e) => { e.stopPropagation(); setSelectedOT(orden); }}
+                    >
+                      <Eye className="w-3 h-3 mr-1" />
+                      Ver detalle
+                    </Button>
+                    <Link
+                      to={`/expediente/${orden.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                    >
                       <ExternalLink className="w-3 h-3" />
-                      Abrir expediente
-                    </span>
+                      Ir a expediente
+                    </Link>
                   </div>
                 </div>
               </CardContent>
@@ -699,11 +713,25 @@ function OrdenesTrabajoContent() {
                           </span>
                         </div>
                       </div>
-                      <div className="mt-3 flex justify-end">
-                        <span className="text-xs text-emerald-600 flex items-center gap-1">
+                      <div className="mt-3 flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2.5 text-xs"
+                          onClick={(e) => { e.stopPropagation(); setSelectedOT(orden); }}
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          Ver detalle
+                        </Button>
+                        <Link
+                          to={`/expediente/${orden.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                        >
                           <ExternalLink className="w-3 h-3" />
-                          Abrir expediente
-                        </span>
+                          Ir a expediente
+                        </Link>
                       </div>
                     </div>
                   </CardContent>

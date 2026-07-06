@@ -1290,47 +1290,47 @@ function OrdenesTrabajoContent() {
                 )}
 
                 {/* ── BLOQUE 3: DATOS GENERALES ─────────────────────────────── */}
-                <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
-                <div>
-                  <p className="text-xs text-slate-500">Estado</p>
-                  <Badge className={`${estadoConfig[selectedOT.estado]?.color} border-0 mt-1`}>
+                <div className="grid grid-cols-2 gap-4 items-start p-4 bg-slate-50 rounded-xl">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-500">Estado</Label>
+                  <Badge className={`${estadoConfig[selectedOT.estado]?.color} border-0`}>
                     {estadoConfig[selectedOT.estado]?.label}
                   </Badge>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500">Prioridad</p>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-500">Prioridad</Label>
                   <Badge className={`${
                     selectedOT.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
                     selectedOT.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
                     'bg-slate-100 text-slate-700'
-                  } border-0 capitalize mt-1`}>
+                  } border-0 capitalize`}>
                     {selectedOT.prioridad}
                   </Badge>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500">Cliente</p>
-                  <p className="font-medium">{getClienteName(selectedOT.cliente_id)}</p>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-500">Cliente</Label>
+                  <p className="text-sm font-medium text-slate-900">{getClienteName(selectedOT.cliente_id)}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500">Equipo</p>
-                  <p className="font-medium">{getEquipoInfo(selectedOT.equipo_id)}</p>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-500">Equipo</Label>
+                  <p className="text-sm font-medium text-slate-900">{getEquipoInfo(selectedOT.equipo_id)}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500">Técnico Asignado</p>
-                  <p className="font-medium">{getTecnicoName(selectedOT.tecnico_asignado_id)}</p>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-500">Técnico Asignado</Label>
+                  <p className="text-sm font-medium text-slate-900">{getTecnicoName(selectedOT.tecnico_asignado_id)}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500">Fecha Ingreso</p>
-                  <p className="font-medium">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-500">Fecha Ingreso</Label>
+                  <p className="text-sm font-medium text-slate-900">
                     {format(new Date(selectedOT.fecha_ingreso || selectedOT.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
                   </p>
                 </div>
                 {/* P0.3: PIN visible para técnicos y admins */}
                 {selectedOT.contrasena_ingreso && ['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && (
-                  <div className="col-span-2">
-                    <p className="text-xs text-slate-500">🔒 Contraseña / PIN del Equipo</p>
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs font-medium text-slate-500">🔒 Contraseña / PIN del Equipo</Label>
                     <p className="font-mono font-bold text-emerald-600 text-lg">{selectedOT.contrasena_ingreso}</p>
-                    <p className="text-xs text-slate-400 mt-1">Visible solo para personal autorizado</p>
+                    <p className="text-xs text-slate-400">Visible solo para personal autorizado</p>
                   </div>
                 )}
                 </div>
@@ -1341,47 +1341,47 @@ function OrdenesTrabajoContent() {
                 </div>
 
                 {/* ── BLOQUE 4: DETALLE INGRESO ─────────────────────────────── */}
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-slate-500">Motivo de Ingreso</Label>
-                    <p className="font-medium text-slate-900 mt-1">{selectedOT.motivo_ingreso}</p>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-slate-500">Motivo de Ingreso</Label>
+                    <p className="text-sm font-medium text-slate-900">{selectedOT.motivo_ingreso}</p>
                   </div>
 
                   {selectedOT.observaciones_ingreso && (
-                    <div>
-                      <Label className="text-slate-500">Observaciones</Label>
-                      <p className="text-slate-700 mt-1">{selectedOT.observaciones_ingreso}</p>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-slate-500">Observaciones</Label>
+                      <p className="text-sm text-slate-700">{selectedOT.observaciones_ingreso}</p>
                     </div>
                   )}
 
                   {selectedOT.diagnostico_resumido && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <h4 className="font-semibold text-blue-900 mb-1 text-sm">Pre-Diagnóstico de Recepción</h4>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
+                      <Label className="text-xs font-semibold text-blue-900">Pre-Diagnóstico de Recepción</Label>
                       <p className="text-sm text-blue-800 whitespace-pre-wrap">{selectedOT.diagnostico_resumido}</p>
                     </div>
                   )}
 
                   {/* P0.3: Información adicional del equipo en recepción */}
                   {(selectedOT.serie_ingreso || selectedOT.accesorios_ingreso || selectedOT.estado_fisico_ingreso) && (
-                    <div className="border-t border-slate-200 pt-3">
-                      <Label className="text-slate-500 mb-2 block">Recepción del Equipo</Label>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="border-t border-slate-200 pt-4 space-y-2">
+                      <Label className="text-xs font-medium text-slate-500">Recepción del Equipo</Label>
+                      <div className="grid grid-cols-2 gap-3 items-start">
                         {selectedOT.serie_ingreso && (
-                          <div>
-                            <span className="text-slate-500">Serie/IMEI:</span>
-                            <p className="font-medium">{selectedOT.serie_ingreso}</p>
+                          <div className="space-y-0.5">
+                            <p className="text-xs text-slate-500">Serie/IMEI</p>
+                            <p className="text-sm font-medium text-slate-900">{selectedOT.serie_ingreso}</p>
                           </div>
                         )}
                         {selectedOT.estado_fisico_ingreso && (
-                          <div>
-                            <span className="text-slate-500">Estado físico:</span>
-                            <p className="font-medium capitalize">{selectedOT.estado_fisico_ingreso}</p>
+                          <div className="space-y-0.5">
+                            <p className="text-xs text-slate-500">Estado físico</p>
+                            <p className="text-sm font-medium text-slate-900 capitalize">{selectedOT.estado_fisico_ingreso}</p>
                           </div>
                         )}
                         {selectedOT.accesorios_ingreso && (
-                          <div className="col-span-2">
-                            <span className="text-slate-500">Accesorios:</span>
-                            <p className="font-medium">{selectedOT.accesorios_ingreso}</p>
+                          <div className="col-span-2 space-y-0.5">
+                            <p className="text-xs text-slate-500">Accesorios</p>
+                            <p className="text-sm font-medium text-slate-900">{selectedOT.accesorios_ingreso}</p>
                           </div>
                         )}
                       </div>

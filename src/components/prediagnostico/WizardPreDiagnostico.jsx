@@ -266,7 +266,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
   // Invalida únicamente las queries autorizadas para el flujo de Pre-Diagnóstico
   const invalidarQueriesPreDiagnostico = () => {
     queryClient.invalidateQueries({ queryKey: ['prediagnostico', ordenTrabajo.id] });
-    queryClient.invalidateQueries({ queryKey: ['orden-trabajo', ordenTrabajo.id] });
+    queryClient.invalidateQueries({ queryKey: ['expediente-ot', ordenTrabajo.id] });
   };
 
   const guardarBorrador = async () => {

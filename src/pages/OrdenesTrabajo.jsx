@@ -279,11 +279,11 @@ function OrdenesTrabajoContent() {
       setShowModal(false);
       setEditingOT(null);
       setSelectedOT(null);
-      alert('✅ Orden de trabajo actualizada correctamente');
+      toast({ title: '✅ Orden de trabajo actualizada correctamente' });
     },
     onError: (error) => {
       console.error('Error actualizando OT:', error);
-      alert('❌ Error al actualizar la orden: ' + error.message);
+      toast({ variant: 'destructive', title: 'Error al actualizar la orden', description: error.message });
     },
   });
 
@@ -292,7 +292,7 @@ function OrdenesTrabajoContent() {
     
     // Validar términos configurados
     if (!editingOT && !terminosActivos) {
-      alert('No se pueden crear órdenes sin términos configurados');
+      toast({ variant: 'destructive', title: 'No se pueden crear órdenes sin términos configurados' });
       return;
     }
 
@@ -318,7 +318,7 @@ function OrdenesTrabajoContent() {
         queryClient.invalidateQueries({ queryKey: ['equipos'] });
       } catch (error) {
         setGuardandoOT(false);
-        alert('Error al crear el equipo: ' + error.message);
+        toast({ variant: 'destructive', title: 'Error al crear el equipo', description: error.message });
         return;
       }
     }
@@ -349,7 +349,7 @@ function OrdenesTrabajoContent() {
 
     if (editingOT) {
       if (!motivoIngreso.trim()) {
-        alert('El motivo de ingreso es obligatorio');
+        toast({ variant: 'destructive', title: 'El motivo de ingreso es obligatorio' });
         return;
       }
       data.motivo_ingreso = motivoIngreso.trim();
@@ -364,7 +364,7 @@ function OrdenesTrabajoContent() {
     const baseUrl = window.location.origin;
     const link = `${baseUrl}${createPageUrl('PortalCliente')}?token=${orden.public_access_token}`;
     navigator.clipboard.writeText(link);
-    alert('Link copiado al portapapeles');
+    toast({ title: 'Link copiado al portapapeles' });
   };
 
   const ordenesFiltradas = ordenes.filter(o => {
@@ -658,7 +658,7 @@ function OrdenesTrabajoContent() {
       <TabsContent value="pendiente-cliente">
         {isLoadingOrdenes && (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-amber-500 mr-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mr-3" />
             <span className="text-slate-500">Cargando órdenes...</span>
           </div>
         )}

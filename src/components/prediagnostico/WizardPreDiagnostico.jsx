@@ -1,8 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { Loader2, CheckCircle2, AlertCircle, Save, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { generarResumenPreDiagnostico } from './generarResumen';
@@ -169,6 +180,7 @@ function FieldLabel({ children, optional }) {
 // ─── Wizard Principal ─────────────────────────────────────────────────────────
 
 export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, userId, onClose, onComplete }) {
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [preDiagnostico, setPreDiagnostico] = useState(null);
   const [formData, setFormData] = useState({
@@ -181,6 +193,17 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
     observaciones_riesgo: ''
   });
   const [savedDraft, setSavedDraft] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  // Snapshot del estado inicial cargado para detectar cambios (isDirty)
+  const initialSnapshot = useRef(null);
+
+  // Detectar cambios respecto al snapshot inicial
+  useEffect(() => {
+    if (initialSnapshot.current === null) return; // aún no cargado
+    setIsDirty(JSON.stringify(formData) !== initialSnapshot.current);
+  }, [formData]);
 
   useEffect(() => {
     cargarPreDiagnostico();
@@ -200,10 +223,19 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
         organization_id: effectiveOrgId,
         orden_trabajo_id: ordenTrabajo.id
       });
+      let baseData = {
+        uso_principal: '',
+        equipo_critico: false,
+        problema_principal: '',
+        respuestas: {},
+        riesgo_datos: 'ninguno',
+        riesgo_fisico: 'ninguno',
+        observaciones_riesgo: ''
+      };
       if (existing.length > 0) {
         const pd = existing[0];
         setPreDiagnostico(pd);
-        setFormData({
+        baseData = {
           uso_principal: pd.uso_principal || '',
           equipo_critico: pd.equipo_critico || false,
           problema_principal: pd.problema_principal || '',
@@ -211,8 +243,10 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
           riesgo_datos: pd.riesgo_datos || 'ninguno',
           riesgo_fisico: pd.riesgo_fisico || 'ninguno',
           observaciones_riesgo: pd.observaciones_riesgo || ''
-        });
+        };
       }
+      setFormData(baseData);
+      initialSnapshot.current = JSON.stringify(baseData);
     } catch (error) {
       console.error('Error cargando pre-diagnóstico:', error);
     }
@@ -229,6 +263,12 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
     ...formData
   });
 
+  // Invalida únicamente las queries autorizadas para el flujo de Pre-Diagnóstico
+  const invalidarQueriesPreDiagnostico = () => {
+    queryClient.invalidateQueries({ queryKey: ['prediagnostico', ordenTrabajo.id] });
+    queryClient.invalidateQueries({ queryKey: ['orden-trabajo', ordenTrabajo.id] });
+  };
+
   const guardarBorrador = async () => {
     setSaving(true);
     try {
@@ -240,6 +280,9 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
         setPreDiagnostico(created);
       }
       setSavedDraft(true);
+      initialSnapshot.current = JSON.stringify(formData);
+      setIsDirty(false);
+      invalidarQueriesPreDiagnostico();
     } catch (error) {
       console.error('Error guardando borrador:', error);
       alert('Error al guardar: ' + error.message);
@@ -311,6 +354,10 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
         await registrarEventoEdicion(camposModificados);
       }
 
+      // Sincronización: invalidar queries autorizadas antes de cerrar
+      setIsDirty(false);
+      invalidarQueriesPreDiagnostico();
+
       onComplete();
     } catch (error) {
       console.error('Error completando wizard:', error);
@@ -325,6 +372,21 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
       ...prev,
       respuestas: { ...prev.respuestas, [key]: value }
     }));
+  };
+
+  // Cierre protegido: si hay cambios sin guardar, pedir confirmación
+  const handleCerrar = () => {
+    if (isDirty) {
+      setShowDiscardConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const confirmarDescarte = () => {
+    setShowDiscardConfirm(false);
+    setIsDirty(false);
+    onClose();
   };
 
   const preguntasActuales = formData.problema_principal
@@ -345,7 +407,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
           </p>
         </div>
         <button
-          onClick={onClose}
+          onClick={handleCerrar}
           className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors"
         >
           <X className="w-5 h-5" />
@@ -503,6 +565,28 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
           </Button>
         </div>
       </div>
+
+      {/* Confirmación de descarte de cambios sin guardar */}
+      <AlertDialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Descartar cambios?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tienes cambios sin guardar en el pre-diagnóstico. Si cierras ahora,
+              esos cambios se perderán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Seguir editando</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarDescarte}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Descartar y cerrar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

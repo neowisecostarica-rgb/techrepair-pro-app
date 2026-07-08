@@ -1488,7 +1488,11 @@ function OrdenesTrabajoContent() {
 
       {/* Wizard Pre-Diagnóstico */}
       <Dialog open={showPreDiagnostico} onOpenChange={setShowPreDiagnostico}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto"
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           {preDiagnosticoOT && (
             <WizardPreDiagnostico
               ordenTrabajo={preDiagnosticoOT}

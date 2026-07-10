@@ -224,6 +224,7 @@ function OrdenesTrabajoContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['listWorkOrders'] });
       setShowModal(false);
       resetForm();
       setGuardandoOT(false);

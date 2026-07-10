@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShoppingCart, Plus, Trash2, Search, DollarSign, Package, Wrench, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import PageGuard from '../components/guards/PageGuard';
 import CrearProductoRapido from '../components/inventario/CrearProductoRapido';
 import TiqueteVenta from '../components/ventas/TiqueteVenta';
@@ -31,21 +31,29 @@ export default function PuntoVenta() {
 
 function PuntoVentaContent() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const preloadedVenta = location.state?.venta;
   const cotizacionOrigen = location.state?.cotizacion_origen;
   const carritoPreload = location.state?.carrito;
-  
+
+  // Parámetros de navegación OT → Cobrar Diagnóstico (vía query params de URL)
+  const otIdFromUrl = searchParams.get('ot_id') || '';
+  const conceptoFromUrl = searchParams.get('concepto') || '';
+  const otIdInicial = location.state?.orden_trabajo_id || otIdFromUrl || '';
+  const tipoConceptoInicial = location.state?.tipo_concepto || conceptoFromUrl || 'venta_producto';
+  const origenVentaInicial = location.state?.origen_venta || (otIdFromUrl ? 'taller' : 'tienda');
+
   const [carrito, setCarrito] = useState(carritoPreload || []);
   const [searchTerm, setSearchTerm] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState(location.state?.cliente_id || '');
-  const [origenVenta, setOrigenVenta] = useState('tienda');
+  const [origenVenta, setOrigenVenta] = useState(origenVentaInicial);
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [ventaId, setVentaId] = useState(null);
   const [showCrearRapido, setShowCrearRapido] = useState(false);
   const [codigoNoEncontrado, setCodigoNoEncontrado] = useState('');
   const [ventaCompletada, setVentaCompletada] = useState(null);
-  const [tipoConcepto, setTipoConcepto] = useState('venta_producto');
-  const [otSeleccionada, setOtSeleccionada] = useState(location.state?.orden_trabajo_id || '');
+  const [tipoConcepto, setTipoConcepto] = useState(tipoConceptoInicial);
+  const [otSeleccionada, setOtSeleccionada] = useState(otIdInicial);
   const [validacionesPendientes, setValidacionesPendientes] = useState([]);
   const [ordenTrabajoObj, setOrdenTrabajoObj] = useState(null);
   const [showConfirmacionVenta, setShowConfirmacionVenta] = useState(false);
@@ -180,7 +188,9 @@ function PuntoVentaContent() {
     queryFn: () => base44.entities.Organization.list(),
   });
 
-  // Validar contexto OT cuando se selecciona
+  // Validar contexto OT cuando se selecciona (o se precarga vía URL).
+  // Incluye `ordenesTrabajo` en las dependencias para evitar la condición de carrera
+  // donde el efecto se ejecuta antes de que el listado de OTs haya cargado.
   useEffect(() => {
     if (otSeleccionada && effectiveOrgId) {
       validarContextoOT();
@@ -188,16 +198,23 @@ function PuntoVentaContent() {
       setValidacionesPendientes([]);
       setOrdenTrabajoObj(null);
     }
-  }, [otSeleccionada, effectiveOrgId]);
+  }, [otSeleccionada, effectiveOrgId, ordenesTrabajo]);
 
   const validarContextoOT = async () => {
     const validaciones = [];
     
     try {
+      // Esperar a que el listado de OTs esté cargado antes de validar.
+      // Si aún no carga, salir sin mutar estado; el efecto se re-ejecutará al cargar.
       const ot = ordenesTrabajo.find(o => o.id === otSeleccionada);
       if (!ot) return;
 
       setOrdenTrabajoObj(ot);
+
+      // Precargar cliente automáticamente si no estaba seleccionado (flujo OT → POS)
+      if (ot.cliente_id && !clienteSeleccionado) {
+        setClienteSeleccionado(ot.cliente_id);
+      }
 
       // Validar OT no cancelada
       if (ot.estado === 'CANCELADA') {
@@ -207,6 +224,11 @@ function PuntoVentaContent() {
       // Validar OT no entregada
       if (ot.estado === 'ENTREGADA') {
         validaciones.push('❌ La orden de trabajo ya fue ENTREGADA');
+      }
+
+      // Validación de duplicidad: si el diagnóstico ya fue cobrado, mostrar mensaje descriptivo
+      if (tipoConcepto === 'revision_diagnostico' && ot.diagnostico_habilitado && ot.revision_venta_id) {
+        validaciones.push('⚠️ Esta OT ya tiene un cobro de revisión/diagnóstico registrado. No es necesario volver a cobrarlo.');
       }
 
       // Validar cotización aprobada si es reparación

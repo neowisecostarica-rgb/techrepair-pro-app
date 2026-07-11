@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +59,8 @@ function PuntoVentaContent() {
   const [showConfirmacionVenta, setShowConfirmacionVenta] = useState(false);
   // Idempotency key: generada una vez por sesión de compra, se resetea tras venta exitosa
   const [idempotencyKey] = useState(() => `ik_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  // Guard de idempotencia para autocarga de servicio de diagnóstico (POS-004)
+  const autocargaEjecutadaRef = useRef(false);
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
   const { effectiveRole, effectiveOrgId } = useAuthContext();
@@ -125,6 +127,25 @@ function PuntoVentaContent() {
     }),
     enabled: !!userAccount?.organization_id,
   });
+
+  // ── POS-004: Autocarga de servicio de diagnóstico ──
+  // useEffect independiente, idempotente, no sobrescribe carrito existente.
+  useEffect(() => {
+    if (autocargaEjecutadaRef.current) return;
+    if (carrito.length > 0) return;
+    if (tipoConcepto !== 'revision_diagnostico') return;
+    if (!inventario || inventario.length === 0) return;
+
+    const servicio = inventario.find(i => i.tipo_item === 'servicio_diagnostico');
+    if (servicio) {
+      setCarrito([{
+        ...servicio,
+        cantidad: 1,
+        subtotal: servicio.precio_venta
+      }]);
+      autocargaEjecutadaRef.current = true;
+    }
+  }, [tipoConcepto, carrito.length, inventario]);
 
   const { data: servicios = [] } = useQuery({
     queryKey: ['servicios', userAccount?.organization_id],

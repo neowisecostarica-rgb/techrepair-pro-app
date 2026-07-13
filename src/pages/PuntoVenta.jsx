@@ -457,8 +457,8 @@ function PuntoVentaContent() {
         referencia_id: item.id,
         descripcion: tipo === 'producto' ? item.nombre : item.nombre,
         cantidad: 1,
-        precio_unitario: tipo === 'producto' ? item.precio_venta : item.precio,
-        subtotal: tipo === 'producto' ? item.precio_venta : item.precio,
+        precio_unitario: item.precio_venta ?? item.precio ?? 0,
+        subtotal: item.precio_venta ?? item.precio ?? 0,
       }]);
     }
     setSearchTerm('');
@@ -494,7 +494,7 @@ function PuntoVentaContent() {
   };
 
   const calcularTotales = () => {
-    const subtotal = carrito.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotal = carrito.reduce((sum, item) => sum + (item.subtotal ?? 0), 0);
     const impuesto = subtotal * 0.13;
     const total = subtotal + impuesto;
     return { subtotal, impuesto, total };
@@ -645,7 +645,7 @@ function PuntoVentaContent() {
               📋 <strong>Conversión desde Cotización</strong> - Los datos están precargados. Puedes modificar ítems, cantidades o precios antes de facturar.
               <br />
               <span className="text-xs text-emerald-600 mt-1 block">
-                Total Original: ₡{preloadedVenta?.cotizacion_total_original?.toLocaleString()} | Actual: ₡{calcularTotales().total.toLocaleString()}
+               Total Original: ₡{(preloadedVenta?.cotizacion_total_original || 0).toLocaleString()} | Actual: ₡{(calcularTotales().total || 0).toLocaleString()}
               </span>
             </AlertDescription>
           </Alert>
@@ -757,7 +757,7 @@ function PuntoVentaContent() {
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-emerald-600">
-                              ₡{(item.tipo === 'producto' ? item.precio_venta : item.precio)?.toLocaleString()}
+                              ₡{((item.precio_venta ?? item.precio) || 0).toLocaleString()}
                             </p>
                             <Button size="sm" className="mt-1">
                               <Plus className="w-4 h-4" />
@@ -830,13 +830,13 @@ function PuntoVentaContent() {
                         <div>
                           <Label className="text-xs">Precio Unit.</Label>
                           <p className="font-semibold text-slate-900 mt-2">
-                            ₡{item.precio_unitario.toLocaleString()}
+                            ₡{(item.precio_unitario || 0).toLocaleString()}
                           </p>
                         </div>
                         <div>
                           <Label className="text-xs">Subtotal</Label>
                           <p className="font-bold text-emerald-600 mt-2">
-                            ₡{item.subtotal.toLocaleString()}
+                            ₡{(item.subtotal ?? 0).toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -975,19 +975,19 @@ function PuntoVentaContent() {
             <CardContent className="p-6 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">Subtotal:</span>
-                <span className="font-semibold">₡{totales.subtotal.toLocaleString()}</span>
+                <span className="font-semibold">₡{(totales.subtotal || 0).toLocaleString()}</span>
               </div>
 
               <div className="flex justify-between text-sm">
                 <span className="text-slate-600">IVA (13%):</span>
-                <span className="font-semibold">₡{totales.impuesto.toLocaleString()}</span>
+                <span className="font-semibold">₡{(totales.impuesto || 0).toLocaleString()}</span>
               </div>
 
               <div className="border-t border-slate-200 pt-3">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold text-slate-900">Total:</span>
                   <span className="text-2xl font-bold text-emerald-600">
-                    ₡{totales.total.toLocaleString()}
+                    ₡{(totales.total || 0).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -1096,7 +1096,7 @@ function PuntoVentaContent() {
               Estás a punto de <strong>REGISTRAR UNA VENTA</strong> por un total de:
             </p>
             <p className="text-4xl font-bold text-emerald-600 text-center py-4">
-              ₡{totales.total.toLocaleString()}
+              ₡{(totales.total || 0).toLocaleString()}
             </p>
             <Alert className="bg-amber-50 border-amber-200">
               <AlertCircle className="w-4 h-4 text-amber-600" />

@@ -36,11 +36,17 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
 
   const iniciarMutation = useMutation({
     mutationFn: async () => {
+      // SSOT: tecnico_id debe ser el User.id (mismo valor que OrdenTrabajo.tecnico_asignado_id)
+      const tecnicoId = user?.id;
+      if (!tecnicoId) {
+        throw new Error('No se pudo identificar al técnico. Por favor recarga la página e intenta nuevamente.');
+      }
+
       // Delegar al orquestador backend — contiene toda la lógica de validación,
       // transición de OT, creación de actividad y actualización de estado_atencion.
       const response = await base44.functions.invoke('initTechnicalActivity', {
         orden_trabajo_id: ordenTrabajoId,
-        tecnico_id: user.id,
+        tecnico_id: tecnicoId,
         tipo_actividad: tipoActividad,
         subtipo: subtipo || '',
         inventario_id: inventarioId || null,
@@ -65,10 +71,8 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!tipoActividad) {
-      alert('Selecciona un tipo de actividad');
-      return;
-    }
+    if (!tipoActividad) return;
+    if (!user?.id) return;
     iniciarMutation.mutate();
   };
 
@@ -134,6 +138,12 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
               </Select>
             </div>
 
+            {iniciarMutation.isError && (
+              <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {iniciarMutation.error?.message || 'Error al iniciar la actividad'}
+              </div>
+            )}
+
             <div className="flex gap-3 justify-end pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
@@ -141,7 +151,7 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
               <Button
                 type="submit"
                 className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                disabled={iniciarMutation.isPending}
+                disabled={iniciarMutation.isPending || !tipoActividad || !user?.id}
               >
                 {iniciarMutation.isPending ? 'Iniciando...' : 'Iniciar Actividad'}
               </Button>

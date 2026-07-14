@@ -362,6 +362,40 @@ export default function TiqueteVenta({ venta, onClose }) {
 
       <style jsx>{`
         @media print {
+          @page {
+            size: auto;
+            margin: 10mm;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+          /* Oculta el fondo de la aplicación detrás del modal */
+          #root {
+            display: none !important;
+          }
+          /* Oculta el overlay oscuro del modal */
+          .fixed.inset-0 {
+            display: none !important;
+          }
+          /* Neutraliza el centrado/transform del Dialog de Radix para anclar el comprobante al origen de la página */
+          [role="dialog"] {
+            position: static !important;
+            transform: none !important;
+            inset: auto !important;
+            left: auto !important;
+            top: auto !important;
+            max-width: none !important;
+            max-height: none !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: #ffffff !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -372,6 +406,10 @@ export default function TiqueteVenta({ venta, onClose }) {
             position: absolute;
             left: 0;
             top: 0;
+            width: 100%;
+            margin: 0 !important;
+            padding: 0 !important;
+            max-width: none !important;
           }
           .print\\:hidden {
             display: none !important;

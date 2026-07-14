@@ -20,6 +20,8 @@ import { useAuthContext } from '../components/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { validarVentaPOS, habilitarDiagnosticoTrasPago } from '@/components/pos/validacionesPOS';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
+import ClienteSearchInput from '@/components/ot/ClienteSearchInput';
+import QuickCreateClienteModal from '@/components/ot/QuickCreateClienteModal';
 
 export default function PuntoVenta() {
   return (
@@ -50,6 +52,7 @@ function PuntoVentaContent() {
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [ventaId, setVentaId] = useState(null);
   const [showCrearRapido, setShowCrearRapido] = useState(false);
+  const [showCrearCliente, setShowCrearCliente] = useState(false);
   const [codigoNoEncontrado, setCodigoNoEncontrado] = useState('');
   const [ventaCompletada, setVentaCompletada] = useState(null);
   const [tipoConcepto, setTipoConcepto] = useState(tipoConceptoInicial);
@@ -877,26 +880,17 @@ function PuntoVentaContent() {
 
               <div className="space-y-2">
                 <Label>Cliente {!ventaId && '(opcional)'}</Label>
-                <Select 
-                  value={clienteSeleccionado} 
-                  onValueChange={(value) => {
+                <ClienteSearchInput
+                  clientes={clientes}
+                  selectedClienteId={clienteSeleccionado}
+                  onSelectCliente={(value) => {
                     setClienteSeleccionado(value);
                     // Limpiar OT al cambiar cliente
                     setOtSeleccionada('');
                   }}
+                  onRequestCreate={() => setShowCrearCliente(true)}
                   disabled={!!ventaId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.nombre_completo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
 
               <div className="space-y-2">
@@ -1063,6 +1057,15 @@ function PuntoVentaContent() {
           })()}
         </DialogContent>
       </Dialog>
+
+      <QuickCreateClienteModal
+        open={showCrearCliente}
+        onOpenChange={setShowCrearCliente}
+        onCreated={(cliente) => {
+          setClienteSeleccionado(cliente.id);
+          queryClient.invalidateQueries({ queryKey: ['clientes', userAccount?.organization_id] });
+        }}
+      />
 
       {/* Modal de Confirmación de Venta */}
       <Dialog open={showConfirmacionVenta} onOpenChange={setShowConfirmacionVenta}>

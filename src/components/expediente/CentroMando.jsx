@@ -17,6 +17,7 @@ import { differenceInHours, differenceInDays } from 'date-fns';
 import { ESTADO_SOT as ESTADO_SOT_CONFIG } from '@/config/workflowConfig';
 import { MOTIVOS_BLOQUEO } from '@/config/motivosBloqueo';
 import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { calcularCustodia, CUSTODIA_CONFIG } from '@/lib/custodiaEngine';
@@ -103,6 +104,7 @@ const CANAL_LABEL = { WHATSAPP: 'WhatsApp', EMAIL: 'Correo', MANUAL: 'Manual' };
 export default function CentroMando({ ot, effectiveRole }) {
   const [iniciando, setIniciando] = useState(false);
   const [errorInicio, setErrorInicio] = useState(null);
+  const [bloqueoPendiente, setBloqueoPendiente] = useState(null);
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
 
@@ -151,15 +153,13 @@ export default function CentroMando({ ot, effectiveRole }) {
   const esAdminOSupervisor = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'].includes(effectiveRole);
   const esTecnicoAsignado  = effectiveRole === 'TECHNICIAN' && ot.tecnico_asignado_id === user?.id;
   const puedeIniciarRevision = ot.estado === 'ASIGNADA'
-    && (esAdminOSupervisor || esTecnicoAsignado)
-    && ot.diagnostico_habilitado;
+    && (esAdminOSupervisor || esTecnicoAsignado);
 
   const handleIniciarRevision = async () => {
     setIniciando(true);
     setErrorInicio(null);
+    setBloqueoPendiente(null);
     try {
-      // Para ORG_ADMIN/BRANCH_ADMIN: usar el técnico asignado a la OT como tecnico_id
-      // Para TECHNICIAN: usar el propio user.id
       const tecnicoIdParaActividad = esAdminOSupervisor
         ? (ot.tecnico_asignado_id || user.id)
         : user.id;
@@ -172,10 +172,20 @@ export default function CentroMando({ ot, effectiveRole }) {
       });
 
       if (!response?.data?.success) {
-        throw new Error(response?.data?.error || 'Error al iniciar la revisión');
+        const codigo = response?.data?.codigo;
+        const errorMsg = response?.data?.error || 'Error al iniciar la revisión';
+
+        if (codigo === 'DIAGNOSTICO_NO_HABILITADO') {
+          setBloqueoPendiente({
+            descripcion: response?.data?.descripcion_bloqueo || errorMsg,
+            motivo: response?.data?.motivo_bloqueo || 'PENDIENTE_PAGO',
+          });
+        } else {
+          setErrorInicio(errorMsg);
+        }
+        return;
       }
 
-      // RC2-GOLD-02: Invalidar OT principal para actualizar estado sin F5
       queryClient.invalidateQueries({ queryKey: ['expediente-ot', ot.id] });
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
       queryClient.invalidateQueries({ queryKey: ['panel-diag-tecnico', ot.id] });
@@ -204,38 +214,61 @@ export default function CentroMando({ ot, effectiveRole }) {
         </div>
       )}
 
-      {/* ── Botón Iniciar Revisión (solo cuando aplica y sin bloqueo) ────────── */}
+      {/* ── Botón Iniciar Revisión (siempre visible — el backend valida bloqueos) ── */}
       {puedeIniciarRevision && (
-        <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+        <div className={`flex items-center gap-3 p-3 border rounded-lg ${
+          ot.diagnostico_habilitado
+            ? 'bg-emerald-50 border-emerald-200'
+            : 'bg-amber-50 border-amber-200'
+        }`}>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-emerald-900">Esta OT está lista para revisión</p>
-            <p className="text-xs text-emerald-700">Inicia la revisión para registrar tu tiempo técnico y mover la OT a EN_REVISION.</p>
+            {ot.diagnostico_habilitado ? (
+              <>
+                <p className="text-sm font-semibold text-emerald-900">Esta OT está lista para revisión</p>
+                <p className="text-xs text-emerald-700">Inicia la revisión para registrar tu tiempo técnico y mover la OT a EN_REVISION.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-amber-900">Revisión pendiente de habilitación</p>
+                <p className="text-xs text-amber-700">
+                  {motivoBloqueo.descripcion} · Acción: {motivoBloqueo.accion}
+                </p>
+              </>
+            )}
             {errorInicio && <p className="text-xs text-red-600 mt-1">{errorInicio}</p>}
+            {bloqueoPendiente && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <p className="text-xs text-amber-800 font-medium flex-1">{bloqueoPendiente.descripcion}</p>
+                {esAdminOSupervisor && (
+                  <a
+                    href={`${createPageUrl('PuntoVenta')}?ot_id=${ot.id}&concepto=revision_diagnostico`}
+                    className="text-xs px-2 py-1 bg-amber-600 text-white rounded-md font-semibold whitespace-nowrap hover:bg-amber-700"
+                  >
+                    Ir a Punto de Venta
+                  </a>
+                )}
+              </div>
+            )}
           </div>
           <Button
             onClick={handleIniciarRevision}
             disabled={iniciando}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+            className={
+              ot.diagnostico_habilitado
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shrink-0'
+                : 'bg-amber-600 hover:bg-amber-700 text-white shrink-0'
+            }
             size="sm"
           >
             {iniciando ? (
               <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Iniciando...</>
             ) : (
-              <><Play className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
+              <>{ot.diagnostico_habilitado
+                ? <><Play className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
+                : <><Lock className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
+              }</>
             )}
           </Button>
-        </div>
-      )}
-
-      {/* ── Técnico asignado sin diagnóstico habilitado (vista informativa) ──── */}
-      {ot.estado === 'ASIGNADA'
-        && esTecnicoAsignado
-        && !ot.diagnostico_habilitado && (
-        <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-          <Lock className="w-4 h-4 text-slate-400 shrink-0" />
-          <p className="text-xs text-slate-500">
-            No puedes iniciar la revisión hasta que el área de ventas o administración habilite el diagnóstico.
-          </p>
         </div>
       )}
 

@@ -320,13 +320,30 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       });
 
       if (!response?.data?.success) {
-        throw new Error(response?.data?.error || 'Error al iniciar la revisión');
+        const codigo = response?.data?.codigo;
+        const errorMsg = response?.data?.error || 'Error al iniciar la revisión';
+
+        if (codigo === 'DIAGNOSTICO_NO_HABILITADO') {
+          if (effectiveRole === 'TECHNICIAN') {
+            alert(`⏸️ ${response?.data?.descripcion_bloqueo || 'Diagnóstico bloqueado'}\n\nContacta a administración o ventas para procesar el pago.`);
+          } else {
+            const confirmar = window.confirm(
+              `🔒 ${response?.data?.descripcion_bloqueo || 'Diagnóstico bloqueado'}\n\n¿Deseas ir al Punto de Venta para procesar el pago?`
+            );
+            if (confirmar) {
+              window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;
+            }
+          }
+        } else {
+          alert('Error al iniciar revisión: ' + errorMsg);
+        }
+        setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: false }));
+        setTransicionEnCurso(false);
+        return;
       }
 
       await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
       await queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
-      
-      alert('✅ Revisión iniciada correctamente');
       
       setTransicionEnCurso(false);
     } catch (error) {
@@ -476,27 +493,30 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                 </div>
 
                 <div className="flex flex-col gap-2">
+                  {/* ASIGNADA → Iniciar Revisión (siempre visible — el backend valida bloqueos) */}
+                  {ordenActiva.estado === 'ASIGNADA' && (
+                    <Button
+                      onClick={() => handleIniciarRevision(ordenActiva)}
+                      disabled={botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] || transicionEnCurso}
+                      className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                    >
+                      {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
+                        <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
+                      ) : (
+                        <><Play className="w-4 h-4 mr-2" />Iniciar Revisión</>
+                      )}
+                    </Button>
+                  )}
+
+                  {/* Acciones posteriores — requieren pago confirmado */}
                   {estadosPago[ordenActiva.id]?.status === 'sin_pago' && effectiveRole === 'TECHNICIAN' ? (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                      ⏸️ Pendiente de pago — Contacta a administración
-                    </div>
+                    ordenActiva.estado !== 'ASIGNADA' && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                        ⏸️ Pendiente de pago — Contacta a administración
+                      </div>
+                    )
                   ) : (
                     <>
-                      {/* ASIGNADA → Iniciar Revisión */}
-                      {ordenActiva.estado === 'ASIGNADA' && (
-                        <Button
-                          onClick={() => handleIniciarRevision(ordenActiva)}
-                          disabled={botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] || transicionEnCurso}
-                          className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                        >
-                          {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
-                            <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
-                          ) : (
-                            <><Play className="w-4 h-4 mr-2" />Iniciar Revisión</>
-                          )}
-                        </Button>
-                      )}
-
                       {/* EN_REVISION → Registrar Diagnóstico */}
                       {ordenActiva.estado === 'EN_REVISION' && (
                         <Button

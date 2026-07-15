@@ -312,15 +312,19 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     setTransicionEnCurso(true);
 
     try {
-      await transicionarEstadoOT({
-        ordenTrabajoId: orden.id,
-        nuevoEstado: 'EN_REVISION',
-        effectiveOrgId: effectiveOrgId,
-        userId: user?.id,
-        userEmail: user?.email
+      const response = await base44.functions.invoke('initTechnicalActivity', {
+        orden_trabajo_id: orden.id,
+        tecnico_id: user.id,
+        tipo_actividad: 'diagnostico',
+        subtipo: 'Inicio de revisión técnica',
       });
 
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'Error al iniciar la revisión');
+      }
+
       await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      await queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
       
       alert('✅ Revisión iniciada correctamente');
       

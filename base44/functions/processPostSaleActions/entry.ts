@@ -44,6 +44,44 @@ const DESBLOQUEO_MAP = {
   venta_producto:       {}, // No mueve lifecycle
 };
 
+// ── WF-004A: WorkflowGate resolution (COMMERCE_GATEWAY) ──────────────────────
+// Tras una venta exitosa de tipo revision_diagnostico, resuelve cualquier gate
+// PENDING con wait_reason=COMMERCIAL_AUTHORIZATION asociado a la OT.
+const GATE_SUBJECT_TYPE = 'OrdenTrabajo';
+const GATE_WAIT_REASON = 'COMMERCIAL_AUTHORIZATION';
+const GATE_PROVIDER_KEY = 'COMMERCE_GATEWAY';
+
+function buildCorrelationKey(subjectType, subjectId, waitReason) {
+  return `${subjectType}:${subjectId}:${waitReason}`;
+}
+
+async function resolvePendingGates(base44, { orgId, subjectId, saleId, ventaTotal, userId }) {
+  const correlationKey = buildCorrelationKey(GATE_SUBJECT_TYPE, subjectId, GATE_WAIT_REASON);
+  const pending = await base44.asServiceRole.entities.WorkflowGate.filter(
+    { correlation_key: correlationKey, status: 'PENDING' }, 10
+  );
+  const resolved = [];
+  for (const gate of (pending || [])) {
+    try {
+      await base44.asServiceRole.entities.WorkflowGate.update(gate.id, {
+        status: 'RESOLVED',
+        resolution_payload: {
+          sale_id: saleId,
+          venta_total: ventaTotal,
+          resolved_at: new Date().toISOString(),
+        },
+        resolved_by_user_id: userId,
+        resolved_at: new Date().toISOString(),
+      });
+      resolved.push(gate.id);
+      console.log(`[processPostSaleActions] WorkflowGate RESOLVED — id=${gate.id}, OT=${subjectId}`);
+    } catch (resolveErr) {
+      console.warn(`[processPostSaleActions] WorkflowGate resolve falló (gate ${gate.id}): ${resolveErr.message}`);
+    }
+  }
+  return resolved;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'Método no permitido' }, { status: 405 });
@@ -258,6 +296,24 @@ Deno.serve(async (req) => {
         };
 
         console.log(`[processPostSaleActions] Lifecycle OK — OT: ${referencia_ot_id}, ${estadoActual} → ${estadoDestino}`);
+
+        // ── WF-004A: resolver WorkflowGate COMMERCIAL_AUTHORIZATION ──────────
+        // Tras desbloqueo exitoso de revisión, resolver gates PENDING de la OT.
+        if (tipo_concepto === 'revision_diagnostico') {
+          try {
+            const resolvedGates = await resolvePendingGates(base44, {
+              orgId,
+              subjectId: referencia_ot_id,
+              saleId,
+              ventaTotal: total,
+              userId: created_by_user_id || user.id,
+            });
+            resultado.workflow_gates_resolved = resolvedGates;
+          } catch (gateErr) {
+            console.warn(`[processPostSaleActions] WorkflowGate resolution (non-critical): ${gateErr.message}`);
+            resultado.workflow_gates_resolved = [];
+          }
+        }
 
       } catch (transitionError) {
         // Fallos de lifecycle NO deben romper el resultado de la venta

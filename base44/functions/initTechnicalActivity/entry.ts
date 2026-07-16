@@ -35,6 +35,42 @@ const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
 const ROLES_ADMIN = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'];
 
+// ── WF-004A: WorkflowGate constants ──────────────────────────────────────────
+// Vertical slice TechRepairPro: wait_reason=COMMERCIAL_AUTHORIZATION, provider_key=COMMERCE_GATEWAY
+const GATE_SUBJECT_TYPE = 'OrdenTrabajo';
+const GATE_WAIT_REASON = 'COMMERCIAL_AUTHORIZATION';
+const GATE_PROVIDER_KEY = 'COMMERCE_GATEWAY';
+
+function buildCorrelationKey(subjectType, subjectId, waitReason) {
+  return `${subjectType}:${subjectId}:${waitReason}`;
+}
+
+// Idempotente: crea o reutiliza un gate PENDING para (subject, reason).
+// Retorna el gate existente/creado. No lanza si ya existe (best-effort).
+async function ensurePendingGate(base44, { orgId, subjectId, userId }) {
+  const correlationKey = buildCorrelationKey(GATE_SUBJECT_TYPE, subjectId, GATE_WAIT_REASON);
+  const existing = await base44.asServiceRole.entities.WorkflowGate.filter(
+    { correlation_key: correlationKey, status: 'PENDING' }, 5
+  );
+  if (existing && existing.length > 0) {
+    return { gate: existing[0], created: false };
+  }
+  const gate = await base44.asServiceRole.entities.WorkflowGate.create({
+    organization_id: orgId,
+    subject_type: GATE_SUBJECT_TYPE,
+    subject_id: subjectId,
+    wait_reason: GATE_WAIT_REASON,
+    provider_key: GATE_PROVIDER_KEY,
+    status: 'PENDING',
+    correlation_key: correlationKey,
+    created_by_user_id: userId,
+    resolution_payload: null,
+    resolved_by_user_id: null,
+    resolved_at: null,
+  });
+  return { gate, created: true };
+}
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
@@ -138,11 +174,31 @@ Deno.serve(async (req) => {
       const motivo = ot.motivo_bloqueo_diagnostico || 'PENDIENTE_PAGO';
       const descripcion = MOTIVOS_DESCRIPCION[motivo] || MOTIVOS_DESCRIPCION['OTRO'];
       console.warn(`[initTechnicalActivity] BLOQUEO DIAGNÓSTICO: OT=${orden_trabajo_id}, motivo=${motivo}`);
+
+      // ── WF-004A: emitir WorkflowGate PENDING (idempotente) ─────────────────
+      // Solo para motivo PENDIENTE_PAGO (autorización comercial vía COMMERCE_GATEWAY).
+      // Otros motivos no pertenecen al vertical slice y se reportan sin gate.
+      let gateInfo = null;
+      if (motivo === 'PENDIENTE_PAGO') {
+        try {
+          const { gate, created } = await ensurePendingGate(base44, {
+            orgId,
+            subjectId: orden_trabajo_id,
+            userId: runtimeUser.id,
+          });
+          gateInfo = { gate_id: gate.id, gate_created: created };
+          console.log(`[initTechnicalActivity] WorkflowGate ${created ? 'creado' : 'reutilizado'} — id=${gate.id}, OT=${orden_trabajo_id}`);
+        } catch (gateErr) {
+          console.warn(`[initTechnicalActivity] WorkflowGate emit falló (non-critical): ${gateErr.message}`);
+        }
+      }
+
       return Response.json({
         error: `Diagnóstico bloqueado: ${descripcion}`,
         codigo: 'DIAGNOSTICO_NO_HABILITADO',
         motivo_bloqueo: motivo,
         descripcion_bloqueo: descripcion,
+        workflow_gate: gateInfo,
       }, { status: 403 });
     }
 

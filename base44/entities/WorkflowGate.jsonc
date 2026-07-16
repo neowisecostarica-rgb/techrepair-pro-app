@@ -1,0 +1,147 @@
+{
+  "name": "WorkflowGate",
+  "type": "object",
+  "description": "Entidad de orquestaci\u00f3n agn\u00f3stica al dominio. Representa una espera (gate) en un workflow, delegada a un provider externo. WF-004A \u2014 Vertical Slice TechRepairPro (wait_reason=COMMERCIAL_AUTHORIZATION, provider_key=COMMERCE_GATEWAY).",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "ID de la organizaci\u00f3n (tenant)"
+    },
+    "subject_type": {
+      "type": "string",
+      "description": "Tipo de entidad sujeta a la espera (ej: OrdenTrabajo). Referencia polim\u00f3rfica."
+    },
+    "subject_id": {
+      "type": "string",
+      "description": "ID de la entidad sujeta a la espera."
+    },
+    "wait_reason": {
+      "type": "string",
+      "description": "Raz\u00f3n expresiva de la espera (ej: COMMERCIAL_AUTHORIZATION).",
+      "enum": [
+        "COMMERCIAL_AUTHORIZATION"
+      ]
+    },
+    "provider_key": {
+      "type": "string",
+      "description": "Identificador del provider encargado de resolver la espera (ej: COMMERCE_GATEWAY).",
+      "enum": [
+        "COMMERCE_GATEWAY"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "RESOLVED",
+        "CANCELLED"
+      ],
+      "default": "PENDING",
+      "description": "Estado del gate. PENDING = espera activa; RESOLVED = provider resolvi\u00f3; CANCELLED = descartado."
+    },
+    "correlation_key": {
+      "type": "string",
+      "description": "Clave \u00fanica de unicidad: `${subject_type}:${subject_id}:${wait_reason}`. Garantiza un \u00fanico gate PENDING activo por subject+reason."
+    },
+    "resolution_payload": {
+      "type": "object",
+      "description": "Datos estructurados del resultado del provider (ej: { sale_id, venta_total, resolved_at }).",
+      "properties": {
+        "sale_id": {
+          "type": "string"
+        },
+        "venta_total": {
+          "type": "number"
+        },
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "ID del usuario que origin\u00f3 el gate."
+    },
+    "resolved_by_user_id": {
+      "type": "string",
+      "description": "ID del usuario/provider que resolvi\u00f3 el gate."
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de resoluci\u00f3n (nullable mientras PENDING)."
+    }
+  },
+  "required": [
+    "organization_id",
+    "subject_type",
+    "subject_id",
+    "wait_reason",
+    "provider_key",
+    "status",
+    "correlation_key"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.organization_id": "{{user.organization_id}}"
+        },
+        {
+          "data.organization_id": "{{user.impersonating_org_id}}"
+        },
+        {
+          "user_condition": {
+            "is_super_admin": true
+          }
+        }
+      ]
+    }
+  }
+}

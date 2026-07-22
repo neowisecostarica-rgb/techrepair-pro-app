@@ -150,27 +150,14 @@ Deno.serve(async (req) => {
       console.log(`[DIAG:reassign] *** ANTES de invoke('transitionWorkOrderStatus') — payload:`, JSON.stringify({
         orden_trabajo_id, newStatus: 'ASIGNADA', tecnico_asignado_id, tecnico_asignado_email: tecnico_asignado_email || null
       }));
-      console.log(`[DIAG:reassign] CONTEXTO: asServiceRole.functions.invoke — NO lleva user token del llamante original`);
-
-      // Construir contexto del usuario original para propagarlo a transitionWorkOrderStatus.
-      // _callingUserContext es construido exclusivamente aquí en backend a partir de fuentes verificadas.
-      const callingUserContext = {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        organization_id: orgId,
-        role: userRole,
-        is_super_admin: user.is_super_admin === true || user.data?.is_super_admin === true,
-      };
-      console.log(`[DIAG:reassign] _callingUserContext construido:`, JSON.stringify(callingUserContext, null, 2));
-
-      transitionResult = await base44.asServiceRole.functions.invoke('transitionWorkOrderStatus', {
+      // Preserve the caller session; transitionWorkOrderStatus never accepts
+      // identity or roles from a request payload.
+      transitionResult = await base44.functions.invoke('transitionWorkOrderStatus', {
         orden_trabajo_id,
         newStatus: 'ASIGNADA',
         tecnico_asignado_id,
         tecnico_asignado_email: tecnico_asignado_email || null,
         observacion: `Técnico asignado y OT movida a ASIGNADA por ${user.email}`,
-        _callingUserContext: callingUserContext,
       });
 
       // NOTA: transitionResult es un objeto Axios con referencias circulares — NO usar JSON.stringify sobre él directamente.

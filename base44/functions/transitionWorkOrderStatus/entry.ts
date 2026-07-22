@@ -42,15 +42,6 @@ function validatePayloadForTarget(targetStatus, ot, extra) {
         return 'La OT debe tener un técnico asignado para iniciar revisión';
       }
       break;
-    case 'DIAGNOSTICADA':
-      if (!ot.tecnico_asignado_id) {
-        return 'La OT debe tener un técnico asignado para marcar como diagnosticada';
-      }
-      // GUARDA DOCUMENTAL P0.2-C: Requiere DiagnosticoDocumento emitido
-      if (extra?._doc_emitido_verificado !== true) {
-        return 'DIAGNOSTICADA_SIN_DOCUMENTO';
-      }
-      break;
     case 'APROBADA':
       break;
     case 'EN_REPARACION':
@@ -73,6 +64,311 @@ function validatePayloadForTarget(targetStatus, ot, extra) {
   return null;
 }
 
+async function completeDiagnosticWorkflow({
+  base44,
+  ot,
+  orgId,
+  effectiveUser,
+  effectiveRole,
+  diagnosticoId,
+  diagnosticoResumido,
+}) {
+  const diagnosticoFilter = diagnosticoId
+    ? { id: diagnosticoId, organization_id: orgId, orden_trabajo_id: ot.id }
+    : { organization_id: orgId, orden_trabajo_id: ot.id };
+  const diagnosticos = await base44.asServiceRole.entities.DiagnosticoTecnico.filter(diagnosticoFilter, 10);
+  const diagnostico = diagnosticoId
+    ? diagnosticos?.[0]
+    : (diagnosticos?.find(d => d.bloqueado !== true) || diagnosticos?.[0]);
+
+  if (!diagnostico) {
+    return Response.json({
+      error: 'No existe un diagnóstico técnico para esta OT.',
+      code: 'DIAGNOSTICADA_SIN_DIAGNOSTICO_TECNICO',
+    }, { status: 422 });
+  }
+
+  if (effectiveRole === 'TECHNICIAN' && diagnostico.tecnico_id !== effectiveUser.id) {
+    return Response.json({
+      error: 'No autorizado: este diagnóstico pertenece a otro técnico.',
+      code: 'TECHNICIAN_OWNERSHIP_REQUIRED',
+    }, { status: 403 });
+  }
+
+  const [documentos, actividades, eventos] = await Promise.all([
+    base44.asServiceRole.entities.DiagnosticoDocumento.filter({
+      diagnostico_id: diagnostico.id,
+      organization_id: orgId,
+    }, 10),
+    base44.asServiceRole.entities.ActividadTecnica.filter({
+      organization_id: orgId,
+      orden_trabajo_id: ot.id,
+      soft_deleted: false,
+    }, 20),
+    base44.asServiceRole.entities.OTEvent.filter({
+      organization_id: orgId,
+      orden_trabajo_id: ot.id,
+      tipo: 'TRANSITION_DIAGNOSTICADA',
+    }, 5),
+  ]);
+
+  const documentoEmitido = documentos?.find(d => d.estado === 'EMITIDO' || d.estado === 'ENVIADO');
+  const todasEnProgreso = (actividades || []).filter(a => a.estado === 'en_progreso');
+  const actividadesAsignadas = (actividades || []).filter(a => a.tecnico_id === ot.tecnico_asignado_id);
+  const actividadesEnProgreso = actividadesAsignadas.filter(a => a.estado === 'en_progreso');
+  const actividadFinalizada = actividadesAsignadas.find(a => a.estado === 'finalizada');
+  const eventoExistente = eventos?.[0] || null;
+
+  // CC-002-04: un retry posterior al éxito no vuelve a mutar ni crea eventos.
+  if (ot.estado === 'DIAGNOSTICADA') {
+    const estadoFinalCoherente = diagnostico.estado === 'listo_aprobacion'
+      && diagnostico.bloqueado === true
+      && diagnostico.credito_consumido_finalizacion === true
+      && Boolean(documentoEmitido)
+      && todasEnProgreso.length === 0
+      && Boolean(actividadFinalizada)
+      && Boolean(eventoExistente);
+
+    if (!estadoFinalCoherente) {
+      return Response.json({
+        error: 'La OT figura como DIAGNOSTICADA, pero sus registros de finalización no son coherentes.',
+        code: 'DIAGNOSTICO_COMPLETION_INCONSISTENT',
+      }, { status: 409 });
+    }
+
+    return Response.json({
+      success: true,
+      idempotent: true,
+      code: 'DIAGNOSTICO_COMPLETADO',
+      orden_trabajo_id: ot.id,
+      previous_status: 'DIAGNOSTICADA',
+      new_status: 'DIAGNOSTICADA',
+      orden_trabajo: ot,
+      diagnostico,
+      actividad: actividadFinalizada,
+      documento: documentoEmitido,
+    });
+  }
+
+  if (ot.estado !== 'EN_REVISION') {
+    return Response.json({
+      error: `La OT debe estar en EN_REVISION para completar el diagnóstico. Estado actual: ${ot.estado}.`,
+      code: 'ESTADO_OT_INVALIDO_DIAGNOSTICO',
+    }, { status: 422 });
+  }
+
+  if (diagnostico.bloqueado === true) {
+    return Response.json({
+      error: 'El diagnóstico técnico ya está bloqueado y no puede completarse nuevamente.',
+      code: 'DIAGNOSTICO_TECNICO_NO_EDITABLE',
+    }, { status: 409 });
+  }
+
+  const diagnosticoCompleto = diagnostico.estado === 'listo_aprobacion'
+    && Boolean(diagnostico.tipo_intervencion)
+    && Boolean(diagnostico.trabajo_recomendado?.trim())
+    && Number(diagnostico.tiempo_estimado_horas) > 0;
+  if (!diagnosticoCompleto) {
+    return Response.json({
+      error: 'El diagnóstico técnico está incompleto. Debe estar listo para aprobación e incluir intervención, trabajo recomendado y tiempo estimado.',
+      code: 'DIAGNOSTICO_TECNICO_INCOMPLETO',
+    }, { status: 422 });
+  }
+
+  if (!documentoEmitido) {
+    return Response.json({
+      error: 'Se requiere un Documento de Diagnóstico en estado EMITIDO o ENVIADO antes de completar el diagnóstico.',
+      code: 'DIAGNOSTICADA_SIN_DOCUMENTO_EMITIDO',
+    }, { status: 422 });
+  }
+
+  if (eventoExistente) {
+    return Response.json({
+      error: 'Existe un evento de diagnóstico completado para una OT que aún está en revisión.',
+      code: 'DIAGNOSTICO_COMPLETION_INCONSISTENT',
+    }, { status: 409 });
+  }
+
+  if (todasEnProgreso.some(a => a.tecnico_id !== ot.tecnico_asignado_id)) {
+    return Response.json({
+      error: 'Existe una actividad en progreso que no pertenece al técnico asignado a la OT.',
+      code: 'ACTIVIDAD_TECNICA_INCONSISTENTE',
+    }, { status: 409 });
+  }
+
+  if (actividadesEnProgreso.length === 0) {
+    if (actividadFinalizada) {
+      return Response.json({
+        error: 'La actividad técnica ya está finalizada, pero la OT continúa en revisión.',
+        code: 'ACTIVIDAD_TECNICA_YA_FINALIZADA',
+      }, { status: 409 });
+    }
+    return Response.json({
+      error: 'No existe una actividad técnica en progreso para completar.',
+      code: 'ACTIVIDAD_TECNICA_NO_ENCONTRADA',
+    }, { status: 422 });
+  }
+
+  if (actividadesEnProgreso.length > 1) {
+    return Response.json({
+      error: 'Existe más de una actividad técnica en progreso para esta OT.',
+      code: 'ACTIVIDAD_TECNICA_MULTIPLE',
+    }, { status: 409 });
+  }
+
+  const actividad = actividadesEnProgreso[0];
+  const now = new Date().toISOString();
+  const previousOT = {
+    estado: ot.estado,
+    ultima_actividad: ot.ultima_actividad || null,
+    ultima_actividad_at: ot.ultima_actividad_at || null,
+    fecha_diagnostico: ot.fecha_diagnostico || null,
+    diagnostico_resumido: ot.diagnostico_resumido || null,
+  };
+  const previousActividad = {
+    estado: actividad.estado,
+    ended_at: actividad.ended_at || null,
+    duracion_minutos: actividad.duracion_minutos ?? null,
+  };
+  const previousDiagnostico = {
+    estado: diagnostico.estado,
+    fecha_completado: diagnostico.fecha_completado || null,
+    bloqueado: diagnostico.bloqueado === true,
+    credito_consumido_finalizacion: diagnostico.credito_consumido_finalizacion === true,
+  };
+
+  let otMutada = false;
+  let actividadMutada = false;
+  let diagnosticoMutado = false;
+  let creacionEventoIntentada = false;
+
+  try {
+    const otUpdate = {
+      estado: 'DIAGNOSTICADA',
+      ultima_actividad: 'Diagnóstico técnico completado',
+      ultima_actividad_at: now,
+      fecha_diagnostico: now,
+    };
+    if (typeof diagnosticoResumido === 'string' && diagnosticoResumido.trim()) {
+      otUpdate.diagnostico_resumido = diagnosticoResumido.trim();
+    }
+    otMutada = true;
+    const updatedOT = await base44.asServiceRole.entities.OrdenTrabajo.update(ot.id, otUpdate);
+
+    actividadMutada = true;
+    const updatedActividad = await base44.asServiceRole.entities.ActividadTecnica.update(actividad.id, {
+      estado: 'finalizada',
+      ended_at: now,
+      duracion_minutos: actividad.started_at
+        ? Math.max(0, Math.round((new Date(now).getTime() - new Date(actividad.started_at).getTime()) / 60000))
+        : null,
+    });
+
+    diagnosticoMutado = true;
+    const updatedDiagnostico = await base44.asServiceRole.entities.DiagnosticoTecnico.update(diagnostico.id, {
+      estado: 'listo_aprobacion',
+      fecha_completado: now,
+      bloqueado: true,
+      credito_consumido_finalizacion: true,
+    });
+
+    // Revalidar justo antes de crear reduce duplicados en reintentos solapados.
+    // La consulta inicial sigue detectando eventos incoherentes antes de mutar.
+    const eventosAntesDeCrear = await base44.asServiceRole.entities.OTEvent.filter({
+      organization_id: orgId,
+      orden_trabajo_id: ot.id,
+      tipo: 'TRANSITION_DIAGNOSTICADA',
+    }, 1);
+    let event = eventosAntesDeCrear?.[0];
+    if (!event) {
+      creacionEventoIntentada = true;
+      event = await base44.asServiceRole.entities.OTEvent.create({
+        organization_id: orgId,
+        orden_trabajo_id: ot.id,
+        tipo: 'TRANSITION_DIAGNOSTICADA',
+        created_by_user_id: effectiveUser.id,
+        processed: false,
+        created_at: now,
+      });
+    }
+
+    return Response.json({
+      success: true,
+      idempotent: false,
+      code: 'DIAGNOSTICO_COMPLETADO',
+      orden_trabajo_id: ot.id,
+      previous_status: 'EN_REVISION',
+      new_status: 'DIAGNOSTICADA',
+      updated_at: now,
+      updated_by: effectiveUser.email,
+      updated_by_role: effectiveRole,
+      orden_trabajo: updatedOT,
+      diagnostico: updatedDiagnostico,
+      actividad: updatedActividad,
+      documento: documentoEmitido,
+      event_id: event.id,
+    });
+  } catch (mutationError) {
+    const compensationErrors = [];
+
+    // Si create confirmó por servidor pero falló la respuesta, retirar únicamente
+    // el evento identificable de este intento antes de restaurar las entidades.
+    if (creacionEventoIntentada) {
+      try {
+        const eventosDelIntento = await base44.asServiceRole.entities.OTEvent.filter({
+          organization_id: orgId,
+          orden_trabajo_id: ot.id,
+          tipo: 'TRANSITION_DIAGNOSTICADA',
+          created_by_user_id: effectiveUser.id,
+          created_at: now,
+        }, 5);
+        for (const evento of eventosDelIntento || []) {
+          await base44.asServiceRole.entities.OTEvent.delete(evento.id);
+        }
+      } catch (error) {
+        compensationErrors.push(`evento: ${error.message}`);
+      }
+    }
+
+    if (diagnosticoMutado) {
+      try {
+        await base44.asServiceRole.entities.DiagnosticoTecnico.update(diagnostico.id, previousDiagnostico);
+      } catch (error) {
+        compensationErrors.push(`diagnostico: ${error.message}`);
+      }
+    }
+    if (actividadMutada) {
+      try {
+        await base44.asServiceRole.entities.ActividadTecnica.update(actividad.id, previousActividad);
+      } catch (error) {
+        compensationErrors.push(`actividad: ${error.message}`);
+      }
+    }
+    if (otMutada) {
+      try {
+        await base44.asServiceRole.entities.OrdenTrabajo.update(ot.id, previousOT);
+      } catch (error) {
+        compensationErrors.push(`orden_trabajo: ${error.message}`);
+      }
+    }
+
+    if (compensationErrors.length > 0) {
+      return Response.json({
+        error: 'Falló la finalización del diagnóstico y una o más compensaciones no pudieron completarse.',
+        code: 'DIAGNOSTICO_COMPLETION_ROLLBACK_FAILED',
+        original_error: mutationError.message,
+        compensation_errors: compensationErrors,
+      }, { status: 500 });
+    }
+
+    return Response.json({
+      error: `No se pudo completar el diagnóstico: ${mutationError.message}`,
+      code: 'DIAGNOSTICO_COMPLETION_FAILED',
+      rolled_back: true,
+    }, { status: 500 });
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -93,9 +389,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    // ── 2. Parsear body y detectar _callingUserContext ─────────────────────────
-    // IMPORTANTE: el body se parsea ANTES de resolver identidad para poder detectar
-    // si la llamada proviene de un contexto service role (otra función de backend).
+    // ── 2. Parsear body ────────────────────────────────────────────────────────
     const body = await req.json();
     const {
       orden_trabajo_id,
@@ -103,101 +397,43 @@ Deno.serve(async (req) => {
       observacion,
       tecnico_asignado_id,
       tecnico_asignado_email,
-      _callingUserContext,
+      diagnostico_id,
+      diagnostico_resumido,
     } = body;
 
     // ── 3. Resolver identidad efectiva ────────────────────────────────────────
-    // Si _callingUserContext está presente, la llamada proviene de otra función de backend
-    // vía base44.asServiceRole.functions.invoke(). En ese caso, runtimeUser es el service role
-    // y _callingUserContext contiene la identidad real del usuario que inició la acción.
-    // Si NO está presente, la llamada es directa desde frontend: usar runtimeUser y su UserAccount.
+    // El request body nunca es una fuente confiable de identidad. Las llamadas
+    // internas deben conservar el contexto de la sesión original; esta función
+    // resuelve siempre organización y rol desde runtimeUser/UserAccount.
     let effectiveUser;
     let orgId;
     let effectiveRole;
     let isSuperAdmin;
 
-    if (_callingUserContext) {
-      // ── Rama A: Invocación desde otra función de backend (service role) ──────
-      console.log(`[DIAG:transition] _callingUserContext DETECTADO — usando identidad del llamante original`);
-      console.log(`[DIAG:transition] _callingUserContext:`, JSON.stringify(_callingUserContext, null, 2));
-
-      effectiveUser  = _callingUserContext;
-      orgId          = _callingUserContext.organization_id;
-      effectiveRole  = _callingUserContext.role;
-      isSuperAdmin   = _callingUserContext.is_super_admin === true;
-
-      if (!orgId) {
-        console.error(`[DIAG:transition] *** 403: _callingUserContext.organization_id ausente ***`);
-        return Response.json({ error: 'organization_id ausente en _callingUserContext' }, { status: 403 });
-      }
-      if (!effectiveRole) {
-        console.error(`[DIAG:transition] *** 403: _callingUserContext.role ausente ***`);
-        return Response.json({ error: 'role ausente en _callingUserContext' }, { status: 403 });
-      }
-
-      console.log(`[DIAG:transition] [Rama A] effectiveUser.id=${effectiveUser.id}, orgId=${orgId}, effectiveRole=${effectiveRole}, isSuperAdmin=${isSuperAdmin}`);
-
+    isSuperAdmin = runtimeUser.is_super_admin === true || runtimeUser.data?.is_super_admin === true;
+    if (isSuperAdmin) {
+      orgId = runtimeUser.impersonating_org_id || runtimeUser.organization_id;
+      effectiveRole = 'SUPER_ADMIN';
+      effectiveUser = runtimeUser;
     } else {
-      // ── Rama B: Invocación directa desde frontend — usar UserAccount como SOT ──
-      // runtimeUser se usa ÚNICAMENTE para identificar al usuario (id, email).
-      // organization_id, role y branch_id se resuelven SIEMPRE desde UserAccount.
-      console.log(`[DIAG:transition] Sin _callingUserContext — resolviendo identidad desde UserAccount (SOT)`);
-
-      isSuperAdmin = runtimeUser.is_super_admin === true || runtimeUser.data?.is_super_admin === true;
-      console.log(`[DIAG:transition] isSuperAdmin:`, isSuperAdmin);
-
-      if (isSuperAdmin) {
-        // SUPER_ADMIN: usar org del token de impersonación
-        orgId = runtimeUser.impersonating_org_id || runtimeUser.organization_id;
-        effectiveRole = 'SUPER_ADMIN';
-        effectiveUser = runtimeUser;
-        console.log(`[DIAG:transition] isSuperAdmin=true — orgId desde token:`, orgId);
-      } else {
-        // USUARIO NORMAL: UserAccount es la ÚNICA fuente de verdad para orgId y role
-        // Usar hint del token (impersonating_org_id o organization_id) para seleccionar
-        // la cuenta correcta en caso de usuarios multi-org.
-        const orgHint = runtimeUser.impersonating_org_id || runtimeUser.organization_id || null;
-        console.log(`[DIAG:transition] orgHint del token (solo para selección):`, orgHint);
-
-        const userAccounts = await base44.asServiceRole.entities.UserAccount.filter({
-          user_id: runtimeUser.id,
-        }, 5);
-        console.log(`[DIAG:transition] UserAccount.filter({ user_id: '${runtimeUser?.id}' }) → count:`, userAccounts?.length);
-        console.log(`[DIAG:transition] UserAccount resultado completo:`, JSON.stringify(userAccounts, null, 2));
-
-        if (!userAccounts || userAccounts.length === 0) {
-          console.error(`[DIAG:transition] *** 403: UserAccount no encontrado — user_id=${runtimeUser?.id} ***`);
-          return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
-        }
-
-        // Seleccionar cuenta: preferir la que coincide con el hint del token, sino tomar la primera
-        let account = null;
-        if (orgHint) {
-          account = userAccounts.find(a => a.organization_id === orgHint) || userAccounts[0];
-        } else {
-          account = userAccounts[0];
-        }
-        console.log(`[DIAG:transition] UserAccount seleccionado:`, JSON.stringify(account, null, 2));
-
-        if (account.status === 'suspended') {
-          console.error(`[DIAG:transition] *** 403: cuenta suspendida — user_id=${runtimeUser?.id} ***`);
-          return Response.json({ error: 'Cuenta suspendida' }, { status: 403 });
-        }
-
-        orgId = account.organization_id;
-        effectiveRole = account.role;
-        effectiveUser = runtimeUser;
-
-        console.log(`[DIAG:transition] orgId FINAL (desde UserAccount):`, orgId);
-        console.log(`[DIAG:transition] effectiveRole FINAL (desde UserAccount):`, effectiveRole);
+      const orgHint = runtimeUser.impersonating_org_id || runtimeUser.organization_id || null;
+      const userAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: runtimeUser.id }, 5);
+      if (!userAccounts || userAccounts.length === 0) {
+        return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
       }
-
-      if (!orgId) {
-        console.error(`[DIAG:transition] *** 403: orgId no resuelto tras consulta UserAccount ***`);
-        return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
+      const account = orgHint
+        ? (userAccounts.find(a => a.organization_id === orgHint) || userAccounts[0])
+        : userAccounts[0];
+      if (account.status !== 'active') {
+        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
       }
+      orgId = account.organization_id;
+      effectiveRole = account.role;
+      effectiveUser = runtimeUser;
+    }
 
-      console.log(`[DIAG:transition] [Rama B] effectiveUser.id=${effectiveUser?.id}, orgId=${orgId}, effectiveRole=${effectiveRole}, isSuperAdmin=${isSuperAdmin}`);
+    if (!orgId) {
+      return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
     }
 
     if (!orden_trabajo_id) {
@@ -224,6 +460,38 @@ Deno.serve(async (req) => {
 
     const ot = ordenes[0];
     const currentStatus = ot.estado;
+
+    // CC-001-01: un técnico solo puede operar la OT que tiene asignada.
+    // Esta guarda se ejecuta antes de cualquier mutación, evento o side-effect.
+    if (effectiveRole === 'TECHNICIAN' && runtimeUser.id !== ot.tecnico_asignado_id) {
+      return Response.json({
+        error: 'No autorizado: esta Orden de Trabajo está asignada a otro técnico.',
+        code: 'TECHNICIAN_OWNERSHIP_REQUIRED',
+      }, { status: 403 });
+    }
+
+    // CC-002: la finalización diagnóstica es una operación compuesta propiedad
+    // del backend. Sale antes del pipeline genérico para evitar dobles mutaciones.
+    if (newStatus === 'DIAGNOSTICADA') {
+      const rolesPermitidos = AUTHORIZED_ROLES_FOR_TARGET.DIAGNOSTICADA;
+      if (!isSuperAdmin && !rolesPermitidos.includes(effectiveRole)) {
+        return Response.json({
+          error: `Tu rol "${effectiveRole}" no tiene permiso para completar el diagnóstico.`,
+          required_roles: rolesPermitidos,
+          user_role: effectiveRole,
+        }, { status: 403 });
+      }
+
+      return completeDiagnosticWorkflow({
+        base44,
+        ot,
+        orgId,
+        effectiveUser,
+        effectiveRole,
+        diagnosticoId: diagnostico_id,
+        diagnosticoResumido: diagnostico_resumido,
+      });
+    }
 
     // ── 6. Bloqueo de estados irreversibles ───────────────────────────────────
     if (IRREVERSIBLE_STATES.includes(currentStatus)) {
@@ -260,36 +528,6 @@ Deno.serve(async (req) => {
 
     // ── 9. Validar datos mínimos requeridos ───────────────────────────────────
     const extra = { tecnico_asignado_id, tecnico_asignado_email };
-
-    // ── GUARDA P0.2-C: DIAGNOSTICADA requiere DiagnosticoDocumento emitido ───
-    if (newStatus === 'DIAGNOSTICADA') {
-      // Buscar DiagnosticoTecnico activo de esta OT
-      const diagActivos = await base44.asServiceRole.entities.DiagnosticoTecnico.filter({
-        orden_trabajo_id: orden_trabajo_id,
-        bloqueado: false,
-      }, 1);
-      const diagId = diagActivos?.[0]?.id;
-
-      if (!diagId) {
-        return Response.json({
-          error: 'No existe un diagnóstico técnico activo para esta OT. El técnico debe completar el diagnóstico antes de continuar.',
-          code: 'DIAGNOSTICADA_SIN_DIAGNOSTICO_TECNICO',
-        }, { status: 422 });
-      }
-
-      const docs = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
-        diagnostico_id: diagId,
-      }, 5);
-      const docEmitido = docs?.find(d => d.estado === 'EMITIDO' || d.estado === 'ENVIADO');
-
-      if (!docEmitido) {
-        return Response.json({
-          error: 'Se requiere emitir el Documento de Diagnóstico antes de marcar la OT como DIAGNOSTICADA. Ve al Expediente → Panel Operativo → Emitir Documento.',
-          code: 'DIAGNOSTICADA_SIN_DOCUMENTO_EMITIDO',
-        }, { status: 422 });
-      }
-      extra._doc_emitido_verificado = true;
-    }
 
     // ── GUARDA P0.2-C: EN_REPARACION requiere aprobación del cliente ──────────
     if (newStatus === 'EN_REPARACION') {
@@ -356,9 +594,6 @@ Deno.serve(async (req) => {
     if (newStatus === 'EN_REVISION') {
       updatePayload.fecha_revision_inicio = updatePayload.fecha_revision_inicio || now;
     }
-    if (newStatus === 'DIAGNOSTICADA') {
-      updatePayload.fecha_diagnostico = now;
-    }
     if (newStatus === 'FINALIZADA') {
       updatePayload.fecha_cierre = now;
     }
@@ -366,39 +601,11 @@ Deno.serve(async (req) => {
     // ── 11. Ejecutar actualización ────────────────────────────────────────────
     const updatedOT = await base44.asServiceRole.entities.OrdenTrabajo.update(orden_trabajo_id, updatePayload);
 
-    // ── 11.5 Cierre de ActividadTecnica (efecto secundario de DIAGNOSTICADA) ──
-    // El evento oficial que finaliza el trabajo técnico es la transición exitosa a DIAGNOSTICADA.
-    // El motor de transición es el único propietario de este cierre (SRP).
-    if (newStatus === 'DIAGNOSTICADA') {
-      try {
-        const actividadesAbiertas = await base44.asServiceRole.entities.ActividadTecnica.filter({
-          orden_trabajo_id: orden_trabajo_id,
-          estado: 'abierto',
-        }, 10);
-
-        if (actividadesAbiertas && actividadesAbiertas.length > 0) {
-          for (const actividad of actividadesAbiertas) {
-            await base44.asServiceRole.entities.ActividadTecnica.update(actividad.id, {
-              estado: 'cerrado',
-              fecha_fin: now,
-            });
-          }
-          console.log(`[transitionWorkOrderStatus] ActividadTecnica cerrada(s): ${actividadesAbiertas.length} — OT: ${orden_trabajo_id}`);
-        } else {
-          console.log(`[transitionWorkOrderStatus] Sin actividades abiertas para cerrar — OT: ${orden_trabajo_id}`);
-        }
-      } catch (actErr) {
-        // Non-blocking: el cierre de actividad no puede revertir la transición ya exitosa
-        console.warn(`[transitionWorkOrderStatus] Fallo al cerrar ActividadTecnica (non-blocking): ${actErr.message}`);
-      }
-    }
-
     // ── 12. OTEvent ───────────────────────────────────────────────────────────
     const CANONICAL_EVENTS = ['FINALIZADA', 'ENTREGADA', 'CANCELADA'];
     const TRANSITION_EVENT_MAP = {
       ASIGNADA:      'TRANSITION_ASIGNADA',
       EN_REVISION:   'TRANSITION_EN_REVISION',
-      DIAGNOSTICADA: 'TRANSITION_DIAGNOSTICADA',
       COTIZADA:      'TRANSITION_COTIZADA',
       APROBADA:      'TRANSITION_APROBADA',
       EN_REPARACION: 'TRANSITION_EN_REPARACION',

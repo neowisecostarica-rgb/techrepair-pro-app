@@ -13,7 +13,6 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { COMPONENTES_DISPONIBLES, PRUEBAS_POR_COMPONENTE } from './pruebasPorComponente';
 import { generarResumenTecnico } from './generarResumenTecnico';
-import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 const TIPOS_INTERVENCION = {
   diagnostico_tecnico: 'Diagnóstico técnico completo',
@@ -151,116 +150,105 @@ export default function WizardDiagnosticoTecnico({
 
     setSaving(true);
     try {
-      const dataCompleta = {
+      // CC-002: el wizard solo persiste el contenido editable/listo.
+      // El backend es el único propietario del bloqueo, cierre de actividad y OT.
+      const dataPreparada = {
         organization_id: effectiveOrgId,
         orden_trabajo_id: ordenTrabajo.id,
         tecnico_id: tecnicoId,
         estado: 'listo_aprobacion',
         fecha_inicio: diagnostico?.fecha_inicio || new Date().toISOString(),
-        fecha_completado: new Date().toISOString(),
-        bloqueado: true,
-        credito_consumido_finalizacion: true,
+        bloqueado: false,
+        credito_consumido_finalizacion: false,
         ...formData
       };
 
-      let diagnosticoFinal;
+      let diagnosticoPreparado;
       if (diagnostico) {
-        diagnosticoFinal = await base44.entities.DiagnosticoTecnico.update(diagnostico.id, dataCompleta);
+        diagnosticoPreparado = await base44.entities.DiagnosticoTecnico.update(diagnostico.id, dataPreparada);
       } else {
-        diagnosticoFinal = await base44.entities.DiagnosticoTecnico.create(dataCompleta);
+        diagnosticoPreparado = await base44.entities.DiagnosticoTecnico.create(dataPreparada);
+      }
+      setDiagnostico(diagnosticoPreparado);
+      const diagnosticoPreparadoId = diagnosticoPreparado?.id || diagnostico?.id;
+      if (!diagnosticoPreparadoId) {
+        throw new Error('No se pudo resolver el diagnóstico técnico preparado');
       }
 
       // Generar resumen técnico
-      const resumenTecnico = generarResumenTecnico(dataCompleta);
+      const resumenTecnico = generarResumenTecnico(dataPreparada);
 
-      // Actualizar OT con resumen (sin mutar estado directamente)
-      await base44.entities.OrdenTrabajo.update(ordenTrabajo.id, {
-        diagnostico_resumido: resumenTecnico
+      const response = await base44.functions.invoke('transitionWorkOrderStatus', {
+        orden_trabajo_id: ordenTrabajo.id,
+        newStatus: 'DIAGNOSTICADA',
+        diagnostico_id: diagnosticoPreparadoId,
+        diagnostico_resumido: resumenTecnico,
+        observacion: 'Diagnóstico técnico completado',
       });
+      const completion = response?.data ?? response;
+      if (!completion?.success) {
+        const completionError = new Error(completion?.error || 'No se pudo completar el diagnóstico');
+        completionError.code = completion?.code;
+        throw completionError;
+      }
+      const diagnosticoFinal = completion.diagnostico || diagnosticoPreparado;
+      setDiagnostico(diagnosticoFinal);
 
-      // GAP-001 FIX: Cerrar actividad técnica activa antes de transicionar la OT.
-      // Behavioral Contract: Si no existe actividad activa, la operación es silenciosa (no falla).
+      // La cotización es un side-effect posterior y no redefine el resultado
+      // autoritativo de la finalización diagnóstica.
       try {
-        const actividadesAbiertas = await base44.entities.ActividadTecnica.filter({
-          orden_trabajo_id: ordenTrabajo.id,
-          tecnico_id: tecnicoId,
-          estado: 'activa',
-        });
-        if (actividadesAbiertas.length > 0) {
-          const actividadActiva = actividadesAbiertas[0];
-          const ahora = new Date().toISOString();
-          const duracion = actividadActiva.started_at
-            ? Math.round((new Date(ahora) - new Date(actividadActiva.started_at)) / 60000)
-            : null;
-          await base44.entities.ActividadTecnica.update(actividadActiva.id, {
-            estado: 'finalizada',
-            ended_at: ahora,
-            ...(duracion !== null ? { duracion_minutos: duracion } : {}),
+        const itemsCotizacion = [];
+
+        // Agregar repuestos
+        if (dataPreparada.repuestos_requeridos && dataPreparada.repuestos_requeridos.length > 0) {
+          dataPreparada.repuestos_requeridos.forEach(rep => {
+            itemsCotizacion.push({
+              tipo: 'repuesto',
+              descripcion: rep.descripcion,
+              cantidad: rep.cantidad,
+              precio_unitario: 0, // Por definir por ORG_ADMIN/SALES
+              subtotal: 0
+            });
           });
         }
-      } catch (actError) {
-        // Fallo no-bloqueante: loguear pero no interrumpir la transición de OT
-        console.warn('GAP-001: Error al cerrar ActividadTecnica (no bloqueante):', actError);
-      }
 
-      // FASE 1: Transición centralizada de estado
-      await transicionarEstadoOT(ordenTrabajo.id, 'DIAGNOSTICADA', {
-        userId: tecnicoId,
-        userEmail: 'tecnico',
-        organizationId: effectiveOrgId,
-        motivo: 'Diagnóstico técnico completado'
-      });
-
-      // Crear cotización automática en borrador
-      const itemsCotizacion = [];
-
-      // Agregar repuestos
-      if (dataCompleta.repuestos_requeridos && dataCompleta.repuestos_requeridos.length > 0) {
-        dataCompleta.repuestos_requeridos.forEach(rep => {
+        // Agregar mano de obra (si hay tiempo estimado)
+        if (dataPreparada.tiempo_estimado_horas > 0) {
           itemsCotizacion.push({
-            tipo: 'repuesto',
-            descripcion: rep.descripcion,
-            cantidad: rep.cantidad,
+            tipo: 'mano_obra',
+            descripcion: 'Mano de obra técnica',
+            cantidad: dataPreparada.tiempo_estimado_horas,
             precio_unitario: 0, // Por definir por ORG_ADMIN/SALES
             subtotal: 0
           });
+        }
+
+        // Calcular versión (contar cotizaciones anteriores)
+        const cotizacionesAnteriores = await base44.entities.Cotizacion.filter({
+          organization_id: effectiveOrgId,
+          orden_trabajo_id: ordenTrabajo.id
         });
-      }
+        const version = `v1.${cotizacionesAnteriores.length}`;
 
-      // Agregar mano de obra (si hay tiempo estimado)
-      if (dataCompleta.tiempo_estimado_horas > 0) {
-        itemsCotizacion.push({
-          tipo: 'mano_obra',
-          descripcion: 'Mano de obra técnica',
-          cantidad: dataCompleta.tiempo_estimado_horas,
-          precio_unitario: 0, // Por definir por ORG_ADMIN/SALES
-          subtotal: 0
+        // Crear cotización borrador
+        await base44.entities.Cotizacion.create({
+          organization_id: effectiveOrgId,
+          orden_trabajo_id: ordenTrabajo.id,
+          diagnostico_tecnico_id: diagnosticoFinal.id || diagnostico?.id,
+          cliente_id: ordenTrabajo.cliente_id,
+          vendedor_id: tecnicoId,
+          vendedor_nombre: 'Sistema',
+          version: version,
+          items: itemsCotizacion,
+          subtotal: 0,
+          descuento_total: 0,
+          impuesto: 0,
+          total: 0,
+          estado: 'borrador'
         });
+      } catch (quoteError) {
+        console.warn('Diagnóstico completado; no se pudo crear la cotización borrador:', quoteError);
       }
-
-      // Calcular versión (contar cotizaciones anteriores)
-      const cotizacionesAnteriores = await base44.entities.Cotizacion.filter({
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id
-      });
-      const version = `v1.${cotizacionesAnteriores.length}`;
-
-      // Crear cotización borrador
-      await base44.entities.Cotizacion.create({
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id,
-        diagnostico_tecnico_id: diagnosticoFinal.id || diagnostico?.id,
-        cliente_id: ordenTrabajo.cliente_id,
-        vendedor_id: tecnicoId,
-        vendedor_nombre: 'Sistema',
-        version: version,
-        items: itemsCotizacion,
-        subtotal: 0,
-        descuento_total: 0,
-        impuesto: 0,
-        total: 0,
-        estado: 'borrador'
-      });
 
       console.log('FINALIZAR_DIAG_DONE', { 
         otId: ordenTrabajo.id, 

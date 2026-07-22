@@ -19,6 +19,7 @@ INVARIANTES:
 
 const VALID_ATTENTION_STATUSES = ['ACTIVO', 'PAUSADO', 'ESPERANDO'];
 const VALID_PAUSE_REASONS = ['esperando_repuesto', 'esperando_cliente', 'interrupcion', 'otro'];
+const AUTHORIZED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'];
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -61,21 +62,53 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // ── 4. Resolver organization_id — PATRÓN OFICIAL CONSOLIDADO ────────────────
-    let orgId = user.impersonating_org_id || user.organization_id;
-    if (!orgId && user.id) {
-      const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 1);
-      if (accounts && accounts.length > 0) orgId = accounts[0].organization_id || null;
+    // ── 4. Resolver cuenta, rol y organización desde contexto autorizado ────────
+    const isSuperAdmin = user.is_super_admin === true || user.data?.is_super_admin === true;
+    let orgId;
+    let effectiveRole;
+
+    if (isSuperAdmin) {
+      orgId = user.impersonating_org_id || user.organization_id;
+      effectiveRole = 'SUPER_ADMIN';
+    } else {
+      const orgHint = user.impersonating_org_id || user.organization_id || null;
+      const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 5);
+      if (!accounts || accounts.length === 0) {
+        return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
+      }
+
+      const account = orgHint
+        ? accounts.find(a => a.organization_id === orgHint)
+        : accounts[0];
+      if (!account) {
+        return Response.json({ error: 'No existe una cuenta autorizada para la organización activa' }, { status: 403 });
+      }
+      if (account.status !== 'active') {
+        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
+      }
+
+      orgId = account.organization_id;
+      effectiveRole = account.role;
     }
+
     if (!orgId) {
       return Response.json({ error: 'organization_id no disponible en sesión' }, { status: 403 });
     }
-    // ── FIN PATRÓN OFICIAL ────────────────────────────────────────────────────
+
+    if (!isSuperAdmin && !AUTHORIZED_ROLES.includes(effectiveRole)) {
+      return Response.json({
+        error: `El rol "${effectiveRole}" no está autorizado para modificar el estado de atención.`,
+        code: 'ATTENTION_STATUS_ROLE_FORBIDDEN',
+      }, { status: 403 });
+    }
 
     // ── 5. Cargar OrdenTrabajo y validar ownership ──────────────────────────────
     let ot;
     try {
-      const ots = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+      const ots = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+        id: orden_trabajo_id,
+        organization_id: orgId,
+      }, 1);
       ot = Array.isArray(ots) && ots.length > 0 ? ots[0] : null;
     } catch (err) {
       return Response.json({ error: `Error al cargar OrdenTrabajo: ${err.message}` }, { status: 500 });
@@ -85,8 +118,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: `OrdenTrabajo no encontrada: ${orden_trabajo_id}` }, { status: 404 });
     }
 
-    if (ot.organization_id !== orgId) {
-      return Response.json({ error: 'No autorizado: esta OT pertenece a otra organización' }, { status: 403 });
+    if (effectiveRole === 'TECHNICIAN' && user.id !== ot.tecnico_asignado_id) {
+      return Response.json({
+        error: 'No autorizado: esta Orden de Trabajo está asignada a otro técnico.',
+        code: 'TECHNICIAN_OWNERSHIP_REQUIRED',
+      }, { status: 403 });
     }
 
     // ── 6. Capturar estado anterior para el evento ──────────────────────────────

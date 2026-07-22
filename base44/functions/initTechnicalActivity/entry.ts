@@ -6,7 +6,7 @@
  *   Punto único de entrada para iniciar una actividad técnica sobre una OT.
  *   El frontend realiza una única solicitud; el backend valida y persiste.
  *
- * ORDEN DE PERSISTENCIA (no atómica — ver limitaciones):
+ * ORDEN DE PERSISTENCIA (con compensación ante fallo de transición):
  *   1. Crear ActividadTecnica (en_progreso)
  *   2. Actualizar OrdenTrabajo.estado → EN_REVISION (vía transitionWorkOrderStatus)
  *      → transitionWorkOrderStatus crea OTEvent TRANSITION_EN_REVISION internamente
@@ -24,7 +24,7 @@
  *   - No existen transacciones multidocumento en Base44
  *   - No existe bloqueo concurrente garantizado
  *   - La consulta previa solo ofrece idempotencia secuencial
- *   - Las compensaciones son best-effort; no se borran actividades automáticamente
+ *   - Si la transición falla, la actividad recién creada se elimina como rollback
  *   - No existe idempotency_key
  * ═══════════════════════════════════════════════════════════════════════════
  */
@@ -34,6 +34,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
 const ROLES_ADMIN = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'];
+const ROLES_INICIO_TECNICO = [...ROLES_ADMIN, 'TECHNICIAN'];
 
 // ── WF-004A: WorkflowGate constants ──────────────────────────────────────────
 // Vertical slice TechRepairPro: wait_reason=COMMERCIAL_AUTHORIZATION, provider_key=COMMERCE_GATEWAY
@@ -124,8 +125,8 @@ Deno.serve(async (req) => {
         ? (userAccounts.find(a => a.organization_id === orgHint) || userAccounts[0])
         : userAccounts[0];
 
-      if (account.status === 'suspended') {
-        return Response.json({ error: 'Cuenta suspendida' }, { status: 403 });
+      if (account.status !== 'active') {
+        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
       }
 
       orgId = account.organization_id;
@@ -135,6 +136,15 @@ Deno.serve(async (req) => {
 
     if (!orgId) {
       return Response.json({ error: 'organization_id no resuelto' }, { status: 403 });
+    }
+
+    // CC-001-02: no tratar todo rol no administrativo como técnico.
+    // Rechazar antes de consultar reglas con side-effects o crear registros.
+    if (!ROLES_INICIO_TECNICO.includes(effectiveRole)) {
+      return Response.json({
+        error: `El rol "${effectiveRole}" no está autorizado para iniciar actividad técnica.`,
+        codigo: 'ROL_TECNICO_NO_AUTORIZADO',
+      }, { status: 403 });
     }
 
     console.log(`[initTechnicalActivity] orgId=${orgId}, role=${effectiveRole}, tecnico_id=${tecnico_id}, OT=${orden_trabajo_id}`);
@@ -218,8 +228,9 @@ Deno.serve(async (req) => {
       efectiveTecnicoId = ot.tecnico_asignado_id;
       console.log(`[initTechnicalActivity] Admin delega al técnico asignado ${efectiveTecnicoId}`);
     } else {
-      // TECHNICIAN debe ser el técnico asignado a la OT
-      if (tecnico_id !== ot.tecnico_asignado_id) {
+      // TECHNICIAN debe ser el usuario autenticado y el técnico asignado a la OT.
+      // El tecnico_id del payload no es una fuente de identidad confiable.
+      if (runtimeUser.id !== ot.tecnico_asignado_id || tecnico_id !== runtimeUser.id) {
         return Response.json({
           error: 'No estás asignado a esta Orden de Trabajo. No puedes iniciar el trabajo técnico.',
           codigo: 'TECNICO_INCORRECTO',
@@ -297,7 +308,7 @@ Deno.serve(async (req) => {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // PERSISTENCIA — orden autorizado, no atómico
+    // PERSISTENCIA — orden autorizado con compensación
     // ══════════════════════════════════════════════════════════════════════════
 
     const estadoOTPrevio = estadoActualOT;
@@ -341,30 +352,25 @@ Deno.serve(async (req) => {
     // transitionWorkOrderStatus valida la transición, actualiza la OT y crea
     // el OTEvent TRANSITION_EN_REVISION internamente (satisface el paso de OTEvent).
     if (necesitaTransicion) {
-      const callingUserContext = {
-        id: runtimeUser.id,
-        email: runtimeUser.email,
-        organization_id: orgId,
-        role: effectiveRole,
-        is_super_admin: isSuperAdmin,
-      };
-
       let transitionOk = false;
       let transitionErrorMsg = null;
 
       try {
-        const transitionRes = await base44.asServiceRole.functions.invoke('transitionWorkOrderStatus', {
+        // Preserve the request user's credential. The transition engine resolves
+        // role and organization from that trusted runtime identity.
+        const transitionRes = await base44.functions.invoke('transitionWorkOrderStatus', {
           orden_trabajo_id,
           newStatus: 'EN_REVISION',
           observacion: `Inicio de revisión técnica — actividad ${tipo_actividad}`,
-          _callingUserContext: callingUserContext,
         });
 
-        if (transitionRes && transitionRes.status === 200) {
+        const transitionData = transitionRes?.data ?? transitionRes;
+        const transitionStatusOk = transitionRes?.status === undefined || transitionRes.status === 200;
+        if (transitionStatusOk && transitionData?.success === true) {
           transitionOk = true;
           console.log(`[initTechnicalActivity] Transición exitosa — OT ahora en EN_REVISION`);
         } else {
-          transitionErrorMsg = transitionRes?.data?.error || 'Error desconocido en transición';
+          transitionErrorMsg = transitionData?.error || 'Error desconocido en transición';
           console.error(`[initTechnicalActivity] transitionWorkOrderStatus falló: ${transitionErrorMsg}`);
         }
       } catch (transErr) {
@@ -373,19 +379,28 @@ Deno.serve(async (req) => {
       }
 
       if (!transitionOk) {
-        // ESTADO RESIDUAL: Actividad creada, OT NO transicionada.
-        // No borrar la actividad (no hay operación segura confirmada).
-        console.error(`[initTechnicalActivity] ESTADO RESIDUAL — actividad=${nuevaActividad.id}, OT sigue en ${estadoOTPrevio}`);
+        // CC-001-03: compensar la creación para que la operación sea atómica
+        // desde la perspectiva del workflow. La transición fallida no muta la OT.
+        try {
+          await base44.asServiceRole.entities.ActividadTecnica.delete(nuevaActividad.id);
+          console.warn(`[initTechnicalActivity] ROLLBACK completado — actividad=${nuevaActividad.id}`);
+        } catch (rollbackErr) {
+          console.error(`[initTechnicalActivity] ROLLBACK FALLÓ — actividad=${nuevaActividad.id}: ${rollbackErr.message}`);
+          return Response.json({
+            error: `No se pudo iniciar la revisión y falló la compensación de la actividad: ${rollbackErr.message}`,
+            codigo: 'ROLLBACK_ACTIVIDAD_FAILED',
+            paso_fallido: 'rollback_actividad',
+          }, { status: 500 });
+        }
+
         return Response.json({
           error: `No se pudo iniciar la revisión: ${transitionErrorMsg}`,
           codigo: 'TRANSITION_FAILED',
           paso_fallido: 'transicion_ot',
-          estado_residual: {
-            actividad_creada: true,
-            actividad_id: nuevaActividad.id,
+          rollback: {
+            actividad_eliminada: true,
             ot_transicionada: false,
             estado_ot_actual: estadoOTPrevio,
-            nota: 'La actividad fue creada pero la OT no transicionó. Requiere corrección controlada.',
           },
         }, { status: 500 });
       }
@@ -398,7 +413,7 @@ Deno.serve(async (req) => {
     // No revertir: la trazabilidad de tiempo ya quedó registrada.
     let atencionOk = true;
     try {
-      const attentionRes = await base44.asServiceRole.functions.invoke('updateWorkOrderAttentionStatus', {
+      const attentionRes = await base44.functions.invoke('updateWorkOrderAttentionStatus', {
         orden_trabajo_id,
         estado_atencion: 'ACTIVO',
         observaciones: `Actividad técnica iniciada: ${tipo_actividad}${subtipo ? ` — ${subtipo}` : ''}`,

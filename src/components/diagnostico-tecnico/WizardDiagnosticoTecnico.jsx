@@ -12,7 +12,6 @@ import { Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, FileText
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { COMPONENTES_DISPONIBLES, PRUEBAS_POR_COMPONENTE } from './pruebasPorComponente';
-import { generarResumenTecnico } from './generarResumenTecnico';
 
 const TIPOS_INTERVENCION = {
   diagnostico_tecnico: 'Diagnóstico técnico completo',
@@ -129,10 +128,10 @@ export default function WizardDiagnosticoTecnico({
     }
   };
 
-  const completarDiagnostico = async () => {
-    // P0 IDEMPOTENCIA: Guard - si ya se consumió crédito, no reejecutar
+  const prepararDiagnostico = async () => {
+    // Un diagnóstico finalizado ya no puede volver a prepararse.
     if (diagnostico?.credito_consumido_finalizacion === true) {
-      console.warn('FINALIZAR_DIAG_SKIP', { 
+      console.warn('PREPARAR_DIAG_SKIP', {
         otId: ordenTrabajo.id, 
         diagnosticoId: diagnostico.id, 
         motivo: 'credito_ya_consumido',
@@ -142,7 +141,7 @@ export default function WizardDiagnosticoTecnico({
       return;
     }
 
-    console.log('FINALIZAR_DIAG_CLICK', { 
+    console.log('PREPARAR_DIAG_CLICK', {
       otId: ordenTrabajo.id, 
       diagnosticoId: diagnostico?.id, 
       ts: new Date().toISOString() 
@@ -175,94 +174,20 @@ export default function WizardDiagnosticoTecnico({
         throw new Error('No se pudo resolver el diagnóstico técnico preparado');
       }
 
-      // Generar resumen técnico
-      const resumenTecnico = generarResumenTecnico(dataPreparada);
-
-      const response = await base44.functions.invoke('transitionWorkOrderStatus', {
-        orden_trabajo_id: ordenTrabajo.id,
-        newStatus: 'DIAGNOSTICADA',
-        diagnostico_id: diagnosticoPreparadoId,
-        diagnostico_resumido: resumenTecnico,
-        observacion: 'Diagnóstico técnico completado',
-      });
-      const completion = response?.data ?? response;
-      if (!completion?.success) {
-        const completionError = new Error(completion?.error || 'No se pudo completar el diagnóstico');
-        completionError.code = completion?.code;
-        throw completionError;
-      }
-      const diagnosticoFinal = completion.diagnostico || diagnosticoPreparado;
-      setDiagnostico(diagnosticoFinal);
-
-      // La cotización es un side-effect posterior y no redefine el resultado
-      // autoritativo de la finalización diagnóstica.
-      try {
-        const itemsCotizacion = [];
-
-        // Agregar repuestos
-        if (dataPreparada.repuestos_requeridos && dataPreparada.repuestos_requeridos.length > 0) {
-          dataPreparada.repuestos_requeridos.forEach(rep => {
-            itemsCotizacion.push({
-              tipo: 'repuesto',
-              descripcion: rep.descripcion,
-              cantidad: rep.cantidad,
-              precio_unitario: 0, // Por definir por ORG_ADMIN/SALES
-              subtotal: 0
-            });
-          });
-        }
-
-        // Agregar mano de obra (si hay tiempo estimado)
-        if (dataPreparada.tiempo_estimado_horas > 0) {
-          itemsCotizacion.push({
-            tipo: 'mano_obra',
-            descripcion: 'Mano de obra técnica',
-            cantidad: dataPreparada.tiempo_estimado_horas,
-            precio_unitario: 0, // Por definir por ORG_ADMIN/SALES
-            subtotal: 0
-          });
-        }
-
-        // Calcular versión (contar cotizaciones anteriores)
-        const cotizacionesAnteriores = await base44.entities.Cotizacion.filter({
-          organization_id: effectiveOrgId,
-          orden_trabajo_id: ordenTrabajo.id
-        });
-        const version = `v1.${cotizacionesAnteriores.length}`;
-
-        // Crear cotización borrador
-        await base44.entities.Cotizacion.create({
-          organization_id: effectiveOrgId,
-          orden_trabajo_id: ordenTrabajo.id,
-          diagnostico_tecnico_id: diagnosticoFinal.id || diagnostico?.id,
-          cliente_id: ordenTrabajo.cliente_id,
-          vendedor_id: tecnicoId,
-          vendedor_nombre: 'Sistema',
-          version: version,
-          items: itemsCotizacion,
-          subtotal: 0,
-          descuento_total: 0,
-          impuesto: 0,
-          total: 0,
-          estado: 'borrador'
-        });
-      } catch (quoteError) {
-        console.warn('Diagnóstico completado; no se pudo crear la cotización borrador:', quoteError);
-      }
-
-      console.log('FINALIZAR_DIAG_DONE', { 
+      console.log('PREPARAR_DIAG_DONE', {
         otId: ordenTrabajo.id, 
-        diagnosticoId: diagnosticoFinal.id || diagnostico?.id,
+        diagnosticoId: diagnosticoPreparadoId,
         ts: new Date().toISOString() 
       });
 
-      // Notificar al componente padre (Expediente) para controlar el flujo
+      // El panel emite el documento y solo entonces solicita la finalización
+      // autoritativa al backend. No se usa un error como control de flujo.
       if (onComplete) {
-        onComplete(diagnosticoFinal || diagnostico);
+        onComplete(diagnosticoPreparado);
       }
     } catch (error) {
-      console.error('Error completando diagnóstico:', error);
-      alert('Error al completar: ' + error.message);
+      console.error('Error preparando diagnóstico:', error);
+      alert('Error al preparar: ' + error.message);
     } finally {
       setSaving(false);
     }
@@ -715,7 +640,7 @@ export default function WizardDiagnosticoTecnico({
             </Button>
           ) : (
             <Button
-              onClick={completarDiagnostico}
+              onClick={prepararDiagnostico}
               disabled={
                 saving || 
                 diagnostico?.credito_consumido_finalizacion === true || 
@@ -727,14 +652,14 @@ export default function WizardDiagnosticoTecnico({
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Completando...
+                  Preparando...
                 </>
               ) : diagnostico?.credito_consumido_finalizacion === true ? (
                 '✓ Diagnóstico ya completado'
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Listo para Aprobación
+                  Preparar para Emitir
                 </>
               )}
             </Button>

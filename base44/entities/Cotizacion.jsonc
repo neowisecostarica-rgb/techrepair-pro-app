@@ -26,6 +26,13 @@
       "type": "string",
       "description": "ID del diagn\u00f3stico t\u00e9cnico asociado"
     },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Clave deterministica para evitar duplicados en workflows backend.",
+      "rls": {
+        "write": false
+      }
+    },
     "version": {
       "type": "string",
       "description": "Versi\u00f3n de la cotizaci\u00f3n (ej: v1.0, v1.1)"

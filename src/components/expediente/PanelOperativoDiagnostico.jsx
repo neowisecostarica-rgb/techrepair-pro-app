@@ -134,8 +134,8 @@ export default function PanelOperativoDiagnostico({
     queryKey: ['panel-diag-tecnico', ot.id],
     queryFn: () => base44.entities.DiagnosticoTecnico.filter({
       orden_trabajo_id: ot.id,
-      bloqueado: false,
-    }),
+      organization_id: organizationId,
+    }, '-created_date', 20),
     enabled: !!ot.id,
     staleTime: 30_000,
   });
@@ -145,6 +145,7 @@ export default function PanelOperativoDiagnostico({
     queryKey: ['panel-diag-doc', ot.id],
     queryFn: () => base44.entities.DiagnosticoDocumento.filter({
       diagnostico_id: diag?.id,
+      organization_id: organizationId,
     }),
     enabled: !!diag?.id,
     staleTime: 30_000,
@@ -187,27 +188,77 @@ export default function PanelOperativoDiagnostico({
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  // Emitir: crear DiagnosticoDocumento con snapshot inmutable
+  const finalizarDiagnostico = async () => {
+    if (!diag) throw new Error('No existe un diagnostico preparado para finalizar');
+
+    const response = await base44.functions.invoke('transitionWorkOrderStatus', {
+      orden_trabajo_id: ot.id,
+      newStatus: 'DIAGNOSTICADA',
+      diagnostico_id: diag.id,
+      observacion: 'Diagnostico tecnico completado despues de emitir el documento',
+    });
+    const completion = response?.data ?? response;
+    if (!completion?.success) {
+      const error = new Error(completion?.error || 'No se pudo completar el diagnostico');
+      error.code = completion?.code;
+      throw error;
+    }
+    return completion;
+  };
+
+  // Emitir el snapshot y, con el documento ya confirmado, completar el lifecycle.
   const handleEmitir = async () => {
     if (!diag) return;
     setActionLoading(true);
     setActionError(null);
     try {
       const snapshot = buildSnapshot({ ot, diag, evidencias, cliente, equipo });
-      await base44.entities.DiagnosticoDocumento.create({
-        diagnostico_id: diag.id,
-        organization_id: organizationId,
-        version: `v${(docList.length) + 1}`,
-        formato: 'pdf',
-        estado: 'EMITIDO',
-        aprobacion_status: 'PENDIENTE',
-        snapshot_data: snapshot,
-        emitido_at: new Date().toISOString(),
-        url_documento: '',  // Se actualiza al generar PDF
-      });
+      let documentoConfirmado = docActivo;
+
+      if (!documentoConfirmado || !['EMITIDO', 'ENVIADO'].includes(documentoConfirmado.estado)) {
+        try {
+          documentoConfirmado = await base44.entities.DiagnosticoDocumento.create({
+            diagnostico_id: diag.id,
+            organization_id: organizationId,
+            version: `v${(docList.length) + 1}`,
+            formato: 'pdf',
+            estado: 'EMITIDO',
+            aprobacion_status: 'PENDIENTE',
+            snapshot_data: snapshot,
+            emitido_at: new Date().toISOString(),
+            url_documento: '',  // Se actualiza al generar PDF
+          });
+        } catch (createError) {
+          // Una respuesta perdida puede ocultar una creacion exitosa. Releer antes
+          // de permitir otro intento evita duplicar el documento emitido.
+          const documentosActuales = await base44.entities.DiagnosticoDocumento.filter({
+            diagnostico_id: diag.id,
+            organization_id: organizationId,
+          }, '-created_date', 20);
+          documentoConfirmado = documentosActuales.find(d => ['EMITIDO', 'ENVIADO'].includes(d.estado));
+          if (!documentoConfirmado) throw createError;
+        }
+      }
+
+      await finalizarDiagnostico();
       invalidarPanel();
     } catch (e) {
       setActionError(e.message);
+      invalidarPanel();
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReintentarFinalizacion = async () => {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      await finalizarDiagnostico();
+      invalidarPanel();
+    } catch (e) {
+      setActionError(e.message);
+      invalidarPanel();
     } finally {
       setActionLoading(false);
     }
@@ -405,6 +456,16 @@ export default function PanelOperativoDiagnostico({
           {/* EMITIDO */}
           {docEstado === 'EMITIDO' && (
             <div className="space-y-2">
+              {ot.estado === 'EN_REVISION' && esTecnico && (
+                <Button
+                  onClick={handleReintentarFinalizacion}
+                  disabled={actionLoading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                >
+                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Completar Diagnostico
+                </Button>
+              )}
               <Button
                 onClick={() => setDocumentoOpen(true)}
                 variant="outline"
@@ -449,6 +510,16 @@ export default function PanelOperativoDiagnostico({
           {/* ENVIADO */}
           {docEstado === 'ENVIADO' && (
             <div className="space-y-2">
+              {ot.estado === 'EN_REVISION' && esTecnico && (
+                <Button
+                  onClick={handleReintentarFinalizacion}
+                  disabled={actionLoading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                >
+                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Completar Diagnostico
+                </Button>
+              )}
               <Button
                 onClick={() => setDocumentoOpen(true)}
                 variant="outline"

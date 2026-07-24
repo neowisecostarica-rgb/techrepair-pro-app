@@ -47,7 +47,9 @@ Deno.serve(async (req) => {
     const timestamp = Date.now().toString().slice(-6);
     const codigo_ot = `OT-${year}-${timestamp}`;
 
-    const orden = await base44.entities.OrdenTrabajo.create({
+    // `estado` is field-protected from client writes. Creation is performed by
+    // the authenticated backend workflow, which owns the initial lifecycle state.
+    const orden = await base44.asServiceRole.entities.OrdenTrabajo.create({
       organization_id: orgId,
       codigo_ot,
       branch_id: branch_id || null,

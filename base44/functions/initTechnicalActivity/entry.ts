@@ -6,7 +6,7 @@
  *   Punto único de entrada para iniciar una actividad técnica sobre una OT.
  *   El frontend realiza una única solicitud; el backend valida y persiste.
  *
- * ORDEN DE PERSISTENCIA (no atómica — ver limitaciones):
+ * ORDEN DE PERSISTENCIA (serializado y con reconciliación):
  *   1. Crear ActividadTecnica (en_progreso)
  *   2. Actualizar OrdenTrabajo.estado → EN_REVISION (vía transitionWorkOrderStatus)
  *      → transitionWorkOrderStatus crea OTEvent TRANSITION_EN_REVISION internamente
@@ -20,20 +20,21 @@
  *   - OT EN_REVISION sin ninguna actividad → error (inconsistencia)
  *   - Actividades finalizada/bloqueada no bloquean nueva creación
  *
- * LIMITACIONES ACEPTADAS (MVP):
+ * GARANTÍAS RC1:
  *   - No existen transacciones multidocumento en Base44
- *   - No existe bloqueo concurrente garantizado
- *   - La consulta previa solo ofrece idempotencia secuencial
- *   - Las compensaciones son best-effort; no se borran actividades automáticamente
- *   - No existe idempotency_key
+ *   - Un lock atómico por OT serializa inicio y transición
+ *   - Una respuesta ambigua se reconcilia leyendo el estado confirmado
+ *   - Solo se elimina la actividad si la OT conserva el estado previo
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
 const ROLES_ADMIN = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'];
+const ROLES_INICIO_TECNICO = [...ROLES_ADMIN, 'TECHNICIAN'];
+const INIT_LOCK_TTL_MS = 15 * 60 * 1000;
 
 // ── WF-004A: WorkflowGate constants ──────────────────────────────────────────
 // Vertical slice TechRepairPro: wait_reason=COMMERCIAL_AUTHORIZATION, provider_key=COMMERCE_GATEWAY
@@ -69,6 +70,106 @@ async function ensurePendingGate(base44, { orgId, subjectId, userId }) {
     resolved_at: null,
   });
   return { gate, created: true };
+}
+
+async function loadWorkOrderForInit(base44, orgId, workOrderId) {
+  const records = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+    id: workOrderId,
+    organization_id: orgId,
+  });
+  return records?.[0] || null;
+}
+
+async function acquireInitLock(base44, { ot, orgId, userId }) {
+  const token = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const lockData = {
+    lifecycle_lock_token: token,
+    lifecycle_lock_operation: 'initTechnicalActivity',
+    lifecycle_lock_owner_user_id: userId,
+    lifecycle_lock_at: now,
+  };
+
+  let claim;
+  try {
+    claim = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
+      id: ot.id,
+      organization_id: orgId,
+      estado: ot.estado,
+      $or: [
+        { lifecycle_lock_token: { $exists: false } },
+        { lifecycle_lock_token: null },
+      ],
+    }, { $set: lockData });
+  } catch (claimError) {
+    const reconciled = await loadWorkOrderForInit(base44, orgId, ot.id);
+    if (reconciled?.lifecycle_lock_token === token) {
+      return { acquired: true, token, owned: true, recovered_ambiguous_lock: true };
+    }
+    throw claimError;
+  }
+
+  if (claim?.updated === 1) return { acquired: true, token, owned: true };
+
+  const current = await loadWorkOrderForInit(base44, orgId, ot.id);
+  const lockTimestamp = Date.parse(current?.lifecycle_lock_at || '');
+  const stale = current?.lifecycle_lock_token
+    && Number.isFinite(lockTimestamp)
+    && Date.now() - lockTimestamp > INIT_LOCK_TTL_MS;
+
+  if (stale) {
+    let takeover;
+    try {
+      takeover = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
+        id: ot.id,
+        organization_id: orgId,
+        estado: ot.estado,
+        lifecycle_lock_token: current.lifecycle_lock_token,
+        lifecycle_lock_at: current.lifecycle_lock_at,
+      }, { $set: lockData });
+    } catch (takeoverError) {
+      const reconciled = await loadWorkOrderForInit(base44, orgId, ot.id);
+      if (reconciled?.lifecycle_lock_token === token) {
+        return {
+          acquired: true,
+          token,
+          owned: true,
+          recovered_stale_lock: true,
+          recovered_ambiguous_lock: true,
+        };
+      }
+      throw takeoverError;
+    }
+    if (takeover?.updated === 1) {
+      return { acquired: true, token, owned: true, recovered_stale_lock: true };
+    }
+  }
+
+  return {
+    acquired: false,
+    operation: current?.lifecycle_lock_operation || null,
+  };
+}
+
+async function ownsInitLock(base44, { orgId, workOrderId, lock }) {
+  const current = await loadWorkOrderForInit(base44, orgId, workOrderId);
+  return current?.lifecycle_lock_token === lock?.token;
+}
+
+async function releaseInitLock(base44, { orgId, workOrderId, lock }) {
+  if (!lock?.owned) return;
+  await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
+    id: workOrderId,
+    organization_id: orgId,
+    lifecycle_lock_token: lock.token,
+  }, {
+    $unset: {
+      lifecycle_lock_token: '',
+      lifecycle_lock_operation: '',
+      lifecycle_lock_owner_user_id: '',
+      lifecycle_lock_at: '',
+    },
+  });
 }
 
 Deno.serve(async (req) => {
@@ -124,8 +225,8 @@ Deno.serve(async (req) => {
         ? (userAccounts.find(a => a.organization_id === orgHint) || userAccounts[0])
         : userAccounts[0];
 
-      if (account.status === 'suspended') {
-        return Response.json({ error: 'Cuenta suspendida' }, { status: 403 });
+      if (account.status !== 'active') {
+        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
       }
 
       orgId = account.organization_id;
@@ -135,6 +236,15 @@ Deno.serve(async (req) => {
 
     if (!orgId) {
       return Response.json({ error: 'organization_id no resuelto' }, { status: 403 });
+    }
+
+    // CC-001-02: no tratar todo rol no administrativo como técnico.
+    // Rechazar antes de consultar reglas con side-effects o crear registros.
+    if (!ROLES_INICIO_TECNICO.includes(effectiveRole)) {
+      return Response.json({
+        error: `El rol "${effectiveRole}" no está autorizado para iniciar actividad técnica.`,
+        codigo: 'ROL_TECNICO_NO_AUTORIZADO',
+      }, { status: 403 });
     }
 
     console.log(`[initTechnicalActivity] orgId=${orgId}, role=${effectiveRole}, tecnico_id=${tecnico_id}, OT=${orden_trabajo_id}`);
@@ -218,8 +328,9 @@ Deno.serve(async (req) => {
       efectiveTecnicoId = ot.tecnico_asignado_id;
       console.log(`[initTechnicalActivity] Admin delega al técnico asignado ${efectiveTecnicoId}`);
     } else {
-      // TECHNICIAN debe ser el técnico asignado a la OT
-      if (tecnico_id !== ot.tecnico_asignado_id) {
+      // TECHNICIAN debe ser el usuario autenticado y el técnico asignado a la OT.
+      // El tecnico_id del payload no es una fuente de identidad confiable.
+      if (runtimeUser.id !== ot.tecnico_asignado_id || tecnico_id !== runtimeUser.id) {
         return Response.json({
           error: 'No estás asignado a esta Orden de Trabajo. No puedes iniciar el trabajo técnico.',
           codigo: 'TECNICO_INCORRECTO',
@@ -241,7 +352,7 @@ Deno.serve(async (req) => {
 
     // ── 9. Regla: Actividad ACTIVO mismo técnico → idempotente ────────────────
     const actividadMismoTecnico = actividadesActivas.find(a => a.tecnico_id === efectiveTecnicoId);
-    if (actividadMismoTecnico) {
+    if (actividadMismoTecnico && estadoActualOT === 'EN_REVISION') {
       console.log(`[initTechnicalActivity] Idempotencia — actividad activa existente id=${actividadMismoTecnico.id}`);
       return Response.json({
         success: true,
@@ -297,7 +408,7 @@ Deno.serve(async (req) => {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // PERSISTENCIA — orden autorizado, no atómico
+    // PERSISTENCIA — orden autorizado con compensación
     // ══════════════════════════════════════════════════════════════════════════
 
     const estadoOTPrevio = estadoActualOT;
@@ -309,10 +420,28 @@ Deno.serve(async (req) => {
       estado_atencion: ot.estado_atencion || null,
     };
 
-    // ── 14. PASO 1: Crear ActividadTecnica ───────────────────────────────────
-    let nuevaActividad;
+    const initLock = await acquireInitLock(base44, {
+      ot,
+      orgId,
+      userId: runtimeUser.id,
+    });
+    if (!initLock.acquired) {
+      return Response.json({
+        error: 'Otra operación del lifecycle está en progreso para esta OT.',
+        codigo: 'LIFECYCLE_OPERATION_IN_PROGRESS',
+        operacion: initLock.operation,
+        retryable: true,
+      }, { status: 409 });
+    }
+
     try {
-      nuevaActividad = await base44.asServiceRole.entities.ActividadTecnica.create({
+
+    // ── 14. PASO 1: Crear ActividadTecnica ───────────────────────────────────
+    const actividadCreadaEsteIntento = !actividadMismoTecnico;
+    let nuevaActividad = actividadMismoTecnico || null;
+    try {
+      if (!nuevaActividad) {
+        nuevaActividad = await base44.asServiceRole.entities.ActividadTecnica.create({
         organization_id: orgId,
         orden_trabajo_id,
         tecnico_id: efectiveTecnicoId,
@@ -327,8 +456,11 @@ Deno.serve(async (req) => {
         resultado: null,
         notas: '',
         soft_deleted: false,
-      });
-      console.log(`[initTechnicalActivity] ActividadTecnica creada — id=${nuevaActividad.id}`);
+        });
+        console.log(`[initTechnicalActivity] ActividadTecnica creada — id=${nuevaActividad.id}`);
+      } else {
+        console.warn(`[initTechnicalActivity] Recuperando actividad existente — id=${nuevaActividad.id}`);
+      }
     } catch (createErr) {
       return Response.json({
         error: `Fallo al crear ActividadTecnica: ${createErr.message}`,
@@ -340,31 +472,28 @@ Deno.serve(async (req) => {
     // ── 15. PASO 2: Actualizar OT.estado → EN_REVISION ────────────────────────
     // transitionWorkOrderStatus valida la transición, actualiza la OT y crea
     // el OTEvent TRANSITION_EN_REVISION internamente (satisface el paso de OTEvent).
+    let transitionRecovered = false;
     if (necesitaTransicion) {
-      const callingUserContext = {
-        id: runtimeUser.id,
-        email: runtimeUser.email,
-        organization_id: orgId,
-        role: effectiveRole,
-        is_super_admin: isSuperAdmin,
-      };
-
       let transitionOk = false;
       let transitionErrorMsg = null;
 
       try {
-        const transitionRes = await base44.asServiceRole.functions.invoke('transitionWorkOrderStatus', {
+        // Preserve the request user's credential. The transition engine resolves
+        // role and organization from that trusted runtime identity.
+        const transitionRes = await base44.functions.invoke('transitionWorkOrderStatus', {
           orden_trabajo_id,
           newStatus: 'EN_REVISION',
           observacion: `Inicio de revisión técnica — actividad ${tipo_actividad}`,
-          _callingUserContext: callingUserContext,
+          _lifecycle_lock_token: initLock.token,
         });
 
-        if (transitionRes && transitionRes.status === 200) {
+        const transitionData = transitionRes?.data ?? transitionRes;
+        const transitionStatusOk = transitionRes?.status === undefined || transitionRes.status === 200;
+        if (transitionStatusOk && transitionData?.success === true) {
           transitionOk = true;
           console.log(`[initTechnicalActivity] Transición exitosa — OT ahora en EN_REVISION`);
         } else {
-          transitionErrorMsg = transitionRes?.data?.error || 'Error desconocido en transición';
+          transitionErrorMsg = transitionData?.error || 'Error desconocido en transición';
           console.error(`[initTechnicalActivity] transitionWorkOrderStatus falló: ${transitionErrorMsg}`);
         }
       } catch (transErr) {
@@ -373,19 +502,73 @@ Deno.serve(async (req) => {
       }
 
       if (!transitionOk) {
-        // ESTADO RESIDUAL: Actividad creada, OT NO transicionada.
-        // No borrar la actividad (no hay operación segura confirmada).
-        console.error(`[initTechnicalActivity] ESTADO RESIDUAL — actividad=${nuevaActividad.id}, OT sigue en ${estadoOTPrevio}`);
+        // Una excepción o respuesta perdida no demuestra que la transición no
+        // ocurrió. Releer bajo el mismo lock antes de compensar.
+        const reconciledOT = await loadWorkOrderForInit(base44, orgId, orden_trabajo_id);
+        if (reconciledOT?.estado === 'EN_REVISION') {
+          transitionOk = true;
+          transitionRecovered = true;
+          console.warn(`[initTechnicalActivity] Respuesta ambigua reconciliada — OT ya está EN_REVISION`);
+        } else if (reconciledOT?.estado !== estadoOTPrevio) {
+          return Response.json({
+            error: `La OT cambió a "${reconciledOT?.estado || 'desconocido'}" durante el inicio técnico. La actividad se conserva para auditoría.`,
+            codigo: 'TRANSITION_AMBIGUOUS_STATE',
+            paso_fallido: 'reconciliar_transicion',
+            actividad_id: nuevaActividad.id,
+            estado_ot_actual: reconciledOT?.estado || null,
+            retryable: false,
+          }, { status: 409 });
+        }
+      }
+
+      if (!transitionOk) {
+        // CC-001-03: compensar la creación para que la operación sea atómica
+        // solo después de confirmar que la OT conserva el estado previo.
+        const lockTodaviaPropio = await ownsInitLock(base44, {
+          orgId,
+          workOrderId: orden_trabajo_id,
+          lock: initLock,
+        });
+        if (!lockTodaviaPropio) {
+          return Response.json({
+            error: 'El lock fue recuperado por otro intento. La actividad se conserva para evitar borrar trabajo concurrente.',
+            codigo: 'LIFECYCLE_LOCK_LOST',
+            paso_fallido: 'reconciliar_transicion',
+            actividad_id: nuevaActividad.id,
+            actividad_preservada: true,
+            retryable: true,
+          }, { status: 409 });
+        }
+        if (!actividadCreadaEsteIntento) {
+          return Response.json({
+            error: `No se pudo reanudar la transición: ${transitionErrorMsg}`,
+            codigo: 'TRANSITION_RECOVERY_FAILED',
+            paso_fallido: 'transicion_ot',
+            actividad_id: nuevaActividad.id,
+            actividad_preservada: true,
+            retryable: true,
+          }, { status: 500 });
+        }
+        try {
+          await base44.asServiceRole.entities.ActividadTecnica.delete(nuevaActividad.id);
+          console.warn(`[initTechnicalActivity] ROLLBACK completado — actividad=${nuevaActividad.id}`);
+        } catch (rollbackErr) {
+          console.error(`[initTechnicalActivity] ROLLBACK FALLÓ — actividad=${nuevaActividad.id}: ${rollbackErr.message}`);
+          return Response.json({
+            error: `No se pudo iniciar la revisión y falló la compensación de la actividad: ${rollbackErr.message}`,
+            codigo: 'ROLLBACK_ACTIVIDAD_FAILED',
+            paso_fallido: 'rollback_actividad',
+          }, { status: 500 });
+        }
+
         return Response.json({
           error: `No se pudo iniciar la revisión: ${transitionErrorMsg}`,
           codigo: 'TRANSITION_FAILED',
           paso_fallido: 'transicion_ot',
-          estado_residual: {
-            actividad_creada: true,
-            actividad_id: nuevaActividad.id,
+          rollback: {
+            actividad_eliminada: true,
             ot_transicionada: false,
             estado_ot_actual: estadoOTPrevio,
-            nota: 'La actividad fue creada pero la OT no transicionó. Requiere corrección controlada.',
           },
         }, { status: 500 });
       }
@@ -398,7 +581,7 @@ Deno.serve(async (req) => {
     // No revertir: la trazabilidad de tiempo ya quedó registrada.
     let atencionOk = true;
     try {
-      const attentionRes = await base44.asServiceRole.functions.invoke('updateWorkOrderAttentionStatus', {
+      const attentionRes = await base44.functions.invoke('updateWorkOrderAttentionStatus', {
         orden_trabajo_id,
         estado_atencion: 'ACTIVO',
         observaciones: `Actividad técnica iniciada: ${tipo_actividad}${subtipo ? ` — ${subtipo}` : ''}`,
@@ -427,7 +610,22 @@ Deno.serve(async (req) => {
       estado_ot: 'EN_REVISION',
       estado_atencion: atencionOk ? 'ACTIVO' : (valoresPrevios.estado_atencion),
       advertencia: atencionOk ? null : 'estado_atencion no pudo actualizarse — actividad y OT transicionadas correctamente.',
+      transition_recovered: transitionRecovered,
+      recovered_stale_lock: initLock.recovered_stale_lock === true,
+      recovered_ambiguous_lock: initLock.recovered_ambiguous_lock === true,
     });
+
+    } finally {
+      try {
+        await releaseInitLock(base44, {
+          orgId,
+          workOrderId: orden_trabajo_id,
+          lock: initLock,
+        });
+      } catch (releaseError) {
+        console.error(`[initTechnicalActivity] No se pudo liberar el lock — OT=${orden_trabajo_id}: ${releaseError.message}`);
+      }
+    }
 
   } catch (error) {
     console.error(`[initTechnicalActivity] Error no controlado: ${error.message}`);

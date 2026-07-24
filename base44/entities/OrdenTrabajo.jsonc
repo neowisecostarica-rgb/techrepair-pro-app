@@ -60,7 +60,10 @@
         "CANCELADA"
       ],
       "default": "EN_COLA_REVISION",
-      "description": "Estado actual de la OT"
+      "description": "Estado actual de la OT. Solo el backend lifecycle puede modificarlo.",
+      "rls": {
+        "write": false
+      }
     },
     "prioridad": {
       "type": "string",
@@ -257,6 +260,39 @@
       "type": "boolean",
       "default": false,
       "description": "Flag de idempotencia: email de cancelaci\u00f3n ya enviado"
+    },
+    "lifecycle_lock_token": {
+      "type": "string",
+      "description": "Token interno y temporal para serializar mutaciones del lifecycle.",
+      "rls": {
+        "read": false,
+        "write": false
+      }
+    },
+    "lifecycle_lock_operation": {
+      "type": "string",
+      "description": "Operacion backend propietaria del lock temporal.",
+      "rls": {
+        "read": false,
+        "write": false
+      }
+    },
+    "lifecycle_lock_owner_user_id": {
+      "type": "string",
+      "description": "Usuario autenticado propietario del lock temporal.",
+      "rls": {
+        "read": false,
+        "write": false
+      }
+    },
+    "lifecycle_lock_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento de adquisicion del lock temporal.",
+      "rls": {
+        "read": false,
+        "write": false
+      }
     },
     "estado_custodia": {
       "type": "string",

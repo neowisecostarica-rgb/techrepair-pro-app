@@ -250,25 +250,29 @@ export default function CentroMando({ ot, effectiveRole }) {
               </div>
             )}
           </div>
-          <Button
-            onClick={handleIniciarRevision}
-            disabled={iniciando}
-            className={
-              ot.diagnostico_habilitado
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shrink-0'
-                : 'bg-amber-600 hover:bg-amber-700 text-white shrink-0'
-            }
-            size="sm"
-          >
-            {iniciando ? (
-              <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Iniciando...</>
-            ) : (
-              <>{ot.diagnostico_habilitado
-                ? <><Play className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
-                : <><Lock className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
-              }</>
-            )}
-          </Button>
+          {!ot.diagnostico_habilitado && esAdminOSupervisor ? (
+            <a
+              href={`${createPageUrl('PuntoVenta')}?ot_id=${ot.id}&concepto=revision_diagnostico`}
+              className="inline-flex items-center justify-center rounded-md bg-amber-600 hover:bg-amber-700 text-white shrink-0 h-9 px-3 text-sm font-medium"
+            >
+              <CreditCard className="w-4 h-4 mr-1.5" /> Cobrar diagnóstico
+            </a>
+          ) : (
+            <Button
+              onClick={handleIniciarRevision}
+              disabled={iniciando || !ot.diagnostico_habilitado}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+              size="sm"
+            >
+              {iniciando ? (
+                <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Iniciando...</>
+              ) : ot.diagnostico_habilitado ? (
+                <><Play className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
+              ) : (
+                <><Lock className="w-4 h-4 mr-1.5" /> Pendiente de pago</>
+              )}
+            </Button>
+          )}
         </div>
       )}
 

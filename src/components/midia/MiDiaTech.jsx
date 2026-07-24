@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,9 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       estado: { $in: ['ASIGNADA', 'EN_REVISION', 'EN_REPARACION', 'PRUEBAS'] }
     }),
     enabled: !!user?.id && !!effectiveOrgId,
+    refetchInterval: 10 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -249,6 +252,8 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
       await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
       await queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
+      await queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      await queryClient.invalidateQueries({ queryKey: ['expediente-ot', orden.id] });
       
       setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
       setTransicionEnCurso(false);
@@ -344,6 +349,8 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
       await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
       await queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
+      await queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      await queryClient.invalidateQueries({ queryKey: ['expediente-ot', orden.id] });
       
       setTransicionEnCurso(false);
     } catch (error) {
@@ -509,7 +516,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                   )}
 
                   {/* Acciones posteriores — requieren pago confirmado */}
-                  {estadosPago[ordenActiva.id]?.status === 'sin_pago' && effectiveRole === 'TECHNICIAN' ? (
+                  {estadosPago[ordenActiva.id]?.status === 'PENDIENTE' && effectiveRole === 'TECHNICIAN' ? (
                     ordenActiva.estado !== 'ASIGNADA' && (
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
                         ⏸️ Pendiente de pago — Contacta a administración

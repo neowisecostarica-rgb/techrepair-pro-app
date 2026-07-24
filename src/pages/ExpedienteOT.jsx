@@ -10,7 +10,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -54,6 +54,9 @@ function ExpedienteOTContent() {
     },
     enabled: !!id,
     staleTime: 30 * 1000,
+    refetchInterval: 10 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   // ── Carga paralela de datos relacionados ─────────────────────────────────
@@ -87,6 +90,8 @@ function ExpedienteOTContent() {
     queryFn: () => base44.entities.Venta.filter({ referencia_ot_id: id }),
     enabled: !!id,
     staleTime: 60 * 1000,
+    refetchInterval: 10 * 1000,
+    refetchIntervalInBackground: false,
   });
 
   // ── Carga de cotizaciones ─────────────────────────────────────────────────

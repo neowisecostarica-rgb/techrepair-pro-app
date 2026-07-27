@@ -11,7 +11,9 @@ import {
   DollarSign,
   Calendar,
   Wrench,
-  FileText
+  FileText,
+  CreditCard,
+  Play
 } from 'lucide-react';
 import { format } from 'date-fns';
 import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
@@ -33,6 +35,9 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
     },
     enabled: !!effectiveOrgId,
     staleTime: 30000,
+    refetchInterval: 10 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   const { data: ventas = [] } = useQuery({
@@ -157,6 +162,20 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
   const otsPropias = todasOrdenes.filter(o => o.tecnico_asignado_id === user?.id);
 
+  // Bandeja accionable para ORG_ADMIN/BRANCH_ADMIN. "Mi Día" administrativo
+  // antes ocultaba por completo las OTs ASIGNADA que el técnico veía en su
+  // propia bandeja.
+  const otsPendientesCobroDiagnostico = todasOrdenes.filter(o =>
+    o.estado === 'ASIGNADA' && !o.diagnostico_habilitado
+  );
+  const otsListasParaRevision = todasOrdenes.filter(o =>
+    o.estado === 'ASIGNADA' && o.diagnostico_habilitado
+  );
+  const otsFlujoDiagnostico = [
+    ...otsPendientesCobroDiagnostico,
+    ...otsListasParaRevision,
+  ].slice(0, 8);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       <div className="mb-6">
@@ -172,6 +191,65 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
       </div>
 
       <MensajesMotivacion tipo="diaria" role={effectiveRole} />
+
+      {otsFlujoDiagnostico.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-amber-200">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center">
+              <Wrench className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Diagnósticos por activar</h2>
+              <p className="text-sm text-slate-500">Cobra la revisión o inicia el trabajo cuando ya esté habilitado.</p>
+            </div>
+            <Badge variant="outline" className="ml-auto border-amber-300 text-amber-700">
+              {otsFlujoDiagnostico.length}
+            </Badge>
+          </div>
+
+          <Card className="border-amber-200">
+            <CardContent className="p-4 space-y-3">
+              {otsFlujoDiagnostico.map(ot => {
+                const pendienteCobro = !ot.diagnostico_habilitado;
+                return (
+                  <div key={ot.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-slate-900">{ot.codigo_ot}</p>
+                        <Badge className={pendienteCobro
+                          ? 'bg-amber-100 text-amber-800 border-0'
+                          : 'bg-emerald-100 text-emerald-800 border-0'
+                        }>
+                          {pendienteCobro ? 'Pendiente de cobro' : 'Lista para iniciar'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-slate-600 truncate">
+                        {getClienteName(ot.cliente_id)} · {getEquipoInfo(ot.equipo_id)}
+                      </p>
+                    </div>
+
+                    {pendienteCobro ? (
+                      <Link to={`${createPageUrl('PuntoVenta')}?ot_id=${ot.id}&concepto=revision_diagnostico`}>
+                        <Button size="sm" className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white">
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Cobrar diagnóstico
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link to={`/expediente/${ot.id}`}>
+                        <Button size="sm" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white">
+                          <Play className="w-4 h-4 mr-2" />
+                          Abrir e iniciar
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Aprobaciones Pendientes - CRÍTICO P0 */}
       <div className="mb-8">

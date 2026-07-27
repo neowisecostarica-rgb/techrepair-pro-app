@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShoppingCart, Plus, Trash2, Search, DollarSign, Package, Wrench, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
+import { useUserAccount } from '@/components/hooks/useOrgData';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import PageGuard from '../components/guards/PageGuard';
 import CrearProductoRapido from '../components/inventario/CrearProductoRapido';
@@ -18,7 +18,7 @@ import PanelContextoVenta from '../components/ventas/PanelContextoVenta';
 import EnviarWhatsApp from '../components/ventas/EnviarWhatsApp';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { validarVentaPOS, habilitarDiagnosticoTrasPago } from '@/components/pos/validacionesPOS';
+import { validarVentaPOS } from '@/components/pos/validacionesPOS';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import ClienteSearchInput from '@/components/ot/ClienteSearchInput';
 import QuickCreateClienteModal from '@/components/ot/QuickCreateClienteModal';
@@ -71,10 +71,12 @@ function PuntoVentaContent() {
   useEffect(() => {
     if (effectiveOrgId) {
       import('@/components/inventario/setupProductoDiagnostico').then(module => {
-        module.verificarOCrearProductoDiagnostico(effectiveOrgId);
+        module.verificarOCrearProductoDiagnostico(effectiveOrgId).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['inventario', userAccount?.organization_id] });
+        });
       });
     }
-  }, [effectiveOrgId]);
+  }, [effectiveOrgId, queryClient, userAccount?.organization_id]);
 
   // Precargar venta si viene de taller o cotización
   useEffect(() => {
@@ -129,6 +131,26 @@ function PuntoVentaContent() {
     }),
     enabled: !!userAccount?.organization_id,
   });
+
+  // Entrada desde "Cobrar diagnóstico": precargar el servicio estándar para
+  // que el administrador llegue a un cobro listo, no a un carrito vacío.
+  useEffect(() => {
+    if (tipoConcepto !== 'revision_diagnostico' || carrito.length > 0) return;
+    const servicioDiagnostico = inventario.find(item =>
+      item.tipo_item === 'servicio_diagnostico' || item.sku === 'SERV-DIAG-001'
+    );
+    if (!servicioDiagnostico) return;
+
+    const precio = servicioDiagnostico.precio_venta ?? servicioDiagnostico.precio ?? 0;
+    setCarrito([{
+      tipo: 'producto',
+      referencia_id: servicioDiagnostico.id,
+      descripcion: servicioDiagnostico.nombre,
+      cantidad: 1,
+      precio_unitario: precio,
+      subtotal: precio,
+    }]);
+  }, [tipoConcepto, inventario, carrito.length]);
 
 
 
@@ -315,11 +337,6 @@ function PuntoVentaContent() {
 
       const venta = response.data.data;
 
-      // Lógica post-venta que queda en frontend por ahora (fuera del scope createSale v1)
-      if (ventaData.tipo_concepto === 'revision_diagnostico' && ventaData.referencia_ot_id) {
-        await habilitarDiagnosticoTrasPago(ventaData.referencia_ot_id, venta.id);
-      }
-
       if (ventaData.tipo_concepto === 'reparacion' && ventaData.referencia_ot_id) {
         await transicionarEstadoOT(ventaData.referencia_ot_id, 'FINALIZADA', {
           userId: user?.id,
@@ -342,6 +359,11 @@ function PuntoVentaContent() {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['todas-ordenes'] });
+      queryClient.invalidateQueries({ queryKey: ['expediente-ot'] });
+      queryClient.invalidateQueries({ queryKey: ['expediente-ventas'] });
 
       setVentaCompletada(venta);
       setCarrito([]);

@@ -9,8 +9,9 @@ Responsabilidad:
 
   - Validar venta existe y es válida (pagada, org correcta)
   - Crear OTEvent tipo SALE_COMPLETED (solo si hay referencia_ot_id)
-  - Disparar transición de lifecycle vía transitionWorkOrderStatus
-  - Ser idempotente: no duplicar OTEvent, no mover OT si ya está en destino
+  - Aplicar desbloqueos operacionales autoritativos
+  - Disparar transiciones de lifecycle vía transitionWorkOrderStatus cuando corresponda
+  - Ser idempotente: no duplicar OTEvent ni repetir efectos confirmados
 
 NO hace:
   - Crear ni modificar Venta
@@ -20,8 +21,9 @@ NO hace:
 
 Desbloqueos implementados:
   CASO 1 — revision_diagnostico:
-    EN_COLA_REVISION → ASIGNADA (si no tiene tecnico) o no transiciona
-    ASIGNADA → EN_REVISION
+    Habilita el diagnóstico y resuelve el WorkflowGate comercial.
+    NO mueve el lifecycle: initTechnicalActivity crea la actividad auditada
+    y es el único responsable de ASIGNADA → EN_REVISION.
     
   CASO 2 — reparacion:
     COTIZADA → EN_REPARACION (via APROBADA si es necesario)
@@ -38,7 +40,7 @@ Desbloqueos implementados:
 // Desbloqueos operacionales por tipo_concepto y estado actual de OT
 // Solo declarativo para documentación — la lógica real está abajo
 const DESBLOQUEO_MAP = {
-  revision_diagnostico: { ASIGNADA: 'EN_REVISION' },
+  revision_diagnostico: {}, // Desbloquea la OT; no mueve lifecycle
   reparacion:           { COTIZADA: 'APROBADA', APROBADA: 'EN_REPARACION' },
   saldo_final:          { FINALIZADA: 'ENTREGADA' },
   venta_producto:       {}, // No mueve lifecycle
@@ -58,7 +60,7 @@ function buildCorrelationKey(subjectType, subjectId, waitReason) {
 async function resolvePendingGates(base44, { orgId, subjectId, saleId, ventaTotal, userId }) {
   const correlationKey = buildCorrelationKey(GATE_SUBJECT_TYPE, subjectId, GATE_WAIT_REASON);
   const pending = await base44.asServiceRole.entities.WorkflowGate.filter(
-    { correlation_key: correlationKey, status: 'PENDING' }, 10
+    { organization_id: orgId, correlation_key: correlationKey, status: 'PENDING' }, 10
   );
   const resolved = [];
   for (const gate of (pending || [])) {
@@ -144,6 +146,7 @@ Deno.serve(async (req) => {
     referencia_ot_id: referencia_ot_id || null,
     ot_event_created: false,
     lifecycle_transition: null,
+    diagnostic_unlock: null,
     skipped_reason: null,
   };
 
@@ -183,6 +186,7 @@ Deno.serve(async (req) => {
   // Idempotencia: verificar si ya existe OTEvent para esta venta específica
   // Filtramos por sale_id para evitar que ventas múltiples de la misma OT dupliquen eventos
   const existingEvents = await base44.asServiceRole.entities.OTEvent.filter({
+    organization_id: orgId,
     orden_trabajo_id: referencia_ot_id,
     tipo: tipoEvento,
     sale_id: sale_id,
@@ -225,21 +229,62 @@ Deno.serve(async (req) => {
   let skipReason = null;
 
   if (tipo_concepto === 'revision_diagnostico') {
-    // CASO 1: pago de revisión/diagnóstico
-    // Estado válido para desbloqueo: ASIGNADA → EN_REVISION
-    if (estadoActual === 'ASIGNADA') {
-      if (ot.tecnico_asignado_id) {
-        estadoDestino = 'EN_REVISION';
-      } else {
-        skipReason = 'revision_diagnostico: OT ASIGNADA pero sin tecnico_asignado_id — no se puede mover a EN_REVISION';
-      }
-    } else if (estadoActual === 'EN_COLA_REVISION') {
-      // EN_COLA_REVISION no puede ir directamente a EN_REVISION por state machine
-      // Solo registrar trazabilidad — el flujo manual debe asignar técnico primero
-      skipReason = 'revision_diagnostico: OT en EN_COLA_REVISION — requiere asignación de técnico antes de EN_REVISION';
+    // CASO 1: el pago autoriza el trabajo, pero no representa el inicio técnico.
+    // Mantener ASIGNADA permite que initTechnicalActivity cree primero la actividad
+    // auditable y luego ejecute la transición autoritativa a EN_REVISION.
+    const yaHabilitadaPorEstaVenta = ot.diagnostico_habilitado === true
+      && ot.revision_venta_id === sale_id;
+
+    if (yaHabilitadaPorEstaVenta) {
+      resultado.diagnostic_unlock = {
+        success: true,
+        idempotent: true,
+        sale_id,
+      };
+    } else if (ot.diagnostico_habilitado === true && ot.revision_venta_id) {
+      resultado.diagnostic_unlock = {
+        success: true,
+        idempotent: true,
+        sale_id: ot.revision_venta_id,
+        reason: 'diagnostico_ya_habilitado_por_otra_venta',
+      };
     } else {
-      skipReason = `revision_diagnostico: estado "${estadoActual}" no requiere desbloqueo`;
+      try {
+        await base44.asServiceRole.entities.OrdenTrabajo.update(referencia_ot_id, {
+          diagnostico_habilitado: true,
+          revision_pagada_at: ot.revision_pagada_at || now,
+          revision_venta_id: ot.revision_venta_id || sale_id,
+        });
+        resultado.diagnostic_unlock = {
+          success: true,
+          idempotent: false,
+          sale_id: ot.revision_venta_id || sale_id,
+        };
+      } catch (unlockError) {
+        console.error(`[processPostSaleActions] No se pudo habilitar diagnóstico — OT: ${referencia_ot_id}, venta: ${sale_id}`, unlockError);
+        return Response.json({
+          success: false,
+          error: 'La venta fue registrada, pero no se pudo habilitar el diagnóstico. Reintente el post-procesamiento con el mismo sale_id.',
+          code: 'DIAGNOSTIC_UNLOCK_FAILED',
+          data: resultado,
+        }, { status: 500 });
+      }
     }
+
+    try {
+      resultado.workflow_gates_resolved = await resolvePendingGates(base44, {
+        orgId,
+        subjectId: referencia_ot_id,
+        saleId,
+        ventaTotal: total,
+        userId: created_by_user_id || user.id,
+      });
+    } catch (gateErr) {
+      console.warn(`[processPostSaleActions] WorkflowGate resolution (non-critical): ${gateErr.message}`);
+      resultado.workflow_gates_resolved = [];
+    }
+
+    skipReason = 'revision_diagnostico: habilitada sin transición de lifecycle';
 
   } else if (tipo_concepto === 'reparacion') {
     // CASO 2: pago de reparación
@@ -296,24 +341,6 @@ Deno.serve(async (req) => {
         };
 
         console.log(`[processPostSaleActions] Lifecycle OK — OT: ${referencia_ot_id}, ${estadoActual} → ${estadoDestino}`);
-
-        // ── WF-004A: resolver WorkflowGate COMMERCIAL_AUTHORIZATION ──────────
-        // Tras desbloqueo exitoso de revisión, resolver gates PENDING de la OT.
-        if (tipo_concepto === 'revision_diagnostico') {
-          try {
-            const resolvedGates = await resolvePendingGates(base44, {
-              orgId,
-              subjectId: referencia_ot_id,
-              saleId,
-              ventaTotal: total,
-              userId: created_by_user_id || user.id,
-            });
-            resultado.workflow_gates_resolved = resolvedGates;
-          } catch (gateErr) {
-            console.warn(`[processPostSaleActions] WorkflowGate resolution (non-critical): ${gateErr.message}`);
-            resultado.workflow_gates_resolved = [];
-          }
-        }
 
       } catch (transitionError) {
         // Fallos de lifecycle NO deben romper el resultado de la venta

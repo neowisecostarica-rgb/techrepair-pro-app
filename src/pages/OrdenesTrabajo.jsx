@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,10 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, FileText, Clock, AlertCircle, CheckCircle2, Loader2, User, ExternalLink, Eye } from 'lucide-react';
+import { Plus, Search, FileText, AlertCircle, CheckCircle2, Loader2, User, ExternalLink, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,17 +27,12 @@ import AgendarDesdeOT from '@/components/ot/AgendarDesdeOT';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IniciarActividad from '@/components/actividades/IniciarActividad';
-import ActividadActiva from '@/components/actividades/ActividadActiva';
 import ListaActividades from '@/components/actividades/ListaActividades';
 import QuickCreateEquipo from '@/components/ot/QuickCreateEquipo';
-import FormularioCliente from '@/components/clientes/FormularioCliente';
 import ClienteSearchInput from '@/components/ot/ClienteSearchInput';
 import QuickCreateClienteModal from '@/components/ot/QuickCreateClienteModal';
 import MotivoIngresoInput from '@/components/ot/MotivoIngresoInput';
-import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
-import { Play } from 'lucide-react';
 import EntregarOT from '@/components/ot/EntregarOT';
-import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { crearOrdenTrabajo } from '@/components/ot/crearOrdenTrabajo';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
@@ -143,7 +137,20 @@ function OrdenesTrabajoContent() {
     },
     enabled: !!effectiveOrgId,
     staleTime: 30 * 1000,
+    refetchInterval: 10 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
+
+  // Mantener el modal abierto sincronizado con la fuente remota. Antes el
+  // detalle conservaba una copia vieja de la OT después de asignar o cobrar.
+  useEffect(() => {
+    if (!selectedOT?.id) return;
+    const ordenActualizada = ordenes.find(o => o.id === selectedOT.id);
+    if (ordenActualizada) {
+      setSelectedOT(ordenActualizada);
+    }
+  }, [ordenes, selectedOT?.id]);
 
   // P0.4: Se eliminó el loop de carga de estados de pago (N queries secuenciales).
   // Los badges de pago en vista lista son opcionales — se pueden recuperar bajo demanda desde el detalle.
@@ -439,13 +446,30 @@ function OrdenesTrabajoContent() {
         orden_trabajo_id: reasignarOT.id,
         tecnico_asignado_id: nuevoTecnicoId,
         tecnico_asignado_email: tecnico?.user_email || '',
+        motivo: motivoReasignacion.trim(),
       });
 
       if (!res?.data?.success) {
         throw new Error(res?.data?.error || 'La reasignación no fue confirmada por el servidor');
       }
 
-      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+      const otActualizada = normalizarOrden({
+        ...reasignarOT,
+        ...(res.data.updated_ot || {}),
+        tecnico_asignado_id: nuevoTecnicoId,
+        tecnico_asignado_email: tecnico?.user_email || '',
+        estado: res.data.estado_actual || reasignarOT.estado,
+      });
+
+      // Actualización optimista del modal + refresco de todas las bandejas que
+      // consumen la OT. Así el usuario no tiene que cerrar y volver a entrar.
+      setSelectedOT(current => current?.id === reasignarOT.id ? otActualizada : current);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] }),
+        queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] }),
+        queryClient.invalidateQueries({ queryKey: ['todas-ordenes', effectiveOrgId] }),
+        queryClient.invalidateQueries({ queryKey: ['expediente-ot', reasignarOT.id] }),
+      ]);
 
       setShowReasignar(false);
       setReasignarOT(null);
@@ -462,10 +486,44 @@ function OrdenesTrabajoContent() {
   };
 
   const handleCobrarTrabajo = async (orden) => {
-    // Cobro de trabajo: redirige al POS con referencia a la OT
-    navigate(createPageUrl('PuntoVenta'), {
-      state: { referencia_ot_id: orden.id }
-    });
+    navigate(`${createPageUrl('PuntoVenta')}?ot_id=${orden.id}&concepto=reparacion`);
+  };
+
+  const handleCobrarDiagnostico = (orden) => {
+    navigate(`${createPageUrl('PuntoVenta')}?ot_id=${orden.id}&concepto=revision_diagnostico`);
+  };
+
+  const handleIniciarRevision = async (orden) => {
+    try {
+      const response = await base44.functions.invoke('initTechnicalActivity', {
+        orden_trabajo_id: orden.id,
+        tecnico_id: orden.tecnico_asignado_id || user?.id,
+        tipo_actividad: 'diagnostico',
+        subtipo: 'Inicio de revisión técnica',
+      });
+
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'No se pudo iniciar la revisión');
+      }
+
+      setSelectedOT(current => current?.id === orden.id ? {
+        ...current,
+        estado: response.data.estado_ot || 'EN_REVISION',
+        estado_atencion: response.data.estado_atencion || 'ACTIVO',
+      } : current);
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] }),
+        queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] }),
+        queryClient.invalidateQueries({ queryKey: ['todas-ordenes', effectiveOrgId] }),
+        queryClient.invalidateQueries({ queryKey: ['expediente-ot', orden.id] }),
+        queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] }),
+      ]);
+      toast({ title: 'Revisión iniciada', description: 'La actividad técnica quedó registrada y la OT está en revisión.' });
+    } catch (error) {
+      const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
+      toast({ variant: 'destructive', title: 'No se pudo iniciar la revisión', description: msg });
+    }
   };
 
   return (
@@ -1175,25 +1233,39 @@ function OrdenesTrabajoContent() {
 
                   let accion = null;
 
-                  if (s === 'ASIGNADA' && esTecnicoPropio) {
+                  if (s === 'ASIGNADA' && !selectedOT.diagnostico_habilitado && esAdminOVentas) {
+                    accion = {
+                      label: 'Cobrar Diagnóstico',
+                      desc: 'El técnico ya está asignado. Registra el cobro de revisión para habilitar el trabajo técnico.',
+                      color: 'from-amber-500 to-orange-500',
+                      icon: '💳',
+                      handler: () => handleCobrarDiagnostico(selectedOT)
+                    };
+                  } else if (s === 'ASIGNADA' && selectedOT.diagnostico_habilitado && (esTecnicoPropio || esAdmin)) {
                     accion = {
                       label: 'Iniciar Revisión',
-                      desc: 'El equipo está asignado y listo para comenzar la revisión técnica.',
+                      desc: esAdmin
+                        ? 'El diagnóstico está pagado. Inicia la revisión en nombre del técnico asignado.'
+                        : 'El equipo está asignado y listo para comenzar la revisión técnica.',
                       color: 'from-blue-500 to-indigo-500',
                       icon: '▶',
-                      handler: async () => {
-                        try {
-                          await transicionarEstadoOT({ ordenTrabajoId: selectedOT.id, nuevoEstado: 'EN_REVISION', effectiveOrgId, userId: user?.id, userEmail: user?.email });
-                          queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
-                          setSelectedOT(null);
-                          toast({ title: 'Revisión iniciada correctamente' });
-                        } catch (error) {
-                          const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
-                          toast({ variant: 'destructive', title: 'No se pudo iniciar revisión', description: msg });
-                        }
-                      }
+                      handler: () => handleIniciarRevision(selectedOT)
                     };
-                  } else if (s === 'EN_REVISION') {
+                  } else if (
+                    s === 'EN_REVISION'
+                    && !selectedOT.estado_atencion
+                    && selectedOT.diagnostico_habilitado === true
+                    && !!selectedOT.revision_venta_id
+                    && (esTecnicoPropio || esAdmin)
+                  ) {
+                    accion = {
+                      label: 'Registrar Inicio Técnico',
+                      desc: 'La OT está en revisión sin una actividad auditada. Registra el inicio antes de continuar.',
+                      color: 'from-emerald-500 to-blue-500',
+                      icon: '▶',
+                      handler: () => handleIniciarRevision(selectedOT)
+                    };
+                  } else if (s === 'EN_REVISION' && (esTecnicoPropio || esAdmin)) {
                     accion = {
                       label: 'Iniciar Diagnóstico Técnico',
                       desc: 'La revisión está en curso. Iniciar el diagnóstico técnico detallado.',

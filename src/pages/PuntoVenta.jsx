@@ -18,7 +18,7 @@ import PanelContextoVenta from '../components/ventas/PanelContextoVenta';
 import EnviarWhatsApp from '../components/ventas/EnviarWhatsApp';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { validarVentaPOS, habilitarDiagnosticoTrasPago } from '@/components/pos/validacionesPOS';
+import { validarVentaPOS } from '@/components/pos/validacionesPOS';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import ClienteSearchInput from '@/components/ot/ClienteSearchInput';
 import QuickCreateClienteModal from '@/components/ot/QuickCreateClienteModal';
@@ -336,11 +336,6 @@ function PuntoVentaContent() {
       }
 
       const venta = response.data.data;
-
-      // Lógica post-venta que queda en frontend por ahora (fuera del scope createSale v1)
-      if (ventaData.tipo_concepto === 'revision_diagnostico' && ventaData.referencia_ot_id) {
-        await habilitarDiagnosticoTrasPago(ventaData.referencia_ot_id, venta.id);
-      }
 
       if (ventaData.tipo_concepto === 'reparacion' && ventaData.referencia_ot_id) {
         await transicionarEstadoOT(ventaData.referencia_ot_id, 'FINALIZADA', {

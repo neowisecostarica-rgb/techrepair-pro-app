@@ -126,22 +126,6 @@ export async function validarCotizacionUnica(otId, organizationId) {
 }
 
 /**
- * 5️⃣ Habilitar diagnóstico tras pago de revisión
- * Marca la OT como habilitada para diagnóstico técnico
- */
-export async function habilitarDiagnosticoTrasPago(otId, ventaId) {
-  if (!otId) return;
-
-  const ahora = new Date().toISOString();
-
-  await base44.entities.OrdenTrabajo.update(otId, {
-    diagnostico_habilitado: true,
-    revision_pagada_at: ahora,
-    revision_venta_id: ventaId
-  });
-}
-
-/**
  * VALIDADOR MAESTRO
  * Ejecuta todas las validaciones necesarias según el tipo de venta
  */

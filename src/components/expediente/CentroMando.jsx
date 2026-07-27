@@ -152,7 +152,11 @@ export default function CentroMando({ ot, effectiveRole }) {
   // ORG_ADMIN y BRANCH_ADMIN pueden iniciar revisión aunque no sean el técnico asignado (superconjunto operativo)
   const esAdminOSupervisor = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'].includes(effectiveRole);
   const esTecnicoAsignado  = effectiveRole === 'TECHNICIAN' && ot.tecnico_asignado_id === user?.id;
-  const puedeIniciarRevision = ot.estado === 'ASIGNADA'
+  const requiereReconciliarInicio = ot.estado === 'EN_REVISION'
+    && !ot.estado_atencion
+    && ot.diagnostico_habilitado === true
+    && !!ot.revision_venta_id;
+  const puedeIniciarRevision = (ot.estado === 'ASIGNADA' || requiereReconciliarInicio)
     && (esAdminOSupervisor || esTecnicoAsignado);
 
   const handleIniciarRevision = async () => {
@@ -222,7 +226,12 @@ export default function CentroMando({ ot, effectiveRole }) {
             : 'bg-amber-50 border-amber-200'
         }`}>
           <div className="flex-1">
-            {ot.diagnostico_habilitado ? (
+            {requiereReconciliarInicio ? (
+              <>
+                <p className="text-sm font-semibold text-emerald-900">Falta registrar el inicio técnico</p>
+                <p className="text-xs text-emerald-700">Registra la actividad auditada para continuar la revisión.</p>
+              </>
+            ) : ot.diagnostico_habilitado ? (
               <>
                 <p className="text-sm font-semibold text-emerald-900">Esta OT está lista para revisión</p>
                 <p className="text-xs text-emerald-700">Inicia la revisión para registrar tu tiempo técnico y mover la OT a EN_REVISION.</p>
@@ -267,7 +276,7 @@ export default function CentroMando({ ot, effectiveRole }) {
               {iniciando ? (
                 <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Iniciando...</>
               ) : ot.diagnostico_habilitado ? (
-                <><Play className="w-4 h-4 mr-1.5" /> Iniciar Revisión</>
+                <><Play className="w-4 h-4 mr-1.5" /> {requiereReconciliarInicio ? 'Registrar Inicio' : 'Iniciar Revisión'}</>
               ) : (
                 <><Lock className="w-4 h-4 mr-1.5" /> Pendiente de pago</>
               )}

@@ -1251,6 +1251,20 @@ function OrdenesTrabajoContent() {
                       icon: '▶',
                       handler: () => handleIniciarRevision(selectedOT)
                     };
+                  } else if (
+                    s === 'EN_REVISION'
+                    && !selectedOT.estado_atencion
+                    && selectedOT.diagnostico_habilitado === true
+                    && !!selectedOT.revision_venta_id
+                    && (esTecnicoPropio || esAdmin)
+                  ) {
+                    accion = {
+                      label: 'Registrar Inicio Técnico',
+                      desc: 'La OT está en revisión sin una actividad auditada. Registra el inicio antes de continuar.',
+                      color: 'from-emerald-500 to-blue-500',
+                      icon: '▶',
+                      handler: () => handleIniciarRevision(selectedOT)
+                    };
                   } else if (s === 'EN_REVISION' && (esTecnicoPropio || esAdmin)) {
                     accion = {
                       label: 'Iniciar Diagnóstico Técnico',

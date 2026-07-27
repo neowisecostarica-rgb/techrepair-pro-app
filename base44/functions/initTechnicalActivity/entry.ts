@@ -377,16 +377,25 @@ Deno.serve(async (req) => {
     }
 
     // ── 11. Regla: OT EN_REVISION sin ninguna actividad → inconsistencia ─────
-    // Si EN_REVISION y no existe NINGÚN registro de actividad (ni activa ni finalizada),
-    // la OT llegó a EN_REVISION por una vía anómala → error controlado.
-    // Si existen actividades finalizada/bloqueada, se permite crear una nueva.
-    if (estadoActualOT === 'EN_REVISION' && actividadesOT.length === 0) {
+    // El flujo legacy de pago podía avanzar una OT antes de crear la actividad.
+    // Solo se reconcilia cuando existe evidencia persistida del pago; cualquier
+    // otro EN_REVISION sin actividad continúa bloqueado para corrección manual.
+    const recuperacionPostPagoLegacy = estadoActualOT === 'EN_REVISION'
+      && actividadesOT.length === 0
+      && ot.diagnostico_habilitado === true
+      && !!ot.revision_venta_id;
+
+    if (estadoActualOT === 'EN_REVISION' && actividadesOT.length === 0 && !recuperacionPostPagoLegacy) {
       console.warn(`[initTechnicalActivity] INCONSISTENCIA: EN_REVISION sin actividades — OT=${orden_trabajo_id}`);
       return Response.json({
         error: 'Inconsistencia detectada: la OT está en EN_REVISION pero no tiene ninguna actividad técnica registrada. Requiere corrección controlada.',
         codigo: 'EN_REVISION_SIN_ACTIVIDAD',
         estado_ot: estadoActualOT,
       }, { status: 409 });
+    }
+
+    if (recuperacionPostPagoLegacy) {
+      console.warn(`[initTechnicalActivity] RECONCILIACION LEGACY: EN_REVISION pagada sin actividad — OT=${orden_trabajo_id}, venta=${ot.revision_venta_id}`);
     }
 
     // ── 12. Validar técnico sin otra OT con estado_atencion ACTIVO ───────────
@@ -610,6 +619,7 @@ Deno.serve(async (req) => {
       estado_ot: 'EN_REVISION',
       estado_atencion: atencionOk ? 'ACTIVO' : (valoresPrevios.estado_atencion),
       advertencia: atencionOk ? null : 'estado_atencion no pudo actualizarse — actividad y OT transicionadas correctamente.',
+      reconciliacion_legacy: recuperacionPostPagoLegacy,
       transition_recovered: transitionRecovered,
       recovered_stale_lock: initLock.recovered_stale_lock === true,
       recovered_ambiguous_lock: initLock.recovered_ambiguous_lock === true,

@@ -142,10 +142,15 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
   // OTs ejecutables por el técnico que aún no han sido iniciadas.
   // ASIGNADA sin estado_atencion = pendientes de iniciar revisión.
+  // EN_REVISION sin estado_atencion = recuperación del flujo legacy de pago.
   // EN_REPARACION / PRUEBAS sin estado_atencion = regresaron de pausa administrativa.
-  const ordenesPorIniciar = ordenes.filter(
-    o => ['ASIGNADA', 'EN_REPARACION', 'PRUEBAS'].includes(o.estado) && !o.estado_atencion
-  );
+  const ordenesPorIniciar = ordenes.filter(o => {
+    if (o.estado_atencion) return false;
+    if (o.estado === 'EN_REVISION') {
+      return o.diagnostico_habilitado === true && !!o.revision_venta_id;
+    }
+    return ['ASIGNADA', 'EN_REPARACION', 'PRUEBAS'].includes(o.estado);
+  });
 
   const tieneDiagnostico = (otId) => {
     return diagnosticos.some(d => d.orden_trabajo_id === otId);
@@ -308,8 +313,8 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   const handleIniciarRevision = async (orden) => {
     if (botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso) return;
     
-    if (orden.estado !== 'ASIGNADA') {
-      alert('Solo se puede iniciar revisión desde estado ASIGNADA');
+    if (!['ASIGNADA', 'EN_REVISION'].includes(orden.estado)) {
+      alert('Solo se puede iniciar revisión desde estado ASIGNADA o reconciliar una OT EN_REVISION sin actividad');
       return;
     }
 
@@ -641,7 +646,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
                     <div className="flex flex-wrap gap-2 mb-3">
                       <Badge className="bg-emerald-100 text-emerald-700 border-0">
-                        ASIGNADA
+                        {orden.estado}
                       </Badge>
                       {estadosPago[orden.id] && (
                         <BadgeEstadoPago status={estadosPago[orden.id].status} />
@@ -663,7 +668,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {orden.estado === 'ASIGNADA' && (
+                    {['ASIGNADA', 'EN_REVISION'].includes(orden.estado) && (
                       <Button
                         onClick={() => handleIniciarRevision(orden)}
                         disabled={botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso}
@@ -672,7 +677,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         {botonesDeshabilitados[`iniciar_revision_${orden.id}`] ? (
                           <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
                         ) : (
-                          <><Play className="w-4 h-4 mr-2" />Iniciar Revisión</>
+                          <><Play className="w-4 h-4 mr-2" />{orden.estado === 'EN_REVISION' ? 'Registrar Inicio' : 'Iniciar Revisión'}</>
                         )}
                       </Button>
                     )}

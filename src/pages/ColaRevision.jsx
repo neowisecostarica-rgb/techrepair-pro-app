@@ -13,9 +13,8 @@ import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '@/components/guards/PageGuard';
 import WorkOrderCard from '@/components/kanban/WorkOrderCard';
 import { useToast } from '@/components/ui/use-toast';
-import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 
-const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
+const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN'];
 
 export default function ColaRevision() {
   return (
@@ -56,6 +55,7 @@ function ColaRevisionContent() {
       return base44.entities.UserAccount.filter({
         organization_id: effectiveOrgId,
         role: 'TECHNICIAN',
+        active: true,
       });
     },
     enabled: !!effectiveOrgId,

@@ -345,7 +345,6 @@ function OrdenesTrabajoContent() {
       tracking_code: formData.get('tracking_code') || undefined,
       responsable_recepcion: formData.get('responsable_recepcion') || user?.full_name,
       prioridad: selectedPrioridad,
-      estado: editingOT ? formData.get('estado') : 'EN_COLA_REVISION',
       created_by_user_id: user?.id,
       // Datos contextuales del equipo
       serie_ingreso: newEquipoData.serie_ingreso || undefined,

@@ -1,11 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-const AUTHORIZED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN'];
+// Assignment is an intake operation owned by administration and sales.
+// Keep this contract aligned with workflowConfig and both assignment UIs.
+const AUTHORIZED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 const ASSIGNMENT_LOCK_TTL_MS = 15 * 60 * 1000;
 
 function isActiveAccount(account) {
-  if (!account || account.active === false || account.status === 'suspended') return false;
-  return account.status === 'active' || account.active === true;
+  if (!account) return false;
+  // `status` is authoritative. `active` is accepted only for records created
+  // before UserAccount.status existed.
+  if (typeof account.status === 'string') return account.status === 'active';
+  return account.active === true;
+}
+
+function errorResponse(status, code, error, extra = {}) {
+  return Response.json({ error, code, ...extra }, { status });
 }
 
 function getLockQuery(ot) {
@@ -43,7 +52,10 @@ async function resolveCaller(base44, user) {
 
   if (isSuperAdmin) {
     if (!user.impersonating_org_id) {
-      return { error: 'SUPER_ADMIN debe seleccionar una organizacion antes de asignar tecnicos' };
+      return {
+        error: 'SUPER_ADMIN debe seleccionar una organizacion antes de asignar tecnicos',
+        code: 'SUPER_ADMIN_ORGANIZATION_REQUIRED',
+      };
     }
     return {
       orgId: user.impersonating_org_id,
@@ -64,7 +76,10 @@ async function resolveCaller(base44, user) {
   }
 
   if (!account) {
-    return { error: 'No existe una cuenta activa para la organizacion seleccionada' };
+    return {
+      error: 'No existe una cuenta activa para la organizacion seleccionada',
+      code: 'CALLER_ACCOUNT_NOT_ACTIVE',
+    };
   }
 
   return {
@@ -230,11 +245,10 @@ async function executeAssignmentOperation({
   const lockQuery = getLockQuery(ot);
 
   if (!lockQuery) {
-    return Response.json({
-      error: 'Otra operacion del lifecycle esta en progreso para esta OT',
-      code: 'ASSIGNMENT_OPERATION_IN_PROGRESS',
+    return errorResponse(409, 'ASSIGNMENT_OPERATION_IN_PROGRESS',
+      'Otra operacion del lifecycle esta en progreso para esta OT', {
       retryable: true,
-    }, { status: 409 });
+    });
   }
 
   const claimQuery = {
@@ -280,11 +294,10 @@ async function executeAssignmentOperation({
   if (claim?.updated !== 1) {
     const current = await loadWorkOrder(base44, orgId, ot.id);
     if (current?.lifecycle_lock_token && current.lifecycle_lock_token !== operationToken) {
-      return Response.json({
-        error: 'Otra operacion modifico la asignacion de esta OT',
-        code: 'ASSIGNMENT_CONCURRENT_UPDATE',
+      return errorResponse(409, 'ASSIGNMENT_CONCURRENT_UPDATE',
+        'Otra operacion modifico la asignacion de esta OT', {
         retryable: true,
-      }, { status: 409 });
+      });
     }
 
     if (current?.estado === targetState
@@ -301,11 +314,10 @@ async function executeAssignmentOperation({
       });
     }
 
-    return Response.json({
-      error: 'La Orden de Trabajo cambio concurrentemente',
-      code: 'ASSIGNMENT_CONCURRENT_UPDATE',
+    return errorResponse(409, 'ASSIGNMENT_CONCURRENT_UPDATE',
+      'La Orden de Trabajo cambio concurrentemente', {
       retryable: true,
-    }, { status: 409 });
+    });
   }
 
   try {
@@ -330,17 +342,12 @@ async function executeAssignmentOperation({
     }, buildRollbackUpdate(ot));
 
     if (rollback?.updated !== 1) {
-      return Response.json({
-        error: 'Fallo el evento de auditoria y no fue posible revertir la asignacion',
-        code: 'ASSIGNMENT_ROLLBACK_FAILED',
-        audit_error: auditError.message,
-      }, { status: 500 });
+      return errorResponse(500, 'ASSIGNMENT_ROLLBACK_FAILED',
+        'Fallo el evento de auditoria y no fue posible revertir la asignacion');
     }
 
-    return Response.json({
-      error: 'No se pudo registrar la auditoria. La asignacion fue revertida sin cambios',
-      code: 'ASSIGNMENT_AUDIT_FAILED_ROLLED_BACK',
-    }, { status: 500 });
+    return errorResponse(500, 'ASSIGNMENT_AUDIT_FAILED_ROLLED_BACK',
+      'No se pudo registrar la auditoria. La asignacion fue revertida sin cambios');
   }
 
   const release = await releaseAssignmentLock(base44, orgId, ot.id, operationToken);
@@ -376,30 +383,30 @@ async function executeAssignmentOperation({
 Deno.serve(async (req) => {
   try {
     if (req.method !== 'POST') {
-      return Response.json({ error: 'Metodo no permitido' }, { status: 405 });
+      return errorResponse(405, 'METHOD_NOT_ALLOWED', 'Metodo no permitido');
     }
 
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) {
-      return Response.json({ error: 'No autenticado' }, { status: 401 });
+      return errorResponse(401, 'AUTHENTICATION_REQUIRED', 'No autenticado');
     }
 
     const caller = await resolveCaller(base44, user);
     if (caller.error) {
-      return Response.json({ error: caller.error }, { status: 403 });
+      return errorResponse(403, caller.code, caller.error);
     }
     if (!AUTHORIZED_ROLES.includes(caller.effectiveRole)) {
-      return Response.json({
-        error: 'No autorizado para asignar tecnicos',
-        required_roles: AUTHORIZED_ROLES,
-        user_role: caller.effectiveRole,
-      }, { status: 403 });
+      return errorResponse(403, 'ASSIGNMENT_ROLE_NOT_AUTHORIZED',
+        'No autorizado para asignar tecnicos', {
+          required_roles: AUTHORIZED_ROLES,
+          user_role: caller.effectiveRole,
+        });
     }
 
     const body = await req.json().catch(() => null);
     if (!body) {
-      return Response.json({ error: 'Body invalido' }, { status: 400 });
+      return errorResponse(400, 'INVALID_JSON_BODY', 'Body invalido');
     }
 
     const {
@@ -407,11 +414,20 @@ Deno.serve(async (req) => {
       tecnico_asignado_id,
       motivo,
     } = body;
-    if (!orden_trabajo_id || !tecnico_asignado_id) {
-      return Response.json({
-        error: 'orden_trabajo_id y tecnico_asignado_id son obligatorios',
-      }, { status: 400 });
+    const hasValidIds = typeof orden_trabajo_id === 'string'
+      && orden_trabajo_id.trim().length > 0
+      && typeof tecnico_asignado_id === 'string'
+      && tecnico_asignado_id.trim().length > 0;
+    if (!hasValidIds) {
+      return errorResponse(400, 'ASSIGNMENT_PAYLOAD_INVALID',
+        'orden_trabajo_id y tecnico_asignado_id son obligatorios');
     }
+    if (motivo != null && typeof motivo !== 'string') {
+      return errorResponse(400, 'ASSIGNMENT_REASON_INVALID',
+        'motivo debe ser texto');
+    }
+
+    const reason = motivo?.trim() || null;
 
     const [ot, destinationTechnician] = await Promise.all([
       loadWorkOrder(base44, caller.orgId, orden_trabajo_id),
@@ -419,15 +435,17 @@ Deno.serve(async (req) => {
     ]);
 
     if (!ot) {
-      return Response.json({
-        error: 'OrdenTrabajo no encontrada en esta organizacion',
-      }, { status: 404 });
+      return errorResponse(404, 'WORK_ORDER_NOT_FOUND',
+        'OrdenTrabajo no encontrada en esta organizacion');
     }
     if (!destinationTechnician) {
-      return Response.json({
-        error: 'El tecnico destino no existe, no esta activo o pertenece a otra organizacion',
-        code: 'DESTINATION_TECHNICIAN_INVALID',
-      }, { status: 422 });
+      return errorResponse(422, 'DESTINATION_TECHNICIAN_INVALID',
+        'El tecnico destino no existe, no esta activo o pertenece a otra organizacion');
+    }
+
+    if (['ENTREGADA', 'CANCELADA'].includes(ot.estado)) {
+      return errorResponse(409, 'WORK_ORDER_ASSIGNMENT_FORBIDDEN_STATE',
+        `No se puede asignar un tecnico a una OT en estado ${ot.estado}`);
     }
 
     const previousTechnicianId = ot.tecnico_asignado_id || null;
@@ -436,11 +454,10 @@ Deno.serve(async (req) => {
 
     if (isInitialAssignmentRecovery
       && previousTechnicianId !== destinationTechnician.user_id) {
-      return Response.json({
-        error: 'La OT contiene una asignacion inicial parcial a otro tecnico. Recargue y recupere esa asignacion antes de cambiarla',
-        code: 'INITIAL_ASSIGNMENT_RECOVERY_TECHNICIAN_MISMATCH',
+      return errorResponse(409, 'INITIAL_ASSIGNMENT_RECOVERY_TECHNICIAN_MISMATCH',
+        'La OT contiene una asignacion inicial parcial a otro tecnico. Recargue y recupere esa asignacion antes de cambiarla', {
         tecnico_asignado_id: previousTechnicianId,
-      }, { status: 409 });
+      });
     }
 
     if (isInitialAssignment || isInitialAssignmentRecovery) {
@@ -450,7 +467,7 @@ Deno.serve(async (req) => {
         orgId: caller.orgId,
         ot,
         destinationTechnician,
-        reason: motivo?.trim() || null,
+        reason,
         operation: isInitialAssignmentRecovery
           ? 'INITIAL_ASSIGNMENT_RECOVERY'
           : 'INITIAL_ASSIGNMENT',
@@ -458,13 +475,17 @@ Deno.serve(async (req) => {
     }
 
     if (!previousTechnicianId) {
-      return Response.json({
-        error: 'La OT no tiene tecnico y no esta en EN_COLA_REVISION',
-        code: 'WORK_ORDER_ASSIGNMENT_INCONSISTENT',
-      }, { status: 409 });
+      return errorResponse(409, 'WORK_ORDER_ASSIGNMENT_INCONSISTENT',
+        'La OT no tiene tecnico y no esta en EN_COLA_REVISION');
     }
 
     if (previousTechnicianId === destinationTechnician.user_id) {
+      if (ot.lifecycle_lock_token && !getLockQuery(ot)) {
+        return errorResponse(409, 'ASSIGNMENT_OPERATION_IN_PROGRESS',
+          'Otra operacion del lifecycle esta en progreso para esta OT', {
+            retryable: true,
+          });
+      }
       return Response.json({
         success: true,
         idempotent: true,
@@ -483,11 +504,12 @@ Deno.serve(async (req) => {
       orgId: caller.orgId,
       ot,
       destinationTechnician,
-      reason: motivo?.trim() || null,
+      reason,
       operation: 'REASSIGNMENT',
     });
   } catch (error) {
     console.error('[reassignWorkOrderTechnician] Error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return errorResponse(500, 'ASSIGNMENT_INTERNAL_ERROR',
+      'No fue posible completar la asignacion del tecnico');
   }
 });

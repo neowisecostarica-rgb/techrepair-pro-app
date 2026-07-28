@@ -50,7 +50,11 @@ export default function OrdenesTrabajo() {
   );
 }
 
-
+function isActiveAccount(account) {
+  if (!account) return false;
+  if (typeof account.status === 'string') return account.status === 'active';
+  return account.active === true;
+}
 
 function OrdenesTrabajoContent() {
   // TECHNICIAN accede en modo consulta — sin redirección
@@ -190,11 +194,11 @@ function OrdenesTrabajoContent() {
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      return base44.entities.UserAccount.filter({
+      const accounts = await base44.entities.UserAccount.filter({
         organization_id: effectiveOrgId,
-        role: 'TECHNICIAN',
-        active: true
+        role: 'TECHNICIAN'
       });
+      return accounts.filter(isActiveAccount);
     },
     enabled: !!effectiveOrgId,
   });
@@ -434,7 +438,7 @@ function OrdenesTrabajoContent() {
   };
 
   const handleReasignar = async () => {
-    if (!reasignarOT || !nuevoTecnicoId || !motivoReasignacion.trim()) {
+    if (!reasignarOT || !nuevoTecnicoId) {
       toast({ variant: 'destructive', title: 'Completa todos los campos requeridos' });
       return;
     }
@@ -446,7 +450,7 @@ function OrdenesTrabajoContent() {
         orden_trabajo_id: reasignarOT.id,
         tecnico_asignado_id: nuevoTecnicoId,
         tecnico_asignado_email: tecnico?.user_email || '',
-        motivo: motivoReasignacion.trim(),
+        motivo: motivoReasignacion.trim() || null,
       });
 
       if (!res?.data?.success) {
@@ -1514,7 +1518,7 @@ function OrdenesTrabajoContent() {
                           ✏️ Editar Pre-Diagnóstico
                         </Button>
                       )}
-                      {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && !['ENTREGADA', 'CANCELADA'].includes(selectedOT.estado) && (
+                      {['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'].includes(effectiveRole) && !['ENTREGADA', 'CANCELADA'].includes(selectedOT.estado) && (
                         <Button variant="outline" className="border-purple-500 text-purple-700 hover:bg-purple-50"
                           onClick={() => { setReasignarOT(selectedOT); setNuevoTecnicoId(''); setMotivoReasignacion(''); setShowReasignar(true); }}>
                           🔄 {selectedOT.tecnico_asignado_id ? 'Reasignar Técnico' : 'Asignar Técnico'}
@@ -1701,7 +1705,7 @@ function OrdenesTrabajoContent() {
       <Dialog open={showReasignar} onOpenChange={setShowReasignar}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Reasignar Técnico</DialogTitle>
+            <DialogTitle>{reasignarOT?.tecnico_asignado_id ? 'Reasignar Técnico' : 'Asignar Técnico'}</DialogTitle>
           </DialogHeader>
 
           {reasignarOT && (
@@ -1709,8 +1713,8 @@ function OrdenesTrabajoContent() {
               <Alert className="bg-orange-50 border-orange-200">
                 <AlertCircle className="w-4 h-4 text-orange-600" />
                 <AlertDescription className="text-orange-800 text-sm">
-                  Esta acción cerrará cualquier actividad técnica en progreso del técnico actual.
-                  El nuevo técnico verá la OT en su "Mi Día" y podrá continuar el diagnóstico.
+                  La asignación conserva el estado operativo y las actividades técnicas existentes.
+                  Si hay una actividad en progreso, debe gestionarse por separado antes de que otro técnico continúe.
                 </AlertDescription>
               </Alert>
 

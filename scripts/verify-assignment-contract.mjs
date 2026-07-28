@@ -4,10 +4,12 @@ import vm from 'node:vm';
 
 const backendPath = new URL('../base44/functions/reassignWorkOrderTechnician/entry.ts', import.meta.url);
 const queuePath = new URL('../src/pages/ColaRevision.jsx', import.meta.url);
+const workOrdersPath = new URL('../src/pages/OrdenesTrabajo.jsx', import.meta.url);
 
-const [backendSource, queueSource] = await Promise.all([
+const [backendSource, queueSource, workOrdersSource] = await Promise.all([
   readFile(backendPath, 'utf8'),
   readFile(queuePath, 'utf8'),
+  readFile(workOrdersPath, 'utf8'),
 ]);
 
 function matches(record, query) {
@@ -30,8 +32,10 @@ function createScenario({
   workOrder,
   callerRole = 'ORG_ADMIN',
   callerStatus = 'active',
+  callerActive = true,
   destinationOrgId = 'org-a',
   destinationRole = 'TECHNICIAN',
+  destinationStatus,
   destinationActive = true,
   superAdmin = false,
   failAudit = false,
@@ -57,8 +61,8 @@ function createScenario({
       user_email: 'admin@example.com',
       organization_id: 'org-a',
       role: callerRole,
-      status: callerStatus,
-      active: true,
+      ...(callerStatus === null ? {} : { status: callerStatus }),
+      active: callerActive,
     },
     {
       id: 'tech-account',
@@ -66,7 +70,7 @@ function createScenario({
       user_email: 'tech2@example.com',
       organization_id: destinationOrgId,
       role: destinationRole,
-      status: destinationActive ? 'active' : 'suspended',
+      status: destinationStatus ?? (destinationActive ? 'active' : 'suspended'),
       active: destinationActive,
     },
   ];
@@ -289,28 +293,84 @@ const tests = [
     },
   },
   {
-    name: 'SALES is rejected before any assignment mutation',
+    name: 'SALES can perform the intake assignment required by workflowConfig',
     async run() {
       const scenario = createScenario({
         callerRole: 'SALES',
         workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
       });
-      const { response } = await invoke(scenario);
+      const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 200);
+      assert.equal(body.operation, 'INITIAL_ASSIGNMENT');
+      assert.equal(scenario.workOrders[0].estado, 'ASIGNADA');
+      assert.equal(scenario.events.length, 1);
+    },
+  },
+  {
+    name: 'BRANCH_ADMIN can assign within the active organization',
+    async run() {
+      const scenario = createScenario({
+        callerRole: 'BRANCH_ADMIN',
+        workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
+      });
+      const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 200);
+      assert.equal(body.operation, 'INITIAL_ASSIGNMENT');
+      assert.equal(scenario.workOrders[0].estado, 'ASIGNADA');
+    },
+  },
+  {
+    name: 'TECHNICIAN role is rejected before any assignment mutation',
+    async run() {
+      const scenario = createScenario({
+        callerRole: 'TECHNICIAN',
+        workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
+      });
+      const { response, body } = await invoke(scenario);
       assert.equal(response.status, 403);
+      assert.equal(body.code, 'ASSIGNMENT_ROLE_NOT_AUTHORIZED');
       assert.equal(scenario.workOrders[0].tecnico_asignado_id, undefined);
       assert.equal(scenario.events.length, 0);
     },
   },
   {
-    name: 'linked legacy invitation remains authorized through active compatibility',
+    name: 'canonical invited status is rejected even when legacy active is true',
     async run() {
       const scenario = createScenario({
         callerStatus: 'invited',
         workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
       });
       const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'CALLER_ACCOUNT_NOT_ACTIVE');
+      assert.equal(scenario.workOrders[0].tecnico_asignado_id, undefined);
+      assert.equal(scenario.events.length, 0);
+    },
+  },
+  {
+    name: 'legacy account without status remains supported through active fallback',
+    async run() {
+      const scenario = createScenario({
+        callerStatus: null,
+        callerActive: true,
+        workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
+      });
+      const { response, body } = await invoke(scenario);
       assert.equal(response.status, 200);
       assert.equal(body.operation, 'INITIAL_ASSIGNMENT');
+      assert.equal(scenario.workOrders[0].estado, 'ASIGNADA');
+    },
+  },
+  {
+    name: 'canonical active status takes precedence over contradictory legacy active flag',
+    async run() {
+      const scenario = createScenario({
+        callerStatus: 'active',
+        callerActive: false,
+        workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
+      });
+      const { response } = await invoke(scenario);
+      assert.equal(response.status, 200);
       assert.equal(scenario.workOrders[0].estado, 'ASIGNADA');
     },
   },
@@ -341,6 +401,82 @@ const tests = [
     },
   },
   {
+    name: 'invited destination technician is rejected despite legacy active flag',
+    async run() {
+      const scenario = createScenario({
+        destinationStatus: 'invited',
+        destinationActive: true,
+        workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
+      });
+      const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 422);
+      assert.equal(body.code, 'DESTINATION_TECHNICIAN_INVALID');
+      assert.equal(scenario.workOrders[0].tecnico_asignado_id, undefined);
+    },
+  },
+  {
+    name: 'non-technician destination account is rejected',
+    async run() {
+      const scenario = createScenario({
+        destinationRole: 'SALES',
+        workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
+      });
+      const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 422);
+      assert.equal(body.code, 'DESTINATION_TECHNICIAN_INVALID');
+      assert.equal(scenario.workOrders[0].tecnico_asignado_id, undefined);
+    },
+  },
+  {
+    name: 'terminal work orders reject reassignment without mutation',
+    async run() {
+      const scenario = createScenario({
+        workOrder: {
+          id: 'ot-1',
+          estado: 'ENTREGADA',
+          tecnico_asignado_id: 'tech-1',
+        },
+      });
+      const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 409);
+      assert.equal(body.code, 'WORK_ORDER_ASSIGNMENT_FORBIDDEN_STATE');
+      assert.equal(scenario.workOrders[0].tecnico_asignado_id, 'tech-1');
+      assert.equal(scenario.events.length, 0);
+    },
+  },
+  {
+    name: 'same-technician retry does not bypass an in-progress lifecycle lock',
+    async run() {
+      const scenario = createScenario({
+        workOrder: {
+          id: 'ot-1',
+          estado: 'ASIGNADA',
+          tecnico_asignado_id: 'tech-2',
+          lifecycle_lock_token: 'operation-in-flight',
+          lifecycle_lock_operation: 'initialTechnicianAssignment',
+          lifecycle_lock_at: new Date().toISOString(),
+        },
+      });
+      const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 409);
+      assert.equal(body.code, 'ASSIGNMENT_OPERATION_IN_PROGRESS');
+      assert.equal(scenario.events.length, 0);
+    },
+  },
+  {
+    name: 'invalid reason returns a deterministic error before mutation',
+    async run() {
+      const scenario = createScenario({
+        workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
+      });
+      const { response, body } = await invoke(scenario, { motivo: 123 });
+      assert.equal(response.status, 400);
+      assert.equal(body.code, 'ASSIGNMENT_REASON_INVALID');
+      assert.equal(scenario.workOrders[0].tecnico_asignado_id, undefined);
+      assert.equal(scenario.events.length, 0);
+    },
+  },
+  {
     name: 'impersonating SUPER_ADMIN executes with tenant-scoped ORG_ADMIN authority',
     async run() {
       const scenario = createScenario({
@@ -355,7 +491,8 @@ const tests = [
   },
 ];
 
-assert.match(queueSource, /const ALLOWED_ROLES = \['ORG_ADMIN', 'BRANCH_ADMIN'\]/);
+assert.match(queueSource, /const ALLOWED_ROLES = \['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'\]/);
+assert.match(workOrdersSource, /\['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'\]\.includes\(effectiveRole\)/);
 assert.doesNotMatch(backendSource, /functions\.invoke\(['"]transitionWorkOrderStatus['"]/);
 assert.doesNotMatch(backendSource, /ActividadTecnica|WorkflowGate|initTechnicalActivity/);
 

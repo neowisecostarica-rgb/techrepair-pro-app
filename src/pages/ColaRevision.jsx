@@ -14,7 +14,13 @@ import PageGuard from '@/components/guards/PageGuard';
 import WorkOrderCard from '@/components/kanban/WorkOrderCard';
 import { useToast } from '@/components/ui/use-toast';
 
-const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN'];
+const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
+
+function isActiveAccount(account) {
+  if (!account) return false;
+  if (typeof account.status === 'string') return account.status === 'active';
+  return account.active === true;
+}
 
 export default function ColaRevision() {
   return (
@@ -52,11 +58,11 @@ function ColaRevisionContent() {
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      return base44.entities.UserAccount.filter({
+      const accounts = await base44.entities.UserAccount.filter({
         organization_id: effectiveOrgId,
         role: 'TECHNICIAN',
-        active: true,
       });
+      return accounts.filter(isActiveAccount);
     },
     enabled: !!effectiveOrgId,
   });
@@ -101,23 +107,34 @@ function ColaRevisionContent() {
         throw new Error(errMsg);
       }
       // Retornar objeto plano serializable — nunca el objeto res de Axios
-      return { success: true, orden_trabajo_id: ordenId };
+      return data;
     },
-    onSuccess: (_result) => {
+    onSuccess: async (result) => {
+      queryClient.setQueryData(['ordenes', effectiveOrgId], current => {
+        if (!Array.isArray(current) || !result?.updated_ot) return current;
+        return current.map(ot => ot.id === result.updated_ot.id ? result.updated_ot : ot);
+      });
       // Cerrar y limpiar TODO antes de invalidar caché
       setShowAsignarModal(false);
       setSelectedOT(null);
       setTecnicoSeleccionado('');
       setMotivoReasignacion('');
       toast({ title: '✅ Técnico asignado correctamente', duration: 3000 });
-      queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] }),
+        queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] }),
+        queryClient.invalidateQueries({ queryKey: ['todas-ordenes', effectiveOrgId] }),
+      ]);
     },
     onError: (error) => {
       console.log('[asignarMutation] → onError');
       // Extraer únicamente el string del mensaje — nunca serializar el objeto error completo
-      const msg = typeof error?.message === 'string' && error.message
-        ? error.message
-        : 'Error al asignar técnico';
+      const backendMessage = error?.response?.data?.error || error?.backendMessage;
+      const msg = typeof backendMessage === 'string' && backendMessage
+        ? backendMessage
+        : typeof error?.message === 'string' && error.message
+          ? error.message
+          : 'Error al asignar técnico';
       toast({ variant: 'destructive', title: 'Error al asignar técnico', description: msg, duration: 4000 });
     },
   });

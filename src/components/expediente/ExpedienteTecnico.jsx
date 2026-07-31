@@ -13,6 +13,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getSmartIntakeByWorkOrder, smartIntakeQueryKeys } from '@/api/smartIntake';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -68,14 +69,14 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
   });
   const dmr = dmrList[0] || null;
 
-  // ── Panel Operativo necesita prediag ──────────────────────────────────────
-  const { data: prediagList = [] } = useQuery({
-    queryKey: ['expediente-prediag', ot.id],
-    queryFn: () => base44.entities.PreDiagnostico.filter({ orden_trabajo_id: ot.id }),
+  // ── Smart Intake canónico (legacy detrás del adaptador) ───────────────────
+  const { data: smartIntakeResult } = useQuery({
+    queryKey: smartIntakeQueryKeys.byWorkOrder(ot.id),
+    queryFn: () => getSmartIntakeByWorkOrder(ot.id),
     enabled: !!ot.id,
     staleTime: 2 * 60 * 1000,
   });
-  const prediag = prediagList[0] || null;
+  const smartIntake = smartIntakeResult?.intake || null;
 
   // ── Diagnóstico Técnico ───────────────────────────────────────────────────
   const { data: diagList = [] } = useQuery({
@@ -118,7 +119,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
         cliente={cliente}
         equipo={equipo}
         tecnico={tecnico}
-        prediag={prediag}
+        smartIntake={smartIntake}
       />
 
       {/* ── Estado Documental — Trazabilidad de Envío ────────────────────── */}
@@ -302,26 +303,26 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
         accentClass="bg-blue-50 text-blue-700"
         defaultOpen={false}
         badge={
-          prediag
-            ? <Badge className={`border-0 text-[10px] ${prediag.estado === 'completado' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                {prediag.estado === 'completado' ? 'Completado' : 'Borrador'}
+          smartIntake
+            ? <Badge className={`border-0 text-[10px] ${smartIntake.isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                {smartIntake.isCompleted ? 'Completado' : 'Borrador'}
               </Badge>
             : <Badge className="bg-slate-100 text-slate-400 border-0 text-[10px]">Sin datos</Badge>
         }
       >
-        {!prediag ? (
+        {!smartIntake ? (
           <p className="text-xs text-slate-400 italic py-2">Sin prediagnóstico registrado.</p>
         ) : (
           <div>
-            {ot.diagnostico_resumido && (
+            {smartIntake.summary && (
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-800 leading-relaxed">
-                {ot.diagnostico_resumido}
+                {smartIntake.summary}
               </div>
             )}
-            {prediag.respuestas && Object.keys(prediag.respuestas).length > 0 && (
+            {Object.keys(smartIntake.conditionalAnswers).length > 0 && (
               <div className="mt-3 space-y-1">
                 <p className="text-[10px] text-slate-400 uppercase font-semibold">Respuestas del Wizard</p>
-                {Object.entries(prediag.respuestas).map(([k, v]) => (
+                {Object.entries(smartIntake.conditionalAnswers).map(([k, v]) => (
                   <Dato key={k} label={k}>{String(v)}</Dato>
                 ))}
               </div>

@@ -113,7 +113,7 @@ export default function PanelOperativoDiagnostico({
   cliente,
   equipo,
   tecnico,
-  prediag,
+  smartIntake,
 }) {
   const queryClient = useQueryClient();
   const [wizardOpen, setWizardOpen]       = useState(false);
@@ -663,7 +663,7 @@ export default function PanelOperativoDiagnostico({
           </DialogHeader>
           <WizardDiagnosticoTecnico
             ordenTrabajo={ot}
-            preDiagnostico={prediag}
+            smartIntake={smartIntake}
             effectiveOrgId={organizationId}
             tecnicoId={tecnicoIdEfectivo}
             onClose={() => setWizardOpen(false)}

@@ -25,7 +25,7 @@ const TIPOS_INTERVENCION = {
 
 export default function WizardDiagnosticoTecnico({ 
   ordenTrabajo, 
-  preDiagnostico,
+  smartIntake,
   effectiveOrgId, 
   tecnicoId, 
   onClose, 
@@ -313,7 +313,7 @@ export default function WizardDiagnosticoTecnico({
             </AlertDescription>
           </Alert>
 
-          {preDiagnostico ? (
+          {smartIntake ? (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Pre-Diagnóstico de Recepción</CardTitle>
@@ -322,32 +322,32 @@ export default function WizardDiagnosticoTecnico({
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-slate-500">Uso principal:</p>
-                    <p className="font-medium">{preDiagnostico.uso_principal || 'No especificado'}</p>
+                    <p className="font-medium">{smartIntake.mainUse || 'No especificado'}</p>
                   </div>
                   <div>
                     <p className="text-slate-500">Equipo crítico:</p>
-                    <p className="font-medium">{preDiagnostico.equipo_critico ? 'Sí' : 'No'}</p>
+                    <p className="font-medium">{smartIntake.isCriticalEquipment ? 'Sí' : 'No'}</p>
                   </div>
                   <div>
                     <p className="text-slate-500">Problema reportado:</p>
-                    <p className="font-medium">{preDiagnostico.problema_principal || 'No especificado'}</p>
+                    <p className="font-medium">{smartIntake.mainReportedProblem || 'No especificado'}</p>
                   </div>
                   <div>
                     <p className="text-slate-500">Riesgo de datos:</p>
                     <Badge className={
-                      preDiagnostico.riesgo_datos === 'alto' ? 'bg-red-100 text-red-800' :
-                      preDiagnostico.riesgo_datos === 'medio' ? 'bg-yellow-100 text-yellow-800' :
+                      smartIntake.dataRiskLevel === 'alto' ? 'bg-red-100 text-red-800' :
+                      smartIntake.dataRiskLevel === 'medio' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-slate-100 text-slate-800'
                     }>
-                      {preDiagnostico.riesgo_datos || 'ninguno'}
+                      {smartIntake.dataRiskLevel || 'ninguno'}
                     </Badge>
                   </div>
                 </div>
 
-                {ordenTrabajo.diagnostico_resumido && (
+                {smartIntake.summary && (
                   <div className="border-t pt-4 mt-4">
                     <p className="text-sm text-slate-500 mb-2">Resumen:</p>
-                    <p className="text-sm whitespace-pre-wrap">{ordenTrabajo.diagnostico_resumido}</p>
+                    <p className="text-sm whitespace-pre-wrap">{smartIntake.summary}</p>
                   </div>
                 )}
               </CardContent>

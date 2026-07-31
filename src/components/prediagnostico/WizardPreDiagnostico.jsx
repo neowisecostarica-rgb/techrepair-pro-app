@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, CheckCircle2, AlertCircle, Save, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { invalidateSmartIntake } from '@/api/smartIntake';
 import { generarResumenPreDiagnostico } from './generarResumen';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -265,7 +266,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
 
   // Invalida únicamente las queries autorizadas para el flujo de Pre-Diagnóstico
   const invalidarQueriesPreDiagnostico = () => {
-    queryClient.invalidateQueries({ queryKey: ['prediagnostico', ordenTrabajo.id] });
+    invalidateSmartIntake(queryClient, ordenTrabajo.id);
     queryClient.invalidateQueries({ queryKey: ['expediente-ot', ordenTrabajo.id] });
   };
 

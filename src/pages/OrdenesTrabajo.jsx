@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import {
+  getSmartIntakeByWorkOrder,
+  invalidateSmartIntake,
+  smartIntakeQueryKeys,
+} from '@/api/smartIntake';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,7 +73,7 @@ function OrdenesTrabajoContent() {
   const [preDiagnosticoOT, setPreDiagnosticoOT] = useState(null);
   const [showDiagnosticoTecnico, setShowDiagnosticoTecnico] = useState(false);
   const [diagnosticoTecnicoOT, setDiagnosticoTecnicoOT] = useState(null);
-  const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
+  const [smartIntakeData, setSmartIntakeData] = useState(null);
   const [showCotizacion, setShowCotizacion] = useState(false);
   const [cotizacionOT, setCotizacionOT] = useState(null);
   const [vistaActiva, setVistaActiva] = useState('lista');
@@ -218,14 +223,14 @@ function OrdenesTrabajoContent() {
     }
   }, [terminos]);
 
-  // RC2-GOLD-FIX-01: única fuente de verdad para el PreDiagnóstico de la OT seleccionada
-  const { data: preDiagSelectedOT } = useQuery({
-    queryKey: ['prediagnostico', selectedOT?.id],
-    queryFn: () => base44.entities.PreDiagnostico.filter({ orden_trabajo_id: selectedOT.id })
-      .then(results => (results && results.length > 0 ? results[0] : null)),
+  // DCE-001A: única ruta canónica de lectura para Smart Intake.
+  const { data: smartIntakeResult } = useQuery({
+    queryKey: smartIntakeQueryKeys.byWorkOrder(selectedOT?.id),
+    queryFn: () => getSmartIntakeByWorkOrder(selectedOT.id),
     enabled: !!selectedOT?.id && selectedOT?.estado === 'EN_COLA_REVISION',
     staleTime: 0,
   });
+  const preDiagSelectedOT = smartIntakeResult?.intake || null;
 
   const [guardandoOT, setGuardandoOT] = useState(false);
 
@@ -1286,7 +1291,7 @@ function OrdenesTrabajoContent() {
                       preDiagLabel = 'Completar Pre-Diagnóstico';
                       preDiagDesc = 'Registrar la información inicial del problema antes de asignar al técnico.';
                       preDiagIcon = '📋';
-                    } else if (preDiagObj?.estado === 'borrador') {
+                    } else if (preDiagObj?.isDraft) {
                       preDiagLabel = 'Continuar Pre-Diagnóstico';
                       preDiagDesc = 'Pre-diagnóstico iniciado. Continuar completando la información.';
                       preDiagIcon = '📝';
@@ -1582,7 +1587,7 @@ function OrdenesTrabajoContent() {
                 setShowPreDiagnostico(false);
                 setPreDiagnosticoOT(null);
                 queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
-                queryClient.invalidateQueries({ queryKey: ['prediagnostico', preDiagnosticoOT?.id] });
+                invalidateSmartIntake(queryClient, preDiagnosticoOT?.id);
               }}
             />
           )}
@@ -1595,18 +1600,18 @@ function OrdenesTrabajoContent() {
           {diagnosticoTecnicoOT && (
             <WizardDiagnosticoTecnico
               ordenTrabajo={diagnosticoTecnicoOT}
-              preDiagnostico={preDiagnosticoData || null}
+              smartIntake={smartIntakeData || null}
               effectiveOrgId={effectiveOrgId}
               tecnicoId={user?.id}
               onClose={() => {
                 setShowDiagnosticoTecnico(false);
                 setDiagnosticoTecnicoOT(null);
-                setPreDiagnosticoData(null);
+                setSmartIntakeData(null);
               }}
               onComplete={() => {
                 setShowDiagnosticoTecnico(false);
                 setDiagnosticoTecnicoOT(null);
-                setPreDiagnosticoData(null);
+                setSmartIntakeData(null);
                 queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
               }}
             />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getSmartIntakeByWorkOrder } from '@/api/smartIntake';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +45,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   const [showWizard, setShowWizard] = useState(false);
   const [showDetalleOT, setShowDetalleOT] = useState(false);
   const [selectedOT, setSelectedOT] = useState(null);
-  const [preDiagnosticoData, setPreDiagnosticoData] = useState(null);
+  const [smartIntakeData, setSmartIntakeData] = useState(null);
   const [motivoPausa, setMotivoPausa] = useState('interrupcion');
   const [observacionesPausa, setObservacionesPausa] = useState('');
   const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
@@ -296,14 +297,11 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     }
     
     try {
-      const preDiag = await base44.entities.PreDiagnostico.filter({
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: orden.id
-      });
-      setPreDiagnosticoData(preDiag[0] || null);
+      const smartIntakeResult = await getSmartIntakeByWorkOrder(orden.id);
+      setSmartIntakeData(smartIntakeResult.intake);
     } catch (error) {
-      console.error('Error cargando pre-diagnóstico:', error);
-      setPreDiagnosticoData(null);
+      console.error('Error cargando Smart Intake:', error);
+      setSmartIntakeData(null);
     }
     
     setSelectedOT(orden);
@@ -975,18 +973,18 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           {selectedOT && (
             <WizardDiagnosticoTecnico
               ordenTrabajo={selectedOT}
-              preDiagnostico={preDiagnosticoData}
+              smartIntake={smartIntakeData}
               effectiveOrgId={effectiveOrgId}
               tecnicoId={user?.id}
               onClose={() => {
                 setShowWizard(false);
                 setSelectedOT(null);
-                setPreDiagnosticoData(null);
+                setSmartIntakeData(null);
               }}
               onComplete={() => {
                 setShowWizard(false);
                 setSelectedOT(null);
-                setPreDiagnosticoData(null);
+                setSmartIntakeData(null);
                 queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
                 mostrarMensajeAgradecimiento('diagnostico');
               }}

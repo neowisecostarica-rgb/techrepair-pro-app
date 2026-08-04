@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const backendPath = new URL('../base44/functions/getSmartIntakeByWorkOrder/entry.ts', import.meta.url);
+const smartIntakeApiPath = new URL('../src/api/smartIntake.js', import.meta.url);
 const workOrdersPath = new URL('../src/pages/OrdenesTrabajo.jsx', import.meta.url);
 const expedientePath = new URL('../src/components/expediente/ExpedienteTecnico.jsx', import.meta.url);
 const myDayPath = new URL('../src/components/midia/MiDiaTech.jsx', import.meta.url);
@@ -11,6 +12,7 @@ const legacyWizardPath = new URL('../src/components/prediagnostico/WizardPreDiag
 
 const [
   backendSource,
+  smartIntakeApiSource,
   workOrdersSource,
   expedienteSource,
   myDaySource,
@@ -18,6 +20,7 @@ const [
   legacyWizardSource,
 ] = await Promise.all([
   readFile(backendPath, 'utf8'),
+  readFile(smartIntakeApiPath, 'utf8'),
   readFile(workOrdersPath, 'utf8'),
   readFile(expedientePath, 'utf8'),
   readFile(myDayPath, 'utf8'),
@@ -30,20 +33,24 @@ function matches(record, query) {
 }
 
 function createScenario({
-  user = { id: 'user-a', organization_id: 'org-a', email: 'user@example.com' },
+  user,
   accounts,
   workOrders,
   preDiagnosticos = [],
+  logger = console,
 } = {}) {
-  const userAccounts = accounts || [{
+  const resolvedUser = user === undefined
+    ? { id: 'user-a', organization_id: 'org-a', email: 'user@example.com' }
+    : user;
+  const userAccounts = accounts || (resolvedUser ? [{
     id: 'account-a',
-    user_id: user.id,
+    user_id: resolvedUser.id,
     organization_id: 'org-a',
     branch_id: 'branch-a',
     role: 'SALES',
     status: 'active',
     active: true,
-  }];
+  }] : []);
   const orders = workOrders || [{
     id: 'ot-1',
     organization_id: 'org-a',
@@ -71,20 +78,21 @@ function createScenario({
 
   return {
     client: {
-      auth: { me: async () => user },
+      auth: { me: async () => resolvedUser },
       asServiceRole: { entities },
     },
+    logger,
   };
 }
 
-function loadHandler(client) {
+function loadHandler(client, logger = console) {
   const executable = backendSource
     .replace(/^import .*?;\s*/u, '')
     .replace('Deno.serve(async (req) => {', 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
     __createClientFromRequest: () => client,
-    console,
+    console: logger,
     Date,
     JSON,
     Object,
@@ -100,9 +108,38 @@ function loadHandler(client) {
 }
 
 async function invoke(scenario, workOrderId = 'ot-1') {
-  const handler = loadHandler(scenario.client);
+  const handler = loadHandler(scenario.client, scenario.logger);
   const response = await handler({ json: async () => ({ workOrderId }) });
   return { response, body: await response.json() };
+}
+
+function loadSmartIntakeClient(base44Client, logger = console) {
+  const executable = smartIntakeApiSource
+    .replace(/^import .*?;\s*/u, '')
+    .replace(/^export /gmu, '');
+  const context = {
+    __base44: base44Client,
+    console: logger,
+  };
+  context.globalThis = context;
+  vm.runInNewContext(
+    `const base44 = globalThis.__base44;\n${executable}\n`
+      + 'globalThis.__smartIntakeApi = {'
+      + ' getSmartIntakeByWorkOrder, getLegacyPreDiagnosticoForEditing, invalidateSmartIntake'
+      + ' };',
+    context,
+  );
+  return context.__smartIntakeApi;
+}
+
+function createCapturingLogger() {
+  const entries = { error: [], warn: [], log: [] };
+  return {
+    entries,
+    error: (...args) => entries.error.push(args),
+    warn: (...args) => entries.warn.push(args),
+    log: (...args) => entries.log.push(args),
+  };
 }
 
 const completedLegacy = {
@@ -124,6 +161,145 @@ const completedLegacy = {
 };
 
 const tests = [
+  {
+    name: 'unauthenticated caller is rejected',
+    async run() {
+      const { response, body } = await invoke(createScenario({
+        user: null,
+        accounts: [],
+        workOrders: [],
+      }));
+      assert.equal(response.status, 401);
+      assert.equal(body.code, 'AUTHENTICATION_REQUIRED');
+    },
+  },
+  {
+    name: 'SUPER_ADMIN without impersonation is rejected',
+    async run() {
+      const { response, body } = await invoke(createScenario({
+        user: { id: 'super-a', is_super_admin: true },
+        accounts: [],
+      }));
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'EFFECTIVE_ORGANIZATION_REQUIRED');
+    },
+  },
+  {
+    name: 'SUPER_ADMIN with impersonation reads only the selected organization',
+    async run() {
+      const legacy = {
+        ...completedLegacy,
+        organization_id: 'org-b',
+      };
+      const { response, body } = await invoke(createScenario({
+        user: {
+          id: 'super-a',
+          is_super_admin: true,
+          impersonating_org_id: 'org-b',
+        },
+        accounts: [],
+        workOrders: [{ id: 'ot-1', organization_id: 'org-b' }],
+        preDiagnosticos: [legacy],
+      }));
+      assert.equal(response.status, 200);
+      assert.equal(body.status, 'FOUND');
+      assert.equal(body.intake.organizationId, 'org-b');
+    },
+  },
+  {
+    name: 'multiple memberships resolve the token organization membership',
+    async run() {
+      const legacy = {
+        ...completedLegacy,
+        organization_id: 'org-b',
+      };
+      const { response, body } = await invoke(createScenario({
+        user: { id: 'user-a', organization_id: 'org-b' },
+        accounts: [
+          {
+            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', role: 'SALES', status: 'active',
+          },
+          {
+            id: 'account-b', user_id: 'user-a', organization_id: 'org-b', role: 'TECHNICIAN', status: 'active',
+          },
+        ],
+        workOrders: [{ id: 'ot-1', organization_id: 'org-b' }],
+        preDiagnosticos: [legacy],
+      }));
+      assert.equal(response.status, 200);
+      assert.equal(body.status, 'FOUND');
+      assert.equal(body.intake.organizationId, 'org-b');
+    },
+  },
+  {
+    name: 'multiple memberships without an organization hint are rejected',
+    async run() {
+      const { response, body } = await invoke(createScenario({
+        user: { id: 'user-a' },
+        accounts: [
+          {
+            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', role: 'SALES', status: 'active',
+          },
+          {
+            id: 'account-b', user_id: 'user-a', organization_id: 'org-b', role: 'TECHNICIAN', status: 'active',
+          },
+        ],
+      }));
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'CALLER_MEMBERSHIP_INACTIVE');
+    },
+  },
+  {
+    name: 'suspended membership is rejected despite the legacy active flag',
+    async run() {
+      const { response, body } = await invoke(createScenario({
+        accounts: [{
+          id: 'account-a',
+          user_id: 'user-a',
+          organization_id: 'org-a',
+          role: 'SALES',
+          status: 'suspended',
+          active: true,
+        }],
+      }));
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'CALLER_MEMBERSHIP_INACTIVE');
+    },
+  },
+  {
+    name: 'invited membership is rejected despite the legacy active flag',
+    async run() {
+      const { response, body } = await invoke(createScenario({
+        accounts: [{
+          id: 'account-a',
+          user_id: 'user-a',
+          organization_id: 'org-a',
+          role: 'SALES',
+          status: 'invited',
+          active: true,
+        }],
+      }));
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'CALLER_MEMBERSHIP_INACTIVE');
+    },
+  },
+  {
+    name: 'legacy membership without status retains the active fallback',
+    async run() {
+      const { response, body } = await invoke(createScenario({
+        accounts: [{
+          id: 'account-a',
+          user_id: 'user-a',
+          organization_id: 'org-a',
+          role: 'SALES',
+          active: true,
+        }],
+        preDiagnosticos: [completedLegacy],
+      }));
+      assert.equal(response.status, 200);
+      assert.equal(body.status, 'FOUND');
+    },
+  },
   {
     name: 'legacy completed intake maps to the canonical DTO',
     async run() {
@@ -220,14 +396,43 @@ const tests = [
     },
   },
   {
-    name: 'work-order organization mismatch is rejected',
+    name: 'missing and cross-tenant work orders have indistinguishable responses',
     async run() {
-      const scenario = createScenario({
+      const missingLogger = createCapturingLogger();
+      const crossTenantLogger = createCapturingLogger();
+      const missing = await invoke(createScenario({
+        workOrders: [],
+        logger: missingLogger,
+      }));
+      const crossTenant = await invoke(createScenario({
         workOrders: [{ id: 'ot-1', organization_id: 'org-b' }],
+        logger: crossTenantLogger,
+      }));
+
+      assert.equal(missing.response.status, 404);
+      assert.equal(crossTenant.response.status, 404);
+      assert.deepEqual(crossTenant.body, missing.body);
+      assert.deepEqual(crossTenant.body, {
+        error: 'Orden de trabajo no encontrada',
+        code: 'WORK_ORDER_NOT_FOUND',
       });
-      const { response, body } = await invoke(scenario);
-      assert.equal(response.status, 403);
-      assert.equal(body.code, 'WORK_ORDER_ORGANIZATION_MISMATCH');
+      assert.equal(crossTenantLogger.entries.warn.length, 1);
+      assert.equal(crossTenantLogger.entries.warn[0][1].reason, 'CROSS_TENANT');
+      assert.equal(missingLogger.entries.warn[0][1].reason, 'NOT_FOUND');
+    },
+  },
+  {
+    name: 'cross-tenant legacy records are not readable through a valid work order',
+    async run() {
+      const crossTenantLegacy = {
+        ...completedLegacy,
+        organization_id: 'org-b',
+      };
+      const { response, body } = await invoke(createScenario({
+        preDiagnosticos: [crossTenantLegacy],
+      }));
+      assert.equal(response.status, 200);
+      assert.deepEqual(body, { status: 'NOT_FOUND', intake: null, warnings: [] });
     },
   },
   {
@@ -254,10 +459,137 @@ const tests = [
     },
   },
   {
+    name: 'duplicate timestamp ties use a deterministic record-id tie break',
+    async run() {
+      const tiedZ = {
+        ...completedLegacy,
+        id: 'prediag-z',
+        updated_date: '2026-07-31T10:00:00.000Z',
+      };
+      const tiedA = {
+        ...completedLegacy,
+        id: 'prediag-a',
+        updated_date: '2026-07-31T10:00:00.000Z',
+      };
+      const { body } = await invoke(createScenario({ preDiagnosticos: [tiedZ, tiedA] }));
+      assert.equal(body.status, 'FOUND_WITH_WARNINGS');
+      assert.equal(body.intake.id, 'prediag-a');
+      assert.equal(body.warnings[0].selectedLegacyId, 'prediag-a');
+    },
+  },
+  {
     name: 'existing work-order summary is preserved in the DTO',
     async run() {
       const { body } = await invoke(createScenario({ preDiagnosticos: [completedLegacy] }));
       assert.equal(body.intake.summary, 'Resumen de recepción');
+    },
+  },
+  {
+    name: 'unexpected backend failures return a stable sanitized error',
+    async run() {
+      const logger = createCapturingLogger();
+      const scenario = createScenario({ logger });
+      scenario.client.asServiceRole.entities.UserAccount.filter = async () => {
+        throw new Error('internal-database-host.example');
+      };
+      const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 500);
+      assert.deepEqual(body, {
+        error: 'No se pudo consultar Smart Intake',
+        code: 'SMART_INTAKE_READ_FAILED',
+      });
+      assert.doesNotMatch(JSON.stringify(body), /internal-database-host/u);
+      assert.equal(logger.entries.error.length, 1);
+      assert.match(logger.entries.error[0][1].message, /internal-database-host/u);
+    },
+  },
+  {
+    name: 'client accepts the canonical NOT_FOUND envelope',
+    async run() {
+      const api = loadSmartIntakeClient({
+        functions: {
+          invoke: async () => ({
+            data: { status: 'NOT_FOUND', intake: null, warnings: [] },
+          }),
+        },
+        entities: { PreDiagnostico: { filter: async () => [] } },
+      });
+      const result = await api.getSmartIntakeByWorkOrder('ot-1');
+      assert.equal(result.status, 'NOT_FOUND');
+      assert.equal(result.intake, null);
+      assert.deepEqual([...result.warnings], []);
+    },
+  },
+  {
+    name: 'client rejects semantically invalid envelopes',
+    async run() {
+      const missingIntakeApi = loadSmartIntakeClient({
+        functions: {
+          invoke: async () => ({
+            data: { status: 'FOUND', intake: null, warnings: [] },
+          }),
+        },
+        entities: { PreDiagnostico: { filter: async () => [] } },
+      });
+      await assert.rejects(
+        () => missingIntakeApi.getSmartIntakeByWorkOrder('ot-1'),
+        /Respuesta invalida del servicio Smart Intake/u,
+      );
+
+      const malformedWarningsApi = loadSmartIntakeClient({
+        functions: {
+          invoke: async () => ({
+            data: { status: 'NOT_FOUND', intake: null, warnings: {} },
+          }),
+        },
+        entities: { PreDiagnostico: { filter: async () => [] } },
+      });
+      await assert.rejects(
+        () => malformedWarningsApi.getSmartIntakeByWorkOrder('ot-1'),
+        /Respuesta invalida del servicio Smart Intake/u,
+      );
+    },
+  },
+  {
+    name: 'legacy editing bridge loads the exact record selected by the backend',
+    async run() {
+      const legacyRecords = [
+        { ...completedLegacy, id: 'prediag-older' },
+        { ...completedLegacy, id: 'prediag-newer' },
+      ];
+      let receivedQuery = null;
+      const api = loadSmartIntakeClient({
+        functions: {
+          invoke: async () => ({
+            data: {
+              status: 'FOUND_WITH_WARNINGS',
+              intake: {
+                id: 'prediag-newer',
+                legacyReference: {
+                  entityName: 'PreDiagnostico',
+                  recordId: 'prediag-newer',
+                  rawState: 'completado',
+                },
+              },
+              warnings: [{ code: 'DUPLICATE_LEGACY_PREDIAGNOSTICO' }],
+            },
+          }),
+        },
+        entities: {
+          PreDiagnostico: {
+            filter: async (query) => {
+              receivedQuery = query;
+              return legacyRecords.filter(record => matches(record, query));
+            },
+          },
+        },
+      }, createCapturingLogger());
+
+      const selected = await api.getLegacyPreDiagnosticoForEditing('ot-1', 'org-a');
+      assert.equal(selected.id, 'prediag-newer');
+      assert.equal(receivedQuery.id, 'prediag-newer');
+      assert.equal(receivedQuery.organization_id, 'org-a');
+      assert.equal(receivedQuery.orden_trabajo_id, 'ot-1');
     },
   },
 ];
@@ -277,7 +609,9 @@ assert.match(workOrdersSource, /getSmartIntakeByWorkOrder/);
 assert.match(expedienteSource, /smartIntakeQueryKeys\.byWorkOrder/);
 assert.match(myDaySource, /getSmartIntakeByWorkOrder/);
 assert.match(technicalWizardSource, /smartIntake\.mainReportedProblem/);
+assert.match(legacyWizardSource, /getLegacyPreDiagnosticoForEditing/);
 assert.match(legacyWizardSource, /invalidateSmartIntake\(queryClient, ordenTrabajo\.id\)/);
+assert.doesNotMatch(legacyWizardSource, /PreDiagnostico\.filter/);
 assert.doesNotMatch(legacyWizardSource, /queryKey:\s*\['prediagnostico'/);
 
 for (const test of tests) {
@@ -285,4 +619,4 @@ for (const test of tests) {
   console.log(`PASS ${test.name}`);
 }
 
-console.log(`\n${tests.length} Smart Intake handler tests and 6 source-contract checks passed.`);
+console.log(`\n${tests.length} Smart Intake stabilization tests and 12 source-contract checks passed.`);

@@ -16,7 +16,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, CheckCircle2, AlertCircle, Save, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { invalidateSmartIntake } from '@/api/smartIntake';
+import {
+  getLegacyPreDiagnosticoForEditing,
+  invalidateSmartIntake,
+} from '@/api/smartIntake';
 import { generarResumenPreDiagnostico } from './generarResumen';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -220,10 +223,10 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
 
   const cargarPreDiagnostico = async () => {
     try {
-      const existing = await base44.entities.PreDiagnostico.filter({
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id
-      });
+      const existing = await getLegacyPreDiagnosticoForEditing(
+        ordenTrabajo.id,
+        effectiveOrgId,
+      );
       let baseData = {
         uso_principal: '',
         equipo_critico: false,
@@ -233,8 +236,8 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
         riesgo_fisico: 'ninguno',
         observaciones_riesgo: ''
       };
-      if (existing.length > 0) {
-        const pd = existing[0];
+      if (existing) {
+        const pd = existing;
         setPreDiagnostico(pd);
         baseData = {
           uso_principal: pd.uso_principal || '',

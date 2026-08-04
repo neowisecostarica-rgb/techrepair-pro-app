@@ -166,18 +166,27 @@ Deno.serve(async (req) => {
       return errorResponse(403, access.code, access.error);
     }
 
-    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: workOrderId }, 1);
+    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+      id: workOrderId,
+      organization_id: access.orgId,
+    }, 1);
     const workOrder = workOrders?.[0] || null;
     if (!workOrder) {
+      // Keep the public response indistinguishable for missing and cross-tenant
+      // IDs, while preserving an internal audit signal for operations.
+      try {
+        const unscopedWorkOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+          id: workOrderId,
+        }, 1);
+        console.warn('[getSmartIntakeByWorkOrder] work order lookup denied', {
+          organizationId: access.orgId,
+          workOrderId,
+          reason: unscopedWorkOrders?.[0] ? 'CROSS_TENANT' : 'NOT_FOUND',
+        });
+      } catch (auditError) {
+        console.error('[getSmartIntakeByWorkOrder] lookup audit failed', auditError);
+      }
       return errorResponse(404, 'WORK_ORDER_NOT_FOUND', 'Orden de trabajo no encontrada');
-    }
-
-    if (workOrder.organization_id !== access.orgId) {
-      return errorResponse(
-        403,
-        'WORK_ORDER_ORGANIZATION_MISMATCH',
-        'La orden de trabajo no pertenece a la organizacion efectiva',
-      );
     }
 
     // Existing work-order reads are organization-scoped. This compatibility
@@ -223,7 +232,7 @@ Deno.serve(async (req) => {
     return errorResponse(
       500,
       'SMART_INTAKE_READ_FAILED',
-      error?.message || 'Error inesperado consultando Smart Intake',
+      'No se pudo consultar Smart Intake',
     );
   }
 });

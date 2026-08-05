@@ -688,9 +688,205 @@ async function completeDiagnosticWorkflow({
   }
 }
 
+async function handlePublicCustomerDecision({ base44, body, req }) {
+  const token = body.customer_token;
+  const targetStatus = body.newStatus;
+  const rejectionReason = typeof body.rejection_reason === 'string'
+    ? body.rejection_reason.trim().slice(0, 500)
+    : '';
+
+  if (typeof token !== 'string' || token.length < 16 || token.length > 256) {
+    return Response.json({ error: 'Enlace no valido' }, { status: 404 });
+  }
+  if (!['APROBADA', 'CANCELADA'].includes(targetStatus)) {
+    return Response.json({ error: 'Decision no valida' }, { status: 400 });
+  }
+
+  const quotes = await base44.asServiceRole.entities.Cotizacion.filter({
+    public_access_token: token,
+  }, '-created_date', 2);
+  let quote = quotes?.[0] || null;
+  let ot = null;
+
+  if (quote?.public_access_expires_at) {
+    const expiresAt = Date.parse(quote.public_access_expires_at);
+    if (Number.isFinite(expiresAt) && expiresAt < Date.now()) {
+      return Response.json({ error: 'El enlace ha expirado' }, { status: 410 });
+    }
+  }
+  if (quote?.valida_hasta) {
+    const validUntil = Date.parse(`${quote.valida_hasta}T23:59:59.999Z`);
+    if (Number.isFinite(validUntil) && validUntil < Date.now()) {
+      return Response.json({ error: 'La cotizacion ha vencido' }, { status: 410 });
+    }
+  }
+
+  if (quote?.orden_trabajo_id) {
+    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+      id: quote.orden_trabajo_id,
+      organization_id: quote.organization_id,
+    }, '-created_date', 1);
+    ot = workOrders?.[0] || null;
+  }
+
+  if (!quote) {
+    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+      public_access_token: token,
+    }, '-created_date', 2);
+    ot = workOrders?.[0] || null;
+    if (!ot) return Response.json({ error: 'Enlace no valido' }, { status: 404 });
+    if (ot.public_access_expires_at) {
+      const expiresAt = Date.parse(ot.public_access_expires_at);
+      if (Number.isFinite(expiresAt) && expiresAt < Date.now()) {
+        return Response.json({ error: 'El enlace ha expirado' }, { status: 410 });
+      }
+    }
+    const relatedQuotes = await base44.asServiceRole.entities.Cotizacion.filter({
+      organization_id: ot.organization_id,
+      orden_trabajo_id: ot.id,
+    }, '-created_date', 5);
+    quote = relatedQuotes?.[0] || null;
+  }
+
+  if (!quote) {
+    return Response.json({ error: 'No existe una cotizacion asociada para registrar la decision' }, { status: 422 });
+  }
+  if (!['enviada', 'aprobada', 'rechazada'].includes(quote.estado)) {
+    return Response.json({ error: 'La cotizacion aun no ha sido enviada al cliente' }, { status: 422 });
+  }
+
+  const approved = targetStatus === 'APROBADA';
+  const targetQuoteStatus = approved ? 'aprobada' : 'rechazada';
+  const now = new Date().toISOString();
+  let diagnosticDocument = null;
+
+  if (ot) {
+    const allowedFrom = approved
+      ? ['DIAGNOSTICADA', 'COTIZADA']
+      : ['DIAGNOSTICADA', 'COTIZADA', 'APROBADA'];
+    if (ot.estado !== targetStatus && !allowedFrom.includes(ot.estado)) {
+      return Response.json({
+        error: `La orden ya no admite esta decision (estado actual: ${ot.estado})`,
+        current_status: ot.estado,
+      }, { status: 409 });
+    }
+  }
+
+  if (approved && quote.diagnostico_tecnico_id) {
+    const documents = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
+      organization_id: quote.organization_id,
+      diagnostico_id: quote.diagnostico_tecnico_id,
+      estado: { $in: ['EMITIDO', 'ENVIADO'] },
+    }, '-created_date', 5);
+    diagnosticDocument = documents?.[0] || null;
+    if (!diagnosticDocument) {
+      return Response.json({
+        error: 'No existe un documento de diagnostico vigente para registrar la aprobacion',
+      }, { status: 422 });
+    }
+  }
+
+  if (quote.estado !== targetQuoteStatus) {
+    if (['aprobada', 'rechazada'].includes(quote.estado)) {
+      return Response.json({ error: 'La cotizacion ya tiene una decision diferente' }, { status: 409 });
+    }
+    await base44.asServiceRole.entities.Cotizacion.update(quote.id, {
+      estado: targetQuoteStatus,
+      ...(approved ? {
+        aprobada_at: now,
+        contenido_aprobado_snapshot: {
+          items: quote.items,
+          subtotal: quote.subtotal,
+          descuento_total: quote.descuento_total,
+          impuesto: quote.impuesto,
+          total: quote.total,
+          version: quote.version,
+        },
+        ip_aprobacion: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+      } : {
+        cliente_rechazo_motivo: rejectionReason || null,
+      }),
+    });
+  }
+
+  if (diagnosticDocument && diagnosticDocument.aprobacion_status !== 'APROBADA') {
+    await base44.asServiceRole.entities.DiagnosticoDocumento.update(diagnosticDocument.id, {
+      aprobacion_status: 'APROBADA',
+      aprobacion_at: now,
+      metodo_aprobacion: 'PORTAL_DIGITAL',
+    });
+  }
+
+  if (!ot) {
+    return Response.json({
+      success: true,
+      quote_id: quote.id,
+      quote_status: targetQuoteStatus,
+      work_order_transitioned: false,
+    });
+  }
+
+  let transitioned = false;
+  if (ot.estado !== targetStatus) {
+    const updatePayload = {
+      estado: targetStatus,
+      cliente_aprobado: approved,
+      cliente_aprobado_at: approved ? now : null,
+      cliente_rechazo_motivo: approved ? null : (rejectionReason || null),
+      ultima_actividad: approved
+        ? 'Cotizacion aprobada por el cliente desde el portal'
+        : 'Cotizacion rechazada por el cliente desde el portal',
+      ultima_actividad_at: now,
+    };
+    const updated = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
+      id: ot.id,
+      organization_id: ot.organization_id,
+      estado: ot.estado,
+    }, { $set: updatePayload });
+    if (updated?.updated !== 1) {
+      return Response.json({ error: 'La orden cambio mientras se registraba la decision' }, { status: 409 });
+    }
+    transitioned = true;
+  }
+
+  const eventType = approved ? 'TRANSITION_APROBADA' : 'CANCELADA';
+  const existingEvents = await base44.asServiceRole.entities.OTEvent.filter({
+    organization_id: ot.organization_id,
+    orden_trabajo_id: ot.id,
+    tipo: eventType,
+  }, '-created_date', 2);
+  if (!existingEvents?.length) {
+    await base44.asServiceRole.entities.OTEvent.create({
+      organization_id: ot.organization_id,
+      orden_trabajo_id: ot.id,
+      tipo: eventType,
+      created_by_user_id: 'portal_cliente',
+      processed: false,
+      created_at: now,
+    });
+  }
+
+  return Response.json({
+    success: true,
+    quote_id: quote.id,
+    quote_status: targetQuoteStatus,
+    orden_trabajo_id: ot.id,
+    previous_status: ot.estado,
+    new_status: targetStatus,
+    transitioned,
+  });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return Response.json({ error: 'Body invalido' }, { status: 400 });
+    }
 
     // ── 1. Auth — obtener runtimeUser del contexto de ejecución inmediato ──────
     const runtimeUser = await base44.auth.me();
@@ -704,12 +900,15 @@ Deno.serve(async (req) => {
     console.log(`[DIAG:transition] runtimeUser.is_super_admin:`, runtimeUser?.is_super_admin);
     console.log(`[DIAG:transition] runtimeUser.data completo:`, JSON.stringify(runtimeUser?.data, null, 2));
 
+    if (!runtimeUser && body.customer_token) {
+      return handlePublicCustomerDecision({ base44, body, req });
+    }
+
     if (!runtimeUser) {
       return Response.json({ error: 'No autenticado' }, { status: 401 });
     }
 
     // ── 2. Parsear body ────────────────────────────────────────────────────────
-    const body = await req.json();
     const {
       orden_trabajo_id,
       newStatus,

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
@@ -18,7 +17,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import jsPDF from 'jspdf';
-import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
 
 const estadoConfig = {
   borrador: { 
@@ -55,6 +53,7 @@ const estadoConfig = {
 
 export default function PortalCotizacion() {
   const [token, setToken] = useState('');
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -64,39 +63,39 @@ export default function PortalCotizacion() {
     }
   }, []);
 
-  const { data: cotizacion, isLoading, error } = useQuery({
+  const { data: portalData, isLoading, error } = useQuery({
     queryKey: ['cotizacion-publica', token],
     queryFn: async () => {
-      const cotizaciones = await base44.entities.Cotizacion.filter({
-        public_access_token: token
+      const response = await base44.functions.invoke('getPublicCommercialDocument', {
+        type: 'quote',
+        token,
       });
-      
-      if (cotizaciones.length === 0) {
-        throw new Error('Cotización no encontrada');
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'Cotización no encontrada');
       }
-
-      return cotizaciones[0];
+      return response.data.data;
     },
     enabled: !!token,
     retry: false,
   });
 
-  const { data: cliente } = useQuery({
-    queryKey: ['cliente-cotizacion', cotizacion?.cliente_id],
-    queryFn: async () => {
-      const clientes = await base44.entities.Cliente.filter({ id: cotizacion.cliente_id });
-      return clientes[0];
-    },
-    enabled: !!cotizacion?.cliente_id,
-  });
+  const cotizacion = portalData?.cotizacion;
+  const cliente = portalData?.cliente;
+  const organization = portalData?.organization;
 
-  const { data: organization } = useQuery({
-    queryKey: ['org-cotizacion', cotizacion?.organization_id],
-    queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: cotizacion.organization_id });
-      return orgs[0];
+  const decisionMutation = useMutation({
+    mutationFn: async ({ newStatus, rejectionReason = '' }) => {
+      const response = await base44.functions.invoke('transitionWorkOrderStatus', {
+        customer_token: token,
+        newStatus,
+        rejection_reason: rejectionReason,
+      });
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'No se pudo registrar la decisión');
+      }
+      return response.data;
     },
-    enabled: !!cotizacion?.organization_id,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cotizacion-publica', token] }),
   });
 
   const descargarPDF = () => {
@@ -385,6 +384,65 @@ export default function PortalCotizacion() {
             </div>
           </CardContent>
         </Card>
+
+        {cotizacion.estado === 'enviada' && (
+          <Card className="border-2 border-blue-200 shadow-xl">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-bold text-slate-900 mb-2">Decisión del cliente</h2>
+              <p className="text-sm text-slate-600 mb-4">
+                Confirme si acepta esta cotización. La decisión queda registrada junto con el contenido y total aprobados.
+              </p>
+              {decisionMutation.error && (
+                <Alert className="mb-4 border-red-200 bg-red-50">
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    {decisionMutation.error.message}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  onClick={() => decisionMutation.mutate({ newStatus: 'APROBADA' })}
+                  disabled={decisionMutation.isPending}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Aprobar cotización
+                </Button>
+                <Button
+                  onClick={() => {
+                    const reason = window.prompt('Motivo del rechazo (opcional):') || '';
+                    decisionMutation.mutate({ newStatus: 'CANCELADA', rejectionReason: reason });
+                  }}
+                  disabled={decisionMutation.isPending}
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Rechazar cotización
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {cotizacion.estado === 'aprobada' && (
+          <Alert className="border-emerald-200 bg-emerald-50">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <AlertDescription className="font-medium text-emerald-800">
+              Cotización aprobada. El taller puede continuar con el cobro y la reparación.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {cotizacion.estado === 'rechazada' && (
+          <Alert className="border-red-200 bg-red-50">
+            <XCircle className="w-5 h-5 text-red-600" />
+            <AlertDescription className="font-medium text-red-800">
+              Cotización rechazada.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {cotizacion.notas && (
           <Card className="border-0 shadow-xl">

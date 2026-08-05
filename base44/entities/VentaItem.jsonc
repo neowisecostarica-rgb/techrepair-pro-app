@@ -10,6 +10,11 @@
       "type": "string",
       "description": "ID de la venta"
     },
+    "line_key": {
+      "type": "string",
+      "description": "Identidad determinista de la linea dentro de una venta para recuperar escrituras ambiguas.",
+      "rls": { "write": false }
+    },
     "tipo": {
       "type": "string",
       "enum": [

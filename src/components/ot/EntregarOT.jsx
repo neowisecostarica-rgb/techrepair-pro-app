@@ -99,26 +99,25 @@ export default function EntregarOT({
         });
       }
 
-      // 1. Transición a ENTREGADA vía helper centralizado
-      await transicionarEstadoOT(ordenTrabajo.id, 'ENTREGADA', {
-        userId,
-        userEmail,
-        organizationId: effectiveOrgId,
-        motivo: 'Entrega al cliente'
-      });
-
-      // 2. Crear log de entrega (inmutable)
-      await base44.entities.EntregaLog.create({
+      // Preparar la evidencia antes de cerrar el lifecycle permite reintentar una
+      // respuesta ambigua sin dejar una OT ENTREGADA sin log legal.
+      const logsExistentes = await base44.entities.EntregaLog.filter({
         organization_id: effectiveOrgId,
         orden_trabajo_id: ordenTrabajo.id,
-        delivered_by_user_id: userId,
-        delivered_by_role: effectiveRole,
-        delivered_at: now,
-        ip_address: null, // No disponible en frontend
-        checkbox_texto_legal: TEXTO_LEGAL_CHECKBOX,
-        nota_entrega: notaEntrega || null,
-        entrega_con_saldo_pendiente: tieneSaldoPendiente
       });
+      if (logsExistentes.length === 0) {
+        await base44.entities.EntregaLog.create({
+          organization_id: effectiveOrgId,
+          orden_trabajo_id: ordenTrabajo.id,
+          delivered_by_user_id: userId,
+          delivered_by_role: effectiveRole,
+          delivered_at: now,
+          ip_address: null,
+          checkbox_texto_legal: TEXTO_LEGAL_CHECKBOX,
+          nota_entrega: notaEntrega || null,
+          entrega_con_saldo_pendiente: tieneSaldoPendiente
+        });
+      }
 
       // 3. Emitir garantía SOLO SI hubo intervención técnica
       const huboIntervencion = !!diagnostico;
@@ -130,20 +129,35 @@ export default function EntregarOT({
         const fechaFin = new Date();
         fechaFin.setMonth(fechaFin.getMonth() + (config.meses_vigencia_reparaciones || 3));
 
-        await base44.entities.Garantia.create({
+        const garantiasExistentes = await base44.entities.Garantia.filter({
           organization_id: effectiveOrgId,
-          cliente_id: ordenTrabajo.cliente_id,
           origen_tipo: 'OT',
           origen_id: ordenTrabajo.id,
-          public_access_token: token,
-          fecha_emision: fechaEmision.toISOString().split('T')[0],
-          fecha_inicio: fechaInicio.toISOString().split('T')[0],
-          fecha_fin: fechaFin.toISOString().split('T')[0],
-          estado: 'ACTIVA',
-          texto_snapshot: config.texto_reparaciones,
-          creado_por: userId
         });
+        if (garantiasExistentes.length === 0) {
+          await base44.entities.Garantia.create({
+            organization_id: effectiveOrgId,
+            cliente_id: ordenTrabajo.cliente_id,
+            origen_tipo: 'OT',
+            origen_id: ordenTrabajo.id,
+            public_access_token: token,
+            fecha_emision: fechaEmision.toISOString().split('T')[0],
+            fecha_inicio: fechaInicio.toISOString().split('T')[0],
+            fecha_fin: fechaFin.toISOString().split('T')[0],
+            estado: 'ACTIVA',
+            texto_snapshot: config.texto_reparaciones,
+            creado_por: userId
+          });
+        }
       }
+
+      // Cerrar el lifecycle únicamente después de confirmar sus evidencias.
+      await transicionarEstadoOT(ordenTrabajo.id, 'ENTREGADA', {
+        userId,
+        userEmail,
+        organizationId: effectiveOrgId,
+        motivo: 'Entrega al cliente'
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
@@ -186,7 +200,7 @@ export default function EntregarOT({
     return null;
   }
 
-  if (!['ORG_ADMIN', 'SALES'].includes(effectiveRole)) {
+  if (!['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'].includes(effectiveRole)) {
     return null;
   }
 

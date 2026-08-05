@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Send, FileText, AlertCircle, MessageSquare, Link as LinkIcon, Download, Printer, ShoppingCart, Search, Trash2, Package } from 'lucide-react';
+import { Plus, FileText, AlertCircle, Search, Trash2, Package } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,10 +15,10 @@ import { Textarea } from '@/components/ui/textarea';
 const DESCUENTO_MAXIMO_SIN_APROBACION = 20;
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [], openDirectly = false }) {
   const [showModal, setShowModal] = useState(openDirectly);
@@ -260,7 +260,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     return `cot_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
   };
 
-  const handleEnviar = (cotizacion) => {
+  const handleEnviar = async (cotizacion) => {
     if (!clienteActual) {
       alert('Por favor selecciona un cliente antes de enviar la cotización');
       return;
@@ -273,14 +273,26 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
     const token = cotizacion.public_access_token || generarToken();
     
-    updateCotizacionMutation.mutate({
-      id: cotizacion.id,
-      data: { 
+    try {
+      if (ordenTrabajoId) {
+        const ots = await base44.entities.OrdenTrabajo.filter({ id: ordenTrabajoId });
+        if (ots[0]?.estado === 'DIAGNOSTICADA') {
+          await transicionarEstadoOT(ordenTrabajoId, 'COTIZADA', {
+            motivo: `Cotización ${cotizacion.id} enviada al cliente`,
+          });
+        }
+      }
+      await base44.entities.Cotizacion.update(cotizacion.id, {
         estado: 'enviada', 
         enviada_at: new Date().toISOString(),
         public_access_token: token
-      }
-    });
+      });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+    } catch (error) {
+      alert(`No se pudo enviar la cotización: ${error.message}`);
+    }
   };
 
   const copiarLink = (cotizacion, organization) => {
@@ -290,7 +302,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     }
 
     const baseUrl = organization?.public_base_url || window.location.origin;
-    const link = `${baseUrl}/cotizacion?token=${cotizacion.public_access_token}`;
+    const link = `${baseUrl}/PortalCotizacion?token=${cotizacion.public_access_token}`;
     navigator.clipboard.writeText(link);
     alert('Link copiado al portapapeles');
   };
@@ -407,7 +419,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const imprimirCotizacion = (cotizacion, organization) => {
     if (cotizacion.public_access_token) {
       const baseUrl = organization?.public_base_url || window.location.origin;
-      const link = `${baseUrl}/cotizacion?token=${cotizacion.public_access_token}`;
+      const link = `${baseUrl}/PortalCotizacion?token=${cotizacion.public_access_token}`;
       window.open(link, '_blank');
     } else {
       alert('Primero debes enviar la cotización para poder imprimirla');

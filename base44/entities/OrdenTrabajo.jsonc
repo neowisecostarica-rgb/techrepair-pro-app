@@ -8,7 +8,7 @@
     },
     "codigo_ot": {
       "type": "string",
-      "description": "C\u00f3digo \u00fanico de la OT (formato: OT-{orgPrefix}-{a\u00f1o}-{consecutivo})"
+      "description": "Unique idempotent work-order code (MVP format: OT-{year}-{correlation UUID without hyphens})."
     },
     "branch_id": {
       "type": "string",
@@ -293,6 +293,12 @@
         "read": false,
         "write": false
       }
+    },
+    "reception_correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Idempotency identity of the reception that created the work order.",
+      "rls": { "read": false, "write": false }
     },
     "estado_custodia": {
       "type": "string",

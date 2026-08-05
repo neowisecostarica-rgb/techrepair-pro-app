@@ -1,0 +1,39 @@
+{
+  "name": "OperationLock",
+  "type": "object",
+  "description": "Reusable operational lock for workflows scoped to a concrete resource.",
+  "properties": {
+    "organization_id": { "type": "string" },
+    "operation": { "type": "string" },
+    "resource": { "type": "string" },
+    "correlation_id": { "type": "string", "format": "uuid" },
+    "request_fingerprint": { "type": "string" },
+    "lease_id": { "type": "string", "format": "uuid" },
+    "locked_by": { "type": "string" },
+    "locked_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["ACQUIRING", "ACTIVE", "RELEASED", "EXPIRED"],
+      "default": "ACQUIRING"
+    },
+    "released_at": { "type": "string", "format": "date-time" }
+  },
+  "required": [
+    "organization_id",
+    "operation",
+    "resource",
+    "correlation_id",
+    "request_fingerprint",
+    "locked_by",
+    "locked_at",
+    "expires_at",
+    "status"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

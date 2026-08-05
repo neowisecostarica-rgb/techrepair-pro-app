@@ -57,6 +57,18 @@
         "type": "string"
       },
       "description": "URLs de fotos del equipo"
+    },
+    "reception_correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Reception attempt that created the equipment; backend only.",
+      "rls": { "read": false, "write": false }
+    },
+    "created_by_reception": {
+      "type": "boolean",
+      "default": false,
+      "description": "Confirms that the reception orchestrator created the equipment.",
+      "rls": { "read": false, "write": false }
     }
   },
   "required": [

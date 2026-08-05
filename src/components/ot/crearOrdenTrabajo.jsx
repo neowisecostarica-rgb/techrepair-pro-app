@@ -8,10 +8,14 @@ import { base44 } from '@/api/base44Client';
  */
 export async function crearOrdenTrabajo(datosOT) {
   const response = await base44.functions.invoke('createWorkOrder', {
+    correlation_id: datosOT.correlation_id,
     cliente_id: datosOT.cliente_id,
+    equipment_mode: datosOT.equipment_mode,
     equipo_id: datosOT.equipo_id,
+    equipment: datosOT.equipment,
     motivo_ingreso: datosOT.motivo_ingreso,
     branch_id: datosOT.branch_id,
+    terms_id: datosOT.terms_id,
     tipo_ingreso: datosOT.tipo_ingreso,
     prioridad: datosOT.prioridad,
     observaciones_ingreso: datosOT.observaciones_ingreso,

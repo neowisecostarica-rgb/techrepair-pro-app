@@ -58,7 +58,7 @@ export default function PageGuard({ allowedRoles, children }) {
   }
 
   // FASE 4: Block inactive users (soft disabled)
-  if (userAccount && userAccount.active === false) {
+  if (userAccount && (userAccount.status === 'suspended' || (!userAccount.status && userAccount.active === false))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center max-w-md p-6">

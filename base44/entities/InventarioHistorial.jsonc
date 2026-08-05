@@ -29,6 +29,15 @@
     "motivo": {
       "type": "string",
       "description": "Motivo del cambio (opcional)"
+    },
+    "sale_id": {
+      "type": "string",
+      "description": "Venta que origino el movimiento, si aplica."
+    },
+    "sale_operation_key": {
+      "type": "string",
+      "description": "Identidad comercial del movimiento para recuperacion idempotente.",
+      "rls": { "write": false }
     }
   },
   "required": [

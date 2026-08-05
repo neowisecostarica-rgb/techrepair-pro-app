@@ -4,14 +4,12 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   FileText, 
   XCircle, 
   CheckCircle2, 
   Calendar,
   Printer,
-  Download,
   Shield
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -29,78 +27,28 @@ export default function PortalComprobante() {
     }
   }, []);
 
-  const { data: venta, isLoading, error } = useQuery({
+  const { data: portalData, isLoading, error } = useQuery({
     queryKey: ['venta-publica', token],
     queryFn: async () => {
-      const ventas = await base44.entities.Venta.filter({
-        public_access_token: token
+      const response = await base44.functions.invoke('getPublicCommercialDocument', {
+        type: 'receipt',
+        token,
       });
-      
-      if (ventas.length === 0) {
-        throw new Error('Comprobante no encontrado');
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'Comprobante no encontrado');
       }
-
-      return ventas[0];
+      return response.data.data;
     },
     enabled: !!token,
     retry: false,
   });
 
-  const { data: cliente } = useQuery({
-    queryKey: ['cliente-comprobante', venta?.cliente_id],
-    queryFn: async () => {
-      const clientes = await base44.entities.Cliente.filter({ id: venta.cliente_id });
-      return clientes[0];
-    },
-    enabled: !!venta?.cliente_id,
-  });
-
-  const { data: items = [] } = useQuery({
-    queryKey: ['venta-items-publico', venta?.id],
-    queryFn: () => base44.entities.VentaItem.filter({
-      venta_id: venta.id
-    }),
-    enabled: !!venta?.id,
-  });
-
-  const { data: organization } = useQuery({
-    queryKey: ['org-comprobante', venta?.organization_id],
-    queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: venta.organization_id });
-      return orgs[0];
-    },
-    enabled: !!venta?.organization_id,
-  });
-
-  const { data: garantia } = useQuery({
-    queryKey: ['garantia-comprobante', venta?.id, venta?.referencia_ot_id],
-    queryFn: async () => {
-      // P0-002: Buscar garantía por OT si existe, sino por VENTA
-      if (venta.referencia_ot_id) {
-        const garantiasOT = await base44.entities.Garantia.filter({
-          origen_tipo: 'OT',
-          origen_id: venta.referencia_ot_id
-        });
-        if (garantiasOT.length > 0) return garantiasOT[0];
-      }
-      
-      const garantiasVenta = await base44.entities.Garantia.filter({
-        origen_tipo: 'VENTA',
-        origen_id: venta.id
-      });
-      return garantiasVenta[0];
-    },
-    enabled: !!venta?.id,
-  });
-
-  const { data: ordenTrabajo } = useQuery({
-    queryKey: ['ot-comprobante', venta?.referencia_ot_id],
-    queryFn: async () => {
-      const ots = await base44.entities.OrdenTrabajo.filter({ id: venta.referencia_ot_id });
-      return ots[0];
-    },
-    enabled: !!venta?.referencia_ot_id,
-  });
+  const venta = portalData?.venta;
+  const cliente = portalData?.cliente;
+  const items = portalData?.items || [];
+  const organization = portalData?.organization;
+  const garantia = portalData?.garantia;
+  const ordenTrabajo = portalData?.ordenTrabajo;
 
   if (!token) {
     return (
@@ -298,7 +246,7 @@ export default function PortalComprobante() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @media print {
           body * {
             visibility: hidden;

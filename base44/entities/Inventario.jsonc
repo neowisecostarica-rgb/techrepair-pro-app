@@ -120,6 +120,15 @@
       "format": "date",
       "description": "Fecha del \u00faltimo movimiento"
     },
+    "last_sale_id": {
+      "type": "string",
+      "description": "Venta propietaria del ultimo CAS de stock; permite reconciliar respuestas ambiguas.",
+      "rls": { "read": false, "write": false }
+    },
+    "last_sale_operation_key": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
     "estado": {
       "type": "string",
       "enum": [

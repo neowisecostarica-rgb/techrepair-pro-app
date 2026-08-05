@@ -39,7 +39,10 @@ async function ensureIdentity(u) {
   const allAccounts = await base44.entities.UserAccount.filter({ user_id: u.id });
 
   // 2. Memberships activas con organization_id válido
-  const activeAccounts = allAccounts.filter(a => a.active && a.organization_id);
+  const activeAccounts = allAccounts.filter(a => {
+    const isActive = a.status ? a.status === 'active' : a.active !== false;
+    return isActive && a.organization_id;
+  });
 
   if (activeAccounts.length === 0) {
     console.warn('[EnsureIdentity] Usuario sin memberships activas:', u.email);

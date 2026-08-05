@@ -300,6 +300,20 @@
       "description": "Idempotency identity of the reception that created the work order.",
       "rls": { "read": false, "write": false }
     },
+    "sale_lock_token": {
+      "type": "string",
+      "description": "Mutex persistido e independiente del lifecycle para serializar cobros de la OT.",
+      "rls": { "read": false, "write": false }
+    },
+    "sale_lock_operation_key": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
+    "sale_lock_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "read": false, "write": false }
+    },
     "estado_custodia": {
       "type": "string",
       "enum": [

@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
 
 const estadoConfig = {
   ACTIVA: { 
@@ -50,40 +49,25 @@ export default function PortalGarantia() {
     }
   }, []);
 
-  const { data: garantia, isLoading, error } = useQuery({
+  const { data: portalData, isLoading, error } = useQuery({
     queryKey: ['garantia-publica', token],
     queryFn: async () => {
-      const garantias = await base44.entities.Garantia.filter({
-        public_access_token: token
+      const response = await base44.functions.invoke('getPublicCommercialDocument', {
+        type: 'warranty',
+        token,
       });
-      
-      if (garantias.length === 0) {
-        throw new Error('Garantía no encontrada');
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'Garantía no encontrada');
       }
-
-      return garantias[0];
+      return response.data.data;
     },
     enabled: !!token,
     retry: false,
   });
 
-  const { data: cliente } = useQuery({
-    queryKey: ['cliente-garantia', garantia?.cliente_id],
-    queryFn: async () => {
-      const clientes = await base44.entities.Cliente.filter({ id: garantia.cliente_id });
-      return clientes[0];
-    },
-    enabled: !!garantia?.cliente_id,
-  });
-
-  const { data: organization } = useQuery({
-    queryKey: ['org-garantia', garantia?.organization_id],
-    queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: garantia.organization_id });
-      return orgs[0];
-    },
-    enabled: !!garantia?.organization_id,
-  });
+  const garantia = portalData?.garantia;
+  const cliente = portalData?.cliente;
+  const organization = portalData?.organization;
 
   if (!token) {
     return (

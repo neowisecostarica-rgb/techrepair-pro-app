@@ -17,6 +17,7 @@ import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function VentasCotizaciones() {
   return (
@@ -42,6 +43,7 @@ function VentasCotizacionesContent() {
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showNuevaCotizacion, setShowNuevaCotizacion] = useState(false);
+  const [cotizacionEditar, setCotizacionEditar] = useState(null);
 
   // Escuchar eventos de cotización creada/actualizada
   React.useEffect(() => {
@@ -165,7 +167,10 @@ function VentasCotizacionesContent() {
           <p className="text-slate-600">Gestión de cotizaciones comerciales</p>
         </div>
         <Button
-          onClick={() => setShowNuevaCotizacion(true)}
+          onClick={() => {
+            setCotizacionEditar(null);
+            setShowNuevaCotizacion(true);
+          }}
           className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5 mr-2" />
@@ -411,7 +416,9 @@ function VentasCotizacionesContent() {
                     <>
                       <Button
                         onClick={() => {
-                          alert('Función de edición en desarrollo');
+                          setCotizacionEditar(cotizacionSeleccionada);
+                          setCotizacionSeleccionada(null);
+                          setShowNuevaCotizacion(true);
                         }}
                         variant="outline"
                         className="border-slate-300"
@@ -432,6 +439,12 @@ function VentasCotizacionesContent() {
                             enviado_por: user.id,
                             enviado_por_nombre: user.full_name || user.email
                           };
+                          const ot = getOT(cotizacionSeleccionada.orden_trabajo_id);
+                          if (ot?.estado === 'DIAGNOSTICADA') {
+                            await transicionarEstadoOT(ot.id, 'COTIZADA', {
+                              motivo: `Cotización ${cotizacionSeleccionada.id} enviada al cliente`,
+                            });
+                          }
                           await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
                             estado: 'enviada',
                             enviada_at: new Date().toISOString(),
@@ -440,7 +453,8 @@ function VentasCotizacionesContent() {
                             historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                          const link = `${getPublicBaseUrl(organization)}/cotizacion?token=${token}`;
+                          queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${token}`;
                           navigator.clipboard.writeText(link);
                           alert('✅ Cotización enviada. Link copiado al portapapeles.');
                           setCotizacionSeleccionada({ ...cotizacionSeleccionada, estado: 'enviada', public_access_token: token, ultimo_envio: envio });
@@ -467,7 +481,7 @@ function VentasCotizacionesContent() {
                             historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                          const link = `${getPublicBaseUrl(organization)}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
                           navigator.clipboard.writeText(link);
                           alert('✅ Link copiado. Reenvío registrado.');
                           setCotizacionSeleccionada({ ...cotizacionSeleccionada, ultimo_envio: envio });
@@ -479,7 +493,7 @@ function VentasCotizacionesContent() {
                       </Button>
                       <Button
                         onClick={() => {
-                          const link = `${getPublicBaseUrl(organization)}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
                           navigator.clipboard.writeText(link);
                           alert('Link copiado al portapapeles');
                         }}
@@ -491,7 +505,7 @@ function VentasCotizacionesContent() {
                       </Button>
                       <Button
                         onClick={() => {
-                          const link = `${getPublicBaseUrl(organization)}/cotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
                           window.open(link, '_blank');
                         }}
                         variant="outline"
@@ -515,10 +529,13 @@ function VentasCotizacionesContent() {
       </Dialog>
 
       {/* Modal Nueva Cotización */}
-      <Dialog open={showNuevaCotizacion} onOpenChange={setShowNuevaCotizacion}>
+      <Dialog open={showNuevaCotizacion} onOpenChange={(open) => {
+        setShowNuevaCotizacion(open);
+        if (!open) setCotizacionEditar(null);
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nueva Cotización</DialogTitle>
+            <DialogTitle>{cotizacionEditar ? 'Editar Cotización' : 'Nueva Cotización'}</DialogTitle>
           </DialogHeader>
           
           <FormularioCotizacion
@@ -527,11 +544,16 @@ function VentasCotizacionesContent() {
             user={user}
             userAccount={userAccount}
             clientes={clientes}
+            cotizacionEditar={cotizacionEditar}
             onGuardar={(cot) => {
               setShowNuevaCotizacion(false);
+              setCotizacionEditar(null);
               setCotizacionSeleccionada(cot);
             }}
-            onCancelar={() => setShowNuevaCotizacion(false)}
+            onCancelar={() => {
+              setShowNuevaCotizacion(false);
+              setCotizacionEditar(null);
+            }}
           />
         </DialogContent>
       </Dialog>

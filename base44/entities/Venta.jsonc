@@ -107,7 +107,39 @@
     },
     "idempotency_key": {
       "type": "string",
-      "description": "Clave de idempotencia por sesi\u00f3n de compra (nullable). Unicidad garantizada por validaci\u00f3n en createSale: organization_id + idempotency_key."
+      "description": "Identidad comercial determinista calculada por createSale. Para OT representa organization + OT + tipo_concepto."
+    },
+    "request_fingerprint": {
+      "type": "string",
+      "description": "SHA-256 canonico del payload. Impide reutilizar la misma operacion con importes o items diferentes.",
+      "rls": { "read": false, "write": false }
+    },
+    "inventory_commit_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED"],
+      "description": "Estado del commit de inventario de la venta.",
+      "rls": { "write": false }
+    },
+    "inventory_committed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento en que inventario y venta quedaron confirmados.",
+      "rls": { "write": false }
+    },
+    "post_sale_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMPLETED"],
+      "description": "Estado recuperable del Timeline y efectos operacionales post-venta.",
+      "rls": { "write": false }
+    },
+    "post_sale_completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "write": false }
+    },
+    "post_sale_error": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
     },
     "rollback_status": {
       "type": "string",

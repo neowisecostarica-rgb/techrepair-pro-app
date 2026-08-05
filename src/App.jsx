@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuthContext } from '@/components/contexts/AuthContext';
 
@@ -16,8 +16,26 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
 
+const PUBLIC_PAGE_NAMES = ['PortalCliente', 'PortalCotizacion', 'PortalComprobante', 'PortalGarantia'];
+const PUBLIC_ROUTE_ALIASES = { '/cotizacion': 'PortalCotizacion' };
+
 const AuthenticatedApp = () => {
   const { status } = useAuthContext();
+  const location = useLocation();
+  const normalizedPath = (location.pathname.replace(/\/+$/, '') || '/').toLowerCase();
+  const publicPageName = PUBLIC_ROUTE_ALIASES[normalizedPath]
+    || PUBLIC_PAGE_NAMES.find(name => normalizedPath === `/${name}`.toLowerCase());
+
+  if (publicPageName) {
+    const PublicPage = Pages[publicPageName];
+    return (
+      <Routes>
+        <Route path={`/${publicPageName}`} element={<PublicPage />} />
+        {publicPageName === 'PortalCotizacion' && <Route path="/cotizacion" element={<PublicPage />} />}
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    );
+  }
 
   if (status === 'loading' || status === 'idle') {
     return (

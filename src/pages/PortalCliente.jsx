@@ -21,7 +21,6 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 const estadoConfig = {
   EN_COLA_REVISION: { color: 'bg-slate-100 text-slate-700', label: 'En Cola de Revisión', icon: Clock },
@@ -52,73 +51,33 @@ export default function PortalCliente() {
     }
   }, []);
 
-  const { data: orden, isLoading, error } = useQuery({
+  const { data: portalData, isLoading, error } = useQuery({
     queryKey: ['orden-publica', token],
     queryFn: async () => {
-      const ordenes = await base44.entities.OrdenTrabajo.filter({
-        public_access_token: token
-      });
-      
-      if (ordenes.length === 0) {
-        throw new Error('Orden no encontrada');
-      }
-
-      const orden = ordenes[0];
-
-      // P0-3: Validar expiración del token
-      if (orden.public_access_expires_at) {
-        const ahora = new Date();
-        const expira = new Date(orden.public_access_expires_at);
-        if (expira < ahora) {
-          setTokenExpirado(true);
-          throw new Error('Token expirado');
+      try {
+        const response = await base44.functions.invoke('getPublicCommercialDocument', {
+          type: 'work_order',
+          token,
+        });
+        if (!response?.data?.success) {
+          throw new Error(response?.data?.error || 'Orden no encontrada');
         }
+        return response.data.data;
+      } catch (requestError) {
+        const status = requestError?.status || requestError?.response?.status;
+        if (status === 410) setTokenExpirado(true);
+        throw requestError;
       }
-
-      // Registrar acceso solo si NO está expirado
-      await base44.entities.OrdenTrabajo.update(orden.id, {
-        public_last_viewed_at: new Date().toISOString()
-      });
-
-      return orden;
     },
     enabled: !!token,
     retry: false,
   });
 
-  const { data: cliente } = useQuery({
-    queryKey: ['cliente-publico', orden?.cliente_id],
-    queryFn: () => base44.entities.Cliente.list(),
-    enabled: !!orden?.cliente_id,
-    select: (data) => data.find(c => c.id === orden.cliente_id),
-  });
-
-  const { data: equipo } = useQuery({
-    queryKey: ['equipo-publico', orden?.equipo_id],
-    queryFn: () => base44.entities.Equipo.list(),
-    enabled: !!orden?.equipo_id,
-    select: (data) => data.find(e => e.id === orden.equipo_id),
-  });
-
-  const { data: diagnostico } = useQuery({
-    queryKey: ['diagnostico-publico', orden?.id],
-    queryFn: async () => {
-      const diagnosticos = await base44.entities.Diagnostico.filter({
-        orden_trabajo_id: orden.id,
-        estado_diagnostico: 'completado'
-      });
-      return diagnosticos[0];
-    },
-    enabled: !!orden?.id,
-  });
-
-  const { data: evidencias = [] } = useQuery({
-    queryKey: ['evidencias-publicas', diagnostico?.id],
-    queryFn: () => base44.entities.DiagnosticoEvidencia.filter({
-      diagnostico_id: diagnostico.id
-    }),
-    enabled: !!diagnostico?.id,
-  });
+  const orden = portalData?.orden;
+  const cliente = portalData?.cliente;
+  const equipo = portalData?.equipo;
+  const diagnostico = portalData?.diagnostico;
+  const evidencias = portalData?.evidencias || [];
 
   const aprobarMutation = useMutation({
     mutationFn: async () => {
@@ -131,19 +90,13 @@ export default function PortalCliente() {
         }
       }
 
-      // P0-003: usar helper centralizado para transición de estado
-      await transicionarEstadoOT(orden.id, 'EN_REPARACION', {
-        userId: 'portal_cliente',
-        userEmail: 'portal_publico',
-        organizationId: orden.organization_id,
-        motivo: 'Cliente aprobó reparación desde portal público'
+      const response = await base44.functions.invoke('transitionWorkOrderStatus', {
+        customer_token: token,
+        newStatus: 'APROBADA',
       });
-      
-      // Actualizar campos de aprobación del cliente (no gestionados por helper)
-      await base44.entities.OrdenTrabajo.update(orden.id, {
-        cliente_aprobado: true,
-        cliente_aprobado_at: new Date().toISOString()
-      });
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'No se pudo registrar la aprobación');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orden-publica'] });
@@ -162,19 +115,14 @@ export default function PortalCliente() {
         }
       }
 
-      // P0-004: usar helper centralizado para transición de estado
-      await transicionarEstadoOT(orden.id, 'CANCELADA', {
-        userId: 'portal_cliente',
-        userEmail: 'portal_publico',
-        organizationId: orden.organization_id,
-        motivo: `Cliente rechazó reparación desde portal público: ${motivoRechazo || 'Sin motivo especificado'}`
+      const response = await base44.functions.invoke('transitionWorkOrderStatus', {
+        customer_token: token,
+        newStatus: 'CANCELADA',
+        rejection_reason: motivoRechazo,
       });
-      
-      // Actualizar campos de rechazo del cliente (no gestionados por helper)
-      await base44.entities.OrdenTrabajo.update(orden.id, {
-        cliente_aprobado: false,
-        cliente_rechazo_motivo: motivoRechazo
-      });
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'No se pudo registrar el rechazo');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orden-publica'] });

@@ -11,6 +11,8 @@
     "test:assignment": "node scripts/verify-assignment-contract.mjs",
     "test:atomic-reception": "node scripts/verify-atomic-reception-contract.mjs",
     "test:smart-intake": "node scripts/verify-smart-intake-contract.mjs",
+    "test:commercial-flow": "node scripts/verify-commercial-flow-contract.mjs",
+    "test:atomic-sale": "node scripts/verify-atomic-sale-contract.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },

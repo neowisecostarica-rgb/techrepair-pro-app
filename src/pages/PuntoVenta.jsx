@@ -19,7 +19,6 @@ import EnviarWhatsApp from '../components/ventas/EnviarWhatsApp';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { validarVentaPOS } from '@/components/pos/validacionesPOS';
-import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import ClienteSearchInput from '@/components/ot/ClienteSearchInput';
 import QuickCreateClienteModal from '@/components/ot/QuickCreateClienteModal';
 
@@ -60,8 +59,9 @@ function PuntoVentaContent() {
   const [validacionesPendientes, setValidacionesPendientes] = useState([]);
   const [ordenTrabajoObj, setOrdenTrabajoObj] = useState(null);
   const [showConfirmacionVenta, setShowConfirmacionVenta] = useState(false);
-  // Idempotency key: generada una vez por sesión de compra, se resetea tras venta exitosa
-  const [idempotencyKey] = useState(() => `ik_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  // Identidad del intento: permanece estable durante retries y solo cambia cuando
+  // createSale confirma una venta efectiva.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => `ik_${crypto.randomUUID()}`);
 
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
@@ -337,18 +337,6 @@ function PuntoVentaContent() {
 
       const venta = response.data.data;
 
-      if (ventaData.tipo_concepto === 'reparacion' && ventaData.referencia_ot_id) {
-        await transicionarEstadoOT(ventaData.referencia_ot_id, 'FINALIZADA', {
-          userId: user?.id,
-          userEmail: user?.email,
-          organizationId: effectiveOrgId,
-          motivo: 'Reparación cobrada y finalizada desde POS'
-        });
-        await base44.entities.OrdenTrabajo.update(ventaData.referencia_ot_id, {
-          fecha_cierre: new Date().toISOString()
-        });
-      }
-
       return venta;
     },
     onSuccess: async (venta) => {
@@ -371,6 +359,7 @@ function PuntoVentaContent() {
       setVentaId(null);
       setOtSeleccionada('');
       setOrdenTrabajoObj(null);
+      setIdempotencyKey(`ik_${crypto.randomUUID()}`);
     },
     onError: (error) => {
       alert(`No se pudo completar la venta: ${error.message || 'Error desconocido'}`);
@@ -388,6 +377,9 @@ function PuntoVentaContent() {
       if (!config) return;
 
       const esReparacion = venta.tipo_concepto === 'reparacion';
+      // La garantía de reparación empieza con la entrega del equipo, no con el cobro.
+      // EntregarOT es el único emisor para origen OT y evita duplicar certificados.
+      if (esReparacion) return;
       const textoGarantia = esReparacion ? config.texto_reparaciones : config.texto_ventas;
       const mesesVigencia = esReparacion ? config.meses_vigencia_reparaciones : config.meses_vigencia_ventas;
 

@@ -62,6 +62,12 @@
       "type": "string",
       "format": "date-time",
       "description": "Fecha de creaci\u00f3n del evento"
+    },
+    "reception_correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Idempotency identity of the reception that created the event.",
+      "rls": { "read": false, "write": false }
     }
   },
   "required": [

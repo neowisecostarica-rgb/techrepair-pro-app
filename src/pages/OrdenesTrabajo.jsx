@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import {
@@ -87,6 +87,7 @@ function OrdenesTrabajoContent() {
   const [selectedEquipoId, setSelectedEquipoId] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState('normal');
   const [terminosActivos, setTerminosActivos] = useState(null);
+  const [receptionError, setReceptionError] = useState(null);
   const [showReasignar, setShowReasignar] = useState(false);
   const [reasignarOT, setReasignarOT] = useState(null);
   const [nuevoTecnicoId, setNuevoTecnicoId] = useState('');
@@ -105,6 +106,8 @@ function OrdenesTrabajoContent() {
   const { effectiveOrgId, effectiveRole } = useAuthContext();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const receptionCorrelationRef = useRef(null);
+  const receptionSubmitInFlightRef = useRef(false);
   
   // P0.1: Cache de estados de pago
   const [estadosPago, setEstadosPago] = useState({});
@@ -238,17 +241,31 @@ function OrdenesTrabajoContent() {
     mutationFn: async (data) => {
       return crearOrdenTrabajo(data);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       queryClient.invalidateQueries({ queryKey: ['listWorkOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['equipos', effectiveOrgId] });
       setShowModal(false);
       resetForm();
       setGuardandoOT(false);
-      toast({ title: 'Orden de trabajo creada', description: 'La recepción del equipo fue registrada correctamente.' });
+      receptionSubmitInFlightRef.current = false;
+      toast({
+        title: result?.idempotent ? 'Recepción recuperada' : 'Orden de trabajo creada',
+        description: 'La recepción del equipo fue registrada correctamente.',
+      });
+      if (result?.navigate_to) navigate(result.navigate_to);
     },
     onError: (error) => {
       setGuardandoOT(false);
-      const msg = error?.response?.data?.error || error?.message || 'Error desconocido';
+      receptionSubmitInFlightRef.current = false;
+      const payload = error?.data || error?.response?.data || {};
+      const msg = payload.message || error?.message || 'No se pudo registrar la recepción.';
+      const structuredError = {
+        message: msg,
+        code: payload.code || error?.code || 'RECEPTION_UNKNOWN_ERROR',
+        correlationId: payload.correlation_id || receptionCorrelationRef.current,
+      };
+      setReceptionError(structuredError);
       toast({ variant: 'destructive', title: 'Error al crear la orden', description: msg });
     },
   });
@@ -259,6 +276,9 @@ function OrdenesTrabajoContent() {
     setSelectedPrioridad('normal');
     setMotivoIngreso('');
     setShowInlineEquipo(false);
+    setReceptionError(null);
+    receptionCorrelationRef.current = null;
+    receptionSubmitInFlightRef.current = false;
     setNewEquipoData({
       tipo: '',
       marca: '',
@@ -313,37 +333,33 @@ function OrdenesTrabajoContent() {
       return;
     }
 
+    if (!editingOT && receptionSubmitInFlightRef.current) return;
+
     // Activar indicador de carga inmediatamente para el flujo de creación (Recepción)
     if (!editingOT) {
+      receptionSubmitInFlightRef.current = true;
       setGuardandoOT(true);
+      setReceptionError(null);
     }
 
     const formData = new FormData(e.target);
-    let equipoIdFinal = selectedEquipoId;
-
-    // Si se está creando equipo inline, crearlo primero vía Base44 Function
-    if (showInlineEquipo && !selectedEquipoId) {
-      try {
-        const equipoResponse = await base44.functions.invoke('createEquipment', {
-          cliente_id: selectedClienteId,
-          tipo: newEquipoData.tipo,
-          marca: newEquipoData.marca,
-          modelo: newEquipoData.modelo || undefined,
-          serie: newEquipoData.serie_ingreso || undefined,
-        });
-        equipoIdFinal = equipoResponse.data.id;
-        queryClient.invalidateQueries({ queryKey: ['equipos'] });
-      } catch (error) {
-        setGuardandoOT(false);
-        toast({ variant: 'destructive', title: 'Error al crear el equipo', description: error.message });
-        return;
-      }
-    }
+    const correlationId = receptionCorrelationRef.current || crypto.randomUUID();
+    receptionCorrelationRef.current = correlationId;
     
     const data = {
       branch_id: formData.get('branch_id'),
       cliente_id: selectedClienteId,
-      equipo_id: equipoIdFinal,
+      equipment_mode: selectedEquipoId ? 'existing' : 'create',
+      equipo_id: selectedEquipoId || undefined,
+      equipment: selectedEquipoId ? undefined : {
+        tipo: newEquipoData.tipo,
+        marca: newEquipoData.marca,
+        modelo: newEquipoData.modelo || undefined,
+        serie: newEquipoData.serie_ingreso || undefined,
+        estado_fisico: newEquipoData.estado_fisico_ingreso || undefined,
+      },
+      correlation_id: correlationId,
+      terms_id: terminosActivos?.id,
       motivo_ingreso: motivoIngreso || formData.get('motivo_ingreso'),
       observaciones_ingreso: formData.get('observaciones_ingreso'),
       tipo_ingreso: formData.get('tipo_ingreso') || 'presencial',
@@ -360,7 +376,7 @@ function OrdenesTrabajoContent() {
 
     // Generar token único para nuevas OTs
     if (!editingOT) {
-      data.public_access_token = `ot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      data.public_access_token = `ot-${correlationId}`;
     }
 
     if (editingOT) {
@@ -559,7 +575,7 @@ function OrdenesTrabajoContent() {
           </Button>
           {effectiveRole !== 'TECHNICIAN' && (
             <Button
-              onClick={() => { setEditingOT(null); setShowModal(true); }}
+              onClick={() => { setEditingOT(null); resetForm(); setShowModal(true); }}
               className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
             >
               <Plus className="w-5 h-5 mr-2" />
@@ -821,7 +837,14 @@ function OrdenesTrabajoContent() {
       </></Tabs>}{/* fin vistaActiva lista */}
 
       {/* Modal Crear OT */}
-      <Dialog open={showModal && !selectedOT} onOpenChange={setShowModal}>
+      <Dialog
+        open={showModal && !selectedOT}
+        onOpenChange={(open) => {
+          if (!open && (guardandoOT || createMutation.isPending)) return;
+          setShowModal(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
@@ -830,6 +853,17 @@ function OrdenesTrabajoContent() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+            {receptionError && !editingOT && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <p className="font-medium">{receptionError.message}</p>
+                  <p className="mt-1 text-xs">
+                    Referencia: {receptionError.correlationId || receptionError.code}
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
             {/* Mensaje informativo sobre recepción */}
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="w-4 h-4 text-blue-600" />
@@ -1170,7 +1204,7 @@ function OrdenesTrabajoContent() {
             )}
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={() => {
+              <Button type="button" variant="outline" disabled={guardandoOT || createMutation.isPending} onClick={() => {
                 setShowModal(false);
                 resetForm();
               }}>

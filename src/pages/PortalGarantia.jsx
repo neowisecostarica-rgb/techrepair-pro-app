@@ -112,7 +112,9 @@ export default function PortalGarantia() {
     );
   }
 
-  const config = estadoConfig[garantia.estado] || estadoConfig.ACTIVA;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const estadoEfectivo = garantia.estado === 'ACTIVA' && garantia.fecha_fin < hoy ? 'VENCIDA' : garantia.estado;
+  const config = estadoConfig[estadoEfectivo] || estadoConfig.ACTIVA;
   const Icon = config.icon;
 
   return (
@@ -192,9 +194,9 @@ export default function PortalGarantia() {
         <Alert className={`border-2 ${config.alertClass}`}>
           <Icon className="w-5 h-5" />
           <AlertDescription className="text-base font-medium">
-            {garantia.estado === 'ACTIVA' && 'Esta garantía está vigente y cubre los servicios especificados.'}
-            {garantia.estado === 'VENCIDA' && 'Esta garantía ha expirado según las fechas establecidas.'}
-            {garantia.estado === 'ANULADA' && 'Esta garantía ha sido anulada y no se encuentra vigente.'}
+            {estadoEfectivo === 'ACTIVA' && 'Esta garantía está vigente y cubre los servicios especificados.'}
+            {estadoEfectivo === 'VENCIDA' && 'Esta garantía ha expirado según las fechas establecidas.'}
+            {estadoEfectivo === 'ANULADA' && 'Esta garantía ha sido anulada y no se encuentra vigente.'}
           </AlertDescription>
         </Alert>
 

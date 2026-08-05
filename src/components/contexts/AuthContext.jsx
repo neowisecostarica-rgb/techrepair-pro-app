@@ -6,18 +6,6 @@ const AuthContext = createContext(null);
 // Roles válidos oficiales (cerrado)
 const VALID_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
 
-// Roles legacy → rol oficial
-const LEGACY_ROLE_MAP = {
-  'admin': 'ORG_ADMIN',
-  'user': 'SALES',
-  'tech': 'TECHNICIAN',
-  'manager': 'BRANCH_ADMIN',
-  'AUDITOR': 'SUPPORT',
-  'CFO': 'ORG_ADMIN',
-  'CEO': 'ORG_ADMIN',
-  'SUPER_ADMIN': 'ORG_ADMIN', // SUPER_ADMIN en UserAccount es un error legacy
-};
-
 // Roles que requieren branch_id obligatorio
 const ROLES_REQUIRE_BRANCH = ['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
 
@@ -174,7 +162,6 @@ export function AuthProvider({ children }) {
 
     try {
   const u = await base44.auth.me();
-  console.log("AUTH.ME FULL:", JSON.stringify(u, null, 2));
   last429Timestamp.current = null;
 
       // SUPER_ADMIN puro (sin impersonation): acceso solo al panel SaaS
@@ -202,7 +189,7 @@ export function AuthProvider({ children }) {
       }
 
       // Usuario normal: ejecutar EnsureIdentity
-      const { account, multiOrgAccounts: multiOrgs, status: identStatus, repairs, syncedUser } = await ensureIdentity(u);
+      const { account, multiOrgAccounts: multiOrgs, status: identStatus, syncedUser } = await ensureIdentity(u);
 
       // Usar syncedUser si hubo sincronización de token, para que el estado React
       // refleje el organization_id ya confirmado por el servidor antes de marcar 'ready'.

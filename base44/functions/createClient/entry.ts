@@ -21,9 +21,17 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'tipo_cliente inválido' }, { status: 400 });
     }
 
-    // TEMP FIX P0 — 2026-05-25: Verificaciones de duplicidad deshabilitadas temporalmente
-    // Hipótesis: Cliente.filter() causa timeout → 502. Rehabilitar tras confirmar fix.
-    // TODO: Reactivar verificación de duplicados una vez estabilizado el entorno.
+    const identificacionNormalizada = identificacion.trim();
+    const duplicados = await base44.asServiceRole.entities.Cliente.filter({
+      organization_id: orgId,
+      identificacion: identificacionNormalizada,
+    });
+    if (duplicados.length > 0) {
+      return Response.json({
+        error: 'Ya existe un cliente con esta identificación en la organización',
+        cliente_id: duplicados[0].id,
+      }, { status: 409 });
+    }
 
     console.log('[createClient] Iniciando creación de cliente', { orgId, nombre_completo, identificacion });
 
@@ -31,7 +39,7 @@ Deno.serve(async (req) => {
     const cliente = await base44.entities.Cliente.create({
       organization_id: orgId,
       nombre_completo: nombre_completo.trim(),
-      identificacion: identificacion.trim(),
+      identificacion: identificacionNormalizada,
       tipo_cliente: tipo_cliente || 'individual',
       telefono: telefono.trim(),
       email: email?.trim() || undefined,

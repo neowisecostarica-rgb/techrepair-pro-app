@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CheckCircle, XCircle, FileText, Package, DollarSign, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Package, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -34,16 +34,6 @@ export default function AprobacionesPanel({ userAccount, user }) {
     queryFn: () => base44.entities.SolicitudTecnica.filter({
       organization_id: userAccount.organization_id,
       estado: 'requested'
-    }),
-    enabled: !!userAccount?.organization_id,
-  });
-
-  // Ventas pendientes de anulación (simulación con estado específico)
-  const { data: ventasPendientes = [] } = useQuery({
-    queryKey: ['ventas-anulacion', userAccount?.organization_id],
-    queryFn: () => base44.entities.Venta.filter({
-      organization_id: userAccount.organization_id,
-      notas: 'PENDIENTE_ANULACION' // Flag temporal
     }),
     enabled: !!userAccount?.organization_id,
   });
@@ -99,17 +89,6 @@ export default function AprobacionesPanel({ userAccount, user }) {
     },
   });
 
-  // Aprobar anulación de venta
-  const aprobarAnulacionMutation = useMutation({
-    mutationFn: (ventaId) => base44.entities.Venta.update(ventaId, {
-      estado: 'anulada',
-      notas: `Anulada por admin: ${user.full_name || user.email}`
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ventas-anulacion'] });
-    },
-  });
-
   const handleRechazar = (item, tipo) => {
     setItemActual({ ...item, tipo });
     setShowRechazoModal(true);
@@ -139,7 +118,7 @@ export default function AprobacionesPanel({ userAccount, user }) {
         </CardHeader>
         <CardContent className="p-6">
           <Tabs defaultValue="cotizaciones">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="cotizaciones">
                 <FileText className="w-4 h-4 mr-2" />
                 Cotizaciones ({cotizacionesPendientes.length})
@@ -147,10 +126,6 @@ export default function AprobacionesPanel({ userAccount, user }) {
               <TabsTrigger value="solicitudes">
                 <Package className="w-4 h-4 mr-2" />
                 Solicitudes ({solicitudesPendientes.length})
-              </TabsTrigger>
-              <TabsTrigger value="ventas">
-                <DollarSign className="w-4 h-4 mr-2" />
-                Anulaciones ({ventasPendientes.length})
               </TabsTrigger>
             </TabsList>
 
@@ -238,32 +213,6 @@ export default function AprobacionesPanel({ userAccount, user }) {
               )}
             </TabsContent>
 
-            <TabsContent value="ventas" className="space-y-3">
-              {ventasPendientes.length === 0 ? (
-                <p className="text-center py-8 text-slate-400">No hay anulaciones pendientes</p>
-              ) : (
-                ventasPendientes.map((venta) => (
-                  <div key={venta.id} className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-semibold text-slate-900">Venta: ₡{venta.total.toLocaleString()}</p>
-                        <p className="text-sm text-slate-600">Método: {venta.metodo_pago}</p>
-                        <p className="text-xs text-slate-500">
-                          {formatDistanceToNow(new Date(venta.created_date), { addSuffix: true, locale: es })}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => aprobarAnulacionMutation.mutate(venta.id)}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        Anular Venta
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>

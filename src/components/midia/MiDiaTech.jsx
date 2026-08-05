@@ -557,8 +557,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         </Button>
                       )}
 
-                      {/* PRUEBAS → Validar Calidad */}
-                      {/* P1: Pendiente implementar Checklist QA antes de habilitar esta transición */}
+                      {/* PRUEBAS → Validar Calidad. El backend exige evidencia exitosa. */}
                       {ordenActiva.estado === 'PRUEBAS' && (
                         <Button
                           onClick={() => handleTransicion(ordenActiva, 'FINALIZADA', 'validar_calidad')}

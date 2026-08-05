@@ -17,7 +17,7 @@ import { useAuthContext } from '../components/contexts/AuthContext';
 
 export default function Settings() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN']}>
+    <PageGuard allowedRoles={['ORG_ADMIN']}>
       <SettingsContent />
     </PageGuard>
   );

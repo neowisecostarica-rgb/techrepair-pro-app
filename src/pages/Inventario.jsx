@@ -8,17 +8,25 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign, Leaf, Shield, CheckCircle2, XCircle, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, Leaf, Shield, CheckCircle2, XCircle, SlidersHorizontal } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
+import { useUserAccount } from '@/components/hooks/useOrgData';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import ExportarInventario from '@/components/inventario/ExportarInventario';
-import ImportarInventario from '@/components/inventario/ImportarInventario';
 import QuickCreateCategoria from '@/components/inventario/QuickCreateCategoria';
 import { generarCodigoInterno } from '@/components/inventario/utils/generarCodigoInterno';
 import ModalAjusteStock from '@/components/inventario/ModalAjusteStock';
+import PageGuard from '@/components/guards/PageGuard';
 
 export default function Inventario() {
+  return (
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'INVENTORY']}>
+      <InventarioContent />
+    </PageGuard>
+  );
+}
+
+function InventarioContent() {
   const [showModal, setShowModal] = useState(false);
   const [showQuickCreateCategoria, setShowQuickCreateCategoria] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -29,7 +37,7 @@ export default function Inventario() {
   const [codigoInternoPreview, setCodigoInternoPreview] = useState('');
   const queryClient = useQueryClient();
   const { userAccount } = useUserAccount();
-  const { effectiveRole, effectiveOrgId, user } = useAuthContext();
+  const { effectiveRole, effectiveOrgId } = useAuthContext();
   const [organization, setOrganization] = useState(null);
 
   // Obtener nombre de organización para export
@@ -206,15 +214,6 @@ export default function Inventario() {
                 organizationName={organization?.name}
               />
               
-              <ImportarInventario
-                effectiveOrgId={effectiveOrgId}
-                effectiveRole={effectiveRole}
-                userEmail={user?.email}
-                onImportSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ['inventario'] });
-                }}
-              />
-
               <Button
                 onClick={() => { setEditingItem(null); setShowModal(true); }}
                 className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
@@ -225,18 +224,10 @@ export default function Inventario() {
             </>
           )}
           
-          {(effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN') && (
+          {effectiveRole !== 'ORG_ADMIN' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
               <p className="text-sm text-blue-800">
-                👀 Vista de solo lectura - SALES no puede editar inventario
-              </p>
-            </div>
-          )}
-          
-          {effectiveRole === 'TECHNICIAN' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-              <p className="text-sm text-blue-800">
-                👀 Vista de solo lectura - Los técnicos no pueden editar inventario
+                👀 Vista de solo lectura - la gestión de inventario requiere ORG_ADMIN
               </p>
             </div>
           )}

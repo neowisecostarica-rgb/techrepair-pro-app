@@ -86,6 +86,11 @@ function VentasGarantiasContent() {
     return diffDays;
   };
 
+  const getEstadoEfectivo = (garantia) => {
+    const hoy = new Date().toISOString().slice(0, 10);
+    return garantia.estado === 'ACTIVA' && garantia.fecha_fin < hoy ? 'VENCIDA' : garantia.estado;
+  };
+
   const garantiasFiltradas = garantias.filter(g => {
     if (busqueda) {
       const cliente = getClienteName(g.cliente_id).toLowerCase();
@@ -95,14 +100,15 @@ function VentasGarantiasContent() {
       }
     }
 
-    if (filtroEstado !== 'todas' && g.estado !== filtroEstado) {
+    const estadoEfectivo = getEstadoEfectivo(g);
+    if (filtroEstado !== 'todas' && estadoEfectivo !== filtroEstado) {
       return false;
     }
 
     // Filtro "Por Vencer" (≤15 días)
     if (filtroPorVencer) {
       const dias = calcularDiasParaVencer(g.fecha_fin);
-      if (g.estado !== 'ACTIVA' || dias <= 0 || dias > 15) {
+      if (estadoEfectivo !== 'ACTIVA' || dias <= 0 || dias > 15) {
         return false;
       }
     }
@@ -183,11 +189,12 @@ function VentasGarantiasContent() {
           {/* Lista */}
           <div className="space-y-3">
             {garantiasFiltradas.map((gar) => {
-              const config = estadoConfig[gar.estado];
+              const estadoEfectivo = getEstadoEfectivo(gar);
+              const config = estadoConfig[estadoEfectivo];
               const origen = getOrigen(gar);
               const telefono = getClienteTelefono(gar.cliente_id);
               const diasRestantes = calcularDiasParaVencer(gar.fecha_fin);
-              const porVencer = gar.estado === 'ACTIVA' && diasRestantes > 0 && diasRestantes <= 15;
+              const porVencer = estadoEfectivo === 'ACTIVA' && diasRestantes > 0 && diasRestantes <= 15;
 
               return (
                 <div
@@ -289,8 +296,8 @@ function VentasGarantiasContent() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Estado</p>
-                  <Badge className={estadoConfig[garantiaSeleccionada.estado].color}>
-                    {estadoConfig[garantiaSeleccionada.estado].label}
+                  <Badge className={estadoConfig[getEstadoEfectivo(garantiaSeleccionada)].color}>
+                    {estadoConfig[getEstadoEfectivo(garantiaSeleccionada)].label}
                   </Badge>
                 </div>
                 <div>

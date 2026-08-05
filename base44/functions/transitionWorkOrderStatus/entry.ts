@@ -890,15 +890,6 @@ Deno.serve(async (req) => {
 
     // ── 1. Auth — obtener runtimeUser del contexto de ejecución inmediato ──────
     const runtimeUser = await base44.auth.me();
-    console.log(`[DIAG:transition] ===== INICIO FUNCIÓN =====`);
-    console.log(`[DIAG:transition] RAW runtimeUser completo:`, JSON.stringify(runtimeUser, null, 2));
-    console.log(`[DIAG:transition] runtimeUser.id:`, runtimeUser?.id);
-    console.log(`[DIAG:transition] runtimeUser.email:`, runtimeUser?.email);
-    console.log(`[DIAG:transition] runtimeUser.role (base44 app level):`, runtimeUser?.role);
-    console.log(`[DIAG:transition] runtimeUser.organization_id:`, runtimeUser?.organization_id);
-    console.log(`[DIAG:transition] runtimeUser.impersonating_org_id:`, runtimeUser?.impersonating_org_id);
-    console.log(`[DIAG:transition] runtimeUser.is_super_admin:`, runtimeUser?.is_super_admin);
-    console.log(`[DIAG:transition] runtimeUser.data completo:`, JSON.stringify(runtimeUser?.data, null, 2));
 
     if (!runtimeUser && body.customer_token) {
       return handlePublicCustomerDecision({ base44, body, req });
@@ -1058,7 +1049,6 @@ Deno.serve(async (req) => {
     // ── 8. Validar rol para el estado destino ─────────────────────────────────
     if (!isSuperAdmin) {
       const rolesPermitidos = AUTHORIZED_ROLES_FOR_TARGET[newStatus];
-      console.log(`[DIAG:transition] Validando rol para target '${newStatus}' — rolesPermitidos:`, rolesPermitidos, `— effectiveRole:`, effectiveRole);
       if (rolesPermitidos && !rolesPermitidos.includes(effectiveRole)) {
         console.error(`[DIAG:transition] *** 403: rol '${effectiveRole}' no permitido para '${newStatus}' — rolesPermitidos: [${rolesPermitidos.join(', ')}] ***`);
         return Response.json({
@@ -1094,6 +1084,26 @@ Deno.serve(async (req) => {
         }
         extra._aprobacion_cliente_verificada = true;
       }
+    }
+
+    // Una OT no puede cerrarse como FINALIZADA sin evidencia de control de calidad.
+    // PruebaTecnica ya es el registro canónico del módulo existente de pruebas.
+    if (newStatus === 'FINALIZADA') {
+      const pruebasExitosas = await base44.asServiceRole.entities.PruebaTecnica.filter({
+        organization_id: orgId,
+        orden_trabajo_id,
+        resultado: 'exitoso',
+      }, 1);
+
+      if (!pruebasExitosas || pruebasExitosas.length === 0) {
+        return Response.json({
+          error: 'No se puede finalizar la OT: registra al menos una prueba técnica con resultado exitoso.',
+          code: 'FINALIZADA_SIN_PRUEBA_EXITOSA',
+          orden_trabajo_id,
+        }, { status: 422 });
+      }
+
+      extra.prueba_tecnica_exitosa_verificada = true;
     }
 
     if (newStatus === 'ENTREGADA') {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,12 +17,11 @@ import EquiposCliente from '@/components/clientes/EquiposCliente';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
 import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
-import MensajesMotivacionVentas from '../components/ventas/MensajesMotivacionVentas';
 import AtencionRequerida from '@/components/clientes/AtencionRequerida';
 
 export default function Clientes() {
   return (
-    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN']}>
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'SUPPORT']}>
       <ClientesContent />
     </PageGuard>
   );
@@ -34,14 +33,8 @@ function ClientesContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
-  const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
   const queryClient = useQueryClient();
-  const { user, effectiveOrgId } = useAuthContext();
-
-  const mostrarMensajeReconocimiento = (contexto) => {
-    setMensajeMotivacion({ tipo: 'reconocimiento', contexto });
-    setTimeout(() => setMensajeMotivacion(null), 8000);
-  };
+  const { user, userAccount, effectiveOrgId } = useAuthContext();
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes', effectiveOrgId],
@@ -67,10 +60,6 @@ function ClientesContent() {
       <MensajesMotivacionVentas tipo="diaria" />
 
       {/* Mensajes contextuales */}
-      {mensajeMotivacion && (
-        <MensajesMotivacionVentas tipo={mensajeMotivacion.tipo} contexto={mensajeMotivacion.contexto} />
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -238,6 +227,7 @@ function ClientesContent() {
                   clienteId={selectedCliente.id}
                   ordenTrabajoId={null}
                   user={user}
+                  userAccount={userAccount}
                 />
               </TabsContent>
 
@@ -246,6 +236,7 @@ function ClientesContent() {
                   clienteId={selectedCliente.id}
                   ordenTrabajoId={null}
                   user={user}
+                  userAccount={userAccount}
                 />
               </TabsContent>
             </Tabs>

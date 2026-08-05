@@ -86,6 +86,8 @@ export default function PageGuard({ allowedRoles, children }) {
       'ORG_ADMIN': 'Dashboard',
       'SALES': 'Clientes',
       'TECHNICIAN': 'MiDia',
+      'INVENTORY': 'Inventario',
+      'SUPPORT': 'Clientes',
       'BRANCH_ADMIN': 'Dashboard',
       'AUDITOR': 'Dashboard',
       'CFO': 'Dashboard',

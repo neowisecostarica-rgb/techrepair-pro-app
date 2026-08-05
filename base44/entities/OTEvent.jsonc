@@ -71,7 +71,32 @@
     }
   },
   "required": [
+    "organization_id",
     "orden_trabajo_id",
     "tipo"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        { "organization_id": "{{user.organization_id}}" },
+        { "organization_id": "{{user.impersonating_org_id}}" },
+        { "user_condition": { "is_super_admin": true } }
+      ]
+    },
+    "read": {
+      "$or": [
+        { "organization_id": "{{user.organization_id}}" },
+        { "organization_id": "{{user.impersonating_org_id}}" },
+        { "user_condition": { "is_super_admin": true } }
+      ]
+    },
+    "update": {
+      "$or": [
+        { "organization_id": "{{user.organization_id}}" },
+        { "organization_id": "{{user.impersonating_org_id}}" },
+        { "user_condition": { "is_super_admin": true } }
+      ]
+    },
+    "delete": false
+  }
 }

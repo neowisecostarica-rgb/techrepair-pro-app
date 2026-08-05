@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Plus, Clock, Video, MapPin, ExternalLink, AlertCircle } from 'lucide-react';
+import { Plus, Video, MapPin, ExternalLink, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -238,8 +238,8 @@ function AgendaContent() {
     
     if (clienteId && otId) {
       // Verificar que la OT pertenece al cliente
-      const { data: ot } = await base44.entities.OrdenTrabajo.filter({ id: otId });
-      if (ot && ot[0]?.cliente_id !== clienteId) {
+      const ots = await base44.entities.OrdenTrabajo.filter({ id: otId, organization_id: effectiveOrgId });
+      if (ots[0]?.cliente_id !== clienteId) {
         alert('Error: La OT seleccionada no pertenece al cliente elegido');
         setValidando(false);
         return;

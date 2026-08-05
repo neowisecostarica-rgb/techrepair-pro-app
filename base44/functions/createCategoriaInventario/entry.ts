@@ -16,12 +16,20 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'organization_id y nombre son requeridos' }, { status: 400 });
     }
 
-    // Verificar que el usuario pertenece a esta organización (seguridad multi-tenant)
-    const userOrgId = user.organization_id || user.data?.impersonating_org_id;
-    const isSuperAdmin = user.data?.is_super_admin === true || user.data?.is_super_admin === 'true';
+    // Verificar tenant y rol en servidor; la visibilidad de UI no es una autorización.
+    const userOrgId = user.impersonating_org_id || user.organization_id;
+    const isSuperAdmin = user.is_super_admin === true;
 
     if (!isSuperAdmin && userOrgId !== organization_id) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id, organization_id });
+    const canManageInventory = isSuperAdmin || accounts.some(account =>
+      account.role === 'ORG_ADMIN' && account.status !== 'suspended' && account.active !== false
+    );
+    if (!canManageInventory) {
+      return Response.json({ error: 'Acceso denegado: se requiere ORG_ADMIN para modificar inventario' }, { status: 403 });
     }
 
     // Usar asServiceRole para evitar RLS

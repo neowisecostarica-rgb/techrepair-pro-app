@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Printer, FileText, ArrowLeft, Send, AlertTriangle } from 'lucide-react';
+import { Printer, FileText, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import DiagnosticoTiquete80mm from '@/components/diagnostico/DiagnosticoTiquete80mm';
@@ -20,27 +20,27 @@ export default function ResumenDiagnostico() {
   const { data: ordenTrabajo, isLoading: loadingOT } = useQuery({
     queryKey: ['orden', otId],
     queryFn: async () => {
-      const ots = await base44.entities.OrdenTrabajo.filter({ id: otId });
+      const ots = await base44.entities.OrdenTrabajo.filter({ id: otId, organization_id: effectiveOrgId });
       return ots[0];
     },
-    enabled: !!otId,
+    enabled: !!otId && !!effectiveOrgId,
   });
 
   // Fetch Diagnóstico Técnico
   const { data: diagnostico, isLoading: loadingDiag } = useQuery({
     queryKey: ['diagnostico-tecnico', diagnosticoId],
     queryFn: async () => {
-      const diags = await base44.entities.DiagnosticoTecnico.filter({ id: diagnosticoId });
+      const diags = await base44.entities.DiagnosticoTecnico.filter({ id: diagnosticoId, organization_id: effectiveOrgId });
       return diags[0];
     },
-    enabled: !!diagnosticoId,
+    enabled: !!diagnosticoId && !!effectiveOrgId,
   });
 
   // Fetch Cliente
   const { data: cliente } = useQuery({
     queryKey: ['cliente', ordenTrabajo?.cliente_id],
     queryFn: async () => {
-      const clientes = await base44.entities.Cliente.filter({ id: ordenTrabajo.cliente_id });
+      const clientes = await base44.entities.Cliente.filter({ id: ordenTrabajo.cliente_id, organization_id: effectiveOrgId });
       return clientes[0];
     },
     enabled: !!ordenTrabajo?.cliente_id,
@@ -50,7 +50,7 @@ export default function ResumenDiagnostico() {
   const { data: equipo } = useQuery({
     queryKey: ['equipo', ordenTrabajo?.equipo_id],
     queryFn: async () => {
-      const equipos = await base44.entities.Equipo.filter({ id: ordenTrabajo.equipo_id });
+      const equipos = await base44.entities.Equipo.filter({ id: ordenTrabajo.equipo_id, organization_id: effectiveOrgId });
       return equipos[0];
     },
     enabled: !!ordenTrabajo?.equipo_id,
@@ -60,7 +60,7 @@ export default function ResumenDiagnostico() {
   const { data: tecnico } = useQuery({
     queryKey: ['user-account-tecnico', diagnostico?.tecnico_id],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({ user_id: diagnostico.tecnico_id });
+      const accounts = await base44.entities.UserAccount.filter({ user_id: diagnostico.tecnico_id, organization_id: effectiveOrgId });
       return accounts[0];
     },
     enabled: !!diagnostico?.tecnico_id,
@@ -72,10 +72,6 @@ export default function ResumenDiagnostico() {
 
   const handleVolverAOrden = () => {
     window.location.href = createPageUrl('OrdenesTrabajo') + `?openDetail=${otId}`;
-  };
-
-  const handleEnviarCliente = () => {
-    alert('🚀 Próximamente: Enviar diagnóstico al cliente por email o generar link público');
   };
 
   const handleImprimir80mm = () => {
@@ -241,7 +237,7 @@ export default function ResumenDiagnostico() {
               className="w-full bg-purple-600 hover:bg-purple-700"
             >
               <FileText className="w-4 h-4 mr-2" />
-              Exportar / Enviar A4
+              Ver formato A4
             </Button>
           </div>
         </div>
@@ -249,16 +245,8 @@ export default function ResumenDiagnostico() {
         {/* Acciones Adicionales */}
         <div className="flex gap-3">
           <Button
-            onClick={handleEnviarCliente}
-            variant="outline"
-            className="flex-1 border-blue-500 text-blue-700 hover:bg-blue-50"
-          >
-            <Send className="w-4 h-4 mr-2" />
-            Enviar al Cliente
-          </Button>
-          <Button
             onClick={handleGenerarCotizacion}
-            className="flex-1 bg-gradient-to-r from-emerald-500 to-blue-500"
+            className="w-full bg-gradient-to-r from-emerald-500 to-blue-500"
           >
             <FileText className="w-4 h-4 mr-2" />
             Generar Cotización

@@ -30,68 +30,26 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   });
 
   // P0.1 TENANT ZERO: Calculate active ORG_ADMIN count
-  const activeOrgAdmins = users.filter(u => u.role === 'ORG_ADMIN' && u.active === true);
+  const activeOrgAdmins = users.filter(u =>
+    u.role === 'ORG_ADMIN' && (u.status === 'active' || (!u.status && u.active === true))
+  );
   const isLastActiveOrgAdmin = (user) => {
-    return user.role === 'ORG_ADMIN' && user.active === true && activeOrgAdmins.length === 1;
+    const isActive = user.status === 'active' || (!user.status && user.active === true);
+    return user.role === 'ORG_ADMIN' && isActive && activeOrgAdmins.length === 1;
   };
 
   const inviteUserMutation = useMutation({
     mutationFn: async (data) => {
-      // P0: HARDENING - Validación defensiva de organization_id
       if (!organizationId) {
         throw new Error('No se puede invitar usuarios sin un tenant válido');
       }
-
-      // PASO 1: Invitar usuario a la plataforma (crea/vincula User global)
-      try {
-        await base44.users.inviteUser(data.user_email, data.role);
-      } catch (error) {
-        console.warn('Invitación Base44 (puede ya existir):', error.message);
-      }
-
-      // PASO 2: Verificar si ya existe UserAccount en esta organización
-      const existingAccounts = await base44.entities.UserAccount.filter({
-        organization_id: organizationId,
-        user_email: data.user_email
+      const response = await base44.functions.invoke('manageOrgUser', {
+        action: 'invite',
+        organizationId,
+        data,
       });
-
-      // PASO 3: Decisión según resultado
-      const now = new Date().toISOString();
-      if (existingAccounts.length === 0) {
-        // A) No existe → CREATE
-        await base44.entities.UserAccount.create({
-          user_email: data.user_email,
-          organization_id: organizationId,
-          branch_id: data.branch_id || null,
-          role: data.role,
-          status: 'invited',
-          active: true,
-          invited_at: now,
-        });
-        return { success: true, email: data.user_email, action: 'created' };
-        
-      } else if (existingAccounts.length === 1) {
-        const account = existingAccounts[0];
-        
-        if (account.status === 'active' || (account.active === true && !account.status)) {
-          // B) Usuario activo → RECHAZAR
-          throw new Error(`El usuario ${data.user_email} ya tiene acceso activo. Usa 'Editar Usuario' para modificar su rol o sucursal.`);
-        } else {
-          // C) Usuario suspendido/invitado → UPDATE (reinvitación)
-          await base44.entities.UserAccount.update(account.id, {
-            role: data.role,
-            branch_id: data.branch_id || null,
-            status: 'invited',
-            active: true,
-            invited_at: now,
-          });
-          return { success: true, email: data.user_email, action: 'updated' };
-        }
-        
-      } else {
-        // D) Duplicación detectada → ERROR
-        throw new Error(`Corrupción de datos detectada: múltiples accesos para el mismo email (${data.user_email}) en esta organización.`);
-      }
+      if (!response?.data?.success) throw new Error(response?.data?.error || 'No se pudo invitar al usuario');
+      return { ...response.data, email: data.user_email };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['userAccounts'] });
@@ -101,7 +59,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       // FEEDBACK DIFERENCIADO
       if (result.action === 'created') {
         alert(`✅ Invitación enviada exitosamente a ${result.email}\n\nEl usuario podrá acceder al iniciar sesión.`);
-      } else if (result.action === 'updated') {
+      } else {
         alert(`✅ Invitación actualizada para ${result.email}\n\nSe ha actualizado su rol y sucursal asignados.`);
       }
     },
@@ -112,12 +70,22 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.UserAccount.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const response = await base44.functions.invoke('manageOrgUser', {
+        action: 'updateAccount',
+        organizationId,
+        targetAccountId: id,
+        data: { role: data.role, branch_id: data.branch_id, status: data.status },
+      });
+      if (!response?.data?.success) throw new Error(response?.data?.error || 'No se pudo actualizar el usuario');
+      return response.data.account;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userAccounts'] });
       setShowEditModal(false);
       setEditingUser(null);
     },
+    onError: (error) => alert(`❌ Error al actualizar usuario: ${error.message}`),
   });
 
 
@@ -156,7 +124,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
     if (confirm(`¿Suspender acceso de ${user.user_email}?\n\nEl usuario no podrá iniciar sesión pero su historial quedará intacto.`)) {
       updateUserMutation.mutate({
         id: user.id,
-        data: { status: 'suspended', active: false },
+        data: { role: user.role, branch_id: user.branch_id || null, status: 'suspended' },
       });
     }
   };
@@ -164,7 +132,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   const handleActivate = (user) => {
     updateUserMutation.mutate({
       id: user.id,
-      data: { status: 'active', active: true },
+      data: { role: user.role, branch_id: user.branch_id || null, status: 'active' },
     });
   };
 

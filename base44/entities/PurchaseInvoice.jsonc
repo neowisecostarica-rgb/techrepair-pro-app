@@ -58,14 +58,14 @@
     "create": {
       "$or": [
         {
-          "data.organization_id": "{{user.organization_id}}"
+          "organization_id": "{{user.organization_id}}"
         },
         {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
+          "organization_id": "{{user.impersonating_org_id}}"
         },
         {
           "user_condition": {
-            "data.is_super_admin": "true"
+            "is_super_admin": true
           }
         }
       ]
@@ -73,14 +73,14 @@
     "read": {
       "$or": [
         {
-          "data.organization_id": "{{user.organization_id}}"
+          "organization_id": "{{user.organization_id}}"
         },
         {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
+          "organization_id": "{{user.impersonating_org_id}}"
         },
         {
           "user_condition": {
-            "data.is_super_admin": "true"
+            "is_super_admin": true
           }
         }
       ]
@@ -88,14 +88,14 @@
     "update": {
       "$or": [
         {
-          "data.organization_id": "{{user.organization_id}}"
+          "organization_id": "{{user.organization_id}}"
         },
         {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
+          "organization_id": "{{user.impersonating_org_id}}"
         },
         {
           "user_condition": {
-            "data.is_super_admin": "true"
+            "is_super_admin": true
           }
         }
       ]
@@ -103,14 +103,14 @@
     "delete": {
       "$or": [
         {
-          "data.organization_id": "{{user.organization_id}}"
+          "organization_id": "{{user.organization_id}}"
         },
         {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
+          "organization_id": "{{user.impersonating_org_id}}"
         },
         {
           "user_condition": {
-            "data.is_super_admin": "true"
+            "is_super_admin": true
           }
         }
       ]

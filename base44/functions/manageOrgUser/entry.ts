@@ -1,6 +1,6 @@
 /**
  * manageOrgUser — Backend function para operaciones críticas de gestión de usuarios
- * Acciones soportadas: invite, updateRole, updateStatus, updateBranch
+ * Acciones soportadas: invite, updateAccount, updateRole, updateStatus
  * Solo ORG_ADMIN puede ejecutar (verificado server-side).
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
@@ -13,31 +13,37 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  // Verificar que sea ORG_ADMIN o SUPER_ADMIN
-  const callerAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id });
-  const callerOrgId = user.impersonating_org_id || user.organization_id;
-  const callerAccount = callerAccounts.find(a => a.organization_id === callerOrgId && a.active);
+  const body = await req.json();
+  const { action, organizationId, targetAccountId, data } = body;
+  if (!organizationId) {
+    return Response.json({ error: 'organizationId requerido' }, { status: 400 });
+  }
 
+  // Verificar que sea ORG_ADMIN de la organización solicitada o SUPER_ADMIN.
+  const callerAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id });
   const isSuperAdmin = user.is_super_admin === true;
-  const isOrgAdmin = callerAccount?.role === 'ORG_ADMIN';
+  const callerAccount = callerAccounts.find(account =>
+    account.organization_id === organizationId &&
+    account.role === 'ORG_ADMIN' &&
+    account.status !== 'suspended' &&
+    account.active !== false
+  );
+  const isOrgAdmin = !!callerAccount;
 
   if (!isSuperAdmin && !isOrgAdmin) {
     return Response.json({ error: 'Acceso denegado: se requiere ORG_ADMIN' }, { status: 403 });
   }
 
-  const body = await req.json();
-  const { action, organizationId, targetAccountId, data } = body;
-
-  // Garantizar aislamiento: solo operar dentro de la org del caller
-  const effectiveOrgId = isSuperAdmin ? organizationId : callerOrgId;
-  if (!effectiveOrgId) {
-    return Response.json({ error: 'organizationId requerido' }, { status: 400 });
-  }
+  const effectiveOrgId = organizationId;
+  const allowedRoles = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
 
   if (action === 'invite') {
     const { user_email, role, branch_id } = data;
     if (!user_email || !role) {
       return Response.json({ error: 'user_email y role son requeridos' }, { status: 400 });
+    }
+    if (!allowedRoles.includes(role)) {
+      return Response.json({ error: 'Rol inválido' }, { status: 400 });
     }
 
     // Invitar al usuario a la plataforma Base44
@@ -73,8 +79,12 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, action: 'created', account: created });
     }
 
+    if (existing.length > 1) {
+      return Response.json({ error: 'Existen múltiples cuentas para este email en la organización' }, { status: 409 });
+    }
+
     const account = existing[0];
-    if (account.status === 'active' || account.active === true) {
+    if (account.status === 'active' || (!account.status && account.active === true)) {
       return Response.json({ error: `${user_email} ya tiene acceso activo. Usa updateRole o updateStatus.` }, { status: 409 });
     }
 
@@ -94,6 +104,9 @@ Deno.serve(async (req) => {
     if (!targetAccountId || !status) {
       return Response.json({ error: 'targetAccountId y status son requeridos' }, { status: 400 });
     }
+    if (!['active', 'suspended', 'invited'].includes(status)) {
+      return Response.json({ error: 'Estado inválido' }, { status: 400 });
+    }
 
     // Verificar que la cuenta pertenece a la org
     const target = await base44.asServiceRole.entities.UserAccount.filter({ id: targetAccountId });
@@ -108,7 +121,10 @@ Deno.serve(async (req) => {
         role: 'ORG_ADMIN',
         active: true,
       });
-      if (activeAdmins.length <= 1) {
+      const confirmedActiveAdmins = activeAdmins.filter(account =>
+        account.status === 'active' || (!account.status && account.active === true)
+      );
+      if (confirmedActiveAdmins.length <= 1) {
         return Response.json({ error: 'No se puede suspender el último ORG_ADMIN activo' }, { status: 409 });
       }
     }
@@ -120,15 +136,77 @@ Deno.serve(async (req) => {
     return Response.json({ success: true, account: updated });
   }
 
-  if (action === 'updateRole') {
-    const { role, branch_id } = data;
-    if (!targetAccountId || !role) {
-      return Response.json({ error: 'targetAccountId y role son requeridos' }, { status: 400 });
+  if (action === 'updateAccount') {
+    const { role, branch_id, status } = data;
+    if (!targetAccountId || !role || !status) {
+      return Response.json({ error: 'targetAccountId, role y status son requeridos' }, { status: 400 });
+    }
+    if (!allowedRoles.includes(role)) {
+      return Response.json({ error: 'Rol inválido' }, { status: 400 });
+    }
+    if (!['active', 'suspended', 'invited'].includes(status)) {
+      return Response.json({ error: 'Estado inválido' }, { status: 400 });
     }
 
     const target = await base44.asServiceRole.entities.UserAccount.filter({ id: targetAccountId });
     if (!target[0] || target[0].organization_id !== effectiveOrgId) {
       return Response.json({ error: 'Cuenta no encontrada en esta organización' }, { status: 404 });
+    }
+
+    const removesActiveAdmin =
+      target[0].role === 'ORG_ADMIN' &&
+      target[0].active !== false &&
+      (role !== 'ORG_ADMIN' || status === 'suspended');
+
+    if (removesActiveAdmin) {
+      const activeAdmins = await base44.asServiceRole.entities.UserAccount.filter({
+        organization_id: effectiveOrgId,
+        role: 'ORG_ADMIN',
+        active: true,
+      });
+      const confirmedActiveAdmins = activeAdmins.filter(account =>
+        account.status === 'active' || (!account.status && account.active === true)
+      );
+      if (confirmedActiveAdmins.length <= 1) {
+        return Response.json({ error: 'No se puede modificar el último ORG_ADMIN activo' }, { status: 409 });
+      }
+    }
+
+    const updated = await base44.asServiceRole.entities.UserAccount.update(targetAccountId, {
+      role,
+      branch_id: branch_id !== undefined ? branch_id : target[0].branch_id,
+      status,
+      active: status !== 'suspended',
+    });
+    return Response.json({ success: true, account: updated });
+  }
+
+  if (action === 'updateRole') {
+    const { role, branch_id } = data;
+    if (!targetAccountId || !role) {
+      return Response.json({ error: 'targetAccountId y role son requeridos' }, { status: 400 });
+    }
+    if (!allowedRoles.includes(role)) {
+      return Response.json({ error: 'Rol inválido' }, { status: 400 });
+    }
+
+    const target = await base44.asServiceRole.entities.UserAccount.filter({ id: targetAccountId });
+    if (!target[0] || target[0].organization_id !== effectiveOrgId) {
+      return Response.json({ error: 'Cuenta no encontrada en esta organización' }, { status: 404 });
+    }
+
+    if (target[0].role === 'ORG_ADMIN' && role !== 'ORG_ADMIN' && target[0].active !== false) {
+      const activeAdmins = await base44.asServiceRole.entities.UserAccount.filter({
+        organization_id: effectiveOrgId,
+        role: 'ORG_ADMIN',
+        active: true,
+      });
+      const confirmedActiveAdmins = activeAdmins.filter(account =>
+        account.status === 'active' || (!account.status && account.active === true)
+      );
+      if (confirmedActiveAdmins.length <= 1) {
+        return Response.json({ error: 'No se puede cambiar el rol del último ORG_ADMIN activo' }, { status: 409 });
+      }
     }
 
     const updated = await base44.asServiceRole.entities.UserAccount.update(targetAccountId, {

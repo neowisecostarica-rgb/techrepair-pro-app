@@ -44,6 +44,14 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
   }
 
+  const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id, organization_id: orgId });
+  const canManageInventory = user.is_super_admin === true || accounts.some(account =>
+    account.role === 'ORG_ADMIN' && account.status !== 'suspended' && account.active !== false
+  );
+  if (!canManageInventory) {
+    return Response.json({ error: 'Acceso denegado: se requiere ORG_ADMIN para modificar inventario' }, { status: 403 });
+  }
+
   // 2. PARSE BODY
   let body;
   try {

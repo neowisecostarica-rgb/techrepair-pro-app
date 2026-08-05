@@ -80,6 +80,12 @@ pass('sending an OT quote advances DIAGNOSTICADA to COTIZADA through the lifecyc
 pass('POS no longer skips repair and QA states after payment',
   !pos.includes("transicionarEstadoOT(ventaData.referencia_ot_id, 'FINALIZADA'"));
 
+pass('work orders cannot finalize without successful technical QA evidence',
+  transition.includes("newStatus === 'FINALIZADA'")
+  && transition.includes('entities.PruebaTecnica.filter')
+  && transition.includes("resultado: 'exitoso'")
+  && transition.includes("code: 'FINALIZADA_SIN_PRUEBA_EXITOSA'"));
+
 pass('repair warranty issuance is deferred until delivery',
   pos.includes('if (esReparacion) return;'));
 
@@ -94,4 +100,4 @@ pass('branch administrators can complete delivery as allowed by the backend stat
 pass('canonical UserAccount.status takes precedence over the legacy active flag',
   authContext.includes("a.status ? a.status === 'active' : a.active !== false"));
 
-console.log('\n15 commercial-flow recovery contract checks passed.');
+console.log('\n16 commercial-flow recovery contract checks passed.');

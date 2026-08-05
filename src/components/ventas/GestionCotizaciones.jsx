@@ -31,6 +31,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const navigate = useNavigate();
 
   const clienteActual = clienteId;
+  const organizationId = userAccount?.organization_id;
 
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['cotizaciones', clienteActual],
@@ -40,12 +41,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const { data: inventario = [] } = useQuery({
     queryKey: ['inventario-disponible'],
-    queryFn: () => base44.entities.Inventario.filter({ estado: 'activo' }),
+    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo' }),
+    enabled: !!organizationId,
   });
 
   const { data: servicios = [] } = useQuery({
     queryKey: ['servicios-disponibles'],
-    queryFn: () => base44.entities.Servicio.filter({ activo: true }),
+    queryFn: () => base44.entities.Servicio.filter({ organization_id: organizationId, activo: true }),
+    enabled: !!organizationId,
   });
 
   const handleGuardar = (nuevaCotizacion) => {
@@ -57,7 +60,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     }
   };
 
-  const withOrgId = (data) => ({ ...data, organization_id: userAccount?.organization_id });
+  const withOrgId = (data) => ({ ...data, organization_id: organizationId });
 
   const createCotizacionMutation = useMutation({
     mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data)),
@@ -75,9 +78,18 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const enviarSeguimientoMutation = useMutation({
-    mutationFn: async ({ cotizacion, cliente }) => {
+    mutationFn: async ({ cotizacion: _cotizacion, cliente }) => {
       const canal = cliente.telefono ? 'whatsapp' : 'email';
       const mensaje = `Hola ${cliente.nombre_completo}, te escribo para dar seguimiento a la cotización que te compartimos. Quedo atento(a) si tienes alguna duda. — ${user.full_name || 'El equipo'}`;
+
+      if (canal === 'whatsapp') {
+        const telefono = cliente.telefono.replace(/\D/g, '');
+        window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
+      } else if (cliente.email) {
+        window.open(`mailto:${encodeURIComponent(cliente.email)}?subject=${encodeURIComponent('Seguimiento de tu cotización')}&body=${encodeURIComponent(mensaje)}`, '_blank');
+      } else {
+        throw new Error('El cliente no tiene teléfono ni correo registrado');
+      }
       
       return await base44.entities.MensajeCliente.create(withOrgId({
         cliente_id: clienteActual,
@@ -89,13 +101,12 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
         asunto: 'Seguimiento de tu cotización',
         contenido: mensaje,
         canal: canal,
-        enviado: true,
-        enviado_at: new Date().toISOString(),
-      }, userAccount));
+        enviado: false,
+      }));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mensajes-cliente'] });
-      alert('Seguimiento enviado correctamente');
+      alert('Canal externo abierto y seguimiento registrado. Confirma el envío en WhatsApp o correo.');
     },
   });
 

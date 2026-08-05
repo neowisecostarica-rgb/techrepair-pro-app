@@ -3,27 +3,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, TrendingUp, UserPlus, Phone, Mail, ArrowRight } from 'lucide-react';
+import { Plus, Search, UserPlus, Phone, Mail, ArrowRight } from 'lucide-react';
 
 export default function CRM() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'SALES']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES']}>
       <CRMContent />
     </PageGuard>
   );
 }
 
 function CRMContent() {
-  const { effectiveOrgId, effectiveRole, user, status } = useAuthContext();
+  const { effectiveOrgId, effectiveRole, status } = useAuthContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
@@ -55,6 +54,7 @@ function CRMContent() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       setShowCreateModal(false);
     },
+    onError: (error) => alert(`No se pudo crear el lead: ${error.message}`),
   });
 
   const updateLeadMutation = useMutation({
@@ -64,23 +64,27 @@ function CRMContent() {
       setShowEditModal(false);
       setEditingLead(null);
     },
+    onError: (error) => alert(`No se pudo actualizar el lead: ${error.message}`),
   });
 
   const convertToClienteMutation = useMutation({
-    mutationFn: async (lead) => {
+    mutationFn: async ({ lead, identificacion }) => {
       // Check if already converted
       if (lead.converted_to_cliente_id) {
         throw new Error('Lead ya fue convertido');
       }
 
       // Create Cliente
-      const cliente = await base44.entities.Cliente.create({
-        organization_id: effectiveOrgId,
+      const response = await base44.functions.invoke('createClient', {
         nombre_completo: lead.name,
+        identificacion,
+        tipo_cliente: 'individual',
         email: lead.email || '',
         telefono: lead.phone,
         notas: `Convertido desde Lead. Notas: ${lead.notes || ''}`,
       });
+      const cliente = response?.data;
+      if (!cliente?.id) throw new Error(cliente?.error || 'No se pudo crear el cliente');
 
       // Update Lead
       await base44.entities.Lead.update(lead.id, {
@@ -95,6 +99,7 @@ function CRMContent() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
     },
+    onError: (error) => alert(`No se pudo convertir el lead: ${error.message}`),
   });
 
   const handleCreateLead = (e) => {
@@ -125,8 +130,10 @@ function CRMContent() {
   };
 
   const handleConvertToCliente = (lead) => {
+    const identificacion = window.prompt(`Identificación de ${lead.name}:`);
+    if (!identificacion?.trim()) return;
     if (confirm(`¿Convertir "${lead.name}" a cliente?\n\nSe creará un registro en Clientes y el lead se marcará como ganado.`)) {
-      convertToClienteMutation.mutate(lead);
+      convertToClienteMutation.mutate({ lead, identificacion: identificacion.trim() });
     }
   };
 

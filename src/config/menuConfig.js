@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 // Roles que pueden acceder a cada ítem
-const ALL_ORG = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
+const DAILY_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES'];
 const ADMIN_ONLY = ['ORG_ADMIN', 'BRANCH_ADMIN'];
 const ORG_ADMIN_ONLY = ['ORG_ADMIN'];
 const TECH_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'];
@@ -36,7 +36,7 @@ export const MENU_ITEMS = [
     path: 'MiDia',
     icon: Sun,
     category: null,
-    roles: ALL_ORG,
+    roles: DAILY_ROLES,
   },
   {
     label: 'Mis Ventas',

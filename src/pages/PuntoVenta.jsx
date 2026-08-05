@@ -105,7 +105,7 @@ function PuntoVentaContent() {
                   estado_conversion: 'SIN_CONVERTIR',
                   venta_id: null
                 });
-                await base44.entities.Venta.delete({ id: preloadedVenta.id });
+                await base44.entities.Venta.delete(preloadedVenta.id);
                 alert('Conversión cancelada. Redirigiendo...');
                 window.history.back();
               } catch (error) {
@@ -1104,7 +1104,7 @@ function PuntoVentaContent() {
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   <li>Impactará la caja y reportes financieros</li>
                   <li>Descontará inventario de stock</li>
-                  <li>Generará comprobante fiscal</li>
+                  <li>Generará un comprobante de venta</li>
                   <li><strong>NO puede deshacerse</strong></li>
                 </ul>
               </AlertDescription>

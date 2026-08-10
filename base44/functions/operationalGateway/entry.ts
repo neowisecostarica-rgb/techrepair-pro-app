@@ -9,12 +9,17 @@ import {
   validateRequestedBranch,
   WORK_ORDER_EDITABLE_FIELDS,
 } from '../_shared/operationalAuthorization.ts';
+import { calculateCommercialTotals } from '../_shared/commercialIntegrity.ts';
 
 const MAX_QUERY_LIMIT = 500;
-const QUOTE_APPROVAL_FIELDS = new Set(['aprobada_por', 'aprobada_at']);
+const QUOTE_APPROVAL_FIELDS = new Set([
+  'aprobada_por', 'aprobada_at', 'aprobacion_interna_status', 'aprobacion_interna_motivo',
+]);
 const QUOTE_CONVERSION_FIELDS = new Set([
   'estado_conversion', 'venta_id', 'convertida_at', 'convertida_por',
 ]);
+const QUOTE_CONTENT_FIELDS = new Set(['items', 'subtotal', 'descuento_total', 'impuesto', 'total']);
+const MAX_DISCOUNT_WITHOUT_APPROVAL = 20;
 
 function fail(error, status = 400, code = 'OPERATIONAL_REQUEST_INVALID') {
   return Response.json({ error, code }, { status });
@@ -333,28 +338,63 @@ async function validateMutationContext(base44, authorization, decision, entityNa
     if (!saleScope.ok) return saleScope;
   }
 
-  if (entityName === 'Cotizacion' && operation === 'update') {
+  if (entityName === 'Cotizacion' && ['create', 'update'].includes(operation)) {
     const keys = Object.keys(data);
     const touchesApproval = keys.some(key => QUOTE_APPROVAL_FIELDS.has(key));
     const touchesConversion = keys.some(key => QUOTE_CONVERSION_FIELDS.has(key));
+    const touchesContent = keys.some(key => QUOTE_CONTENT_FIELDS.has(key));
+    if (operation === 'create') {
+      if (data.estado !== undefined && data.estado !== 'borrador') {
+        return { ok: false, status: 403, error: 'Una cotizacion nueva siempre inicia en borrador' };
+      }
+      if (touchesApproval || touchesConversion) {
+        return { ok: false, status: 403, error: 'Una cotizacion nueva no puede nacer aprobada o convertida' };
+      }
+    }
     if (touchesApproval && authorization.role !== 'ORG_ADMIN') {
       return { ok: false, status: 403, error: 'Solo ORG_ADMIN puede registrar la aprobacion interna' };
     }
-    if (data.estado === 'aprobada') {
-      return { ok: false, status: 403, error: 'La aprobacion del cliente solo puede registrarse mediante el lifecycle publico gobernado' };
+    if (data.aprobacion_interna_status
+      && !['APROBADA', 'RECHAZADA'].includes(data.aprobacion_interna_status)) {
+      return { ok: false, status: 422, error: 'Decision interna de cotizacion no valida' };
     }
-    if (authorization.role !== 'ORG_ADMIN' && data.estado !== undefined) {
+    if (['aprobada', 'rechazada', 'vencida'].includes(data.estado)) {
+      return { ok: false, status: 403, error: 'El estado final del cliente solo puede registrarse mediante el lifecycle publico gobernado' };
+    }
+    if (operation === 'update' && data.estado !== undefined) {
       const allowedStateChange = current?.estado === 'borrador' && ['borrador', 'enviada'].includes(data.estado);
-      if (!allowedStateChange) return { ok: false, status: 403, error: 'El rol comercial no puede forzar este estado de cotizacion' };
+      if (!allowedStateChange) return { ok: false, status: 403, error: 'Este estado de cotizacion requiere su gateway de lifecycle' };
     }
     if (touchesConversion) {
-      const sale = await loadSale(base44, authorization.organizationId, data.venta_id || current?.venta_id);
-      if (!sale || sale.cotizacion_id !== current.id || sale.estado !== 'borrador') {
-        return { ok: false, status: 403, error: 'La conversion solo puede referenciar su venta borrador autorizada' };
-      }
+      return { ok: false, status: 403, error: 'La conversion de cotizacion solo puede materializarse mediante createSale' };
     }
-    if (current?.estado !== 'borrador' && keys.some(key => ['items', 'subtotal', 'descuento_total', 'impuesto', 'total'].includes(key))) {
+    if (operation === 'update' && current?.estado !== 'borrador' && touchesContent) {
       return { ok: false, status: 409, error: 'El contenido comercial no puede editarse despues del envio' };
+    }
+
+    if (operation === 'create' || touchesContent || data.estado === 'enviada') {
+      try {
+        const calculated = calculateCommercialTotals(data.items || current?.items || []);
+        data.items = calculated.items;
+        data.subtotal = calculated.subtotal;
+        data.descuento_total = calculated.descuento_total;
+        data.impuesto = calculated.impuesto;
+        data.total = calculated.total;
+        data.requiere_aprobacion = calculated.items.some(
+          item => Number(item.descuento_porcentaje || 0) > MAX_DISCOUNT_WITHOUT_APPROVAL,
+        );
+        if (operation === 'update' && touchesContent) {
+          data.aprobada_por = null;
+          data.aprobada_at = null;
+          data.aprobacion_interna_status = data.requiere_aprobacion ? 'PENDIENTE' : null;
+          data.aprobacion_interna_motivo = null;
+        }
+        if (data.estado === 'enviada' && data.requiere_aprobacion && !current?.aprobada_por) {
+          return { ok: false, status: 409, error: 'La cotizacion requiere aprobacion interna antes del envio' };
+        }
+      } catch (error) {
+        return { ok: false, status: 422, error: error.message || 'Contenido comercial invalido' };
+      }
     }
   }
 
@@ -415,9 +455,43 @@ async function handleMutation(base44, user, authorization, decision, body) {
   }
 
   let data = sanitizeOperationalMutation(body.data || {});
+  const requestedQuoteApproval = entityName === 'Cotizacion'
+    && Object.keys(data).some(key => QUOTE_APPROVAL_FIELDS.has(key));
   const context = await validateMutationContext(base44, authorization, decision, entityName, operation, current, data);
   if (!context.ok) return context;
   data = context.data || data;
+
+  if (entityName === 'Cotizacion' && operation === 'update') {
+    if (requestedQuoteApproval) {
+      if (data.aprobacion_interna_status === 'RECHAZADA') {
+        data.aprobada_por = null;
+        data.aprobada_at = null;
+        data.aprobacion_interna_motivo = String(data.aprobacion_interna_motivo || '').trim().slice(0, 500) || null;
+      } else {
+        data.aprobacion_interna_status = 'APROBADA';
+        data.aprobacion_interna_motivo = null;
+        data.aprobada_por = user.id;
+        data.aprobada_at = new Date().toISOString();
+      }
+    }
+    if (data.estado === 'enviada') {
+      const sentAt = new Date().toISOString();
+      const expiry = current?.valida_hasta
+        ? new Date(`${current.valida_hasta}T23:59:59.999Z`).toISOString()
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const envio = {
+        canal: data.ultimo_envio?.canal || 'link',
+        fecha: sentAt,
+        enviado_por: user.id,
+        enviado_por_nombre: user.full_name || user.email,
+      };
+      data.enviada_at = sentAt;
+      data.ultimo_envio = envio;
+      data.historial_envios = [...(current?.historial_envios || []), envio];
+      data.public_access_token = current?.public_access_token || `cot_${crypto.randomUUID()}`;
+      data.public_access_expires_at = current?.public_access_expires_at || expiry;
+    }
+  }
 
   if (operation === 'create') {
     const createScope = await determineCreateBranch(base44, authorization, decision, entityName, body.data || {});
@@ -428,6 +502,9 @@ async function handleMutation(base44, user, authorization, decision, body) {
       data.branch_id = createScope.branchId;
     }
     if (entityName === 'Cotizacion') {
+      data.estado = 'borrador';
+      data.estado_conversion = 'SIN_CONVERTIR';
+      data.aprobacion_interna_status = data.requiere_aprobacion ? 'PENDIENTE' : null;
       data.vendedor_id = actorId;
       data.vendedor_nombre = user.full_name || user.email;
     }

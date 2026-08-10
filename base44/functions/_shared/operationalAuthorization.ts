@@ -191,6 +191,20 @@ const FORBIDDEN_MUTATION_FIELDS = new Set([
   'sale_lock_at',
   'last_sale_id',
   'last_sale_operation_key',
+  'decision_status',
+  'decision_target_status',
+  'decision_operation_key',
+  'decision_started_at',
+  'decision_committed_at',
+  'decision_error',
+  'public_access_token',
+  'public_access_expires_at',
+  'enviada_at',
+  'ultimo_envio',
+  'historial_envios',
+  'contenido_aprobado_snapshot',
+  'ip_aprobacion',
+  'cliente_rechazo_motivo',
 ]);
 
 export function sanitizeOperationalMutation(data = {}) {

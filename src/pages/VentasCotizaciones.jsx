@@ -433,32 +433,22 @@ function VentasCotizacionesContent() {
                             alert('Esta cotización requiere aprobación por el descuento aplicado.');
                             return;
                           }
-                          const token = cotizacionSeleccionada.public_access_token || `cot_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-                          const envio = {
-                            canal: 'link',
-                            fecha: new Date().toISOString(),
-                            enviado_por: user.id,
-                            enviado_por_nombre: user.full_name || user.email
-                          };
                           const ot = getOT(cotizacionSeleccionada.orden_trabajo_id);
                           if (ot?.estado === 'DIAGNOSTICADA') {
                             await transicionarEstadoOT(ot.id, 'COTIZADA', {
                               motivo: `Cotización ${cotizacionSeleccionada.id} enviada al cliente`,
                             });
                           }
-                          await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
+                          const updatedQuote = await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
                             estado: 'enviada',
-                            enviada_at: new Date().toISOString(),
-                            public_access_token: token,
-                            ultimo_envio: envio,
-                            historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
+                            ultimo_envio: { canal: 'link' },
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
                           queryClient.invalidateQueries({ queryKey: ['ordenes'] });
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${token}`;
+                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${updatedQuote.public_access_token}`;
                           navigator.clipboard.writeText(link);
                           alert('✅ Cotización enviada. Link copiado al portapapeles.');
-                          setCotizacionSeleccionada({ ...cotizacionSeleccionada, estado: 'enviada', public_access_token: token, ultimo_envio: envio });
+                          setCotizacionSeleccionada(updatedQuote);
                         }}
                         className="bg-blue-600 hover:bg-blue-700"
                       >

@@ -142,6 +142,15 @@
       "format": "date-time",
       "description": "Fecha de aprobaci\u00f3n"
     },
+    "aprobacion_interna_status": {
+      "type": "string",
+      "enum": ["PENDIENTE", "APROBADA", "RECHAZADA"],
+      "description": "Decisi\u00f3n interna gobernada para descuentos fuera de pol\u00edtica"
+    },
+    "aprobacion_interna_motivo": {
+      "type": "string",
+      "description": "Motivo interno de rechazo del descuento"
+    },
     "enviada_at": {
       "type": "string",
       "format": "date-time",
@@ -235,6 +244,35 @@
       "type": "string",
       "format": "date-time",
       "description": "Fecha de expiraci\u00f3n del token p\u00fablico"
+    },
+    "decision_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED", "FAILED"],
+      "description": "Estado recuperable de la decision publica",
+      "rls": { "read": false, "write": false }
+    },
+    "decision_target_status": {
+      "type": "string",
+      "enum": ["APROBADA", "CANCELADA"],
+      "rls": { "read": false, "write": false }
+    },
+    "decision_operation_key": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
+    "decision_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "read": false, "write": false }
+    },
+    "decision_committed_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "read": false, "write": false }
+    },
+    "decision_error": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
     }
   },
   "required": [

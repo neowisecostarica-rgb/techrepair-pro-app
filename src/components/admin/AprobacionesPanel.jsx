@@ -20,11 +20,16 @@ export default function AprobacionesPanel({ userAccount, user }) {
   // Cotizaciones pendientes de aprobación
   const { data: cotizacionesPendientes = [] } = useQuery({
     queryKey: ['cotizaciones-aprobacion', userAccount?.organization_id],
-    queryFn: () => base44.entities.Cotizacion.filter({
-      organization_id: userAccount.organization_id,
-      requiere_aprobacion: true,
-      estado: 'borrador'
-    }),
+    queryFn: async () => {
+      const records = await base44.entities.Cotizacion.filter({
+        organization_id: userAccount.organization_id,
+        requiere_aprobacion: true,
+        estado: 'borrador'
+      });
+      return records.filter(cotizacion =>
+        !cotizacion.aprobada_por && cotizacion.aprobacion_interna_status !== 'RECHAZADA'
+      );
+    },
     enabled: !!userAccount?.organization_id,
   });
 
@@ -41,8 +46,7 @@ export default function AprobacionesPanel({ userAccount, user }) {
   // Aprobar cotización
   const aprobarCotizacionMutation = useMutation({
     mutationFn: (cotizacionId) => base44.entities.Cotizacion.update(cotizacionId, {
-      aprobada_por: user.id,
-      aprobada_at: new Date().toISOString()
+      aprobacion_interna_status: 'APROBADA',
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-aprobacion'] });
@@ -52,8 +56,8 @@ export default function AprobacionesPanel({ userAccount, user }) {
   // Rechazar cotización
   const rechazarCotizacionMutation = useMutation({
     mutationFn: ({ id, motivo }) => base44.entities.Cotizacion.update(id, {
-      estado: 'rechazada',
-      notas: `Rechazada por admin: ${motivo}`
+      aprobacion_interna_status: 'RECHAZADA',
+      aprobacion_interna_motivo: motivo,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-aprobacion'] });

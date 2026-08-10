@@ -266,10 +266,6 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     }
   };
 
-  const generarToken = () => {
-    return `cot_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  };
-
   const handleEnviar = async (cotizacion) => {
     if (!clienteActual) {
       alert('Por favor selecciona un cliente antes de enviar la cotización');
@@ -281,8 +277,6 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       return;
     }
 
-    const token = cotizacion.public_access_token || generarToken();
-    
     try {
       if (ordenTrabajoId) {
         const ots = await base44.entities.OrdenTrabajo.filter({ id: ordenTrabajoId });
@@ -293,9 +287,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
         }
       }
       await base44.entities.Cotizacion.update(cotizacion.id, {
-        estado: 'enviada', 
-        enviada_at: new Date().toISOString(),
-        public_access_token: token
+        estado: 'enviada',
+        ultimo_envio: { canal: 'link' },
       });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
@@ -446,81 +439,6 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     setShowModal(true);
   };
 
-  const convertirEnFacturaMutation = useMutation({
-    mutationFn: async (cotizacion) => {
-      // Validación backend: verificar que no exista una venta activa con este cotizacion_id
-      const ventasExistentes = await base44.entities.Venta.filter({
-        organization_id: userAccount.organization_id,
-        cotizacion_id: cotizacion.id
-      });
-      
-      const ventaActiva = ventasExistentes.find(v => v.estado !== 'anulada');
-      if (ventaActiva) {
-        throw new Error('Ya existe una venta asociada a esta cotización. No se puede duplicar.');
-      }
-
-      // Crear Venta en estado BORRADOR con snapshots originales
-      const venta = await base44.entities.Venta.create({
-        organization_id: cotizacion.organization_id,
-        branch_id: userAccount.branch_id,
-        cliente_id: cotizacion.cliente_id,
-        origen_venta: 'tienda',
-        origen_detalle: 'DESDE_COTIZACION',
-        tipo_concepto: 'otro',
-        cotizacion_id: cotizacion.id,
-        cotizacion_total_original: cotizacion.total,
-        cotizacion_subtotal_original: cotizacion.subtotal,
-        cotizacion_descuento_original: cotizacion.descuento_total || 0,
-        total: cotizacion.total,
-        subtotal: cotizacion.subtotal,
-        impuesto: cotizacion.impuesto,
-        descuento_total: cotizacion.descuento_total || 0,
-        estado: 'borrador',
-        created_by_user_id: user.id,
-        notas: cotizacion.notas || ''
-      });
-
-      // Crear VentaItems desde cotización
-      for (const item of cotizacion.items) {
-        await base44.entities.VentaItem.create({
-          organization_id: cotizacion.organization_id,
-          venta_id: venta.id,
-          tipo: item.tipo,
-          referencia_id: item.referencia_id || null,
-          descripcion: item.descripcion,
-          cantidad: item.cantidad,
-          precio_unitario: item.precio_unitario,
-          subtotal: item.subtotal
-        });
-      }
-
-      // Actualizar Cotización a EN_PROCESO_FACTURACION
-      await base44.entities.Cotizacion.update(cotizacion.id, {
-        estado_conversion: 'EN_PROCESO_FACTURACION',
-        venta_id: venta.id
-      });
-
-      return { venta, cotizacion };
-    },
-    onSuccess: ({ venta, cotizacion }) => {
-      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
-      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-      
-      // Redirigir a POS con precarga
-      navigate(createPageUrl('PuntoVenta'), {
-        state: {
-          venta: venta,
-          cotizacion_origen: cotizacion,
-          carrito: cotizacion.items,
-          cliente_id: cotizacion.cliente_id
-        }
-      });
-    },
-    onError: (error) => {
-      alert(`Error al convertir cotización: ${error.message}`);
-    }
-  });
-
   const handleConvertirEnFactura = async (cotizacion) => {
     if (cotizacion.estado !== 'aprobada') {
       alert('Solo se pueden convertir cotizaciones en estado APROBADA');
@@ -541,7 +459,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       return;
     }
 
-    convertirEnFacturaMutation.mutate(cotizacion);
+    navigate(createPageUrl('PuntoVenta'), {
+      state: {
+        cotizacion_origen: cotizacion,
+        carrito: cotizacion.items,
+        cliente_id: cotizacion.cliente_id,
+        orden_trabajo_id: cotizacion.orden_trabajo_id,
+      },
+    });
   };
 
   const estadoConfig = {

@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Organizacion propietaria del registro"
     },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal operacional derivada de la membresia canonica"
+    },
     "tipo_residuo": {
       "type": "string",
       "enum": [
@@ -92,19 +96,5 @@
     "descripcion",
     "accion"
   ],
-  "rls": {
-    "create": { "$or": [
-      { "organization_id": "{{user.data.organization_id}}" },
-      { "user_condition": { "role": "admin" } }
-    ] },
-    "read": { "$or": [
-      { "organization_id": "{{user.data.organization_id}}" },
-      { "user_condition": { "role": "admin" } }
-    ] },
-    "update": { "$or": [
-      { "organization_id": "{{user.data.organization_id}}" },
-      { "user_condition": { "role": "admin" } }
-    ] },
-    "delete": false
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

@@ -88,19 +88,5 @@
     "tipo_prueba",
     "resultado"
   ],
-  "rls": {
-    "create": false,
-    "read": {
-      "$or": [
-        {
-          "organization_id": "{{user.data.organization_id}}"
-        },
-        {
-          "user_condition": { "role": "admin" }
-        }
-      ]
-    },
-    "update": false,
-    "delete": false
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

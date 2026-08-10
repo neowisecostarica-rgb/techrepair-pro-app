@@ -6,6 +6,10 @@
       "type": "string",
       "description": "ID de la organizaci\u00f3n (tenant)"
     },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal operacional derivada de la membresia canonica"
+    },
     "orden_trabajo_id": {
       "type": "string",
       "description": "ID de la orden de trabajo"
@@ -79,46 +83,5 @@
     "descripcion",
     "estado"
   ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "organization_id": "{{user.data.organization_id}}"
-        },
-        {
-          "user_condition": { "role": "admin" }
-        }
-      ]
-    },
-    "read": {
-      "$or": [
-        {
-          "organization_id": "{{user.data.organization_id}}"
-        },
-        {
-          "user_condition": { "role": "admin" }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "organization_id": "{{user.data.organization_id}}"
-        },
-        {
-          "user_condition": { "role": "admin" }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "organization_id": "{{user.data.organization_id}}"
-        },
-        {
-          "user_condition": { "role": "admin" }
-        }
-      ]
-    }
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

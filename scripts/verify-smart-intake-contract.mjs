@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../base44/functions/_shared/operationalAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/getSmartIntakeByWorkOrder/entry.ts', import.meta.url);
 const smartIntakeApiPath = new URL('../src/api/smartIntake.js', import.meta.url);
@@ -101,6 +102,7 @@ function loadHandler(client, logger = console) {
     String,
     isCanonicalActiveUserAccount,
     resolveAuthorizedContext,
+    authorizeRecordBranch,
   };
   context.globalThis = context;
   vm.runInNewContext(
@@ -220,13 +222,13 @@ const tests = [
         user: { id: 'user-a', organization_id: 'org-b' },
         accounts: [
           {
-            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', role: 'SALES', status: 'active',
+            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', branch_id: 'branch-a', role: 'SALES', status: 'active',
           },
           {
-            id: 'account-b', user_id: 'user-a', organization_id: 'org-b', role: 'TECHNICIAN', status: 'active',
+            id: 'account-b', user_id: 'user-a', organization_id: 'org-b', branch_id: 'branch-b', role: 'TECHNICIAN', status: 'active',
           },
         ],
-        workOrders: [{ id: 'ot-1', organization_id: 'org-b' }],
+        workOrders: [{ id: 'ot-1', organization_id: 'org-b', branch_id: 'branch-b' }],
         preDiagnosticos: [legacy],
       }));
       assert.equal(response.status, 200);
@@ -241,7 +243,7 @@ const tests = [
         user: { id: 'user-a' },
         accounts: [
           {
-            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', role: 'SALES', status: 'active',
+            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', branch_id: 'branch-a', role: 'SALES', status: 'active',
           },
           {
             id: 'account-b', user_id: 'user-a', organization_id: 'org-b', role: 'TECHNICIAN', status: 'active',

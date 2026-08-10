@@ -120,7 +120,7 @@ test('localized tenant policies cover operational and SaaS entities', async () =
   for (const entity of ['NoConformidad', 'Reciclaje']) {
     const schema = await readJson(`base44/entities/${entity}.jsonc`);
     assert.ok(schema.required.includes('organization_id'));
-    assert.match(JSON.stringify(schema.rls.read), /organization_id/);
+    assert.equal(schema.rls.read, false);
   }
   for (const entity of ['Partner', 'PartnerReferral']) {
     const schema = await readJson(`base44/entities/${entity}.jsonc`);

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from '../base44/functions/_shared/operationalAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/reassignWorkOrderTechnician/entry.ts', import.meta.url);
 const queuePath = new URL('../src/pages/ColaRevision.jsx', import.meta.url);
@@ -38,6 +39,8 @@ function createScenario({
   destinationRole = 'TECHNICIAN',
   destinationStatus,
   destinationActive = true,
+  callerBranchId = 'branch-a',
+  destinationBranchId = 'branch-a',
   superAdmin = false,
   failAudit = false,
   events = [],
@@ -54,13 +57,14 @@ function createScenario({
         email: 'admin@example.com',
         organization_id: 'org-a',
       };
-  const workOrders = [{ organization_id: 'org-a', ...workOrder }];
+  const workOrders = [{ organization_id: 'org-a', branch_id: 'branch-a', ...workOrder }];
   const userAccounts = [
     {
       id: 'caller-account',
       user_id: 'caller-1',
       user_email: 'admin@example.com',
       organization_id: 'org-a',
+      branch_id: callerBranchId,
       role: callerRole,
       ...(callerStatus === null ? {} : { status: callerStatus }),
       active: callerActive,
@@ -70,6 +74,7 @@ function createScenario({
       user_id: 'tech-2',
       user_email: 'tech2@example.com',
       organization_id: destinationOrgId,
+      branch_id: destinationBranchId,
       role: destinationRole,
       status: destinationStatus ?? (destinationActive ? 'active' : 'suspended'),
       active: destinationActive,
@@ -145,6 +150,7 @@ function loadHandler(client) {
     Response,
     isCanonicalActiveUserAccount,
     resolveAuthorizedContext,
+    getCanonicalBranchScope,
   };
   context.globalThis = context;
   vm.runInNewContext(
@@ -320,6 +326,22 @@ const tests = [
       assert.equal(response.status, 200);
       assert.equal(body.operation, 'INITIAL_ASSIGNMENT');
       assert.equal(scenario.workOrders[0].estado, 'ASIGNADA');
+    },
+  },
+  {
+    name: 'BRANCH_ADMIN cannot reassign a work order from another branch',
+    async run() {
+      const scenario = createScenario({
+        callerRole: 'BRANCH_ADMIN',
+        callerBranchId: 'branch-a',
+        destinationBranchId: 'branch-b',
+        workOrder: { id: 'ot-1', branch_id: 'branch-b', estado: 'EN_COLA_REVISION' },
+      });
+      const { response, body } = await invoke(scenario);
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'ASSIGNMENT_CROSS_BRANCH_DENIED');
+      assert.equal(scenario.workOrders[0].tecnico_asignado_id, undefined);
+      assert.equal(scenario.events.length, 0);
     },
   },
   {

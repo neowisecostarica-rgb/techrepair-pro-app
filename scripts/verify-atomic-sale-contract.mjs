@@ -7,6 +7,10 @@ import {
   rollbackInventoryStockCas,
 } from '../base44/functions/_shared/inventoryStockCas.ts';
 import { resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
+import {
+  getCanonicalBranchScope,
+  validateRequestedBranch,
+} from '../base44/functions/_shared/operationalAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/createSale/entry.ts', import.meta.url);
 const posPath = new URL('../src/pages/PuntoVenta.jsx', import.meta.url);
@@ -38,7 +42,7 @@ function createScenario({ stock = 10, failure = null, preload = false, postSaleF
   const collections = {
     UserAccount: [{
       id: 'account-1', user_id: 'user-1', user_email: 'qa@example.com',
-      organization_id: 'org-a', role: 'SALES', status: 'active', active: true,
+      organization_id: 'org-a', branch_id: 'branch-1', role: 'SALES', status: 'active', active: true,
     }],
     Branch: [{ id: 'branch-1', organization_id: 'org-a', name: 'Central', active: true }],
     OrdenTrabajo: [{
@@ -175,6 +179,8 @@ function loadHandler(client) {
     applyInventoryStockCas,
     rollbackInventoryStockCas,
     resolveAuthorizedContext,
+    getCanonicalBranchScope,
+    validateRequestedBranch,
   };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename: 'createSale/entry.ts' });

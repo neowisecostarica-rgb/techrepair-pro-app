@@ -14,12 +14,9 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import {
-  CreditCard, FileText, ShoppingCart, ChevronDown, ChevronUp,
-  CheckCircle2, AlertCircle, Loader2, ExternalLink
+import { FileText, ShoppingCart, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 // ── Bloque colapsable ─────────────────────────────────────────────────────
 function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge, children }) {

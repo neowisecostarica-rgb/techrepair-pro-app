@@ -360,7 +360,7 @@ export default function TiqueteVenta({ venta, onClose }) {
         </Button>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @media print {
           @page {
             size: auto;

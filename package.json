@@ -13,6 +13,8 @@
     "test:smart-intake": "node scripts/verify-smart-intake-contract.mjs",
     "test:commercial-flow": "node scripts/verify-commercial-flow-contract.mjs",
     "test:atomic-sale": "node scripts/verify-atomic-sale-contract.mjs",
+    "test:security-integrity": "node scripts/verify-security-integrity-contract.mjs",
+    "test:crm-customer360": "node scripts/verify-crm-customer360-contract.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },

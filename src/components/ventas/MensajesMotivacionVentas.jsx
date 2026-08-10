@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sparkles, Heart, Award } from 'lucide-react';
+import { Sparkles, Heart } from 'lucide-react';
 
 const FRASES_DIARIAS = [
   "Tu atención al cliente construye relaciones duraderas.",

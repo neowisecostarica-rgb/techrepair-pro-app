@@ -3,7 +3,6 @@ import { useAuthContext } from '../components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
 import DashboardOrgAdmin from '../components/dashboard/DashboardOrgAdmin';
 import DashboardTechnician from '../components/dashboard/DashboardTechnician';
-import DashboardSales from '../components/dashboard/DashboardSales';
 import DashboardSuperAdmin from '../components/dashboard/DashboardSuperAdmin';
 
 // ErrorBoundary para capturar errores de render

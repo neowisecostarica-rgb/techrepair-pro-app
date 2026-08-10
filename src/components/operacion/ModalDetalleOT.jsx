@@ -30,7 +30,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Wrench, Phone, ChevronDown, ChevronUp, User, PackageOpen, ClipboardList, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
+import { Calendar, Phone, ChevronDown, ChevronUp, User, PackageOpen, ClipboardList, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';

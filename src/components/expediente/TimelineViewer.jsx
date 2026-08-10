@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Loader2, GitCommitHorizontal, Wrench, CreditCard,
-  MessageCircle, ChevronDown, ChevronUp, AlertCircle, Archive
+  MessageCircle, ChevronDown, AlertCircle, Archive
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

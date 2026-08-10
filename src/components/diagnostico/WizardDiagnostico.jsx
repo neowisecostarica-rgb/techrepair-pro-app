@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 const CHECKLIST_CATEGORIAS = {
   hardware: {

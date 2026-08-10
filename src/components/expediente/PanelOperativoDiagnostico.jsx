@@ -20,14 +20,13 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   FileText, Play, PenLine, Send, Eye, RotateCcw, Ban,
   CheckCircle2, XCircle, Clock, MessageSquare, Mail,
-  Loader2, AlertCircle, ChevronRight
+  Loader2, AlertCircle
 } from 'lucide-react';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';

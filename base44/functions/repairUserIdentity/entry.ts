@@ -4,6 +4,7 @@
  * Usa asServiceRole para escritura (el user token no tiene permisos de escritura en UserAccount).
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 // Roles válidos oficiales (cerrado)
 const VALID_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
@@ -44,7 +45,9 @@ Deno.serve(async (req) => {
   const targetOrgId = body.organization_id || user.organization_id || null;
 
   const allAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id });
-  const activeAccounts = allAccounts.filter(a => a.active && a.organization_id);
+  const activeAccounts = allAccounts.filter(account =>
+    isCanonicalActiveUserAccount(account) && account.organization_id
+  );
 
   if (activeAccounts.length === 0) {
     return Response.json({ status: 'no_membership', repairs: [] });

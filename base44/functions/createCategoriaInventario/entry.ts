@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -26,7 +27,7 @@ Deno.serve(async (req) => {
 
     const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id, organization_id });
     const canManageInventory = isSuperAdmin || accounts.some(account =>
-      account.role === 'ORG_ADMIN' && account.status !== 'suspended' && account.active !== false
+      account.role === 'ORG_ADMIN' && isCanonicalActiveUserAccount(account)
     );
     if (!canManageInventory) {
       return Response.json({ error: 'Acceso denegado: se requiere ORG_ADMIN para modificar inventario' }, { status: 403 });

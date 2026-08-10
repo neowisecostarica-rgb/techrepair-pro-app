@@ -1,12 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 const SOURCE_TYPE = 'LEGACY_PREDIAGNOSTICO';
-
-function isActiveAccount(account) {
-  if (!account) return false;
-  if (typeof account.status === 'string') return account.status === 'active';
-  return account.active === true;
-}
 
 function errorResponse(status, code, error) {
   return Response.json({ error, code }, { status });
@@ -32,7 +27,7 @@ async function resolveEffectiveOrganization(base44, user) {
 
   const orgHint = user.impersonating_org_id || user.organization_id || null;
   const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 10);
-  const activeAccounts = (accounts || []).filter(isActiveAccount);
+  const activeAccounts = (accounts || []).filter(isCanonicalActiveUserAccount);
 
   let account = null;
   if (orgHint) {

@@ -29,6 +29,7 @@
  */
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
@@ -221,11 +222,11 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
       }
 
-      let account = orgHint
-        ? (userAccounts.find(a => a.organization_id === orgHint) || userAccounts[0])
-        : userAccounts[0];
+      const account = orgHint
+        ? userAccounts.find(a => a.organization_id === orgHint)
+        : (userAccounts.length === 1 ? userAccounts[0] : null);
 
-      if (account.status !== 'active') {
+      if (!isCanonicalActiveUserAccount(account)) {
         return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
       }
 

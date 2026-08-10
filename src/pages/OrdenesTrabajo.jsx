@@ -43,6 +43,7 @@ import { crearOrdenTrabajo } from '@/components/ot/crearOrdenTrabajo';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
 import OTOperationalLayer from '@/components/ot/OTOperationalLayer';
 import DiagnosticoDocumentoA4 from '@/components/diagnostico/DiagnosticoDocumentoA4';
+import { isCanonicalActiveUserAccount } from '../../base44/functions/_shared/userAuthorization.ts';
 
 import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 const estadoConfig = WORK_ORDER_STATUSES;
@@ -53,12 +54,6 @@ export default function OrdenesTrabajo() {
       <OrdenesTrabajoContent />
     </PageGuard>
   );
-}
-
-function isActiveAccount(account) {
-  if (!account) return false;
-  if (typeof account.status === 'string') return account.status === 'active';
-  return account.active === true;
 }
 
 function OrdenesTrabajoContent() {
@@ -206,7 +201,7 @@ function OrdenesTrabajoContent() {
         organization_id: effectiveOrgId,
         role: 'TECHNICIAN'
       });
-      return accounts.filter(isActiveAccount);
+      return accounts.filter(isCanonicalActiveUserAccount);
     },
     enabled: !!effectiveOrgId,
   });

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { isCanonicalActiveUserAccount } from '../../base44/functions/_shared/userAuthorization.ts';
 
 export default function Onboarding() {
   const [mode, setMode] = useState('checking'); // checking | invited | new_company | success
@@ -46,7 +47,7 @@ export default function Onboarding() {
       });
 
       // CASO 1: Usuario con cuenta activa y organization_id → redirigir
-      const activeAccount = accounts.find(a => a.active && a.organization_id);
+      const activeAccount = accounts.find(a => isCanonicalActiveUserAccount(a) && a.organization_id);
       if (activeAccount) {
         const targetPage = activeAccount.role === 'ORG_ADMIN' || activeAccount.role === 'BRANCH_ADMIN' 
           ? 'Dashboard' 
@@ -78,7 +79,7 @@ export default function Onboarding() {
 
         try {
           // P0: IDEMPOTENCIA - Verificar si ya está correctamente enlazado
-          if (anyInvitation.user_id === authenticatedUser.id && anyInvitation.active) {
+          if (anyInvitation.user_id === authenticatedUser.id && isCanonicalActiveUserAccount(anyInvitation)) {
             console.log('UserAccount ya enlazado y activo, redirigiendo...');
             const targetPage = anyInvitation.role === 'ORG_ADMIN' || anyInvitation.role === 'BRANCH_ADMIN' 
               ? 'Dashboard' 
@@ -90,7 +91,9 @@ export default function Onboarding() {
           // P0: Linking atómico - actualizar user_id + active en una sola operación
           await base44.entities.UserAccount.update(anyInvitation.id, {
             user_id: authenticatedUser.id,
+            status: 'active',
             active: true,
+            accepted_at: anyInvitation.accepted_at || new Date().toISOString(),
           });
 
           // P0 FIX: Sincronizar organization_id al user para RLS
@@ -149,8 +152,12 @@ export default function Onboarding() {
       // P0: Vincular UserAccount con user_id y activar (ligado a tenant existente)
       await base44.entities.UserAccount.update(account.id, {
         user_id: user.id,
+        status: 'active',
         active: true,
+        accepted_at: account.accepted_at || new Date().toISOString(),
       });
+
+      await base44.auth.updateMe({ organization_id: account.organization_id });
 
       // P0: Establecer contexto de tenant activo inmediatamente
       // (AuthContext lo detectará automáticamente al recargar)
@@ -280,7 +287,9 @@ export default function Onboarding() {
           user_email: user.email,
           organization_id: org.id,
           role: 'ORG_ADMIN',
+          status: 'active',
           active: true,
+          accepted_at: new Date().toISOString(),
         });
       } else {
         // P0: IMPORTANTE - Si ya existe UserAccount sin org, actualizarlo
@@ -289,7 +298,9 @@ export default function Onboarding() {
         await base44.entities.UserAccount.update(finalAccounts[0].id, {
           organization_id: org.id,
           role: 'ORG_ADMIN',
+          status: 'active',
           active: true,
+          accepted_at: finalAccounts[0].accepted_at || new Date().toISOString(),
         });
       }
 

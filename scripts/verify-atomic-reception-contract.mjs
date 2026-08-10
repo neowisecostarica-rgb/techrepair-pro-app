@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { isCanonicalActiveUserAccount } from '../base44/functions/_shared/userAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/createWorkOrder/entry.ts', import.meta.url);
 const lockBackendPath = new URL('../base44/functions/resourceLockLite/entry.ts', import.meta.url);
@@ -52,7 +53,14 @@ function createScenario({
     DiagnosticMasterRecord: [],
     OTEvent: [],
     SuperAdminAudit: [],
-    UserAccount: [],
+    UserAccount: [{
+      id: 'account-1',
+      user_id: 'user-1',
+      organization_id: 'org-a',
+      role: 'ORG_ADMIN',
+      status: 'active',
+      active: true,
+    }],
   };
   const counters = Object.fromEntries(Object.keys(collections).map(name => [name, 0]));
 
@@ -116,7 +124,7 @@ function createScenario({
 
 function loadServerHandler(source, client, filename) {
   const executable = source
-    .replace(/^import .*?;\s*/u, 'const createClientFromRequest = globalThis.__createClientFromRequest;\n')
+    .replace(/^import .*?;\s*/gmu, '')
     .replace('Deno.serve(async (req) => {', 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
@@ -128,9 +136,10 @@ function loadServerHandler(source, client, filename) {
     Response,
     structuredClone,
     setTimeout,
+    isCanonicalActiveUserAccount,
   };
   context.globalThis = context;
-  vm.runInNewContext(executable, context, { filename });
+  vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename });
   return context.__handler;
 }
 

@@ -13,14 +13,9 @@ import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '@/components/guards/PageGuard';
 import WorkOrderCard from '@/components/kanban/WorkOrderCard';
 import { useToast } from '@/components/ui/use-toast';
+import { isCanonicalActiveUserAccount } from '../../base44/functions/_shared/userAuthorization.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
-
-function isActiveAccount(account) {
-  if (!account) return false;
-  if (typeof account.status === 'string') return account.status === 'active';
-  return account.active === true;
-}
 
 export default function ColaRevision() {
   return (
@@ -62,7 +57,7 @@ function ColaRevisionContent() {
         organization_id: effectiveOrgId,
         role: 'TECHNICIAN',
       });
-      return accounts.filter(isActiveAccount);
+      return accounts.filter(isCanonicalActiveUserAccount);
     },
     enabled: !!effectiveOrgId,
   });

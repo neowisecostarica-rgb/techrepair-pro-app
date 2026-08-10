@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 /*
 =====================================
@@ -79,11 +80,11 @@ Deno.serve(async (req) => {
 
       const account = orgHint
         ? accounts.find(a => a.organization_id === orgHint)
-        : accounts[0];
+        : (accounts.length === 1 ? accounts[0] : null);
       if (!account) {
         return Response.json({ error: 'No existe una cuenta autorizada para la organización activa' }, { status: 403 });
       }
-      if (account.status !== 'active') {
+      if (!isCanonicalActiveUserAccount(account)) {
         return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
       }
 

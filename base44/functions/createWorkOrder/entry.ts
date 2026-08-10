@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 const LOCK_OPERATION = 'RECEPTION_CREATE';
 const VALID_EQUIPMENT_TYPES = ['laptop', 'desktop', 'tablet', 'smartphone', 'impresora', 'otro'];
@@ -118,12 +119,15 @@ async function releaseResourceLease(base44, lease, correlationId) {
 }
 
 async function resolveOrganization(base44, user) {
-  let orgId = user.impersonating_org_id || user.organization_id;
-  if (!orgId && user.id) {
-    const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, undefined, 1);
-    orgId = accounts?.[0]?.organization_id || null;
-  }
-  return orgId;
+  const orgHint = user.impersonating_org_id || user.organization_id || null;
+  if (user.is_super_admin === true) return orgHint;
+  if (!user.id) return null;
+  const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, undefined, 10);
+  const activeAccounts = (accounts || []).filter(isCanonicalActiveUserAccount);
+  const account = orgHint
+    ? activeAccounts.find(candidate => candidate.organization_id === orgHint)
+    : (activeAccounts.length === 1 ? activeAccounts[0] : null);
+  return account?.organization_id || null;
 }
 
 function buildDmrNumber(correlationId) {

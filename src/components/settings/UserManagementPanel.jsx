@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Search, UserX, Edit, UserCheck } from 'lucide-react';
+import { isCanonicalActiveUserAccount } from '../../../base44/functions/_shared/userAuthorization.ts';
 
 export default function UserManagementPanel({ organizationId, currentUserId, branches }) {
   const { effectiveRole, status } = useAuthContext();
@@ -31,10 +32,10 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
 
   // P0.1 TENANT ZERO: Calculate active ORG_ADMIN count
   const activeOrgAdmins = users.filter(u =>
-    u.role === 'ORG_ADMIN' && (u.status === 'active' || (!u.status && u.active === true))
+    u.role === 'ORG_ADMIN' && isCanonicalActiveUserAccount(u)
   );
   const isLastActiveOrgAdmin = (user) => {
-    const isActive = user.status === 'active' || (!user.status && user.active === true);
+    const isActive = isCanonicalActiveUserAccount(user);
     return user.role === 'ORG_ADMIN' && isActive && activeOrgAdmins.length === 1;
   };
 
@@ -220,7 +221,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                     </td>
                     <td className="px-4 py-3">
                       <Badge className={
-                        (user.status === 'active' || (!user.status && user.active))
+                        isCanonicalActiveUserAccount(user)
                           ? 'bg-emerald-100 text-emerald-700 border-0 text-xs'
                           : user.status === 'invited'
                           ? 'bg-blue-100 text-blue-700 border-0 text-xs'

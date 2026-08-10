@@ -4,6 +4,7 @@
  * Solo ORG_ADMIN puede ejecutar (verificado server-side).
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -25,8 +26,7 @@ Deno.serve(async (req) => {
   const callerAccount = callerAccounts.find(account =>
     account.organization_id === organizationId &&
     account.role === 'ORG_ADMIN' &&
-    account.status !== 'suspended' &&
-    account.active !== false
+    isCanonicalActiveUserAccount(account)
   );
   const isOrgAdmin = !!callerAccount;
 
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
         branch_id: branch_id || null,
         role,
         status: 'invited',
-        active: true,
+        active: false,
         invited_at: now,
       });
       return Response.json({ success: true, action: 'created', account: created });
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     const account = existing[0];
-    if (account.status === 'active' || (!account.status && account.active === true)) {
+    if (isCanonicalActiveUserAccount(account)) {
       return Response.json({ error: `${user_email} ya tiene acceso activo. Usa updateRole o updateStatus.` }, { status: 409 });
     }
 
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
       role,
       branch_id: branch_id || null,
       status: 'invited',
-      active: true,
+      active: false,
       invited_at: now,
     });
     return Response.json({ success: true, action: 'reinvited', account: updated });
@@ -119,11 +119,8 @@ Deno.serve(async (req) => {
       const activeAdmins = await base44.asServiceRole.entities.UserAccount.filter({
         organization_id: effectiveOrgId,
         role: 'ORG_ADMIN',
-        active: true,
       });
-      const confirmedActiveAdmins = activeAdmins.filter(account =>
-        account.status === 'active' || (!account.status && account.active === true)
-      );
+      const confirmedActiveAdmins = activeAdmins.filter(isCanonicalActiveUserAccount);
       if (confirmedActiveAdmins.length <= 1) {
         return Response.json({ error: 'No se puede suspender el último ORG_ADMIN activo' }, { status: 409 });
       }
@@ -131,7 +128,7 @@ Deno.serve(async (req) => {
 
     const updated = await base44.asServiceRole.entities.UserAccount.update(targetAccountId, {
       status,
-      active: status !== 'suspended',
+      active: status === 'active',
     });
     return Response.json({ success: true, account: updated });
   }
@@ -155,18 +152,15 @@ Deno.serve(async (req) => {
 
     const removesActiveAdmin =
       target[0].role === 'ORG_ADMIN' &&
-      target[0].active !== false &&
+      isCanonicalActiveUserAccount(target[0]) &&
       (role !== 'ORG_ADMIN' || status === 'suspended');
 
     if (removesActiveAdmin) {
       const activeAdmins = await base44.asServiceRole.entities.UserAccount.filter({
         organization_id: effectiveOrgId,
         role: 'ORG_ADMIN',
-        active: true,
       });
-      const confirmedActiveAdmins = activeAdmins.filter(account =>
-        account.status === 'active' || (!account.status && account.active === true)
-      );
+      const confirmedActiveAdmins = activeAdmins.filter(isCanonicalActiveUserAccount);
       if (confirmedActiveAdmins.length <= 1) {
         return Response.json({ error: 'No se puede modificar el último ORG_ADMIN activo' }, { status: 409 });
       }
@@ -176,7 +170,7 @@ Deno.serve(async (req) => {
       role,
       branch_id: branch_id !== undefined ? branch_id : target[0].branch_id,
       status,
-      active: status !== 'suspended',
+      active: status === 'active',
     });
     return Response.json({ success: true, account: updated });
   }
@@ -195,15 +189,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Cuenta no encontrada en esta organización' }, { status: 404 });
     }
 
-    if (target[0].role === 'ORG_ADMIN' && role !== 'ORG_ADMIN' && target[0].active !== false) {
+    if (target[0].role === 'ORG_ADMIN' && role !== 'ORG_ADMIN' && isCanonicalActiveUserAccount(target[0])) {
       const activeAdmins = await base44.asServiceRole.entities.UserAccount.filter({
         organization_id: effectiveOrgId,
         role: 'ORG_ADMIN',
-        active: true,
       });
-      const confirmedActiveAdmins = activeAdmins.filter(account =>
-        account.status === 'active' || (!account.status && account.active === true)
-      );
+      const confirmedActiveAdmins = activeAdmins.filter(isCanonicalActiveUserAccount);
       if (confirmedActiveAdmins.length <= 1) {
         return Response.json({ error: 'No se puede cambiar el rol del último ORG_ADMIN activo' }, { status: 409 });
       }

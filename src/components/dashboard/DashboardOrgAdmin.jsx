@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { isCanonicalActiveUserAccount } from '../../../base44/functions/_shared/userAuthorization.ts';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -193,7 +194,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
   }, [ordenesMes]);
 
   const tecnicosRegistrados = userAccounts.filter(
-    u => u.role === 'TECHNICIAN' && u.active !== false
+    u => u.role === 'TECHNICIAN' && isCanonicalActiveUserAccount(u)
   ).length;
 
   const loadingMetrics = loadingCurrentUser || loadingFinancial || loadingOrdenes;

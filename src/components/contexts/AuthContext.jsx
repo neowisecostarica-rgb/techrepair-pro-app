@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { isCanonicalActiveUserAccount } from '../../../base44/functions/_shared/userAuthorization.ts';
 
 const AuthContext = createContext(null);
 
@@ -27,10 +28,9 @@ async function ensureIdentity(u) {
   const allAccounts = await base44.entities.UserAccount.filter({ user_id: u.id });
 
   // 2. Memberships activas con organization_id válido
-  const activeAccounts = allAccounts.filter(a => {
-    const isActive = a.status ? a.status === 'active' : a.active !== false;
-    return isActive && a.organization_id;
-  });
+  const activeAccounts = allAccounts.filter(account =>
+    isCanonicalActiveUserAccount(account) && account.organization_id
+  );
 
   if (activeAccounts.length === 0) {
     console.warn('[EnsureIdentity] Usuario sin memberships activas:', u.email);
@@ -82,43 +82,29 @@ async function ensureIdentity(u) {
     }
   }
 
-  // 5. Sincronizar user.organization_id y user.role (plataforma) al token
-  //    - organization_id: RLS requiere que coincida con el UserAccount activo
-  //    - role="admin": Base44 requiere _app_role="admin" para operaciones CREATE
-  //      El control real de permisos de negocio se mantiene en UserAccount.role
+  // 5. Sincronizar solo user.organization_id al contexto RLS.
+  // El rol de plataforma es privilegiado y nunca debe elevarse desde el cliente.
   const needsOrgSync = u.organization_id !== account.organization_id;
-  const needsRoleSync = u.role !== 'admin';
 
-  if (needsOrgSync || needsRoleSync) {
-    const updatePayload = {};
-    if (needsOrgSync) {
-      updatePayload.organization_id = account.organization_id;
-      console.log('[EnsureIdentity] Sincronizando token org_id:', u.organization_id, '→', account.organization_id);
-    }
-    if (needsRoleSync) {
-      updatePayload.role = 'admin';
-      console.log('[EnsureIdentity] Sincronizando _app_role a "admin" para operaciones CREATE (control real en UserAccount.role)');
-    }
-
+  if (needsOrgSync) {
     try {
-      await base44.auth.updateMe(updatePayload);
+      await base44.auth.updateMe({ organization_id: account.organization_id });
 
       // Re-fetch para confirmar que el token propagado ya contiene los valores correctos
       const refreshedUser = await base44.auth.me();
       u.organization_id = refreshedUser.organization_id;
-      u.role = refreshedUser.role;
 
-      if (needsOrgSync && u.organization_id !== account.organization_id) {
-        console.warn('[EnsureIdentity] ⚠️ Token org_id aún desincronizado tras re-fetch, forzando valor local');
-        u.organization_id = account.organization_id;
-      } else if (needsOrgSync) {
-        console.log('[EnsureIdentity] ✅ Token org_id confirmado tras re-fetch:', u.organization_id);
+      if (u.organization_id !== account.organization_id) {
+        throw new Error('La organizacion activa no se propago al contexto de autorizacion');
       }
 
-      if (needsOrgSync) repairs.push(`synced_token:${account.organization_id}`);
-      if (needsRoleSync) repairs.push('synced_app_role:admin');
+      repairs.push(`synced_token:${account.organization_id}`);
     } catch (syncError) {
-      console.error('[EnsureIdentity] ❌ Error sincronizando token:', syncError);
+      console.error('[EnsureIdentity] Error sincronizando tenant activo:', syncError);
+      const identityError = new Error('No se pudo activar el contexto de la organizacion. Reintenta la sesion.');
+      identityError.code = 'IDENTITY_SYNC_FAILED';
+      identityError.cause = syncError;
+      throw identityError;
     }
   }
 
@@ -181,6 +167,7 @@ export function AuthProvider({ children }) {
           user_email: u.email,
           organization_id: u.impersonating_org_id,
           role: 'ORG_ADMIN',
+          status: 'active',
           active: true,
         });
         setStatus('ready');

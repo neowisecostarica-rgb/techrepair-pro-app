@@ -1,17 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 // Assignment is an intake operation owned by administration and sales.
 // Keep this contract aligned with workflowConfig and both assignment UIs.
 const AUTHORIZED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 const ASSIGNMENT_LOCK_TTL_MS = 15 * 60 * 1000;
-
-function isActiveAccount(account) {
-  if (!account) return false;
-  // `status` is authoritative. `active` is accepted only for records created
-  // before UserAccount.status existed.
-  if (typeof account.status === 'string') return account.status === 'active';
-  return account.active === true;
-}
 
 function errorResponse(status, code, error, extra = {}) {
   return Response.json({ error, code, ...extra }, { status });
@@ -66,7 +59,7 @@ async function resolveCaller(base44, user) {
 
   const orgHint = user.impersonating_org_id || user.organization_id || null;
   const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 5);
-  const eligibleAccounts = (accounts || []).filter(isActiveAccount);
+  const eligibleAccounts = (accounts || []).filter(isCanonicalActiveUserAccount);
 
   let account = null;
   if (orgHint) {
@@ -95,7 +88,7 @@ async function loadDestinationTechnician(base44, orgId, technicianUserId) {
     organization_id: orgId,
     role: 'TECHNICIAN',
   }, 5);
-  return (accounts || []).find(isActiveAccount) || null;
+  return (accounts || []).find(isCanonicalActiveUserAccount) || null;
 }
 
 function buildRollbackUpdate(originalOT) {

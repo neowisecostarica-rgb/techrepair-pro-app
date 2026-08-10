@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { isCanonicalActiveUserAccount } from '../base44/functions/_shared/userAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/reassignWorkOrderTechnician/entry.ts', import.meta.url);
 const queuePath = new URL('../src/pages/ColaRevision.jsx', import.meta.url);
@@ -128,7 +129,7 @@ function createScenario({
 
 function loadHandler(client) {
   const executable = backendSource
-    .replace(/^import .*?;\s*/u, '')
+    .replace(/^import .*?;\s*/gmu, '')
     .replace(
       'Deno.serve(async (req) => {',
       'globalThis.__handler = async (req) => {',
@@ -142,6 +143,7 @@ function loadHandler(client) {
     JSON,
     Object,
     Response,
+    isCanonicalActiveUserAccount,
   };
   context.globalThis = context;
   vm.runInNewContext(
@@ -348,7 +350,7 @@ const tests = [
     },
   },
   {
-    name: 'legacy account without status remains supported through active fallback',
+    name: 'legacy account without canonical status is rejected',
     async run() {
       const scenario = createScenario({
         callerStatus: null,
@@ -356,9 +358,9 @@ const tests = [
         workOrder: { id: 'ot-1', estado: 'EN_COLA_REVISION' },
       });
       const { response, body } = await invoke(scenario);
-      assert.equal(response.status, 200);
-      assert.equal(body.operation, 'INITIAL_ASSIGNMENT');
-      assert.equal(scenario.workOrders[0].estado, 'ASIGNADA');
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'CALLER_ACCOUNT_NOT_ACTIVE');
+      assert.equal(scenario.workOrders[0].estado, 'EN_COLA_REVISION');
     },
   },
   {

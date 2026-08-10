@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -7,10 +8,15 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     // ── PATRÓN OFICIAL: RESOLUCIÓN CONSOLIDADA DE organization_id ──────────────
-    let orgId = user.impersonating_org_id || user.organization_id;
-    if (!orgId && user.id) {
-      const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 1);
-      if (accounts && accounts.length > 0) orgId = accounts[0].organization_id || null;
+    const orgHint = user.impersonating_org_id || user.organization_id || null;
+    let orgId = user.is_super_admin === true ? orgHint : null;
+    if (user.is_super_admin !== true && user.id) {
+      const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 10);
+      const activeAccounts = (accounts || []).filter(isCanonicalActiveUserAccount);
+      const account = orgHint
+        ? activeAccounts.find(candidate => candidate.organization_id === orgHint)
+        : (activeAccounts.length === 1 ? activeAccounts[0] : null);
+      orgId = account?.organization_id || null;
     }
     if (!orgId) return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
     // ── FIN PATRÓN OFICIAL ─────────────────────────────────────────────────────

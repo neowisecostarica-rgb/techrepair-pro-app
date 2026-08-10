@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { isCanonicalActiveUserAccount } from '../base44/functions/_shared/userAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/getSmartIntakeByWorkOrder/entry.ts', import.meta.url);
 const smartIntakeApiPath = new URL('../src/api/smartIntake.js', import.meta.url);
@@ -87,7 +88,7 @@ function createScenario({
 
 function loadHandler(client, logger = console) {
   const executable = backendSource
-    .replace(/^import .*?;\s*/u, '')
+    .replace(/^import .*?;\s*/gmu, '')
     .replace('Deno.serve(async (req) => {', 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
@@ -98,6 +99,7 @@ function loadHandler(client, logger = console) {
     Object,
     Response,
     String,
+    isCanonicalActiveUserAccount,
   };
   context.globalThis = context;
   vm.runInNewContext(
@@ -284,7 +286,7 @@ const tests = [
     },
   },
   {
-    name: 'legacy membership without status retains the active fallback',
+    name: 'legacy membership without canonical status is rejected',
     async run() {
       const { response, body } = await invoke(createScenario({
         accounts: [{
@@ -296,8 +298,8 @@ const tests = [
         }],
         preDiagnosticos: [completedLegacy],
       }));
-      assert.equal(response.status, 200);
-      assert.equal(body.status, 'FOUND');
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'CALLER_MEMBERSHIP_INACTIVE');
     },
   },
   {

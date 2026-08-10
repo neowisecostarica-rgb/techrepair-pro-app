@@ -11,6 +11,12 @@ import {
   getCanonicalBranchScope,
   validateRequestedBranch,
 } from '../base44/functions/_shared/operationalAuthorization.ts';
+import {
+  assertClientFinancialHints,
+  assertPersistedTotalsMatch,
+  calculateCommercialTotals,
+  moneyMatches,
+} from '../base44/functions/_shared/commercialIntegrity.ts';
 
 const backendPath = new URL('../base44/functions/createSale/entry.ts', import.meta.url);
 const posPath = new URL('../src/pages/PuntoVenta.jsx', import.meta.url);
@@ -59,13 +65,27 @@ function createScenario({ stock = 10, failure = null, preload = false, postSaleF
     }] : [],
     Inventario: [{
       id: 'inventory-1', organization_id: 'org-a', categoria_id: 'category-1', nombre: 'Repuesto',
-      cantidad_disponible: stock, costo_unitario: 8,
+      branch_id: 'branch-1', cantidad_disponible: stock, costo_unitario: 8, precio_venta: 20,
     }],
+    Servicio: [{ id: 'service-1', organization_id: 'org-a', nombre: 'Servicio', precio: 20, activo: true }],
     CategoriaInventario: [{ id: 'category-1', organization_id: 'org-a', permite_stock: true }],
     InventarioHistorial: [],
     Cotizacion: [{
-      id: 'quote-1', organization_id: 'org-a', orden_trabajo_id: 'ot-1', estado: 'aprobada',
-      estado_conversion: 'PENDIENTE', total: 113, subtotal: 100,
+      id: 'quote-1', organization_id: 'org-a', branch_id: 'branch-1', cliente_id: 'client-1',
+      orden_trabajo_id: 'ot-1', estado: 'aprobada', decision_status: 'COMMITTED',
+      decision_target_status: 'APROBADA', estado_conversion: 'PENDIENTE',
+      total: 113, subtotal: 100, descuento_total: 0, impuesto: 13,
+      items: [
+        { tipo: 'producto', referencia_id: 'inventory-1', descripcion: 'Repuesto', cantidad: 2, precio_unitario: 20, descuento_porcentaje: 0, subtotal: 40 },
+        { tipo: 'producto', referencia_id: 'inventory-1', descripcion: 'Repuesto', cantidad: 3, precio_unitario: 20, descuento_porcentaje: 0, subtotal: 60 },
+      ],
+      contenido_aprobado_snapshot: {
+        items: [
+          { tipo: 'producto', referencia_id: 'inventory-1', descripcion: 'Repuesto', cantidad: 2, precio_unitario: 20, descuento_porcentaje: 0, subtotal: 40 },
+          { tipo: 'producto', referencia_id: 'inventory-1', descripcion: 'Repuesto', cantidad: 3, precio_unitario: 20, descuento_porcentaje: 0, subtotal: 60 },
+        ],
+        total: 113, subtotal: 100, descuento_total: 0, impuesto: 13,
+      },
     }],
     OTEvent: [],
   };
@@ -164,7 +184,7 @@ function createScenario({ stock = 10, failure = null, preload = false, postSaleF
 
 function loadHandler(client) {
   const executable = backendSource
-    .replace(/^import .*?;\s*/gmu, '')
+    .replace(/^import[\s\S]*?;\s*/gmu, '')
     .replace('Deno.serve(async req => {', 'globalThis.__handler = async req => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
@@ -181,6 +201,10 @@ function loadHandler(client) {
     resolveAuthorizedContext,
     getCanonicalBranchScope,
     validateRequestedBranch,
+    assertClientFinancialHints,
+    assertPersistedTotalsMatch,
+    calculateCommercialTotals,
+    moneyMatches,
   };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename: 'createSale/entry.ts' });
@@ -222,9 +246,9 @@ function directPayload(overrides = {}) {
     ventaData: {
       cliente_id: 'client-1', origen_venta: 'tienda', tipo_concepto: 'otro',
       referencia_ot_id: null, cotizacion_id: null, branch_id: 'branch-1',
-      metodo_pago: 'efectivo', total: 20, subtotal: 20, impuesto: 0,
+      metodo_pago: 'efectivo', total: 22.6, subtotal: 20, impuesto: 2.6,
     },
-    itemsCarrito: [{ tipo: 'servicio', descripcion: 'Servicio', cantidad: 1, precio_unitario: 20, subtotal: 20 }],
+    itemsCarrito: [{ tipo: 'servicio', referencia_id: 'service-1', descripcion: 'Servicio', cantidad: 1, precio_unitario: 20, subtotal: 20 }],
     cotizacionOrigenId: null,
     idempotency_key: 'direct-operation-1',
   });
@@ -316,7 +340,7 @@ test('two simultaneous OT charges produce one logical result', async () => {
   assert.equal(scenario.metrics.transitions, 1);
 });
 
-test('altered payload for the same OT operation is rejected', async () => {
+test('altered monetary payload is rejected before idempotency can mask tampering', async () => {
   const scenario = createScenario();
   const handler = loadHandler(scenario.client);
   await invoke(handler, repairPayload());
@@ -327,9 +351,70 @@ test('altered payload for the same OT operation is rejected', async () => {
   });
   const conflict = await invoke(handler, altered);
   assert.equal(conflict.status, 409, JSON.stringify(conflict.body));
-  assert.equal(conflict.body.code, 'SALE_IDEMPOTENCY_CONFLICT');
+  assert.equal(conflict.body.code, 'SALE_AMOUNT_TAMPERING');
   assert.equal(scenario.collections.Venta.length, 1);
   assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 5);
+});
+
+test('unit-price tampering is rejected against the approved snapshot', async () => {
+  const scenario = createScenario();
+  const payload = repairPayload();
+  payload.itemsCarrito[0].precio_unitario = 1;
+  const result = await invoke(loadHandler(scenario.client), payload);
+  assert.equal(result.status, 409, JSON.stringify(result.body));
+  assert.equal(result.body.code, 'SALE_PRICE_TAMPERING');
+  assert.equal(scenario.collections.Venta.length, 0);
+});
+
+test('quantity tampering is rejected against the approved snapshot', async () => {
+  const scenario = createScenario();
+  const payload = repairPayload();
+  payload.itemsCarrito[0].cantidad = 1;
+  const result = await invoke(loadHandler(scenario.client), payload);
+  assert.equal(result.status, 409, JSON.stringify(result.body));
+  assert.equal(result.body.code, 'SALE_ITEM_TAMPERING');
+});
+
+test('discount tampering is rejected against the approved snapshot', async () => {
+  const scenario = createScenario();
+  const payload = repairPayload();
+  payload.itemsCarrito[0].descuento_porcentaje = 50;
+  const result = await invoke(loadHandler(scenario.client), payload);
+  assert.equal(result.status, 409, JSON.stringify(result.body));
+  assert.equal(result.body.code, 'SALE_DISCOUNT_TAMPERING');
+});
+
+test('cost injection is rejected as a server-authority violation', async () => {
+  const scenario = createScenario();
+  const payload = repairPayload();
+  payload.itemsCarrito[0].costo_unitario = 0.01;
+  const result = await invoke(loadHandler(scenario.client), payload);
+  assert.equal(result.status, 409, JSON.stringify(result.body));
+  assert.equal(result.body.code, 'SALE_SERVER_AUTHORITY_FIELD_FORBIDDEN');
+});
+
+test('unapproved quote cannot be converted by a direct API request', async () => {
+  const scenario = createScenario();
+  scenario.collections.Cotizacion[0].estado = 'enviada';
+  scenario.collections.Cotizacion[0].decision_status = undefined;
+  const result = await invoke(loadHandler(scenario.client), repairPayload());
+  assert.equal(result.status, 409, JSON.stringify(result.body));
+  assert.equal(result.body.code, 'SALE_QUOTE_NOT_APPROVED');
+});
+
+test('quote and work-order identifiers cannot be swapped by the client', async () => {
+  const scenario = createScenario();
+  const quoteMismatch = await invoke(loadHandler(scenario.client), repairPayload({
+    cotizacionOrigenId: 'quote-other',
+  }));
+  assert.equal(quoteMismatch.status, 409, JSON.stringify(quoteMismatch.body));
+  assert.equal(quoteMismatch.body.code, 'SALE_QUOTE_ID_MISMATCH');
+
+  const workOrderMismatch = await invoke(loadHandler(scenario.client), repairPayload({
+    ventaData: { referencia_ot_id: 'ot-other' },
+  }));
+  assert.equal(workOrderMismatch.status, 409, JSON.stringify(workOrderMismatch.body));
+  assert.equal(workOrderMismatch.body.code, 'SALE_QUOTE_WORK_ORDER_MISMATCH');
 });
 
 test('repeated product lines validate their aggregated quantity', async () => {
@@ -374,10 +459,10 @@ test('failure on a later product compensates every prior inventory mutation', as
   });
   scenario.collections.Inventario.push({
     id: 'inventory-2', organization_id: 'org-a', categoria_id: 'category-1', nombre: 'Segundo repuesto',
-    cantidad_disponible: 7, costo_unitario: 4,
+    branch_id: 'branch-1', cantidad_disponible: 7, costo_unitario: 4, precio_venta: 5,
   });
-  const payload = repairPayload({
-    ventaData: { total: 123, subtotal: 110, impuesto: 13 },
+  const payload = directPayload({
+    ventaData: { total: 124.3, subtotal: 110, impuesto: 14.3 },
     itemsCarrito: [
       { tipo: 'producto', referencia_id: 'inventory-1', descripcion: 'Repuesto', cantidad: 5, precio_unitario: 20, subtotal: 100 },
       { tipo: 'producto', referencia_id: 'inventory-2', descripcion: 'Segundo repuesto', cantidad: 2, precio_unitario: 5, subtotal: 10 },
@@ -460,7 +545,7 @@ test('direct sale rejects reuse of its persisted key with another payload', asyn
   const scenario = createScenario();
   const handler = loadHandler(scenario.client);
   await invoke(handler, directPayload());
-  const conflict = await invoke(handler, directPayload({ ventaData: { total: 25, subtotal: 25 } }));
+  const conflict = await invoke(handler, directPayload({ ventaData: { metodo_pago: 'tarjeta' } }));
   assert.equal(conflict.status, 409, JSON.stringify(conflict.body));
   assert.equal(conflict.body.code, 'SALE_IDEMPOTENCY_CONFLICT');
   assert.equal(scenario.collections.Venta.length, 1);

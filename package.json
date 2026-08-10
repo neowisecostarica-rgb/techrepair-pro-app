@@ -12,6 +12,7 @@
     "test:atomic-reception": "node scripts/verify-atomic-reception-contract.mjs",
     "test:smart-intake": "node scripts/verify-smart-intake-contract.mjs",
     "test:commercial-flow": "node scripts/verify-commercial-flow-contract.mjs",
+    "test:commercial-integrity": "node scripts/verify-commercial-integrity-contract.mjs",
     "test:atomic-sale": "node scripts/verify-atomic-sale-contract.mjs",
     "test:security-integrity": "node scripts/verify-security-integrity-contract.mjs",
     "test:identity-tenant-security": "node scripts/verify-identity-tenant-security-contract.mjs",

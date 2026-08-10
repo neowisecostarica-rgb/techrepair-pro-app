@@ -62,9 +62,10 @@ pass('public reader uses service role only after validating document type and to
   && publicReader.includes('base44.asServiceRole.entities'));
 
 pass('customer approval is handled by the lifecycle owner and creates canonical timeline evidence',
-  transition.includes('handlePublicCustomerDecision')
+  transition.includes('handlePublicCustomerDecisionV2')
   && transition.includes("newStatus: targetStatus") === false
-  && transition.includes("const eventType = approved ? 'TRANSITION_APROBADA' : 'CANCELADA'")
+  && transition.includes("const eventType = targetStatus === 'APROBADA' ? 'TRANSITION_APROBADA' : 'CANCELADA'")
+  && transition.includes("decision_status: 'COMMITTED'")
   && transition.includes('OrdenTrabajo.updateMany'));
 
 pass('quote portal exposes approve and reject actions',

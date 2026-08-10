@@ -2,6 +2,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { evaluateCurrentQaEvidence } from '../_shared/qaEvidence.ts';
+import {
+  assertPersistedTotalsMatch,
+  calculateCommercialTotals,
+  quoteDecisionIsCommitted,
+  quoteDecisionOperationKey,
+} from '../_shared/commercialIntegrity.ts';
 
 // ─── STATE MACHINE OFICIAL ────────────────────────────────────────────────────
 const ALLOWED_TRANSITIONS = {
@@ -691,13 +697,255 @@ async function completeDiagnosticWorkflow({
   }
 }
 
-async function handlePublicCustomerDecision({ base44, body, req }) {
+
+async function loadPublicDecisionContext(base44, token) {
+  const quotes = await base44.asServiceRole.entities.Cotizacion.filter({
+    public_access_token: token,
+  }, '-created_date', 2);
+  if (quotes?.length > 1) throw workflowError('El enlace comercial es ambiguo.', 'PUBLIC_QUOTE_TOKEN_AMBIGUOUS', 409);
+  let quote = quotes?.[0] || null;
+  let ot = null;
+  if (quote?.orden_trabajo_id) {
+    ot = await loadWorkOrder(base44, quote.organization_id, quote.orden_trabajo_id);
+  }
+  if (!quote) {
+    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+      public_access_token: token,
+    }, '-created_date', 2);
+    if (workOrders?.length !== 1) throw workflowError('Enlace no valido', 'PUBLIC_QUOTE_TOKEN_INVALID', 404);
+    ot = workOrders[0];
+    const related = await base44.asServiceRole.entities.Cotizacion.filter({
+      organization_id: ot.organization_id,
+      orden_trabajo_id: ot.id,
+      estado: { $in: ['enviada', 'aprobada', 'rechazada'] },
+    }, '-created_date', 5);
+    quote = related?.[0] || null;
+  }
+  if (!quote) throw workflowError('No existe una cotizacion asociada para registrar la decision', 'PUBLIC_QUOTE_NOT_FOUND', 422);
+  if (quote.orden_trabajo_id && (!ot || ot.organization_id !== quote.organization_id)) {
+    throw workflowError('La OT asociada no es valida', 'PUBLIC_QUOTE_WORK_ORDER_INVALID', 409);
+  }
+  return { quote, ot };
+}
+
+function validatePublicDecisionExpiry(quote, ot) {
+  const expires = quote.public_access_expires_at || ot?.public_access_expires_at || null;
+  if (expires) {
+    const expiresAt = Date.parse(expires);
+    if (Number.isFinite(expiresAt) && expiresAt < Date.now()) {
+      throw workflowError('El enlace ha expirado', 'PUBLIC_QUOTE_TOKEN_EXPIRED', 410);
+    }
+  }
+  if (quote.valida_hasta) {
+    const validUntil = Date.parse(`${quote.valida_hasta}T23:59:59.999Z`);
+    if (Number.isFinite(validUntil) && validUntil < Date.now()) {
+      throw workflowError('La cotizacion ha vencido', 'PUBLIC_QUOTE_EXPIRED', 410);
+    }
+  }
+}
+
+function buildApprovedQuoteSnapshot(quote) {
+  let calculated;
+  try {
+    calculated = calculateCommercialTotals(quote.items || []);
+    assertPersistedTotalsMatch(quote, calculated, 'Cotizacion');
+  } catch (error) {
+    throw workflowError(error.message, error.code || 'PUBLIC_QUOTE_INTEGRITY_INVALID', 422);
+  }
+  return {
+    items: calculated.items,
+    subtotal: calculated.subtotal,
+    descuento_total: calculated.descuento_total,
+    impuesto: calculated.impuesto,
+    total: calculated.total,
+    version: quote.version || null,
+  };
+}
+
+async function claimPublicQuoteDecision(base44, quote, targetStatus, operationKey, now) {
+  const targetQuoteStatus = targetStatus === 'APROBADA' ? 'aprobada' : 'rechazada';
+  if (quoteDecisionIsCommitted(quote, targetStatus)) return { quote, committed: true };
+  if (['aprobada', 'rechazada'].includes(quote.estado) && quote.estado !== targetQuoteStatus) {
+    throw workflowError('La cotizacion ya tiene una decision diferente', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
+  }
+  if (quote.decision_status === 'PENDING') {
+    if (quote.decision_operation_key !== operationKey || quote.decision_target_status !== targetStatus) {
+      throw workflowError('Otra decision comercial esta en progreso', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
+    }
+    return { quote, recovered: true };
+  }
+  if (!['enviada', targetQuoteStatus].includes(quote.estado)) {
+    throw workflowError('La cotizacion aun no ha sido enviada al cliente', 'PUBLIC_QUOTE_NOT_SENT', 422);
+  }
+  const claimed = await base44.asServiceRole.entities.Cotizacion.updateMany({
+    id: quote.id,
+    organization_id: quote.organization_id,
+    estado: quote.estado,
+    $or: [
+      { decision_status: { $exists: false } },
+      { decision_status: null },
+      { decision_status: 'FAILED' },
+    ],
+  }, { $set: {
+    decision_status: 'PENDING',
+    decision_target_status: targetStatus,
+    decision_operation_key: operationKey,
+    decision_started_at: now,
+    decision_error: null,
+  } });
+  const reloaded = (await base44.asServiceRole.entities.Cotizacion.filter({
+    id: quote.id,
+    organization_id: quote.organization_id,
+  }, '-created_date', 1))?.[0] || null;
+  if (claimed?.updated !== 1
+    && !quoteDecisionIsCommitted(reloaded, targetStatus)
+    && !(reloaded?.decision_status === 'PENDING' && reloaded?.decision_operation_key === operationKey)) {
+    throw workflowError('La cotizacion cambio durante la decision', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
+  }
+  return { quote: reloaded || quote, committed: quoteDecisionIsCommitted(reloaded, targetStatus) };
+}
+
+async function ensureDiagnosticApprovalEvidence(base44, quote, now) {
+  if (!quote.diagnostico_tecnico_id) return null;
+  const documents = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
+    organization_id: quote.organization_id,
+    diagnostico_id: quote.diagnostico_tecnico_id,
+    estado: { $in: ['EMITIDO', 'ENVIADO'] },
+  }, '-created_date', 5);
+  const document = documents?.[0] || null;
+  if (!document) throw workflowError('No existe un documento de diagnostico vigente para registrar la aprobacion', 'PUBLIC_QUOTE_DIAGNOSTIC_DOCUMENT_REQUIRED', 422);
+  if (document.aprobacion_status === 'APROBADA') return document;
+  await base44.asServiceRole.entities.DiagnosticoDocumento.update(document.id, {
+    aprobacion_status: 'APROBADA',
+    aprobacion_at: now,
+    metodo_aprobacion: 'PORTAL_DIGITAL',
+  });
+  const reconciled = (await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
+    id: document.id,
+    organization_id: quote.organization_id,
+  }, '-created_date', 1))?.[0];
+  if (reconciled?.aprobacion_status !== 'APROBADA') {
+    throw workflowError('No se pudo confirmar la evidencia de aprobacion', 'PUBLIC_QUOTE_EVIDENCE_NOT_COMMITTED', 500);
+  }
+  return reconciled;
+}
+
+async function ensurePublicDecisionWorkOrder(base44, quote, ot, targetStatus, rejectionReason, now, lock) {
+  if (!ot) return { ot: null, transitioned: false, previousStatus: null };
+  const approved = targetStatus === 'APROBADA';
+  const allowedFrom = approved
+    ? ['DIAGNOSTICADA', 'COTIZADA']
+    : ['DIAGNOSTICADA', 'COTIZADA', 'APROBADA'];
+  const current = await loadWorkOrder(base44, ot.organization_id, ot.id);
+  if (!current || current.lifecycle_lock_token !== lock.token) {
+    throw workflowError('No se conserva el lock de la OT', 'LIFECYCLE_LOCK_LOST', 409);
+  }
+  if (current.estado === targetStatus) return { ot: current, transitioned: false, previousStatus: current.estado };
+  if (!allowedFrom.includes(current.estado)) {
+    throw workflowError(`La orden ya no admite esta decision (${current.estado})`, 'PUBLIC_QUOTE_WORK_ORDER_STATE_CONFLICT', 409);
+  }
+  const previousStatus = current.estado;
+  const result = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
+    id: current.id,
+    organization_id: current.organization_id,
+    estado: current.estado,
+    lifecycle_lock_token: lock.token,
+  }, { $set: {
+    estado: targetStatus,
+    cliente_aprobado: approved,
+    cliente_aprobado_at: approved ? now : null,
+    cliente_rechazo_motivo: approved ? null : (rejectionReason || null),
+    ultima_actividad: approved
+      ? 'Cotizacion aprobada por el cliente desde el portal'
+      : 'Cotizacion rechazada por el cliente desde el portal',
+    ultima_actividad_at: now,
+  } });
+  const reconciled = await loadWorkOrder(base44, current.organization_id, current.id);
+  if (result?.updated !== 1 && reconciled?.estado !== targetStatus) {
+    throw workflowError('La OT cambio durante la decision', 'PUBLIC_QUOTE_WORK_ORDER_CONFLICT', 409);
+  }
+  return { ot: reconciled, transitioned: true, previousStatus };
+}
+
+async function ensurePublicDecisionEvent(base44, quote, ot, targetStatus, operationKey, now) {
+  if (!ot) return null;
+  const eventType = targetStatus === 'APROBADA' ? 'TRANSITION_APROBADA' : 'CANCELADA';
+  const existing = await base44.asServiceRole.entities.OTEvent.filter({
+    organization_id: ot.organization_id,
+    orden_trabajo_id: ot.id,
+    tipo: eventType,
+    detalle: operationKey,
+  }, '-created_date', 2);
+  if (existing?.[0]) return existing[0];
+  try {
+    return await base44.asServiceRole.entities.OTEvent.create({
+      organization_id: ot.organization_id,
+      orden_trabajo_id: ot.id,
+      tipo: eventType,
+      detalle: operationKey,
+      created_by_user_id: 'portal_cliente',
+      processed: false,
+      created_at: now,
+    });
+  } catch (error) {
+    const reconciled = await base44.asServiceRole.entities.OTEvent.filter({
+      organization_id: ot.organization_id,
+      orden_trabajo_id: ot.id,
+      tipo: eventType,
+      detalle: operationKey,
+    }, '-created_date', 2);
+    if (reconciled?.[0]) return reconciled[0];
+    throw error;
+  }
+}
+
+async function commitPublicQuoteDecision(base44, quote, targetStatus, operationKey, snapshot, rejectionReason, ip, now) {
+  const targetQuoteStatus = targetStatus === 'APROBADA' ? 'aprobada' : 'rechazada';
+  const approved = targetStatus === 'APROBADA';
+  const reload = async () => (await base44.asServiceRole.entities.Cotizacion.filter({
+    id: quote.id,
+    organization_id: quote.organization_id,
+  }, '-created_date', 1))?.[0];
+  let result;
+  try {
+    result = await base44.asServiceRole.entities.Cotizacion.updateMany({
+      id: quote.id,
+      organization_id: quote.organization_id,
+      decision_status: 'PENDING',
+      decision_operation_key: operationKey,
+      decision_target_status: targetStatus,
+    }, { $set: {
+      estado: targetQuoteStatus,
+      decision_status: 'COMMITTED',
+      decision_committed_at: now,
+      decision_error: null,
+      ...(approved ? {
+        aprobada_at: now,
+        contenido_aprobado_snapshot: snapshot,
+        ip_aprobacion: ip,
+        cliente_rechazo_motivo: null,
+      } : {
+        cliente_rechazo_motivo: rejectionReason || null,
+      }),
+    } });
+  } catch (error) {
+    const reconciled = await reload();
+    if (quoteDecisionIsCommitted(reconciled, targetStatus)) return reconciled;
+    throw error;
+  }
+  const reloaded = await reload();
+  if (result?.updated !== 1 && !quoteDecisionIsCommitted(reloaded, targetStatus)) {
+    throw workflowError('No se pudo confirmar la decision comercial', 'PUBLIC_QUOTE_COMMIT_FAILED', 500);
+  }
+  return reloaded;
+}
+
+async function handlePublicCustomerDecisionV2({ base44, body, req }) {
   const token = body.customer_token;
   const targetStatus = body.newStatus;
   const rejectionReason = typeof body.rejection_reason === 'string'
     ? body.rejection_reason.trim().slice(0, 500)
     : '';
-
   if (typeof token !== 'string' || token.length < 16 || token.length > 256) {
     return Response.json({ error: 'Enlace no valido' }, { status: 404 });
   }
@@ -705,179 +953,89 @@ async function handlePublicCustomerDecision({ base44, body, req }) {
     return Response.json({ error: 'Decision no valida' }, { status: 400 });
   }
 
-  const quotes = await base44.asServiceRole.entities.Cotizacion.filter({
-    public_access_token: token,
-  }, '-created_date', 2);
-  let quote = quotes?.[0] || null;
+  let quote = null;
   let ot = null;
-
-  if (quote?.public_access_expires_at) {
-    const expiresAt = Date.parse(quote.public_access_expires_at);
-    if (Number.isFinite(expiresAt) && expiresAt < Date.now()) {
-      return Response.json({ error: 'El enlace ha expirado' }, { status: 410 });
+  let lock = null;
+  let operationKey = null;
+  try {
+    ({ quote, ot } = await loadPublicDecisionContext(base44, token));
+    validatePublicDecisionExpiry(quote, ot);
+    operationKey = quoteDecisionOperationKey(quote.id, targetStatus);
+    const targetQuoteStatus = targetStatus === 'APROBADA' ? 'aprobada' : 'rechazada';
+    if (['aprobada', 'rechazada'].includes(quote.estado) && quote.estado !== targetQuoteStatus) {
+      throw workflowError('La cotizacion ya tiene una decision diferente', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
     }
-  }
-  if (quote?.valida_hasta) {
-    const validUntil = Date.parse(`${quote.valida_hasta}T23:59:59.999Z`);
-    if (Number.isFinite(validUntil) && validUntil < Date.now()) {
-      return Response.json({ error: 'La cotizacion ha vencido' }, { status: 410 });
-    }
-  }
 
-  if (quote?.orden_trabajo_id) {
-    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
-      id: quote.orden_trabajo_id,
-      organization_id: quote.organization_id,
-    }, '-created_date', 1);
-    ot = workOrders?.[0] || null;
-  }
-
-  if (!quote) {
-    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
-      public_access_token: token,
-    }, '-created_date', 2);
-    ot = workOrders?.[0] || null;
-    if (!ot) return Response.json({ error: 'Enlace no valido' }, { status: 404 });
-    if (ot.public_access_expires_at) {
-      const expiresAt = Date.parse(ot.public_access_expires_at);
-      if (Number.isFinite(expiresAt) && expiresAt < Date.now()) {
-        return Response.json({ error: 'El enlace ha expirado' }, { status: 410 });
+    const snapshot = targetStatus === 'APROBADA' ? buildApprovedQuoteSnapshot(quote) : null;
+    if (ot) {
+      lock = await acquireLifecycleLock({
+        base44,
+        ot,
+        orgId: ot.organization_id,
+        effectiveUser: { id: 'portal_cliente' },
+        operation: `customerDecision:${quote.id}`,
+      });
+      if (!lock.acquired) {
+        return Response.json({
+          error: 'Otra operacion del lifecycle esta en progreso',
+          code: lock.code,
+          retryable: true,
+        }, { status: 409 });
       }
+      quote = (await base44.asServiceRole.entities.Cotizacion.filter({
+        id: quote.id,
+        organization_id: quote.organization_id,
+      }, '-created_date', 1))?.[0] || quote;
     }
-    const relatedQuotes = await base44.asServiceRole.entities.Cotizacion.filter({
-      organization_id: ot.organization_id,
-      orden_trabajo_id: ot.id,
-    }, '-created_date', 5);
-    quote = relatedQuotes?.[0] || null;
-  }
 
-  if (!quote) {
-    return Response.json({ error: 'No existe una cotizacion asociada para registrar la decision' }, { status: 422 });
-  }
-  if (!['enviada', 'aprobada', 'rechazada'].includes(quote.estado)) {
-    return Response.json({ error: 'La cotizacion aun no ha sido enviada al cliente' }, { status: 422 });
-  }
-
-  const approved = targetStatus === 'APROBADA';
-  const targetQuoteStatus = approved ? 'aprobada' : 'rechazada';
-  const now = new Date().toISOString();
-  let diagnosticDocument = null;
-
-  if (ot) {
-    const allowedFrom = approved
-      ? ['DIAGNOSTICADA', 'COTIZADA']
-      : ['DIAGNOSTICADA', 'COTIZADA', 'APROBADA'];
-    if (ot.estado !== targetStatus && !allowedFrom.includes(ot.estado)) {
-      return Response.json({
-        error: `La orden ya no admite esta decision (estado actual: ${ot.estado})`,
-        current_status: ot.estado,
-      }, { status: 409 });
-    }
-  }
-
-  if (approved && quote.diagnostico_tecnico_id) {
-    const documents = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
-      organization_id: quote.organization_id,
-      diagnostico_id: quote.diagnostico_tecnico_id,
-      estado: { $in: ['EMITIDO', 'ENVIADO'] },
-    }, '-created_date', 5);
-    diagnosticDocument = documents?.[0] || null;
-    if (!diagnosticDocument) {
-      return Response.json({
-        error: 'No existe un documento de diagnostico vigente para registrar la aprobacion',
-      }, { status: 422 });
-    }
-  }
-
-  if (quote.estado !== targetQuoteStatus) {
-    if (['aprobada', 'rechazada'].includes(quote.estado)) {
-      return Response.json({ error: 'La cotizacion ya tiene una decision diferente' }, { status: 409 });
-    }
-    await base44.asServiceRole.entities.Cotizacion.update(quote.id, {
-      estado: targetQuoteStatus,
-      ...(approved ? {
-        aprobada_at: now,
-        contenido_aprobado_snapshot: {
-          items: quote.items,
-          subtotal: quote.subtotal,
-          descuento_total: quote.descuento_total,
-          impuesto: quote.impuesto,
-          total: quote.total,
-          version: quote.version,
-        },
-        ip_aprobacion: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
-      } : {
-        cliente_rechazo_motivo: rejectionReason || null,
-      }),
-    });
-  }
-
-  if (diagnosticDocument && diagnosticDocument.aprobacion_status !== 'APROBADA') {
-    await base44.asServiceRole.entities.DiagnosticoDocumento.update(diagnosticDocument.id, {
-      aprobacion_status: 'APROBADA',
-      aprobacion_at: now,
-      metodo_aprobacion: 'PORTAL_DIGITAL',
-    });
-  }
-
-  if (!ot) {
+    const now = new Date().toISOString();
+    const claim = await claimPublicQuoteDecision(base44, quote, targetStatus, operationKey, now);
+    quote = claim.quote;
+    if (targetStatus === 'APROBADA') await ensureDiagnosticApprovalEvidence(base44, quote, now);
+    const otResult = await ensurePublicDecisionWorkOrder(base44, quote, ot, targetStatus, rejectionReason, now, lock);
+    await ensurePublicDecisionEvent(base44, quote, otResult.ot, targetStatus, operationKey, now);
+    const committedQuote = await commitPublicQuoteDecision(
+      base44,
+      quote,
+      targetStatus,
+      operationKey,
+      snapshot,
+      rejectionReason,
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+      now,
+    );
     return Response.json({
       success: true,
-      quote_id: quote.id,
+      idempotent: Boolean(claim.committed || claim.recovered || !otResult.transitioned),
+      quote_id: committedQuote?.id || quote.id,
       quote_status: targetQuoteStatus,
-      work_order_transitioned: false,
+      orden_trabajo_id: otResult.ot?.id || null,
+      previous_status: otResult.previousStatus,
+      new_status: targetStatus,
+      transitioned: otResult.transitioned,
+      decision_status: 'COMMITTED',
     });
-  }
-
-  let transitioned = false;
-  if (ot.estado !== targetStatus) {
-    const updatePayload = {
-      estado: targetStatus,
-      cliente_aprobado: approved,
-      cliente_aprobado_at: approved ? now : null,
-      cliente_rechazo_motivo: approved ? null : (rejectionReason || null),
-      ultima_actividad: approved
-        ? 'Cotizacion aprobada por el cliente desde el portal'
-        : 'Cotizacion rechazada por el cliente desde el portal',
-      ultima_actividad_at: now,
-    };
-    const updated = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
-      id: ot.id,
-      organization_id: ot.organization_id,
-      estado: ot.estado,
-    }, { $set: updatePayload });
-    if (updated?.updated !== 1) {
-      return Response.json({ error: 'La orden cambio mientras se registraba la decision' }, { status: 409 });
+  } catch (error) {
+    if (quote?.id && operationKey) {
+      await base44.asServiceRole.entities.Cotizacion.updateMany({
+        id: quote.id,
+        organization_id: quote.organization_id,
+        decision_status: 'PENDING',
+        decision_operation_key: operationKey,
+      }, { $set: { decision_error: String(error.message || error).slice(0, 500) } }).catch(() => null);
     }
-    transitioned = true;
+    return Response.json({
+      error: error.message || 'No se pudo registrar la decision comercial',
+      code: error.code || 'PUBLIC_QUOTE_DECISION_FAILED',
+      retryable: error.status >= 500 || !error.status,
+      decision_pending: Boolean(quote?.decision_status === 'PENDING' || operationKey),
+    }, { status: error.status || 500 });
+  } finally {
+    if (ot && lock?.acquired) {
+      try { await releaseLifecycleLock(base44, ot.organization_id, ot.id, lock); }
+      catch (error) { console.error('[publicQuoteDecision] lock release failed', error.message); }
+    }
   }
-
-  const eventType = approved ? 'TRANSITION_APROBADA' : 'CANCELADA';
-  const existingEvents = await base44.asServiceRole.entities.OTEvent.filter({
-    organization_id: ot.organization_id,
-    orden_trabajo_id: ot.id,
-    tipo: eventType,
-  }, '-created_date', 2);
-  if (!existingEvents?.length) {
-    await base44.asServiceRole.entities.OTEvent.create({
-      organization_id: ot.organization_id,
-      orden_trabajo_id: ot.id,
-      tipo: eventType,
-      created_by_user_id: 'portal_cliente',
-      processed: false,
-      created_at: now,
-    });
-  }
-
-  return Response.json({
-    success: true,
-    quote_id: quote.id,
-    quote_status: targetQuoteStatus,
-    orden_trabajo_id: ot.id,
-    previous_status: ot.estado,
-    new_status: targetStatus,
-    transitioned,
-  });
 }
 
 Deno.serve(async (req) => {
@@ -895,7 +1053,7 @@ Deno.serve(async (req) => {
     const runtimeUser = await base44.auth.me();
 
     if (!runtimeUser && body.customer_token) {
-      return handlePublicCustomerDecision({ base44, body, req });
+      return handlePublicCustomerDecisionV2({ base44, body, req });
     }
 
     if (!runtimeUser) {

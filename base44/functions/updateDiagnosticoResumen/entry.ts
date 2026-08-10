@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -25,19 +25,12 @@ Deno.serve(async (req) => {
     }
 
     // 3. VALIDACIÓN MULTI-TENANT (asServiceRole omite RLS — validar manualmente)
-    const orgId = user.organization_id || user.impersonating_org_id;
-    if (ot.organization_id !== orgId) {
-      return Response.json({ error: 'Forbidden: acceso denegado' }, { status: 403 });
-    }
-    if (user.is_super_admin !== true) {
-      const accounts = await base44.asServiceRole.entities.UserAccount.filter({
-        user_id: user.id,
-        organization_id: orgId,
-      }, 10);
-      if (!(accounts || []).some(isCanonicalActiveUserAccount)) {
-        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
-      }
-    }
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      organizationHint: ot.organization_id,
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SUPPORT'],
+    });
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    const orgId = authorization.organizationId;
 
     if (audit_event?.type === 'PRE_DIAGNOSTICO_EDITADO') {
       const changedFields = Array.isArray(audit_event.changed_fields)

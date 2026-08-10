@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { eventMatchesCurrentWorkOrderState, requiredWorkOrderStateForEvent } from '../_shared/lifecycleSecurity.ts';
 
 /*
@@ -174,14 +174,9 @@ Deno.serve(async (req) => {
 
     const { organization_id, orden_trabajo_id, tipo, processed } = evento;
 
-    if (callerUser && callerUser.is_super_admin !== true) {
-      const callerAccounts = await base44.asServiceRole.entities.UserAccount.filter({
-        user_id: callerUser.id,
-        organization_id,
-      }, 10);
-      if (!(callerAccounts || []).some(isCanonicalActiveUserAccount)) {
-        return Response.json({ error: 'Acceso denegado para el tenant del evento' }, { status: 403 });
-      }
+    if (callerUser) {
+      const authorization = await resolveAuthorizedContext(base44, callerUser, { organizationHint: organization_id });
+      if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
     }
 
     // ── 4. Guard: organization_id obligatorio ───────────────────────────────────

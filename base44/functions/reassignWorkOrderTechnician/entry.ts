@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 // Assignment is an intake operation owned by administration and sales.
 // Keep this contract aligned with workflowConfig and both assignment UIs.
@@ -41,44 +41,17 @@ async function loadWorkOrder(base44, orgId, workOrderId) {
 }
 
 async function resolveCaller(base44, user) {
-  const isSuperAdmin = user.is_super_admin === true || user.data?.is_super_admin === true;
-
-  if (isSuperAdmin) {
-    if (!user.impersonating_org_id) {
-      return {
-        error: 'SUPER_ADMIN debe seleccionar una organizacion antes de asignar tecnicos',
-        code: 'SUPER_ADMIN_ORGANIZATION_REQUIRED',
-      };
-    }
-    return {
-      orgId: user.impersonating_org_id,
-      effectiveRole: 'ORG_ADMIN',
-      isSuperAdmin: true,
-    };
-  }
-
-  const orgHint = user.impersonating_org_id || user.organization_id || null;
-  const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 5);
-  const eligibleAccounts = (accounts || []).filter(isCanonicalActiveUserAccount);
-
-  let account = null;
-  if (orgHint) {
-    account = eligibleAccounts.find(candidate => candidate.organization_id === orgHint) || null;
-  } else if (eligibleAccounts.length === 1) {
-    account = eligibleAccounts[0];
-  }
-
-  if (!account) {
-    return {
-      error: 'No existe una cuenta activa para la organizacion seleccionada',
-      code: 'CALLER_ACCOUNT_NOT_ACTIVE',
-    };
-  }
-
+  const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: AUTHORIZED_ROLES });
+  if (!authorization.ok) return {
+    error: authorization.error,
+    code: authorization.error?.includes('rol')
+      ? 'ASSIGNMENT_ROLE_NOT_AUTHORIZED'
+      : 'CALLER_ACCOUNT_NOT_ACTIVE',
+  };
   return {
-    orgId: account.organization_id,
-    effectiveRole: account.role,
-    isSuperAdmin: false,
+    orgId: authorization.organizationId,
+    effectiveRole: authorization.role,
+    isSuperAdmin: authorization.isSuperAdmin,
   };
 }
 

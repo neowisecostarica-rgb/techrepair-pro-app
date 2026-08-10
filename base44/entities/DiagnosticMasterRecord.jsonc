@@ -197,52 +197,35 @@
     "read": {
       "$or": [
         {
-          "organization_id": "{{user.organization_id}}"
+          "organization_id": "{{user.data.organization_id}}"
         },
         {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
+          "user_condition": { "role": "admin" }
         }
       ]
     },
     "create": {
       "$or": [
         {
-          "organization_id": "{{user.organization_id}}"
+          "organization_id": "{{user.data.organization_id}}"
         },
         {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
+          "user_condition": { "role": "admin" }
         }
       ]
     },
     "update": {
       "$or": [
         {
-          "organization_id": "{{user.organization_id}}"
+          "organization_id": "{{user.data.organization_id}}"
         },
         {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
+          "user_condition": { "role": "admin" }
         }
       ]
     },
     "delete": {
-      "user_condition": {
-        "is_super_admin": true
-      }
+      "user_condition": { "role": "admin" }
     }
   }
 }

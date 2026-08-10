@@ -8,6 +8,7 @@
 // have been archived and must NOT be reactivated.
 // ============================================================
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 const EVENT_CONFIG = {
   OT_CREATED: {
@@ -179,11 +180,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Missing record or record.id" }, { status: 400 });
     }
 
-    const orgId = user.organization_id || user.impersonating_org_id;
-    if (record.organization_id && orgId && record.organization_id !== orgId) {
-      console.error(`[handleOTLifecycleEvent] Forbidden — OT org: ${record.organization_id}, user org: ${orgId}`);
-      return Response.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      organizationHint: record.organization_id || null,
+    });
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    const orgId = authorization.organizationId;
 
     if (!_trigger || !EVENT_CONFIG[_trigger]) {
       console.warn(`[handleOTLifecycleEvent] Trigger inválido o no reconocido: "${_trigger}" — OT: ${record.id}`);

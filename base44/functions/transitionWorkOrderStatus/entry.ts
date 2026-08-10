@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { evaluateCurrentQaEvidence } from '../_shared/qaEvidence.ts';
 
 // ─── STATE MACHINE OFICIAL ────────────────────────────────────────────────────
@@ -917,39 +917,12 @@ Deno.serve(async (req) => {
     // El request body nunca es una fuente confiable de identidad. Las llamadas
     // internas deben conservar el contexto de la sesión original; esta función
     // resuelve siempre organización y rol desde runtimeUser/UserAccount.
-    let effectiveUser;
-    let orgId;
-    let effectiveRole;
-    let isSuperAdmin;
-
-    isSuperAdmin = runtimeUser.is_super_admin === true || runtimeUser.data?.is_super_admin === true;
-    if (isSuperAdmin) {
-      orgId = runtimeUser.impersonating_org_id || runtimeUser.organization_id;
-      effectiveRole = 'SUPER_ADMIN';
-      effectiveUser = runtimeUser;
-    } else {
-      const orgHint = runtimeUser.impersonating_org_id || runtimeUser.organization_id || null;
-      const userAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: runtimeUser.id }, 5);
-      if (!userAccounts || userAccounts.length === 0) {
-        return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
-      }
-      const account = orgHint
-        ? userAccounts.find(a => a.organization_id === orgHint)
-        : (userAccounts.length === 1 ? userAccounts[0] : null);
-      if (!account) {
-        return Response.json({ error: 'No existe una cuenta para la organizacion activa' }, { status: 403 });
-      }
-      if (!isCanonicalActiveUserAccount(account)) {
-        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
-      }
-      orgId = account.organization_id;
-      effectiveRole = account.role;
-      effectiveUser = runtimeUser;
-    }
-
-    if (!orgId) {
-      return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
-    }
+    const authorization = await resolveAuthorizedContext(base44, runtimeUser);
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    const effectiveUser = runtimeUser;
+    const orgId = authorization.organizationId;
+    const effectiveRole = authorization.role;
+    const isSuperAdmin = authorization.isSuperAdmin;
 
     if (!orden_trabajo_id) {
       return Response.json({ error: 'orden_trabajo_id es obligatorio' }, { status: 400 });

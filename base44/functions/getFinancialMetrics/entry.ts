@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -8,10 +9,10 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const allowedRoles = ["ORG_ADMIN", "BRANCH_ADMIN"];
-  if (!allowedRoles.includes(user.role)) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
 
   const body = await req.json().catch(() => ({}));
 
@@ -23,10 +24,7 @@ Deno.serve(async (req) => {
   const periodStart = body.period_start || defaultStart;
   const periodEnd = body.period_end || defaultEnd;
 
-  const orgId = user.organization_id || user.impersonating_org_id;
-  if (!orgId) {
-    return Response.json({ error: 'No organization found for user' }, { status: 400 });
-  }
+  const orgId = authorization.organizationId;
 
   // 1. Obtener Organization para marketing_spend
   const orgs = await base44.asServiceRole.entities.Organization.filter({ id: orgId });

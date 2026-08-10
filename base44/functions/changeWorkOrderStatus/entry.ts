@@ -7,6 +7,7 @@
 // motivo_pausa) and blocks any attempt to modify `estado`.
 // ============================================================
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 // ─── LEGACY — CAMPOS AUXILIARES ÚNICAMENTE ────────────────────────────────────
 // Esta función ya NO controla el lifecycle de OrdenTrabajo.
@@ -29,8 +30,11 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const orgId = user.organization_id || user.impersonating_org_id;
-    if (!orgId) return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
+    });
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    const orgId = authorization.organizationId;
 
     const VALID_ESTADOS_ATENCION = ['ACTIVO', 'PAUSADO', 'ESPERANDO'];
     const VALID_MOTIVOS_PAUSA = ['esperando_repuesto', 'esperando_cliente', 'interrupcion', 'otro'];
@@ -68,7 +72,7 @@ Deno.serve(async (req) => {
     }
 
     // Validar que la OT pertenezca a la organización del usuario
-    const ordenes = await base44.entities.OrdenTrabajo.filter({ id: orden_trabajo_id, organization_id: orgId });
+    const ordenes = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id, organization_id: orgId });
     if (!ordenes || ordenes.length === 0) {
       return Response.json({ error: 'Orden de trabajo no encontrada en esta organización' }, { status: 404 });
     }

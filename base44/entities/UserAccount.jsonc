@@ -69,5 +69,11 @@
     "user_email",
     "role",
     "organization_id"
-  ]
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
 }

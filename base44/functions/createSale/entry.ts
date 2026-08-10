@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 import { applyInventoryStockCas, rollbackInventoryStockCas } from '../_shared/inventoryStockCas.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 /*
  * createSale — TRP-MVP-003
@@ -874,8 +875,11 @@ Deno.serve(async req => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'No autenticado' }, { status: 401 });
-  const orgId = user.impersonating_org_id || user.organization_id;
-  if (!orgId) return Response.json({ error: 'organization_id no resuelto' }, { status: 403 });
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'],
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+  const orgId = authorization.organizationId;
 
   let anchor = null;
   let lock = null;

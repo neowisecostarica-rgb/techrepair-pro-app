@@ -80,9 +80,8 @@
     "create": false,
     "read": {
       "$or": [
-        { "organization_id": "{{user.organization_id}}" },
-        { "organization_id": "{{user.impersonating_org_id}}" },
-        { "user_condition": { "is_super_admin": true } }
+        { "organization_id": "{{user.data.organization_id}}" },
+        { "user_condition": { "role": "admin" } }
       ]
     },
     "update": false,

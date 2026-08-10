@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -8,23 +8,15 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     // ── PATRÓN OFICIAL: RESOLUCIÓN CONSOLIDADA DE organization_id ──────────────
-    const orgHint = user.impersonating_org_id || user.organization_id || null;
-    let orgId = user.is_super_admin === true ? orgHint : null;
-    if (user.is_super_admin !== true && user.id) {
-      const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 10);
-      const activeAccounts = (accounts || []).filter(isCanonicalActiveUserAccount);
-      const account = orgHint
-        ? activeAccounts.find(candidate => candidate.organization_id === orgHint)
-        : (activeAccounts.length === 1 ? activeAccounts[0] : null);
-      orgId = account?.organization_id || null;
-    }
-    if (!orgId) return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
+    const authorization = await resolveAuthorizedContext(base44, user);
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    const orgId = authorization.organizationId;
     // ── FIN PATRÓN OFICIAL ─────────────────────────────────────────────────────
 
     const [ordenes, clientes, equipos] = await Promise.all([
-      base44.entities.OrdenTrabajo.filter({ organization_id: orgId }, '-created_date', 100),
-      base44.entities.Cliente.filter({ organization_id: orgId }),
-      base44.entities.Equipo.filter({ organization_id: orgId }),
+      base44.asServiceRole.entities.OrdenTrabajo.filter({ organization_id: orgId }, '-created_date', 100),
+      base44.asServiceRole.entities.Cliente.filter({ organization_id: orgId }),
+      base44.asServiceRole.entities.Equipo.filter({ organization_id: orgId }),
     ]);
 
     // Enriquecer con datos de cliente y equipo para la UI

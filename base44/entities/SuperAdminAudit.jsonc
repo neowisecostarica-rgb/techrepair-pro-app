@@ -22,7 +22,11 @@
         "view_logs",
         "actividad_started",
         "actividad_finished",
-        "actividad_blocked"
+        "actividad_blocked",
+        "create_org",
+        "change_plan",
+        "update_org",
+        "membership_admin"
       ],
       "description": "Acci\u00f3n realizada"
     },
@@ -41,11 +45,32 @@
     "ip_address": {
       "type": "string",
       "description": "Direcci\u00f3n IP (opcional)"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp derivado por backend"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Identificador de correlacion de la accion"
+    },
+    "metadata": {
+      "type": "string",
+      "description": "Metadata JSON sanitizada por backend"
     }
   },
   "required": [
     "super_admin_id",
     "super_admin_email",
-    "action"
-  ]
+    "action",
+    "recorded_at",
+    "correlation_id"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
 }

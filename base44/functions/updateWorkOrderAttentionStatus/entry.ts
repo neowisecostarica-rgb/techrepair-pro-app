@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 /*
 =====================================
@@ -64,44 +64,12 @@ Deno.serve(async (req) => {
     }
 
     // ── 4. Resolver cuenta, rol y organización desde contexto autorizado ────────
-    const isSuperAdmin = user.is_super_admin === true || user.data?.is_super_admin === true;
-    let orgId;
-    let effectiveRole;
-
-    if (isSuperAdmin) {
-      orgId = user.impersonating_org_id || user.organization_id;
-      effectiveRole = 'SUPER_ADMIN';
-    } else {
-      const orgHint = user.impersonating_org_id || user.organization_id || null;
-      const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 5);
-      if (!accounts || accounts.length === 0) {
-        return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
-      }
-
-      const account = orgHint
-        ? accounts.find(a => a.organization_id === orgHint)
-        : (accounts.length === 1 ? accounts[0] : null);
-      if (!account) {
-        return Response.json({ error: 'No existe una cuenta autorizada para la organización activa' }, { status: 403 });
-      }
-      if (!isCanonicalActiveUserAccount(account)) {
-        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
-      }
-
-      orgId = account.organization_id;
-      effectiveRole = account.role;
+    const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: AUTHORIZED_ROLES });
+    if (!authorization.ok) {
+      return Response.json({ error: authorization.error, code: 'ATTENTION_STATUS_ROLE_FORBIDDEN' }, { status: authorization.status });
     }
-
-    if (!orgId) {
-      return Response.json({ error: 'organization_id no disponible en sesión' }, { status: 403 });
-    }
-
-    if (!isSuperAdmin && !AUTHORIZED_ROLES.includes(effectiveRole)) {
-      return Response.json({
-        error: `El rol "${effectiveRole}" no está autorizado para modificar el estado de atención.`,
-        code: 'ATTENTION_STATUS_ROLE_FORBIDDEN',
-      }, { status: 403 });
-    }
+    const orgId = authorization.organizationId;
+    const effectiveRole = authorization.role;
 
     // ── 5. Cargar OrdenTrabajo y validar ownership ──────────────────────────────
     let ot;

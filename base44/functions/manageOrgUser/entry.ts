@@ -4,7 +4,8 @@
  * Solo ORG_ADMIN puede ejecutar (verificado server-side).
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -21,20 +22,20 @@ Deno.serve(async (req) => {
   }
 
   // Verificar que sea ORG_ADMIN de la organización solicitada o SUPER_ADMIN.
-  const callerAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id });
-  const isSuperAdmin = user.is_super_admin === true;
-  const callerAccount = callerAccounts.find(account =>
-    account.organization_id === organizationId &&
-    account.role === 'ORG_ADMIN' &&
-    isCanonicalActiveUserAccount(account)
-  );
-  const isOrgAdmin = !!callerAccount;
-
-  if (!isSuperAdmin && !isOrgAdmin) {
-    return Response.json({ error: 'Acceso denegado: se requiere ORG_ADMIN' }, { status: 403 });
-  }
-
-  const effectiveOrgId = organizationId;
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    organizationHint: organizationId,
+    allowedRoles: ['ORG_ADMIN'],
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+  const effectiveOrgId = authorization.organizationId;
+  const auditMembership = async (operation, accountId) => {
+    if (!authorization.isSuperAdmin) return;
+    await appendSuperAdminAudit(base44, user, {
+      action: 'membership_admin',
+      organizationId: effectiveOrgId,
+      metadata: { operation, account_id: accountId || null },
+    });
+  };
   const allowedRoles = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
 
   if (action === 'invite') {
@@ -76,6 +77,12 @@ Deno.serve(async (req) => {
         active: false,
         invited_at: now,
       });
+      try {
+        await auditMembership('invite_created', created.id);
+      } catch (error) {
+        await base44.asServiceRole.entities.UserAccount.delete(created.id);
+        throw error;
+      }
       return Response.json({ success: true, action: 'created', account: created });
     }
 
@@ -96,6 +103,18 @@ Deno.serve(async (req) => {
       active: false,
       invited_at: now,
     });
+    try {
+      await auditMembership('invite_reissued', updated.id);
+    } catch (error) {
+      await base44.asServiceRole.entities.UserAccount.update(account.id, {
+        role: account.role,
+        branch_id: account.branch_id || null,
+        status: account.status,
+        active: account.status === 'active',
+        invited_at: account.invited_at || null,
+      });
+      throw error;
+    }
     return Response.json({ success: true, action: 'reinvited', account: updated });
   }
 
@@ -130,6 +149,15 @@ Deno.serve(async (req) => {
       status,
       active: status === 'active',
     });
+    try {
+      await auditMembership('status_updated', updated.id);
+    } catch (error) {
+      await base44.asServiceRole.entities.UserAccount.update(targetAccountId, {
+        status: target[0].status,
+        active: target[0].status === 'active',
+      });
+      throw error;
+    }
     return Response.json({ success: true, account: updated });
   }
 
@@ -172,6 +200,17 @@ Deno.serve(async (req) => {
       status,
       active: status === 'active',
     });
+    try {
+      await auditMembership('account_updated', updated.id);
+    } catch (error) {
+      await base44.asServiceRole.entities.UserAccount.update(targetAccountId, {
+        role: target[0].role,
+        branch_id: target[0].branch_id || null,
+        status: target[0].status,
+        active: target[0].status === 'active',
+      });
+      throw error;
+    }
     return Response.json({ success: true, account: updated });
   }
 
@@ -204,6 +243,15 @@ Deno.serve(async (req) => {
       role,
       branch_id: branch_id !== undefined ? branch_id : target[0].branch_id,
     });
+    try {
+      await auditMembership('role_updated', updated.id);
+    } catch (error) {
+      await base44.asServiceRole.entities.UserAccount.update(targetAccountId, {
+        role: target[0].role,
+        branch_id: target[0].branch_id || null,
+      });
+      throw error;
+    }
     return Response.json({ success: true, account: updated });
   }
 

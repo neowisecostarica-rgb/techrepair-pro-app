@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 const LOCK_OPERATION = 'RECEPTION_CREATE';
 const VALID_EQUIPMENT_TYPES = ['laptop', 'desktop', 'tablet', 'smartphone', 'impresora', 'otro'];
@@ -119,15 +119,10 @@ async function releaseResourceLease(base44, lease, correlationId) {
 }
 
 async function resolveOrganization(base44, user) {
-  const orgHint = user.impersonating_org_id || user.organization_id || null;
-  if (user.is_super_admin === true) return orgHint;
-  if (!user.id) return null;
-  const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, undefined, 10);
-  const activeAccounts = (accounts || []).filter(isCanonicalActiveUserAccount);
-  const account = orgHint
-    ? activeAccounts.find(candidate => candidate.organization_id === orgHint)
-    : (activeAccounts.length === 1 ? activeAccounts[0] : null);
-  return account?.organization_id || null;
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'],
+  });
+  return authorization.ok ? authorization.organizationId : null;
 }
 
 function buildDmrNumber(correlationId) {
@@ -154,15 +149,12 @@ function buildSuccess({ correlationId, equipment, equipmentCreated, workOrder, d
 }
 
 async function auditReception(base44, action, orgId, details) {
-  try {
-    await base44.asServiceRole.entities.SuperAdminAudit.create({
-      action,
-      target_organization_id: orgId,
-      details: JSON.stringify({ ...details, timestamp: nowIso() }),
-    });
-  } catch (error) {
-    console.error(`[createWorkOrder] Audit ${action} falló: ${error.message}`);
-  }
+  console.info('[createWorkOrder] operational trace', {
+    action,
+    organization_id: orgId,
+    ...details,
+    timestamp: nowIso(),
+  });
 }
 
 async function findOne(entity, query) {

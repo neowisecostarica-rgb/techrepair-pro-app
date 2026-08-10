@@ -65,15 +65,12 @@ function buildLegalSnapshot(ot) {
 // ── AUDITOR INLINEADO ────────────────────────────────────────────────────────
 
 async function auditLog(base44, action, orgId, details) {
-  try {
-    await base44.asServiceRole.entities.SuperAdminAudit.create({
-      action,
-      target_organization_id: orgId,
-      details: JSON.stringify({ ...details, timestamp: new Date().toISOString() })
-    });
-  } catch (e) {
-    console.error(`[dmrOrchestrator] audit log falló (${action}): ${e.message}`);
-  }
+  console.info('[dmrOrchestrator] operational trace', {
+    action,
+    organization_id: orgId,
+    ...details,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 // ── HANDLER PRINCIPAL ────────────────────────────────────────────────────────

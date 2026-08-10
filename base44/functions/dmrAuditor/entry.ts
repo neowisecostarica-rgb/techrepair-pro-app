@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { isCanonicalSuperAdmin } from '../_shared/userAuthorization.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // dmrAuditor — Endpoint dedicado de observabilidad del DMR
@@ -17,7 +18,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (user.role !== 'admin' && !user.is_super_admin) {
+    if (!isCanonicalSuperAdmin(user)) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 

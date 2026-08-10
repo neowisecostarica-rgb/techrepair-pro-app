@@ -29,7 +29,7 @@
  */
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
@@ -204,40 +204,11 @@ Deno.serve(async (req) => {
     }
 
     // ── 3. Resolver orgId y rol desde UserAccount (SOT) ───────────────────────
-    const isSuperAdmin = runtimeUser.is_super_admin === true || runtimeUser.data?.is_super_admin === true;
-    let orgId;
-    let effectiveRole;
-    let tecnicoEmail = runtimeUser.email;
-
-    if (isSuperAdmin) {
-      orgId = runtimeUser.impersonating_org_id || runtimeUser.organization_id;
-      effectiveRole = 'SUPER_ADMIN';
-    } else {
-      const orgHint = runtimeUser.impersonating_org_id || runtimeUser.organization_id || null;
-      const userAccounts = await base44.asServiceRole.entities.UserAccount.filter(
-        { user_id: runtimeUser.id }, 5
-      );
-
-      if (!userAccounts || userAccounts.length === 0) {
-        return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
-      }
-
-      const account = orgHint
-        ? userAccounts.find(a => a.organization_id === orgHint)
-        : (userAccounts.length === 1 ? userAccounts[0] : null);
-
-      if (!isCanonicalActiveUserAccount(account)) {
-        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
-      }
-
-      orgId = account.organization_id;
-      effectiveRole = account.role;
-      tecnicoEmail = account.user_email || runtimeUser.email;
-    }
-
-    if (!orgId) {
-      return Response.json({ error: 'organization_id no resuelto' }, { status: 403 });
-    }
+    const authorization = await resolveAuthorizedContext(base44, runtimeUser, { allowedRoles: ROLES_INICIO_TECNICO });
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    const orgId = authorization.organizationId;
+    const effectiveRole = authorization.role;
+    const tecnicoEmail = authorization.account?.user_email || runtimeUser.email;
 
     // CC-001-02: no tratar todo rol no administrativo como técnico.
     // Rechazar antes de consultar reglas con side-effects o crear registros.

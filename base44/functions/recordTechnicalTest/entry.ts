@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 const VALID_TEST_TYPES = ['funcional', 'stress', 'rendimiento', 'calidad', 'visual'];
 const VALID_RESULTS = ['exitoso', 'fallido', 'parcial'];
@@ -19,14 +19,8 @@ Deno.serve(async (req) => {
   try { body = await req.json(); }
   catch { return errorResponse(400, 'INVALID_BODY', 'Body invalido'); }
 
-  const orgHint = user.impersonating_org_id || user.organization_id || null;
-  const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 10);
-  const account = (accounts || []).find(candidate =>
-    candidate.organization_id === orgHint && isCanonicalActiveUserAccount(candidate)
-  );
-  if (!account || account.role !== 'TECHNICIAN') {
-    return errorResponse(403, 'ASSIGNED_TECHNICIAN_REQUIRED', 'Solo el tecnico activo asignado puede registrar evidencia QA');
-  }
+  const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: ['TECHNICIAN'] });
+  if (!authorization.ok) return errorResponse(authorization.status, 'ASSIGNED_TECHNICIAN_REQUIRED', authorization.error);
 
   const { orden_trabajo_id, tipo_prueba, descripcion, resultado, observaciones, evidencia_urls } = body;
   if (!orden_trabajo_id || !VALID_TEST_TYPES.includes(tipo_prueba) || !VALID_RESULTS.includes(resultado)) {
@@ -35,7 +29,7 @@ Deno.serve(async (req) => {
 
   const [ot] = await base44.asServiceRole.entities.OrdenTrabajo.filter({
     id: orden_trabajo_id,
-    organization_id: account.organization_id,
+    organization_id: authorization.organizationId,
   }, 1);
   if (!ot) return errorResponse(404, 'WORK_ORDER_NOT_FOUND', 'Orden de trabajo no encontrada');
   if (ot.estado !== 'PRUEBAS') {
@@ -49,7 +43,7 @@ Deno.serve(async (req) => {
   const lockAt = new Date().toISOString();
   const claimed = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
     id: ot.id,
-    organization_id: account.organization_id,
+    organization_id: authorization.organizationId,
     estado: 'PRUEBAS',
     $or: [{ lifecycle_lock_token: { $exists: false } }, { lifecycle_lock_token: null }],
   }, { $set: {

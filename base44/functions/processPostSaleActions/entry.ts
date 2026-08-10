@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 /*
 =====================================
@@ -97,10 +98,11 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  const orgId = user.organization_id || user.impersonating_org_id || user.data?.impersonating_org_id;
-  if (!orgId) {
-    return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
-  }
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'],
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+  const orgId = authorization.organizationId;
 
   // ── 2. Parse body ─────────────────────────────────────────────────────────────
   let body;

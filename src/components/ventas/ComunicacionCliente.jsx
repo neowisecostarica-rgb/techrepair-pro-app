@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -11,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { MessageSquare, Send, Mail, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { withOrgId } from '@/components/hooks/useOrgData';
+import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
 
 const PLANTILLAS = {
   estado_ot: {
@@ -36,32 +35,21 @@ const PLANTILLAS = {
   }
 };
 
-export default function ComunicacionCliente({ clienteId, ordenTrabajoId, user, userAccount }) {
+export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente, mensajes = [] }) {
   const [showModal, setShowModal] = useState(false);
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState('');
   const [asunto, setAsunto] = useState('');
   const [contenido, setContenido] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: mensajes = [] } = useQuery({
-    queryKey: ['mensajes-cliente', clienteId],
-    queryFn: () => base44.entities.MensajeCliente.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-  });
-
-  const { data: cliente } = useQuery({
-    queryKey: ['cliente-comunicacion', clienteId],
-    queryFn: () => base44.entities.Cliente.filter({ id: clienteId }).then(result => result[0]),
-    enabled: !!clienteId,
-  });
-
   const createMensajeMutation = useMutation({
-    mutationFn: (data) => base44.entities.MensajeCliente.create(withOrgId(data, userAccount)),
+    mutationFn: (data) => recordCustomerMessage(clienteId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mensajes-cliente'] });
+      queryClient.invalidateQueries({ queryKey: customer360QueryKeys.detail(clienteId) });
       setShowModal(false);
       resetForm();
     },
+    onError: (error) => alert(error?.message || 'No se pudo registrar el mensaje'),
   });
 
   const resetForm = () => {
@@ -108,8 +96,6 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, user, u
     createMensajeMutation.mutate({
       cliente_id: clienteId,
       orden_trabajo_id: ordenTrabajoId || null,
-      remitente_id: user.id,
-      remitente_nombre: user.full_name || user.email,
       tipo: plantillaSeleccionada || 'general',
       plantilla_usada: plantillaSeleccionada ? PLANTILLAS[plantillaSeleccionada].nombre : null,
       asunto: asunto,

@@ -1,6 +1,4 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { Badge } from '@/components/ui/badge';
 import { Wrench, ShoppingCart, FileText, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
@@ -86,31 +84,7 @@ function FilaVacia({ texto }) {
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
-export default function SeguimientoCliente({ clienteId }) {
-  const { data: ordenes = [] } = useQuery({
-    queryKey: ['ordenes-cliente', clienteId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-  });
-
-  const { data: ventas = [] } = useQuery({
-    queryKey: ['ventas-cliente', clienteId],
-    queryFn: () => base44.entities.Venta.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-  });
-
-  const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones-cliente', clienteId],
-    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-  });
-
-  const { data: mensajes = [] } = useQuery({
-    queryKey: ['mensajes-cliente-hist', clienteId],
-    queryFn: () => base44.entities.MensajeCliente.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-  });
-
+export default function SeguimientoCliente({ ordenes = [], ventas = [], cotizaciones = [], mensajes = [] }) {
   const fmt = (d) => {
     try { return format(new Date(d), 'dd/MM/yy', { locale: es }); }
     catch { return '—'; }

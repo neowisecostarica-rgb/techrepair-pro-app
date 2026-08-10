@@ -1,8 +1,6 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Phone, Mail, MessageCircle, Pencil, Building2, User, CreditCard, Calendar, ExternalLink } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -56,14 +54,7 @@ function BadgeTipo({ tipo }) {
   );
 }
 
-export default function ClientePerfilHeader({ cliente, onEditarCliente }) {
-  const { data: ordenes = [] } = useQuery({
-    queryKey: ['ots-cliente-header', cliente.id],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ cliente_id: cliente.id }),
-    enabled: !!cliente.id,
-    staleTime: 60_000,
-  });
-
+export default function ClientePerfilHeader({ cliente, ordenes = [], onEditarCliente }) {
   // OT activa más reciente (orden por fecha_ingreso desc)
   const otActiva = ordenes
     .filter(o => ESTADOS_OT_ACTIVA.includes(o.estado))

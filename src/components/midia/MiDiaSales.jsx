@@ -15,21 +15,16 @@ import { format } from 'date-fns';
 import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
 import { createPageUrl } from '../../utils';
 import { Link } from 'react-router-dom';
+import { crmQueryKeys, invokeCrm } from '@/api/crm';
 
 export default function MiDiaSales({ user, effectiveOrgId }) {
-  const { data: leads = [] } = useQuery({
-    queryKey: ['leads', effectiveOrgId],
-    queryFn: async () => {
-      const leads = await base44.entities.Lead.filter(
-        { organization_id: effectiveOrgId },
-        '-created_date',
-        50
-      );
-      return leads;
-    },
+  const { data: crmData } = useQuery({
+    queryKey: crmQueryKeys.list(effectiveOrgId),
+    queryFn: () => invokeCrm('list', effectiveOrgId),
     enabled: !!effectiveOrgId,
     staleTime: 30000,
   });
+  const leads = crmData?.leads || [];
 
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['cotizaciones', effectiveOrgId],

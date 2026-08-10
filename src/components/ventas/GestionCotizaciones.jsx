@@ -19,6 +19,7 @@ import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
+import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
 
 export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [], openDirectly = false }) {
   const [showModal, setShowModal] = useState(openDirectly);
@@ -91,21 +92,18 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
         throw new Error('El cliente no tiene teléfono ni correo registrado');
       }
       
-      return await base44.entities.MensajeCliente.create(withOrgId({
-        cliente_id: clienteActual,
+      return recordCustomerMessage(clienteActual, {
         orden_trabajo_id: ordenTrabajoId || null,
-        remitente_id: user.id,
-        remitente_nombre: user.full_name || user.email,
         tipo: 'seguimiento',
         plantilla_usada: 'Seguimiento de Cotización',
         asunto: 'Seguimiento de tu cotización',
         contenido: mensaje,
         canal: canal,
-        enviado: false,
-      }));
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mensajes-cliente'] });
+      queryClient.invalidateQueries({ queryKey: customer360QueryKeys.detail(clienteActual) });
       alert('Canal externo abierto y seguimiento registrado. Confirma el envío en WhatsApp o correo.');
     },
   });

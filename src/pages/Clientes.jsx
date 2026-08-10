@@ -18,6 +18,7 @@ import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
 import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
 import AtencionRequerida from '@/components/clientes/AtencionRequerida';
+import { customer360QueryKeys, getCustomer360 } from '@/api/customer360';
 
 export default function Clientes() {
   return (
@@ -43,6 +44,18 @@ function ClientesContent() {
       return base44.entities.Cliente.filter({ organization_id: effectiveOrgId });
     },
     enabled: !!effectiveOrgId,
+  });
+
+  const {
+    data: customer360,
+    isLoading: customer360Loading,
+    isError: customer360Error,
+    error: customer360Failure,
+  } = useQuery({
+    queryKey: customer360QueryKeys.detail(selectedCliente?.id),
+    queryFn: () => getCustomer360(selectedCliente.id),
+    enabled: Boolean(showDetalleModal && selectedCliente?.id && user),
+    staleTime: 30_000,
   });
 
 
@@ -185,11 +198,20 @@ function ClientesContent() {
           <DialogHeader>
             <DialogTitle>Perfil del Cliente</DialogTitle>
           </DialogHeader>
-          {selectedCliente && user && (
+          {customer360Loading && (
+            <div className="py-8 text-center text-sm text-slate-500">Cargando expediente del cliente...</div>
+          )}
+          {customer360Error && (
+            <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+              {customer360Failure?.message || 'No se pudo cargar el expediente del cliente.'}
+            </div>
+          )}
+          {selectedCliente && user && !customer360Loading && !customer360Error && customer360 && (
             <Tabs defaultValue="seguimiento" className="w-full">
               {/* ── Customer 360 Header ── */}
               <ClientePerfilHeader
-                cliente={selectedCliente}
+                cliente={customer360.cliente || selectedCliente}
+                ordenes={customer360.ordenes}
                 onEditarCliente={() => {
                   setShowDetalleModal(false);
                   setEditingCliente(selectedCliente);
@@ -197,11 +219,18 @@ function ClientesContent() {
                 }}
               />
 
-              <AtencionRequerida clienteId={selectedCliente.id} />
+              <AtencionRequerida
+                ordenes={customer360.ordenes}
+                cotizaciones={customer360.cotizaciones}
+              />
 
-              <ResumenEjecutivo clienteId={selectedCliente.id} />
+              <ResumenEjecutivo
+                ots={customer360.ordenes}
+                ventas={customer360.ventas}
+                cotizaciones={customer360.cotizaciones}
+              />
 
-              <EquiposCliente clienteId={selectedCliente.id} />
+              <EquiposCliente equipos={customer360.equipos} />
 
               <TabsList className="grid w-full grid-cols-3 mt-4">
                 <TabsTrigger value="seguimiento">
@@ -219,7 +248,12 @@ function ClientesContent() {
               </TabsList>
 
               <TabsContent value="seguimiento" className="space-y-4">
-                <SeguimientoCliente clienteId={selectedCliente.id} />
+                <SeguimientoCliente
+                  ordenes={customer360.ordenes}
+                  ventas={customer360.ventas}
+                  cotizaciones={customer360.cotizaciones}
+                  mensajes={customer360.mensajes}
+                />
               </TabsContent>
 
               <TabsContent value="cotizaciones">
@@ -235,8 +269,8 @@ function ClientesContent() {
                 <ComunicacionCliente
                   clienteId={selectedCliente.id}
                   ordenTrabajoId={null}
-                  user={user}
-                  userAccount={userAccount}
+                  cliente={customer360.cliente || selectedCliente}
+                  mensajes={customer360.mensajes}
                 />
               </TabsContent>
             </Tabs>

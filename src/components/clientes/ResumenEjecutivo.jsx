@@ -1,6 +1,4 @@
 import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { Wrench, DollarSign, FileText } from 'lucide-react';
 
 const ESTADOS_OT_ACTIVA = [
@@ -31,28 +29,7 @@ function StatCard({ icon: Icon, iconBg, title, rows }) {
   );
 }
 
-export default function ResumenEjecutivo({ clienteId }) {
-  const { data: ots = [] } = useQuery({
-    queryKey: ['ots-cliente-resumen', clienteId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-    staleTime: 60_000,
-  });
-
-  const { data: ventas = [] } = useQuery({
-    queryKey: ['ventas-cliente-resumen', clienteId],
-    queryFn: () => base44.entities.Venta.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-    staleTime: 60_000,
-  });
-
-  const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones-cliente-resumen', clienteId],
-    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-    staleTime: 60_000,
-  });
-
+export default function ResumenEjecutivo({ ots = [], ventas = [], cotizaciones = [] }) {
   const stats = useMemo(() => {
     const otsActivas = ots.filter(o => ESTADOS_OT_ACTIVA.includes(o.estado)).length;
     const ventasPagadas = ventas.filter(v => v.estado === 'pagada');

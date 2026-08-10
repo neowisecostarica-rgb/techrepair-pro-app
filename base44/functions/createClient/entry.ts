@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -6,8 +7,13 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const orgId = user.organization_id || user.impersonating_org_id;
-    if (!orgId) return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'],
+    });
+    if (!authorization.ok) {
+      return Response.json({ error: authorization.error }, { status: authorization.status });
+    }
+    const orgId = authorization.organizationId;
 
     const body = await req.json();
     const { nombre_completo, identificacion, tipo_cliente, telefono, email, direccion, notas } = body;
@@ -36,7 +42,7 @@ Deno.serve(async (req) => {
     console.log('[createClient] Iniciando creación de cliente', { orgId, nombre_completo, identificacion });
 
     console.log('[createClient] Enviando a entity.create...');
-    const cliente = await base44.entities.Cliente.create({
+    const cliente = await base44.asServiceRole.entities.Cliente.create({
       organization_id: orgId,
       nombre_completo: nombre_completo.trim(),
       identificacion: identificacionNormalizada,

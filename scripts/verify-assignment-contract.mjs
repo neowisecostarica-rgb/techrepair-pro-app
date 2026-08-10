@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { isCanonicalActiveUserAccount } from '../base44/functions/_shared/userAuthorization.ts';
+import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/reassignWorkOrderTechnician/entry.ts', import.meta.url);
 const queuePath = new URL('../src/pages/ColaRevision.jsx', import.meta.url);
@@ -46,7 +46,7 @@ function createScenario({
     ? {
         id: 'super-1',
         email: 'super@example.com',
-        is_super_admin: true,
+        role: 'admin',
         impersonating_org_id: 'org-a',
       }
     : {
@@ -144,6 +144,7 @@ function loadHandler(client) {
     Object,
     Response,
     isCanonicalActiveUserAccount,
+    resolveAuthorizedContext,
   };
   context.globalThis = context;
   vm.runInNewContext(

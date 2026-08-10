@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { isCanonicalActiveUserAccount } from '../base44/functions/_shared/userAuthorization.ts';
+import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/createWorkOrder/entry.ts', import.meta.url);
 const lockBackendPath = new URL('../base44/functions/resourceLockLite/entry.ts', import.meta.url);
@@ -137,6 +137,7 @@ function loadServerHandler(source, client, filename) {
     structuredClone,
     setTimeout,
     isCanonicalActiveUserAccount,
+    resolveAuthorizedContext,
   };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename });

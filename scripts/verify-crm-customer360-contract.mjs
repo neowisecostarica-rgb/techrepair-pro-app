@@ -23,7 +23,7 @@ function makeBase44(accounts) {
 
 {
   const authorization = await resolveAuthorizedContext(
-    makeBase44([{ user_id: 'user-1', organization_id: 'org-a', role: 'SALES', status: 'active' }]),
+    makeBase44([{ id: 'account-a', user_id: 'user-1', organization_id: 'org-a', role: 'SALES', status: 'active' }]),
     { id: 'user-1', organization_id: 'org-a' },
     { allowedRoles: ['SALES'] },
   );
@@ -34,7 +34,7 @@ function makeBase44(accounts) {
 
 {
   const authorization = await resolveAuthorizedContext(
-    makeBase44([{ user_id: 'user-1', organization_id: 'org-a', role: 'SALES', status: 'invited', active: true }]),
+    makeBase44([{ id: 'account-a', user_id: 'user-1', organization_id: 'org-a', role: 'SALES', status: 'invited', active: true }]),
     { id: 'user-1', organization_id: 'org-a' },
     { allowedRoles: ['SALES'] },
   );
@@ -46,8 +46,8 @@ function makeBase44(accounts) {
 {
   const authorization = await resolveAuthorizedContext(
     makeBase44([
-      { user_id: 'user-1', organization_id: 'org-a', role: 'SALES', status: 'active' },
-      { user_id: 'user-1', organization_id: 'org-b', role: 'SALES', status: 'active' },
+      { id: 'account-a', user_id: 'user-1', organization_id: 'org-a', role: 'SALES', status: 'active' },
+      { id: 'account-b', user_id: 'user-1', organization_id: 'org-b', role: 'SALES', status: 'active' },
     ]),
     { id: 'user-1' },
     { allowedRoles: ['SALES'] },
@@ -60,7 +60,7 @@ function makeBase44(accounts) {
 {
   const authorization = await resolveAuthorizedContext(
     makeBase44([]),
-    { id: 'super-1', is_super_admin: true, impersonating_org_id: 'org-a' },
+    { id: 'super-1', role: 'admin', impersonating_org_id: 'org-a' },
     { allowedRoles: ['ORG_ADMIN'] },
   );
   assert.equal(authorization.ok, true);
@@ -74,6 +74,7 @@ const crmGateway = await readFile(new URL('../base44/functions/crmGateway/entry.
 const customerGateway = await readFile(new URL('../base44/functions/customer360Gateway/entry.ts', import.meta.url), 'utf8');
 const customerCommunication = await readFile(new URL('../src/components/ventas/ComunicacionCliente.jsx', import.meta.url), 'utf8');
 const onboarding = await readFile(new URL('../src/pages/Onboarding.jsx', import.meta.url), 'utf8');
+const identityGateway = await readFile(new URL('../base44/functions/identityGateway/entry.ts', import.meta.url), 'utf8');
 
 assert.doesNotMatch(authContext, /updateMe\s*\(\s*\{[^}]*role\s*:/s);
 assert.doesNotMatch(authContext, /synced_app_role|needsRoleSync/);
@@ -93,9 +94,10 @@ assert.match(customerCommunication, /recordCustomerMessage/);
 assert.doesNotMatch(customerCommunication, /entities\.MensajeCliente/);
 pass('Customer 360 messaging is tenant-scoped and backend-owned');
 
-assert.match(onboarding, /isCanonicalActiveUserAccount/);
-assert.match(onboarding, /status:\s*'active',[\s\S]*active:\s*true/);
-assert.match(onboarding, /accepted_at:/);
+assert.match(onboarding, /bootstrapIdentityOrganization/);
+assert.doesNotMatch(onboarding, /entities\.(UserAccount|Organization|User)/);
+assert.match(identityGateway, /status:\s*'active',[\s\S]*active:\s*true/);
+assert.match(identityGateway, /accepted_at:/);
 assert.doesNotMatch(onboarding, /find\(a\s*=>\s*a\.active\s*&&/);
 pass('onboarding activates invitations with canonical status and tenant context');
 

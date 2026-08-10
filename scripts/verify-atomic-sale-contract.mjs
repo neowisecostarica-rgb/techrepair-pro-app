@@ -6,6 +6,7 @@ import {
   applyInventoryStockCas,
   rollbackInventoryStockCas,
 } from '../base44/functions/_shared/inventoryStockCas.ts';
+import { resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/createSale/entry.ts', import.meta.url);
 const posPath = new URL('../src/pages/PuntoVenta.jsx', import.meta.url);
@@ -35,6 +36,10 @@ function applyUpdate(record, update) {
 
 function createScenario({ stock = 10, failure = null, preload = false, postSaleFailures = 0 } = {}) {
   const collections = {
+    UserAccount: [{
+      id: 'account-1', user_id: 'user-1', user_email: 'qa@example.com',
+      organization_id: 'org-a', role: 'SALES', status: 'active', active: true,
+    }],
     Branch: [{ id: 'branch-1', organization_id: 'org-a', name: 'Central', active: true }],
     OrdenTrabajo: [{
       id: 'ot-1', organization_id: 'org-a', branch_id: 'branch-1', cliente_id: 'client-1',
@@ -169,6 +174,7 @@ function loadHandler(client) {
     setTimeout,
     applyInventoryStockCas,
     rollbackInventoryStockCas,
+    resolveAuthorizedContext,
   };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename: 'createSale/entry.ts' });

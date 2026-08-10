@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { isCanonicalActiveUserAccount } from '../base44/functions/_shared/userAuthorization.ts';
+import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/getSmartIntakeByWorkOrder/entry.ts', import.meta.url);
 const smartIntakeApiPath = new URL('../src/api/smartIntake.js', import.meta.url);
@@ -100,6 +100,7 @@ function loadHandler(client, logger = console) {
     Response,
     String,
     isCanonicalActiveUserAccount,
+    resolveAuthorizedContext,
   };
   context.globalThis = context;
   vm.runInNewContext(
@@ -179,7 +180,7 @@ const tests = [
     name: 'SUPER_ADMIN without impersonation is rejected',
     async run() {
       const { response, body } = await invoke(createScenario({
-        user: { id: 'super-a', is_super_admin: true },
+        user: { id: 'super-a', role: 'admin' },
         accounts: [],
       }));
       assert.equal(response.status, 403);
@@ -196,7 +197,7 @@ const tests = [
       const { response, body } = await invoke(createScenario({
         user: {
           id: 'super-a',
-          is_super_admin: true,
+          role: 'admin',
           impersonating_org_id: 'org-b',
         },
         accounts: [],
@@ -384,7 +385,7 @@ const tests = [
     },
   },
   {
-    name: 'caller without membership in the token organization is rejected',
+    name: 'single canonical membership overrides a stale token organization without leaking the other tenant',
     async run() {
       const scenario = createScenario({
         user: { id: 'user-a', organization_id: 'org-a' },
@@ -393,8 +394,8 @@ const tests = [
         }],
       });
       const { response, body } = await invoke(scenario);
-      assert.equal(response.status, 403);
-      assert.equal(body.code, 'CALLER_MEMBERSHIP_INACTIVE');
+      assert.equal(response.status, 404);
+      assert.equal(body.code, 'WORK_ORDER_NOT_FOUND');
     },
   },
   {

@@ -105,7 +105,8 @@ pass('branch administrators can complete delivery as allowed by the backend stat
 
 pass('canonical UserAccount.status is the only authorization source',
   canonicalAuthorization.includes("account?.status === 'active'")
-  && authContext.includes('isCanonicalActiveUserAccount')
+  && authContext.includes('getIdentityContext')
+  && !authContext.includes('base44.entities.UserAccount')
   && !canonicalAuthorization.includes('account?.active'));
 
 console.log('\n16 commercial-flow recovery contract checks passed.');

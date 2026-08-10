@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 /*
 =====================================
@@ -85,6 +86,10 @@ Deno.serve(async (req) => {
 
     if (!ot) {
       return Response.json({ error: `OrdenTrabajo no encontrada: ${orden_trabajo_id}` }, { status: 404 });
+    }
+    const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
     }
 
     if (effectiveRole === 'TECHNICIAN' && user.id !== ot.tecnico_asignado_id) {

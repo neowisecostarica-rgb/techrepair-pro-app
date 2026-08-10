@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'];
 const MESSAGE_TYPES = ['estado_ot', 'cotizacion', 'seguimiento', 'general', 'recordatorio'];
@@ -28,6 +29,9 @@ Deno.serve(async (req) => {
     if (!authorization.ok) return jsonError(authorization.error, authorization.status);
 
     const organizationId = authorization.organizationId;
+    const branchScope = getCanonicalBranchScope(authorization);
+    if (!branchScope.ok) return jsonError(branchScope.error, branchScope.status);
+    const branchFilter = branchScope.organizationWide ? {} : { branch_id: branchScope.branchId };
     const clienteId = clean(body.cliente_id, 120);
     if (!clienteId) return jsonError('cliente_id es obligatorio', 400);
 
@@ -37,17 +41,29 @@ Deno.serve(async (req) => {
     });
     const cliente = clientes?.[0];
     if (!cliente) return jsonError('Cliente no encontrado', 404);
+    if (!branchScope.organizationWide && cliente.branch_id !== branchScope.branchId) {
+      const [relatedOrders, relatedSales] = await Promise.all([
+        base44.asServiceRole.entities.OrdenTrabajo.filter({ organization_id: organizationId, cliente_id: clienteId, branch_id: branchScope.branchId }, '-created_date', 1),
+        base44.asServiceRole.entities.Venta.filter({ organization_id: organizationId, cliente_id: clienteId, branch_id: branchScope.branchId }, '-created_date', 1),
+      ]);
+      if (!relatedOrders?.length && !relatedSales?.length) return jsonError('Cliente no encontrado', 404);
+    }
 
     const action = body.action || 'get';
     if (action === 'get') {
       const [ordenes, equipos, ventas, cotizaciones, mensajes] = await Promise.all([
-        base44.asServiceRole.entities.OrdenTrabajo.filter({ organization_id: organizationId, cliente_id: clienteId }),
+        base44.asServiceRole.entities.OrdenTrabajo.filter({ organization_id: organizationId, cliente_id: clienteId, ...branchFilter }),
         base44.asServiceRole.entities.Equipo.filter({ organization_id: organizationId, cliente_id: clienteId }),
-        base44.asServiceRole.entities.Venta.filter({ organization_id: organizationId, cliente_id: clienteId }),
-        base44.asServiceRole.entities.Cotizacion.filter({ organization_id: organizationId, cliente_id: clienteId }),
-        base44.asServiceRole.entities.MensajeCliente.filter({ organization_id: organizationId, cliente_id: clienteId }),
+        base44.asServiceRole.entities.Venta.filter({ organization_id: organizationId, cliente_id: clienteId, ...branchFilter }),
+        base44.asServiceRole.entities.Cotizacion.filter({ organization_id: organizationId, cliente_id: clienteId, ...branchFilter }),
+        base44.asServiceRole.entities.MensajeCliente.filter({ organization_id: organizationId, cliente_id: clienteId, ...branchFilter }),
       ]);
-      return Response.json({ cliente, ordenes, equipos, ventas, cotizaciones, mensajes });
+      const equiposVisibles = branchScope.organizationWide
+        ? equipos
+        : (equipos || []).filter(equipo =>
+            equipo.branch_id === branchScope.branchId
+            || (ordenes || []).some(orden => orden.equipo_id === equipo.id));
+      return Response.json({ cliente, ordenes, equipos: equiposVisibles, ventas, cotizaciones, mensajes });
     }
 
     if (action === 'recordMessage') {
@@ -62,12 +78,14 @@ Deno.serve(async (req) => {
           id: input.orden_trabajo_id,
           organization_id: organizationId,
           cliente_id: clienteId,
+          ...branchFilter,
         });
         if (!orders?.[0]) return jsonError('La orden no pertenece a este cliente', 400);
       }
 
       const mensaje = await base44.asServiceRole.entities.MensajeCliente.create({
         organization_id: organizationId,
+        ...branchFilter,
         cliente_id: clienteId,
         orden_trabajo_id: input.orden_trabajo_id || null,
         remitente_id: user.id,

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedBranch } from '../_shared/operationalAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -25,6 +26,13 @@ Deno.serve(async (req) => {
     if (!clientes || clientes.length === 0) {
       return Response.json({ error: 'cliente_id no encontrado en esta organización' }, { status: 404 });
     }
+    const branchAuthorization = await resolveAuthorizedBranch(base44, authorization, body.branch_id || clientes[0].branch_id, {
+      allowSingleBranchFallback: true,
+      required: false,
+    });
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+    }
 
     const validTipos = ['laptop', 'desktop', 'tablet', 'smartphone', 'impresora', 'otro'];
     if (!validTipos.includes(tipo)) {
@@ -41,6 +49,7 @@ Deno.serve(async (req) => {
 
     const equipo = await base44.asServiceRole.entities.Equipo.create({
       organization_id: orgId,
+      ...(branchAuthorization.branchId ? { branch_id: branchAuthorization.branchId } : {}),
       cliente_id,
       tipo,
       marca: marca.trim(),

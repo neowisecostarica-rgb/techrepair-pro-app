@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 
 // Assignment is an intake operation owned by administration and sales.
 // Keep this contract aligned with workflowConfig and both assignment UIs.
@@ -48,9 +49,12 @@ async function resolveCaller(base44, user) {
       ? 'ASSIGNMENT_ROLE_NOT_AUTHORIZED'
       : 'CALLER_ACCOUNT_NOT_ACTIVE',
   };
+  const branchScope = getCanonicalBranchScope(authorization);
+  if (!branchScope.ok) return { error: branchScope.error, code: branchScope.code };
   return {
     orgId: authorization.organizationId,
     effectiveRole: authorization.role,
+    branchScope,
     isSuperAdmin: authorization.isSuperAdmin,
   };
 }
@@ -407,6 +411,14 @@ Deno.serve(async (req) => {
     if (!destinationTechnician) {
       return errorResponse(422, 'DESTINATION_TECHNICIAN_INVALID',
         'El tecnico destino no existe, no esta activo o pertenece a otra organizacion');
+    }
+    if (!caller.branchScope.organizationWide && ot.branch_id !== caller.branchScope.branchId) {
+      return errorResponse(403, 'ASSIGNMENT_CROSS_BRANCH_DENIED',
+        'La orden no pertenece a la sucursal autorizada');
+    }
+    if (!caller.branchScope.organizationWide && destinationTechnician.branch_id !== caller.branchScope.branchId) {
+      return errorResponse(403, 'ASSIGNMENT_DESTINATION_CROSS_BRANCH_DENIED',
+        'El tecnico destino no pertenece a la sucursal autorizada');
     }
 
     if (['ENTREGADA', 'CANCELADA'].includes(ot.estado)) {

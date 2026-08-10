@@ -3,6 +3,7 @@ import {
   isCanonicalActiveUserAccount,
   resolveAuthorizedContext,
 } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
@@ -32,11 +33,14 @@ Deno.serve(async (req) => {
 
     const organizationId = authorization.organizationId;
     const role = authorization.role;
+    const branchScope = getCanonicalBranchScope(authorization);
+    if (!branchScope.ok) return jsonError(branchScope.error, branchScope.status);
+    const branchFilter = branchScope.organizationWide ? {} : { branch_id: branchScope.branchId };
     const action = body.action || 'list';
 
     if (action === 'list') {
       const [leads, accounts] = await Promise.all([
-        base44.asServiceRole.entities.Lead.filter({ organization_id: organizationId }, '-created_date', 500),
+        base44.asServiceRole.entities.Lead.filter({ organization_id: organizationId, ...branchFilter }, '-created_date', 500),
         role === 'ORG_ADMIN'
           ? base44.asServiceRole.entities.UserAccount.filter({ organization_id: organizationId, role: 'SALES' }, 200)
           : Promise.resolve([]),
@@ -63,6 +67,7 @@ Deno.serve(async (req) => {
 
       const lead = await base44.asServiceRole.entities.Lead.create({
         organization_id: organizationId,
+        ...branchFilter,
         name,
         phone,
         email: email || undefined,
@@ -78,6 +83,7 @@ Deno.serve(async (req) => {
     const found = await base44.asServiceRole.entities.Lead.filter({
       id: leadId,
       organization_id: organizationId,
+      ...branchFilter,
     });
     const lead = found?.[0];
     if (!lead) return jsonError('Lead no encontrado', 404);
@@ -142,6 +148,7 @@ Deno.serve(async (req) => {
 
       const cliente = await base44.asServiceRole.entities.Cliente.create({
         organization_id: organizationId,
+        ...branchFilter,
         nombre_completo: clean(lead.name, 160),
         identificacion,
         tipo_cliente: 'individual',

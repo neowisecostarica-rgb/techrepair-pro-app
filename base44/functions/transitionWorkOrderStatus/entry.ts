@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { evaluateCurrentQaEvidence } from '../_shared/qaEvidence.ts';
 
 // ─── STATE MACHINE OFICIAL ────────────────────────────────────────────────────
@@ -947,6 +948,10 @@ Deno.serve(async (req) => {
     }
 
     const ot = ordenes[0];
+    const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+    }
     const currentStatus = ot.estado;
 
     // CC-001-01: un técnico solo puede operar la OT que tiene asignada.

@@ -30,6 +30,7 @@
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
@@ -231,6 +232,10 @@ Deno.serve(async (req) => {
     }
 
     const ot = otResults[0];
+    const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+    }
     const estadoActualOT = ot.estado;
 
     console.log(`[initTechnicalActivity] OT encontrada — estado: ${estadoActualOT}`);

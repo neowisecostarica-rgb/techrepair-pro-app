@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { eventMatchesCurrentWorkOrderState, requiredWorkOrderStateForEvent } from '../_shared/lifecycleSecurity.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 /*
 =====================================
@@ -175,8 +176,24 @@ Deno.serve(async (req) => {
     const { organization_id, orden_trabajo_id, tipo, processed } = evento;
 
     if (callerUser) {
-      const authorization = await resolveAuthorizedContext(base44, callerUser, { organizationHint: organization_id });
+      const authorization = await resolveAuthorizedContext(base44, callerUser, {
+        organizationHint: organization_id,
+        allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
+      });
       if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+      const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+        id: orden_trabajo_id,
+        organization_id,
+      }, '-created_date', 1);
+      const workOrder = workOrders?.[0];
+      if (!workOrder) return Response.json({ error: 'OT no encontrada para el evento' }, { status: 404 });
+      const branchAuthorization = authorizeRecordBranch(authorization, workOrder.branch_id);
+      if (!branchAuthorization.ok) {
+        return Response.json(
+          { error: branchAuthorization.error, code: branchAuthorization.code },
+          { status: branchAuthorization.status },
+        );
+      }
     }
 
     // ── 4. Guard: organization_id obligatorio ───────────────────────────────────

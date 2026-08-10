@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // dmrOrchestrator — Orquestador de creación del Documento Maestro de Recepción
@@ -82,11 +84,49 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { otId, orgId, ot, cliente, equipo } = body;
+    const { otId } = body;
 
-    if (!otId || !orgId || !ot || !cliente || !equipo) {
-      return Response.json({ error: 'Parámetros incompletos: otId, orgId, ot, cliente, equipo son requeridos' }, { status: 400 });
+    if (!otId) {
+      return Response.json({ error: 'Parámetro requerido: otId' }, { status: 400 });
     }
+
+    // Never trust tenant or snapshots supplied by the caller. The canonical OT
+    // determines organization, branch, customer and equipment.
+    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: otId }, '-created_date', 1);
+    const ot = workOrders?.[0];
+    if (!ot) return Response.json({ error: 'OT no encontrada' }, { status: 404 });
+
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      organizationHint: ot.organization_id,
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'],
+    });
+    if (!authorization.ok) {
+      return Response.json({ error: authorization.error }, { status: authorization.status });
+    }
+    const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json(
+        { error: branchAuthorization.error, code: branchAuthorization.code },
+        { status: branchAuthorization.status },
+      );
+    }
+
+    const [clientes, equipos] = await Promise.all([
+      base44.asServiceRole.entities.Cliente.filter({
+        id: ot.cliente_id,
+        organization_id: authorization.organizationId,
+      }, '-created_date', 1),
+      base44.asServiceRole.entities.Equipo.filter({
+        id: ot.equipo_id,
+        organization_id: authorization.organizationId,
+      }, '-created_date', 1),
+    ]);
+    const cliente = clientes?.[0];
+    const equipo = equipos?.[0];
+    if (!cliente || !equipo) {
+      return Response.json({ error: 'Cliente o equipo canonico no encontrado para la OT' }, { status: 422 });
+    }
+    const orgId = authorization.organizationId;
 
     // ── PASO 1: Generar dmr_number (no se persiste hasta create()) ───────────
     const existing = await base44.asServiceRole.entities.DiagnosticMasterRecord.filter(

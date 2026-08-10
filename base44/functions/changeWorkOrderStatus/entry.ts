@@ -8,6 +8,7 @@
 // ============================================================
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 // ─── LEGACY — CAMPOS AUXILIARES ÚNICAMENTE ────────────────────────────────────
 // Esta función ya NO controla el lifecycle de OrdenTrabajo.
@@ -75,6 +76,10 @@ Deno.serve(async (req) => {
     const ordenes = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id, organization_id: orgId });
     if (!ordenes || ordenes.length === 0) {
       return Response.json({ error: 'Orden de trabajo no encontrada en esta organización' }, { status: 404 });
+    }
+    const branchAuthorization = authorizeRecordBranch(authorization, ordenes[0].branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
     }
 
     const updatePayload = {

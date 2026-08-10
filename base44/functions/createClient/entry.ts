@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedBranch } from '../_shared/operationalAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -17,6 +18,13 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { nombre_completo, identificacion, tipo_cliente, telefono, email, direccion, notas } = body;
+    const branchAuthorization = await resolveAuthorizedBranch(base44, authorization, body.branch_id, {
+      allowSingleBranchFallback: true,
+      required: false,
+    });
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+    }
 
     if (!nombre_completo || !identificacion || !telefono) {
       return Response.json({ error: 'nombre_completo, identificacion y telefono son obligatorios' }, { status: 400 });
@@ -44,6 +52,7 @@ Deno.serve(async (req) => {
     console.log('[createClient] Enviando a entity.create...');
     const cliente = await base44.asServiceRole.entities.Cliente.create({
       organization_id: orgId,
+      ...(branchAuthorization.branchId ? { branch_id: branchAuthorization.branchId } : {}),
       nombre_completo: nombre_completo.trim(),
       identificacion: identificacionNormalizada,
       tipo_cliente: tipo_cliente || 'individual',

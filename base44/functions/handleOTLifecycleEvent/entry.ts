@@ -9,6 +9,7 @@
 // ============================================================
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 const EVENT_CONFIG = {
   OT_CREATED: {
@@ -180,11 +181,24 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Missing record or record.id" }, { status: 400 });
     }
 
+    const canonicalRecords = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: record.id }, '-created_date', 1);
+    const canonicalRecord = canonicalRecords?.[0];
+    if (!canonicalRecord) return Response.json({ error: 'OT no encontrada' }, { status: 404 });
+
     const authorization = await resolveAuthorizedContext(base44, user, {
-      organizationHint: record.organization_id || null,
+      organizationHint: canonicalRecord.organization_id,
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
     });
     if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
     const orgId = authorization.organizationId;
+    const branchAuthorization = authorizeRecordBranch(authorization, canonicalRecord.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json(
+        { error: branchAuthorization.error, code: branchAuthorization.code },
+        { status: branchAuthorization.status },
+      );
+    }
+    record = canonicalRecord;
 
     if (!_trigger || !EVENT_CONFIG[_trigger]) {
       console.warn(`[handleOTLifecycleEvent] Trigger inválido o no reconocido: "${_trigger}" — OT: ${record.id}`);

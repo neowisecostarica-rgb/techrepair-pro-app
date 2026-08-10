@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedBranch } from '../_shared/operationalAuthorization.ts';
 
 /**
  * createInventoryItem — Owner único para creación de productos de inventario
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: ['ORG_ADMIN'] });
+  const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'INVENTORY'] });
   if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
   const orgId = authorization.organizationId;
 
@@ -56,6 +57,12 @@ Deno.serve(async (req) => {
 
   if (!itemData) {
     return Response.json({ error: 'itemData es requerido' }, { status: 400 });
+  }
+  const branchAuthorization = await resolveAuthorizedBranch(base44, authorization, itemData.branch_id || body.branch_id, {
+    allowSingleBranchFallback: true,
+  });
+  if (!branchAuthorization.ok) {
+    return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
   }
 
   // 3. VALIDACIONES BÁSICAS OBLIGATORIAS
@@ -143,6 +150,7 @@ Deno.serve(async (req) => {
   // 9. CREAR INVENTARIO
   const itemFinal = {
     organization_id: orgId,
+    branch_id: branchAuthorization.branchId,
     nombre: itemData.nombre.trim(),
     descripcion: itemData.descripcion || null,
     categoria_id: itemData.categoria_id,

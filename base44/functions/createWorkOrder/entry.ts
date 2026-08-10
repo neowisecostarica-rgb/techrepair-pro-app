@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope, validateRequestedBranch } from '../_shared/operationalAuthorization.ts';
 
 const LOCK_OPERATION = 'RECEPTION_CREATE';
 const VALID_EQUIPMENT_TYPES = ['laptop', 'desktop', 'tablet', 'smartphone', 'impresora', 'otro'];
@@ -122,7 +123,7 @@ async function resolveOrganization(base44, user) {
   const authorization = await resolveAuthorizedContext(base44, user, {
     allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'],
   });
-  return authorization.ok ? authorization.organizationId : null;
+  return authorization;
 }
 
 function buildDmrNumber(correlationId) {
@@ -245,6 +246,7 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   let user = null;
   let orgId = null;
+  let authorization = null;
   let body = {};
   let lease = null;
   const partial = {
@@ -261,7 +263,8 @@ Deno.serve(async (req) => {
     user = await base44.auth.me();
     if (!user) throw new ReceptionError('RECEPTION_UNAUTHORIZED', 'Debe iniciar sesión nuevamente.', 401, { failedStep });
 
-    orgId = await resolveOrganization(base44, user);
+    authorization = await resolveOrganization(base44, user);
+    orgId = authorization.ok ? authorization.organizationId : null;
     if (!orgId) {
       throw new ReceptionError('RECEPTION_ORGANIZATION_UNRESOLVED', 'No se pudo determinar la organización.', 403, { failedStep: 'resolve_organization' });
     }
@@ -270,13 +273,22 @@ Deno.serve(async (req) => {
     const {
       correlation_id: correlationId,
       cliente_id: clientId,
-      branch_id: branchId,
+      branch_id: requestedBranchId,
       equipment_mode: equipmentMode,
       equipo_id: requestedEquipmentId,
       equipment: requestedEquipment,
       terms_id: termsId,
       motivo_ingreso: admissionReason,
     } = body;
+    const branchScope = getCanonicalBranchScope(authorization);
+    if (!branchScope.ok) {
+      throw new ReceptionError(branchScope.code || 'RECEPTION_BRANCH_SCOPE_INVALID', branchScope.error, branchScope.status, { failedStep: 'validate_branch_scope' });
+    }
+    const branchCheck = validateRequestedBranch(branchScope, requestedBranchId);
+    if (!branchCheck.ok) {
+      throw new ReceptionError(branchCheck.code, branchCheck.error, branchCheck.status, { failedStep: 'validate_branch_scope' });
+    }
+    const branchId = branchScope.organizationWide ? requestedBranchId : branchScope.branchId;
     partial.equipmentMode = equipmentMode;
 
     failedStep = 'validate_request';
@@ -347,6 +359,9 @@ Deno.serve(async (req) => {
       if (equipment.cliente_id !== clientId) {
         throw new ReceptionError('RECEPTION_EQUIPMENT_OWNER_MISMATCH', 'El equipo no pertenece al cliente seleccionado.', 409, { failedStep });
       }
+      if (!branchScope.organizationWide && equipment.branch_id && equipment.branch_id !== branchScope.branchId) {
+        throw new ReceptionError('RECEPTION_EQUIPMENT_CROSS_BRANCH_DENIED', 'El equipo pertenece a otra sucursal.', 403, { failedStep });
+      }
       equipmentCreated = false;
     } else if (!equipment) {
       if (normalizedSerial) {
@@ -359,6 +374,7 @@ Deno.serve(async (req) => {
       await assertResourceLease(base44, lease, correlationId);
       equipment = await base44.asServiceRole.entities.Equipo.create({
         organization_id: orgId,
+        branch_id: branchId,
         cliente_id: clientId,
         tipo: requestedEquipment.tipo,
         marca: requestedEquipment.marca.trim(),

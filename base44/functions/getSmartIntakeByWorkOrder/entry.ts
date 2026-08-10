@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 const SOURCE_TYPE = 'LEGACY_PREDIAGNOSTICO';
 
@@ -19,6 +20,7 @@ async function resolveEffectiveOrganization(base44, user) {
     orgId: authorization.organizationId,
     role: authorization.role,
     branchId: authorization.account?.branch_id || null,
+    authorization,
   };
 }
 
@@ -156,8 +158,15 @@ Deno.serve(async (req) => {
       return errorResponse(404, 'WORK_ORDER_NOT_FOUND', 'Orden de trabajo no encontrada');
     }
 
-    // Existing work-order reads are organization-scoped. This compatibility
-    // sprint intentionally does not introduce a new branch policy.
+    const branchAuthorization = authorizeRecordBranch(access.authorization, workOrder.branch_id);
+    if (!branchAuthorization.ok) {
+      return errorResponse(
+        branchAuthorization.status,
+        branchAuthorization.code,
+        branchAuthorization.error,
+      );
+    }
+
     const legacyRecords = await base44.asServiceRole.entities.PreDiagnostico.filter({
       organization_id: access.orgId,
       orden_trabajo_id: workOrder.id,

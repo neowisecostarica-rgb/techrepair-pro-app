@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 import { applyInventoryStockCas, rollbackInventoryStockCas } from '../_shared/inventoryStockCas.ts';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope, validateRequestedBranch } from '../_shared/operationalAuthorization.ts';
 
 /*
  * createSale — TRP-MVP-003
@@ -886,6 +887,11 @@ Deno.serve(async req => {
   try {
     const body = await req.json();
     const input = normalizeInput(body);
+    const branchScope = getCanonicalBranchScope(authorization);
+    if (!branchScope.ok) throw new SaleError(branchScope.error, branchScope.code || 'SALE_BRANCH_SCOPE_INVALID', branchScope.status);
+    const branchCheck = validateRequestedBranch(branchScope, input.ventaData.branch_id);
+    if (!branchCheck.ok) throw new SaleError(branchCheck.error, branchCheck.code, branchCheck.status);
+    if (!branchScope.organizationWide) input.ventaData.branch_id = branchScope.branchId;
     const identity = await buildIdentity(orgId, input);
     anchor = await resolveAnchor(base44, orgId, input.ventaData);
     lock = await claimCommerceLock(anchor, orgId, identity.operationKey);

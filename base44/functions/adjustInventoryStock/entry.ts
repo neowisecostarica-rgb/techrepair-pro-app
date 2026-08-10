@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { applyInventoryStockCas, rollbackInventoryStockCas } from '../_shared/inventoryStockCas.ts';
+import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 
 /**
  * adjustInventoryStock — Owner único de ajustes manuales de stock
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: ['ORG_ADMIN'] });
+  const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'INVENTORY'] });
   if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
   const orgId = authorization.organizationId;
 
@@ -80,6 +81,11 @@ Deno.serve(async (req) => {
   }
 
   const invItem = invResults[0];
+  const branchScope = getCanonicalBranchScope(authorization);
+  if (!branchScope.ok) return Response.json({ error: branchScope.error, code: branchScope.code }, { status: branchScope.status });
+  if (!branchScope.organizationWide && invItem.branch_id !== branchScope.branchId) {
+    return Response.json({ error: 'El producto no pertenece a la sucursal autorizada', code: 'INVENTORY_CROSS_BRANCH_DENIED' }, { status: 403 });
+  }
   const stockActual = invItem.cantidad_disponible ?? 0;
 
   // 5. CALCULAR NUEVO STOCK

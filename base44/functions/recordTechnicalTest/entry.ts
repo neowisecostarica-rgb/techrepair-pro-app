@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 const VALID_TEST_TYPES = ['funcional', 'stress', 'rendimiento', 'calidad', 'visual'];
 const VALID_RESULTS = ['exitoso', 'fallido', 'parcial'];
@@ -32,6 +33,8 @@ Deno.serve(async (req) => {
     organization_id: authorization.organizationId,
   }, 1);
   if (!ot) return errorResponse(404, 'WORK_ORDER_NOT_FOUND', 'Orden de trabajo no encontrada');
+  const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+  if (!branchAuthorization.ok) return errorResponse(branchAuthorization.status, branchAuthorization.code, branchAuthorization.error);
   if (ot.estado !== 'PRUEBAS') {
     return errorResponse(422, 'QA_CYCLE_NOT_ACTIVE', 'La OT debe estar en PRUEBAS para registrar evidencia QA');
   }

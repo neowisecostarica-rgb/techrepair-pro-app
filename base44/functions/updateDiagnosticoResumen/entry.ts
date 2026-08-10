@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -31,6 +32,13 @@ Deno.serve(async (req) => {
     });
     if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
     const orgId = authorization.organizationId;
+    const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+    }
+    if (authorization.role === 'TECHNICIAN' && ot.tecnico_asignado_id !== user.id) {
+      return Response.json({ error: 'El tecnico solo puede modificar el diagnostico de su OT asignada', code: 'TECHNICIAN_OWNERSHIP_REQUIRED' }, { status: 403 });
+    }
 
     if (audit_event?.type === 'PRE_DIAGNOSTICO_EDITADO') {
       const changedFields = Array.isArray(audit_event.changed_fields)

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -34,6 +35,17 @@ Deno.serve(async (req) => {
     const clientes = await base44.asServiceRole.entities.Cliente.filter({ id: cliente_id, organization_id: orgId });
     if (!clientes || clientes.length === 0) {
       return Response.json({ error: 'Cliente no encontrado o no pertenece a esta organización' }, { status: 404 });
+    }
+    const branchScope = getCanonicalBranchScope(authorization);
+    if (!branchScope.ok) return Response.json({ error: branchScope.error, code: branchScope.code }, { status: branchScope.status });
+    if (!branchScope.organizationWide && clientes[0].branch_id !== branchScope.branchId) {
+      const [orders, sales] = await Promise.all([
+        base44.asServiceRole.entities.OrdenTrabajo.filter({ organization_id: orgId, cliente_id, branch_id: branchScope.branchId }, '-created_date', 1),
+        base44.asServiceRole.entities.Venta.filter({ organization_id: orgId, cliente_id, branch_id: branchScope.branchId }, '-created_date', 1),
+      ]);
+      if (!orders?.length && !sales?.length) {
+        return Response.json({ error: 'El cliente no pertenece a la sucursal autorizada', code: 'CUSTOMER_CROSS_BRANCH_DENIED' }, { status: 403 });
+      }
     }
 
     console.log('[updateClient] Actualizando cliente', { cliente_id, orgId });

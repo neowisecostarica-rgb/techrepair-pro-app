@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import {
   getSmartIntakeByWorkOrder,
   invalidateSmartIntake,
@@ -43,7 +44,6 @@ import { crearOrdenTrabajo } from '@/components/ot/crearOrdenTrabajo';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
 import OTOperationalLayer from '@/components/ot/OTOperationalLayer';
 import DiagnosticoDocumentoA4 from '@/components/diagnostico/DiagnosticoDocumentoA4';
-import { isCanonicalActiveUserAccount } from '../../base44/functions/_shared/userAuthorization.ts';
 
 import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 const estadoConfig = WORK_ORDER_STATUSES;
@@ -197,11 +197,8 @@ function OrdenesTrabajoContent() {
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({
-        organization_id: effectiveOrgId,
-        role: 'TECHNICIAN'
-      });
-      return accounts.filter(isCanonicalActiveUserAccount);
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
     enabled: !!effectiveOrgId,
   });
@@ -439,7 +436,9 @@ function OrdenesTrabajoContent() {
       base44.entities.DiagnosticoTecnico.filter({ organization_id: ot.organization_id, orden_trabajo_id: ot.id, bloqueado: false }),
       base44.entities.Cliente.filter({ id: ot.cliente_id }),
       base44.entities.Equipo.filter({ id: ot.equipo_id }),
-      base44.entities.UserAccount.filter({ user_id: ot.tecnico_asignado_id, organization_id: ot.organization_id }),
+      listIdentityAccounts(ot.organization_id).then(({ accounts }) =>
+        accounts.filter(account => account.user_id === ot.tecnico_asignado_id)
+      ),
     ]);
     setDiagnosticoPreviewData({
       diagnostico: diagResults[0] || null,

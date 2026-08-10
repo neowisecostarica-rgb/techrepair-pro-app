@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -52,8 +53,7 @@ export default function EntregarOT({
   const { data: config } = useQuery({
     queryKey: ['config-garantia-entrega', effectiveOrgId],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.list();
-      const org = orgs.find(o => o.id === effectiveOrgId);
+      const { organization: org } = await getIdentityOrganization(effectiveOrgId);
       return org?.garantia_config || null;
     },
     enabled: showModal && !!effectiveOrgId,

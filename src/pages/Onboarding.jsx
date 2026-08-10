@@ -7,12 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { isCanonicalActiveUserAccount } from '../../base44/functions/_shared/userAuthorization.ts';
+import {
+  acceptIdentityInvitation,
+  bootstrapIdentityOrganization,
+  getIdentityContext,
+} from '@/api/identity';
 
 export default function Onboarding() {
   const [mode, setMode] = useState('checking'); // checking | invited | new_company | success
   const [user, setUser] = useState(null);
-  const [pendingAccount, setPendingAccount] = useState(null);
   const [creating, setCreating] = useState(false);
   
   // Estados controlados para Selects (P0: hardening)
@@ -32,80 +35,32 @@ export default function Onboarding() {
 
   const checkUserStatus = async () => {
     try {
-      const authenticatedUser = await base44.auth.me();
-      setUser(authenticatedUser);
-
-      // SUPER_ADMIN bypass - ya tienen acceso directo
-      if (authenticatedUser.is_super_admin) {
+      const context = await getIdentityContext();
+      setUser(context.user);
+      if (context.user?.is_super_admin) {
         window.location.href = createPageUrl('Saas');
         return;
       }
 
-      // P0 FIX: Buscar UserAccount por user_id (fuente de verdad)
-      const accounts = await base44.entities.UserAccount.filter({
-        user_id: authenticatedUser.id,
-      });
-
-      // CASO 1: Usuario con cuenta activa y organization_id → redirigir
-      const activeAccount = accounts.find(a => isCanonicalActiveUserAccount(a) && a.organization_id);
+      const activeAccount = context.userAccount;
       if (activeAccount) {
-        const targetPage = activeAccount.role === 'ORG_ADMIN' || activeAccount.role === 'BRANCH_ADMIN' 
-          ? 'Dashboard' 
+        const targetPage = ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(activeAccount.role)
+          ? 'Dashboard'
           : 'MiDia';
         window.location.href = createPageUrl(targetPage);
         return;
       }
 
-      // CASO 2: Buscar también por email (para invitaciones pre-signup)
-      const accountsByEmail = await base44.entities.UserAccount.filter({
-        user_email: authenticatedUser.email,
-      });
-
-      // P0 FIX: PRIORIDAD A INVITACIONES - Detectar ANY invitation (active o no, con o sin user_id)
-      // Esto cubre:
-      // - Invitaciones pendientes (user_id set, active: false)
-      // - Invitaciones antiguas (sin user_id, solo email)
-      const anyInvitation = 
-        accounts.find(a => a.organization_id) || 
-        accountsByEmail.find(a => a.organization_id);
-
-      if (anyInvitation) {
-        // P0: GUARD - Evitar múltiples linking simultáneos
+      const invitation = context.pendingInvitations?.[0];
+      if (invitation) {
         if (isLinkingRef.current) {
-          console.warn('Linking ya en progreso, abortando');
           return;
         }
         isLinkingRef.current = true;
-
         try {
-          // P0: IDEMPOTENCIA - Verificar si ya está correctamente enlazado
-          if (anyInvitation.user_id === authenticatedUser.id && isCanonicalActiveUserAccount(anyInvitation)) {
-            console.log('UserAccount ya enlazado y activo, redirigiendo...');
-            const targetPage = anyInvitation.role === 'ORG_ADMIN' || anyInvitation.role === 'BRANCH_ADMIN' 
-              ? 'Dashboard' 
-              : 'MiDia';
-            window.location.href = createPageUrl(targetPage);
-            return;
-          }
-
-          // P0: Linking atómico - actualizar user_id + active en una sola operación
-          await base44.entities.UserAccount.update(anyInvitation.id, {
-            user_id: authenticatedUser.id,
-            status: 'active',
-            active: true,
-            accepted_at: anyInvitation.accepted_at || new Date().toISOString(),
-          });
-
-          // P0 FIX: Sincronizar organization_id al user para RLS
-          await base44.auth.updateMe({
-            organization_id: anyInvitation.organization_id
-          });
-
-          console.log('Invitación activada para', authenticatedUser.email, '→', anyInvitation.organization_id);
-
-          // Redirigir según rol
-          const targetPage = anyInvitation.role === 'ORG_ADMIN' || anyInvitation.role === 'BRANCH_ADMIN' 
-            ? 'Dashboard' 
+          const accepted = await acceptIdentityInvitation(invitation.id);
+          const targetPage = ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(accepted.account?.role)
+            ? 'Dashboard'
             : 'MiDia';
           window.location.href = createPageUrl(targetPage);
           return;
@@ -116,64 +71,14 @@ export default function Onboarding() {
         }
       }
 
-      // CASO 3: SOLO permitir new_company si NO existe NINGUNA invitación
-      // P0: Doble check defensivo
-      const hasAnyOrgAccount =
-        accounts.some(a => a.organization_id) ||
-        accountsByEmail.some(a => a.organization_id);
-
-      if (!hasAnyOrgAccount) {
+      if ((context.memberships || []).length === 0) {
         setMode('new_company');
         return;
       }
-
-
-      // CASO 5: Usuario huérfano REAL (sin organization_id válido)
-      if (accounts.length === 0 && accountsByEmail.every(a => !a.organization_id)) {
-        setMode('orphaned_user');
-        return;
-      }
-
-      // Fallback: si hay cuentas pero no válidas, mostrar huérfano
       setMode('orphaned_user');
     } catch (err) {
       console.error('Error checking user status:', err);
       setMode('orphaned_user');
-    }
-  };
-
-  const completeInvitedUserSetup = async (user, account) => {
-    try {
-      // P0: HARDENING - Validación de tenant en invitación
-      if (!account.organization_id) {
-        throw new Error('La invitación no tiene un tenant asociado. Contacta al administrador.');
-      }
-
-      // P0: Vincular UserAccount con user_id y activar (ligado a tenant existente)
-      await base44.entities.UserAccount.update(account.id, {
-        user_id: user.id,
-        status: 'active',
-        active: true,
-        accepted_at: account.accepted_at || new Date().toISOString(),
-      });
-
-      await base44.auth.updateMe({ organization_id: account.organization_id });
-
-      // P0: Establecer contexto de tenant activo inmediatamente
-      // (AuthContext lo detectará automáticamente al recargar)
-      
-      setMode('success');
-      setTimeout(() => {
-        // Redirigir según rol
-        if (account.role === 'ORG_ADMIN' || account.role === 'BRANCH_ADMIN') {
-          window.location.href = createPageUrl('Dashboard');
-        } else {
-          window.location.href = createPageUrl('MiDia');
-        }
-      }, 1500);
-    } catch (err) {
-      console.error('Error completing invited setup:', err);
-      alert('Error al completar el registro: ' + err.message);
     }
   };
 
@@ -199,7 +104,6 @@ export default function Onboarding() {
     }
 
     try {
-      // P0: Validación defensiva de campos requeridos
       const companyName = e.target.company_name.value.trim();
       if (!companyName || !selectedCountry || !selectedCurrency) {
         alert('Por favor completa todos los campos requeridos');
@@ -208,155 +112,12 @@ export default function Onboarding() {
         return;
       }
 
-      // P0 FIX CRÍTICO: Verificar si tiene INVITACIÓN PENDIENTE (precedencia sobre new_company)
-      const allAccounts = await base44.entities.UserAccount.filter({
-        user_id: user.id
-      });
-      const emailAccounts = await base44.entities.UserAccount.filter({
-        user_email: user.email
-      });
-
-      // Si existe CUALQUIER invitación con organization_id → ABORTAR creación
-      const hasInvitation = 
-        allAccounts.some(a => a.organization_id) ||
-        emailAccounts.some(a => a.organization_id);
-
-      if (hasInvitation) {
-        console.warn('⛔ Usuario tiene invitación pendiente, abortando creación de org nueva');
-        alert('Detectamos que tienes una invitación pendiente. Refrescando la página para vincular tu cuenta...');
-        isCreatingOrgRef.current = false;
-        window.location.reload();
-        return;
-      }
-
-      // P0: DOBLE CHECK - Verificar si ya creó org anteriormente (por refresh/retry)
-      const activeAccount = allAccounts.find(a => a.organization_id);
-      if (activeAccount) {
-        console.log('Usuario ya tiene organización asociada, redirigiendo...');
-        isCreatingOrgRef.current = false;
-        setMode('success');
-        setTimeout(() => {
-          window.location.href = createPageUrl('Settings');
-        }, 1500);
-        return;
-      }
-
-      // P0: Verificar si existe una org con este nombre del mismo usuario (anti-duplicación)
-      const existingOrgs = await base44.entities.Organization.filter({
-        name: companyName
-      });
-      
-      for (const org of existingOrgs) {
-        // Verificar si este usuario ya está asociado a esta org
-        const orgAccounts = await base44.entities.UserAccount.filter({
-          user_id: user.id,
-          organization_id: org.id
-        });
-        if (orgAccounts.length > 0) {
-          console.warn('⚠️ Organización duplicada detectada, usando existente');
-          isCreatingOrgRef.current = false;
-          setMode('success');
-          setTimeout(() => {
-            window.location.href = createPageUrl('Settings');
-          }, 1500);
-          return;
-        }
-      }
-      
-      // P0: IDEMPOTENCIA - Crear Organization UNA SOLA VEZ
-      console.log('Creando nueva organización:', companyName);
-      const org = await base44.entities.Organization.create({
+      await bootstrapIdentityOrganization({
         name: companyName,
         country: selectedCountry,
         currency: selectedCurrency,
-        plan: 'basic',
-        status: 'active',
       });
-      console.log('Organización creada exitosamente:', org.id);
-
-      // 2. P0 FIX: Vincular UserAccount al tenant ANTES de crear Branch (requerido por RLS)
-      const finalAccounts = await base44.entities.UserAccount.filter({
-        user_id: user.id
-      });
-
-      if (finalAccounts.length === 0) {
-        // Crear UserAccount ÚNICO ligado al tenant
-        console.log('Creando UserAccount para ORG_ADMIN');
-        await base44.entities.UserAccount.create({
-          user_id: user.id,
-          user_email: user.email,
-          organization_id: org.id,
-          role: 'ORG_ADMIN',
-          status: 'active',
-          active: true,
-          accepted_at: new Date().toISOString(),
-        });
-      } else {
-        // P0: IMPORTANTE - Si ya existe UserAccount sin org, actualizarlo
-        // NUNCA crear un segundo UserAccount
-        console.log('Actualizando UserAccount existente');
-        await base44.entities.UserAccount.update(finalAccounts[0].id, {
-          organization_id: org.id,
-          role: 'ORG_ADMIN',
-          status: 'active',
-          active: true,
-          accepted_at: finalAccounts[0].accepted_at || new Date().toISOString(),
-        });
-      }
-
-      // P0 FIX: Sincronizar organization_id al user para RLS
-      await base44.auth.updateMe({
-        organization_id: org.id
-      });
-
-      console.log('✅ UserAccount vinculado a org:', org.id);
-
-      // 3. P0 FIX: Crear Branch DESPUÉS de vincular UserAccount (idempotente)
-      const existingBranches = await base44.entities.Branch.filter({
-        organization_id: org.id,
-      });
-
-      if (existingBranches.length === 0) {
-        console.log('Creando Sucursal Principal');
-        await base44.entities.Branch.create({
-          organization_id: org.id,
-          name: 'Sucursal Principal',
-          active: true,
-        });
-      } else {
-        console.log('Branch ya existe, omitiendo creación');
-      }
-
-      // 4. SEED CATEGORÍAS BASE (idempotente)
-      const categoriasBase = [
-        { nombre: "Servicios", permite_stock: false, permite_precio: true, es_vendible: true },
-        { nombre: "Repuestos", permite_stock: true, permite_precio: true, es_vendible: true },
-        { nombre: "Equipos / Portátiles", permite_stock: true, permite_precio: true, es_vendible: true },
-        { nombre: "Accesorios", permite_stock: true, permite_precio: true, es_vendible: true },
-        { nombre: "Reciclaje", permite_stock: true, permite_precio: false, es_vendible: false }
-      ];
-
-      for (const cat of categoriasBase) {
-        const existing = await base44.entities.CategoriaInventario.filter({
-          organization_id: org.id,
-          nombre: cat.nombre
-        });
-
-        if (existing.length === 0) {
-          await base44.entities.CategoriaInventario.create({
-            ...cat,
-            organization_id: org.id,
-            activo: true
-          });
-        }
-      }
-
-      console.log('✅ Setup completo para usuario:', user.email);
-
-      // P0: Resetear guard ANTES de success
       isCreatingOrgRef.current = false;
-
-      // P0: Success - redirigir INMEDIATAMENTE
       setMode('success');
       setTimeout(() => {
         window.location.href = createPageUrl('Settings');
@@ -365,28 +126,6 @@ export default function Onboarding() {
     } catch (err) {
       console.error('❌ Error creating company:', err);
       isCreatingOrgRef.current = false;
-      
-      // P0: IDEMPOTENCIA - Si falla, verificar si ya se creó parcialmente
-      try {
-        const retryAccounts = await base44.entities.UserAccount.filter({
-          user_id: user.id
-        });
-        const retryActiveAccount = retryAccounts.find(a => a.organization_id);
-        
-        if (retryActiveAccount) {
-          console.log('Organización creada parcialmente, redirigiendo...');
-          isCreatingOrgRef.current = false;
-          setMode('success');
-          setTimeout(() => {
-            window.location.href = createPageUrl('Settings');
-          }, 1000);
-          return;
-        }
-      } catch (retryErr) {
-        console.error('Error verificando estado:', retryErr);
-      }
-      
-      // Error real - resetear guard
       alert('Error al crear la empresa: ' + err.message);
       isCreatingOrgRef.current = false;
       setCreating(false);

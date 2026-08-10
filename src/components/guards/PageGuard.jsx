@@ -4,7 +4,6 @@ import { createPageUrl } from '../../utils';
 import { base44 } from '@/api/base44Client';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { isCanonicalActiveUserAccount } from '../../../base44/functions/_shared/userAuthorization.ts';
 
 /**
  * Guard de página que verifica permisos por rol efectivo.
@@ -59,7 +58,7 @@ export default function PageGuard({ allowedRoles, children }) {
   }
 
   // FASE 4: Block inactive users (soft disabled)
-  if (userAccount && !isCanonicalActiveUserAccount(userAccount)) {
+  if (userAccount && userAccount.status !== 'active') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center max-w-md p-6">

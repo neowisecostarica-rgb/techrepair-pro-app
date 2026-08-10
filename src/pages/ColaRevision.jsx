@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,6 @@ import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '@/components/guards/PageGuard';
 import WorkOrderCard from '@/components/kanban/WorkOrderCard';
 import { useToast } from '@/components/ui/use-toast';
-import { isCanonicalActiveUserAccount } from '../../base44/functions/_shared/userAuthorization.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 
@@ -53,11 +53,8 @@ function ColaRevisionContent() {
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({
-        organization_id: effectiveOrgId,
-        role: 'TECHNICIAN',
-      });
-      return accounts.filter(isCanonicalActiveUserAccount);
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
     enabled: !!effectiveOrgId,
   });

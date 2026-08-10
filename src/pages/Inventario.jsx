@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,9 +44,7 @@ function InventarioContent() {
   // Obtener nombre de organización para export
   React.useEffect(() => {
     if (effectiveOrgId) {
-      base44.entities.Organization.filter({ id: effectiveOrgId }).then(orgs => {
-        if (orgs.length > 0) setOrganization(orgs[0]);
-      });
+      getIdentityOrganization(effectiveOrgId).then(result => setOrganization(result.organization));
     }
   }, [effectiveOrgId]);
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -117,8 +118,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const { data: organization } = useQuery({
     queryKey: ['organization', userAccount?.organization_id],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.list();
-      return orgs.find(o => o.id === userAccount.organization_id);
+      const result = await getIdentityOrganization(userAccount.organization_id);
+      return result.organization;
     },
     enabled: !!userAccount?.organization_id,
   });

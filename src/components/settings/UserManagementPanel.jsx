@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { useAuthContext } from '../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Search, UserX, Edit, UserCheck } from 'lucide-react';
-import { isCanonicalActiveUserAccount } from '../../../base44/functions/_shared/userAuthorization.ts';
 
 export default function UserManagementPanel({ organizationId, currentUserId, branches }) {
   const { effectiveRole, status } = useAuthContext();
@@ -26,16 +26,16 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
 
   const { data: users = [] } = useQuery({
     queryKey: ['userAccounts', organizationId],
-    queryFn: () => base44.entities.UserAccount.filter({ organization_id: organizationId }),
+    queryFn: () => listIdentityAccounts(organizationId).then(result => result.accounts),
     enabled: !!organizationId && isReady,
   });
 
   // P0.1 TENANT ZERO: Calculate active ORG_ADMIN count
   const activeOrgAdmins = users.filter(u =>
-    u.role === 'ORG_ADMIN' && isCanonicalActiveUserAccount(u)
+    u.role === 'ORG_ADMIN' && u.status === 'active'
   );
   const isLastActiveOrgAdmin = (user) => {
-    const isActive = isCanonicalActiveUserAccount(user);
+    const isActive = user.status === 'active';
     return user.role === 'ORG_ADMIN' && isActive && activeOrgAdmins.length === 1;
   };
 
@@ -221,7 +221,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                     </td>
                     <td className="px-4 py-3">
                       <Badge className={
-                        isCanonicalActiveUserAccount(user)
+                        user.status === 'active'
                           ? 'bg-emerald-100 text-emerald-700 border-0 text-xs'
                           : user.status === 'invited'
                           ? 'bg-blue-100 text-blue-700 border-0 text-xs'

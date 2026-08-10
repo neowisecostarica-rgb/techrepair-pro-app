@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -211,10 +212,12 @@ function PuntoVentaContent() {
     enabled: !!effectiveOrgId,
   });
 
-  const { data: organizations = [] } = useQuery({
-    queryKey: ['organizations-venta'],
-    queryFn: () => base44.entities.Organization.list(),
+  const { data: activeOrganization } = useQuery({
+    queryKey: ['identity-organization-venta', effectiveOrgId],
+    queryFn: () => getIdentityOrganization(effectiveOrgId).then(result => result.organization),
+    enabled: !!effectiveOrgId,
   });
+  const organizations = activeOrganization ? [activeOrganization] : [];
 
   // Validar contexto OT cuando se selecciona (o se precarga vía URL).
   // Incluye `ordenesTrabajo` en las dependencias para evitar la condición de carrera
@@ -370,8 +373,7 @@ function PuntoVentaContent() {
     try {
       if (!venta.cliente_id) return;
 
-      const orgs = await base44.entities.Organization.list();
-      const org = orgs.find(o => o.id === venta.organization_id);
+      const { organization: org } = await getIdentityOrganization(venta.organization_id);
       const config = org?.garantia_config;
 
       if (!config) return;

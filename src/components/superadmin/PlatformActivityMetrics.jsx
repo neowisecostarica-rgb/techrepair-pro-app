@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Zap, Globe, Users } from 'lucide-react';
+import { getIdentityAdminOverview } from '@/api/identity';
 
 export default function PlatformActivityMetrics({ organizations }) {
   const { data: allVentas = [], isLoading } = useQuery({
@@ -12,11 +13,12 @@ export default function PlatformActivityMetrics({ organizations }) {
     staleTime: 60000,
   });
 
-  const { data: allUserAccounts = [] } = useQuery({
-    queryKey: ['platform-user-accounts'],
-    queryFn: () => base44.entities.UserAccount.list(),
+  const { data: identityOverview = {} } = useQuery({
+    queryKey: ['identity', 'admin-overview'],
+    queryFn: getIdentityAdminOverview,
     staleTime: 60000,
   });
+  const allUserAccounts = identityOverview.accounts || [];
 
   const today = new Date().toISOString().split('T')[0];
   const transaccionesHoy = allVentas.filter(v => v.created_date?.startsWith(today));

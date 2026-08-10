@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import PageGuard from '@/components/guards/PageGuard';
@@ -32,8 +33,8 @@ function VentasCotizacionesContent() {
   const { data: organization } = useQuery({
     queryKey: ['org-ventascot', effectiveOrgId],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
-      return orgs[0] || null;
+      const result = await getIdentityOrganization(effectiveOrgId);
+      return result.organization || null;
     },
     enabled: !!effectiveOrgId,
   });

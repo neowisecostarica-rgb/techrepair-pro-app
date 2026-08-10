@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { WORK_ORDER_STATUSES } from '@/config/workOrderStatus';
 import PageGuard from '@/components/guards/PageGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -101,11 +102,12 @@ function OperacionContent() {
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos-op', effectiveOrgId, branchIdFijo],
     queryFn: async () => {
-      let query = { organization_id: effectiveOrgId, role: 'TECHNICIAN' };
-      if (branchIdFijo) {
-        query.branch_id = branchIdFijo;
-      }
-      return await base44.entities.UserAccount.filter(query);
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.filter(account =>
+        account.role === 'TECHNICIAN' &&
+        account.status === 'active' &&
+        (!branchIdFijo || account.branch_id === branchIdFijo)
+      );
     },
     enabled: !!effectiveOrgId
   });

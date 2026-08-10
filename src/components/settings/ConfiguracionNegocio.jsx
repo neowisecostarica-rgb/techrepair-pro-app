@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization, updateIdentityOrganization } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,14 +21,14 @@ export default function ConfiguracionNegocio() {
   const { data: organization, isLoading } = useQuery({
     queryKey: ['organization', effectiveOrgId],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
-      return orgs[0];
+      const result = await getIdentityOrganization(effectiveOrgId);
+      return result.organization;
     },
     enabled: !!effectiveOrgId,
   });
 
   const updateOrgMutation = useMutation({
-    mutationFn: (data) => base44.entities.Organization.update(effectiveOrgId, data),
+    mutationFn: (data) => updateIdentityOrganization(effectiveOrgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organization'] });
       setShowSuccess(true);

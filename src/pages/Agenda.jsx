@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -135,12 +136,8 @@ function AgendaContent() {
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({
-        organization_id: effectiveOrgId,
-        role: 'TECHNICIAN',
-        active: true,
-      });
-      return accounts;
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
     enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole),
   });
@@ -175,14 +172,6 @@ function AgendaContent() {
       setShowModal(false);
       setEditingCita(null);
 
-      // Auditoría
-      base44.entities.SuperAdminAudit.create({
-        super_admin_id: user?.id || 'system',
-        super_admin_email: user?.email || 'system',
-        action: 'create_cita',
-        target_organization_id: effectiveOrgId,
-        context: `Cita creada por ${effectiveRole}`,
-      });
     },
     onError: (error) => {
       alert('Error al crear cita: ' + error.message);
@@ -212,14 +201,6 @@ function AgendaContent() {
       setShowModal(false);
       setEditingCita(null);
 
-      // Auditoría
-      base44.entities.SuperAdminAudit.create({
-        super_admin_id: user?.id || 'system',
-        super_admin_email: user?.email || 'system',
-        action: 'update_cita',
-        target_organization_id: effectiveOrgId,
-        context: `Cita actualizada por ${effectiveRole}`,
-      });
     },
     onError: (error) => {
       alert('Error al actualizar cita: ' + error.message);

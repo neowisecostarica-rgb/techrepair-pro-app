@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Printer, FileText, ArrowLeft, AlertTriangle } from 'lucide-react';
@@ -60,8 +61,8 @@ export default function ResumenDiagnostico() {
   const { data: tecnico } = useQuery({
     queryKey: ['user-account-tecnico', diagnostico?.tecnico_id],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({ user_id: diagnostico.tecnico_id, organization_id: effectiveOrgId });
-      return accounts[0];
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.find(account => account.user_id === diagnostico.tecnico_id);
     },
     enabled: !!diagnostico?.tecnico_id,
   });

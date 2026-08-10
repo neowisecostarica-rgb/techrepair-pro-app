@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import PageGuard from '@/components/guards/PageGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +40,8 @@ function InventarioInvertidoContent() {
   const { data: organization } = useQuery({
     queryKey: ['org-config', effectiveOrgId],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
-      return orgs[0];
+      const result = await getIdentityOrganization(effectiveOrgId);
+      return result.organization;
     },
     enabled: !!effectiveOrgId,
     staleTime: 600000

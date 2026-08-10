@@ -7,25 +7,23 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '../../utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { getIdentityAdminOverview } from '@/api/identity';
 
 export default function DashboardSuperAdmin() {
   // Global queries (no org filter)
-  const { data: organizations = [], isLoading: loadingOrgs } = useQuery({
-    queryKey: ['organizations'],
-    queryFn: () => base44.entities.Organization.list(),
+  const { data: overview = {}, isLoading: loadingIdentity } = useQuery({
+    queryKey: ['identity', 'admin-overview'],
+    queryFn: getIdentityAdminOverview,
   });
-
-  const { data: userAccounts = [], isLoading: loadingUsers } = useQuery({
-    queryKey: ['userAccounts'],
-    queryFn: () => base44.entities.UserAccount.list(),
-  });
+  const organizations = overview.organizations || [];
+  const userAccounts = overview.accounts || [];
 
   const { data: ordenes = [], isLoading: loadingOrdenes } = useQuery({
     queryKey: ['ordenes'],
     queryFn: () => base44.entities.OrdenTrabajo.list('-created_date', 1000),
   });
 
-  const isLoading = loadingOrgs || loadingUsers || loadingOrdenes;
+  const isLoading = loadingIdentity || loadingOrdenes;
 
   if (isLoading) {
     return (

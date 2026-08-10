@@ -14,6 +14,14 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
 import { useAuthContext } from '../components/contexts/AuthContext';
+import {
+  adminCreateIdentityOrganization,
+  adminUpdateIdentityOrganization,
+  endIdentityImpersonation,
+  getIdentityAdminOverview,
+  getIdentityOrganization,
+  startIdentityImpersonation,
+} from '@/api/identity';
 
 // P1: PLAN CATALOG (Frontend-only, precios en monedas soportadas)
 const PLAN_CATALOG = [
@@ -161,23 +169,19 @@ function SaasContent() {
       setIsImpersonating(authIsImpersonating);
       
       if (authIsImpersonating && effectiveOrgId) {
-        base44.entities.Organization.filter({ id: effectiveOrgId }).then(orgs => {
-          if (orgs.length > 0) setImpersonatedOrg(orgs[0]);
-        });
+        getIdentityOrganization(effectiveOrgId).then(result => setImpersonatedOrg(result.organization));
       }
     }
   }, [authUser, authIsImpersonating, effectiveOrgId]);
 
-  const { data: organizations = [] } = useQuery({
-    queryKey: ['organizations'],
-    queryFn: () => base44.entities.Organization.list('-created_date'),
-  });
-
-  const { data: allUserAccounts = [] } = useQuery({
-    queryKey: ['all-user-accounts'],
-    queryFn: () => base44.entities.UserAccount.list(),
+  const { data: adminOverview = {} } = useQuery({
+    queryKey: ['identity', 'admin-overview'],
+    queryFn: getIdentityAdminOverview,
     enabled: !authIsImpersonating,
   });
+  const organizations = adminOverview.organizations || [];
+  const allUserAccounts = adminOverview.accounts || [];
+  const auditLogs = adminOverview.auditLogs || [];
 
   const { data: allBranches = [] } = useQuery({
     queryKey: ['all-branches'],
@@ -197,51 +201,17 @@ function SaasContent() {
     enabled: !authIsImpersonating,
   });
 
-  const { data: auditLogs = [] } = useQuery({
-    queryKey: ['audit-logs'],
-    queryFn: () => base44.entities.SuperAdminAudit.list('-created_date', 10),
-    enabled: !authIsImpersonating,
-  });
-
   const { data: partners = [] } = useQuery({
     queryKey: ['partners'],
     queryFn: () => base44.entities.Partner.list(),
   });
 
-  // Auditoría de acciones
-  const auditMutation = useMutation({
-    mutationFn: (auditData) => base44.entities.SuperAdminAudit.create(auditData),
-  });
-
-  const recordAudit = (action, orgId = null, orgName = null, context = null) => {
-    if (!user) return;
-    
-    // Fire-and-forget: no await, no bloqueo
-    auditMutation.mutate({
-      super_admin_id: user.id,
-      super_admin_email: user.email,
-      action,
-      target_organization_id: orgId,
-      target_organization_name: orgName,
-      context
-    });
-    
-    // Best-effort: si falla, no afecta la operación principal
-  };
-
   const toggleOrgStatusMutation = useMutation({
     mutationFn: async ({ orgId, newStatus }) => {
-      return await base44.entities.Organization.update(orgId, { status: newStatus });
+      return await adminUpdateIdentityOrganization(orgId, { status: newStatus });
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-      const org = organizations.find(o => o.id === variables.orgId);
-      recordAudit(
-        variables.newStatus === 'active' ? 'activate_org' : 'deactivate_org',
-        variables.orgId,
-        org?.name,
-        `Cambio de estado a ${variables.newStatus}`
-      );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
     },
   });
 
@@ -249,19 +219,7 @@ function SaasContent() {
     if (!user) return;
 
     try {
-      // Actualizar user con impersonation
-      await base44.auth.updateMe({
-        impersonating_org_id: organization.id,
-        impersonating_started_at: new Date().toISOString()
-      });
-
-      // Registrar auditoría (non-blocking)
-      recordAudit(
-        'impersonate_start',
-        organization.id,
-        organization.name,
-        `Impersonación iniciada`
-      );
+      await startIdentityImpersonation(organization.id);
 
       setIsImpersonating(true);
       setImpersonatedOrg(organization);
@@ -278,19 +236,7 @@ function SaasContent() {
   const handleEndImpersonation = async () => {
     if (!user || !impersonatedOrg) return;
 
-    // Registrar fin de impersonación (non-blocking)
-    recordAudit(
-      'impersonate_end',
-      impersonatedOrg.id,
-      impersonatedOrg.name,
-      `Fin de impersonación`
-    );
-
-    // Limpiar impersonation
-    await base44.auth.updateMe({
-      impersonating_org_id: null,
-      impersonating_started_at: null
-    });
+    await endIdentityImpersonation();
 
     setIsImpersonating(false);
     setImpersonatedOrg(null);
@@ -311,14 +257,6 @@ function SaasContent() {
         newStatus: 'suspended' 
       });
       
-      // Auditoría non-blocking
-      recordAudit(
-        'suspend_org',
-        selectedOrg.id,
-        selectedOrg.name,
-        `Suspendida. Motivo: ${suspendReason}`
-      );
-
       setShowSuspendModal(false);
       setSuspendReason('');
       setSelectedOrg(null);
@@ -337,13 +275,6 @@ function SaasContent() {
         newStatus: 'active' 
       });
       
-      // Auditoría non-blocking
-      recordAudit(
-        'reactivate_org',
-        organization.id,
-        organization.name,
-        'Organización reactivada'
-      );
     } catch (error) {
       console.error('Error reactivando org:', error);
       alert('Error al reactivar organización');
@@ -361,17 +292,8 @@ function SaasContent() {
     }
 
     try {
-      await base44.entities.Organization.update(selectedOrg.id, { plan: newPlan });
-      
-      // Auditoría non-blocking
-      recordAudit(
-        'change_plan',
-        selectedOrg.id,
-        selectedOrg.name,
-        `Plan cambiado de ${selectedOrg.plan} a ${newPlan}`
-      );
-
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      await adminUpdateIdentityOrganization(selectedOrg.id, { plan: newPlan });
+      queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
       setShowChangePlanModal(false);
       setNewPlan('');
       setSelectedOrg(null);
@@ -403,107 +325,14 @@ function SaasContent() {
   const totalHealthIssues = Object.values(healthChecks).reduce((a, b) => a + b, 0);
 
   const createOrgMutation = useMutation({
-    mutationFn: async (data) => {
-      // P0: PRE-FLIGHT — Asegurar User existe y obtener user_id ANTES de crear Organization
-      let targetUserId = null;
-      
-      try {
-        // Invitar usuario (crea si no existe, no falla si ya existe)
-        await base44.users.inviteUser(data.admin_email, 'user');
-      } catch (inviteError) {
-        console.warn('Invite warning (puede ya existir):', inviteError.message);
-      }
-      
-      // Buscar user_id con reintentos (delay de creación)
-      for (let attempt = 0; attempt < 3; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-        const allUsers = await base44.entities.User.filter({});
-        const targetUser = allUsers.find(u => u.email === data.admin_email);
-        if (targetUser) {
-          targetUserId = targetUser.id;
-          break;
-        }
-      }
-      
-      if (!targetUserId) {
-        console.warn(`⚠️ user_id no resuelto para ${data.admin_email}, creando UserAccount pendiente`);
-      }
-
-      // P0: CREACIÓN ATÓMICA CON ROLLBACK POR COMPENSACIÓN
-      let org = null;
-      let branch = null;
-      let userAccount = null;
-      
-      try {
-        // 1. Organization
-        const orgPayload = {
-          ...data.organization,
-          created_by: user.id,
-        };
-        org = await base44.entities.Organization.create(orgPayload);
-        
-        // 2. Branch (obligatorio)
-        branch = await base44.entities.Branch.create({
-          organization_id: org.id,
-          name: 'Sucursal Principal',
-          active: true,
-        });
-        // 3. UserAccount
-        // P0 FIX: SIEMPRE crear UserAccount (con o sin user_id resuelto)
-        // Esto previene que Onboarding cree Organization duplicada
-        userAccount = await base44.entities.UserAccount.create({
-          user_id: targetUserId || null, // Nullable si usuario no existe aún
-          user_email: data.admin_email,
-          organization_id: org.id,
-          branch_id: branch.id,
-          role: 'ORG_ADMIN',
-          active: targetUserId ? true : false, // Activo solo si user_id resuelto
-        });
-
-
-
-        // 4. Auditar (non-blocking)
-        recordAudit('create_org', org.id, data.organization.name, 'Organización creada');
-        
-        return org;
-      } catch (error) {
-        // ROLLBACK POR COMPENSACIÓN
-        console.error('Error en creación de tenant, ejecutando rollback:', error);
-        
-        if (userAccount) {
-          try {
-            await base44.entities.UserAccount.delete(userAccount.id);
-          } catch (e) {
-            console.error('Rollback UserAccount falló:', e);
-          }
-        }
-        
-        if (branch) {
-          try {
-            await base44.entities.Branch.delete(branch.id);
-          } catch (e) {
-            console.error('Rollback Branch falló:', e);
-          }
-        }
-        
-        if (org) {
-          try {
-            await base44.entities.Organization.delete(org.id);
-          } catch (e) {
-            console.error('Rollback Organization falló:', e);
-          }
-        }
-        
-        throw new Error(`Creación de tenant fallida: ${error.message}. Se ejecutó rollback.`);
-      }
-    },
-    onSuccess: (newOrg) => {
+    mutationFn: (data) => adminCreateIdentityOrganization(data.organization, data.admin_email),
+    onSuccess: (result) => {
+      const newOrg = result.organization;
       // P0: Resetear guard de idempotencia
       isCreatingRef.current = false;
       
       // P0: Auto-refresh de la lista de tenants
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-      queryClient.invalidateQueries({ queryKey: ['all-user-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
       
       // P0: Highlight del tenant recién creado
       setJustCreatedOrgId(newOrg.id);

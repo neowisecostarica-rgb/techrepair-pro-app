@@ -62,18 +62,6 @@ export default function ActividadActiva({ actividad, onUpdated }) {
         duracion_minutos: duracion
       });
 
-      // 6) Auditoría
-      await base44.entities.SuperAdminAudit.create({
-        super_admin_id: user.id,
-        super_admin_email: user.email,
-        action: 'actividad_finished',
-        target_organization_id: effectiveOrgId,
-        context: JSON.stringify({
-          actividad_id: actividad.id,
-          duracion_minutos: duracion,
-          resultado: a.resultado || null
-        })
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
@@ -115,17 +103,6 @@ export default function ActividadActiva({ actividad, onUpdated }) {
         duracion_minutos: duracion
       });
 
-      // 6) Auditoría
-      await base44.entities.SuperAdminAudit.create({
-        super_admin_id: user.id,
-        super_admin_email: user.email,
-        action: 'actividad_blocked',
-        target_organization_id: effectiveOrgId,
-        context: JSON.stringify({
-          actividad_id: actividad.id,
-          causa_bloqueo: causaBloqueo
-        })
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });

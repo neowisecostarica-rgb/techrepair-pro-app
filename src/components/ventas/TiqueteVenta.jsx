@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization, listIdentityAccounts } from '@/api/identity';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Shield, QrCode, Printer, FileText } from 'lucide-react';
@@ -29,8 +30,8 @@ export default function TiqueteVenta({ venta, onClose }) {
   const { data: organization } = useQuery({
     queryKey: ['org-tiquete', venta?.organization_id],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.list();
-      return orgs.find(o => o.id === venta.organization_id);
+      const result = await getIdentityOrganization(venta.organization_id);
+      return result.organization;
     },
     enabled: !!venta?.organization_id,
   });
@@ -81,8 +82,8 @@ export default function TiqueteVenta({ venta, onClose }) {
   const { data: tecnico } = useQuery({
     queryKey: ['tecnico-diag-venta', diagnostico?.tecnico_id],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({ user_id: diagnostico.tecnico_id });
-      return accounts[0];
+      const { accounts } = await listIdentityAccounts(venta.organization_id);
+      return accounts.find(account => account.user_id === diagnostico.tecnico_id);
     },
     enabled: !!diagnostico?.tecnico_id && esDiagnostico,
   });

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarMenu from '@/components/layout/SidebarMenu';
+import { endIdentityImpersonation, getIdentityOrganization } from '@/api/identity';
 
 function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -23,8 +24,8 @@ function LayoutContent({ children, currentPageName }) {
   const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({
     queryKey: ['org-status', effectiveOrgId],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
-      return orgs[0];
+      const result = await getIdentityOrganization(effectiveOrgId);
+      return result.organization;
     },
     enabled: !!effectiveOrgId && effectiveRole !== 'SUPER_ADMIN',
     staleTime: 60000,
@@ -69,20 +70,7 @@ function LayoutContent({ children, currentPageName }) {
   };
 
   const handleEndImpersonation = async () => {
-    await base44.auth.updateMe({
-      impersonating_org_id: null,
-      impersonating_started_at: null
-    });
-
-    // Registrar fin en auditoría (non-blocking)
-    base44.entities.SuperAdminAudit.create({
-      super_admin_id: user.id,
-      super_admin_email: user.email,
-      action: 'impersonate_end',
-      target_organization_id: effectiveOrgId,
-    }).catch(err => {
-      console.warn('Auditoría impersonate_end falló (non-blocking):', err);
-    });
+    await endIdentityImpersonation();
 
     window.location.href = createPageUrl('Saas');
   };

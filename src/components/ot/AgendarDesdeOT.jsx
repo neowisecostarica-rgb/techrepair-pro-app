@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { validarSolapamiento } from '@/components/calendario/validarSolapamiento';
 
@@ -22,12 +23,8 @@ export default function AgendarDesdeOT({ ordenTrabajo, effectiveOrgId, onSuccess
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({
-        organization_id: effectiveOrgId,
-        role: 'TECHNICIAN',
-        active: true,
-      });
-      return accounts;
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
     enabled: !!effectiveOrgId && showModal,
   });
@@ -72,15 +69,6 @@ export default function AgendarDesdeOT({ ordenTrabajo, effectiveOrgId, onSuccess
         tecnico_asignado_email: tecnicos.find(t => t.user_id === tecnicoId)?.user_email,
         motivo: `${tipo === 'diagnostico' ? 'Diagnóstico' : 'Reparación'} - OT ${ordenTrabajo.id.slice(-6)}`,
         estado: 'programada',
-      });
-
-      // Auditoría
-      await base44.entities.SuperAdminAudit.create({
-        super_admin_id: 'system',
-        super_admin_email: 'system',
-        action: 'create_cita_from_ot',
-        target_organization_id: effectiveOrgId,
-        context: `Evento agendado desde OT ${ordenTrabajo.id}`,
       });
 
       queryClient.invalidateQueries({ queryKey: ['citas'] });

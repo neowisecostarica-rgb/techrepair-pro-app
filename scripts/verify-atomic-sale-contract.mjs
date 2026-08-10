@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import {
+  applyInventoryStockCas,
+  rollbackInventoryStockCas,
+} from '../base44/functions/_shared/inventoryStockCas.ts';
 
 const backendPath = new URL('../base44/functions/createSale/entry.ts', import.meta.url);
 const posPath = new URL('../src/pages/PuntoVenta.jsx', import.meta.url);
@@ -151,7 +155,7 @@ function createScenario({ stock = 10, failure = null, preload = false, postSaleF
 
 function loadHandler(client) {
   const executable = backendSource
-    .replace(/^import .*?;\s*/u, 'const createClientFromRequest = globalThis.__createClientFromRequest;\n')
+    .replace(/^import .*?;\s*/gmu, '')
     .replace('Deno.serve(async req => {', 'globalThis.__handler = async req => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
@@ -163,9 +167,11 @@ function loadHandler(client) {
     Response,
     structuredClone,
     setTimeout,
+    applyInventoryStockCas,
+    rollbackInventoryStockCas,
   };
   context.globalThis = context;
-  vm.runInNewContext(executable, context, { filename: 'createSale/entry.ts' });
+  vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename: 'createSale/entry.ts' });
   return context.__handler;
 }
 
@@ -462,7 +468,7 @@ test('source contract uses persisted CAS and has no random idempotency fallback'
   assert.match(backendSource, /sale_lock_token/);
   assert.match(backendSource, /updateMany\(\{/);
   assert.match(backendSource, /request_fingerprint/);
-  assert.match(backendSource, /cantidad_disponible: plan\.stockAnterior/);
+  assert.match(backendSource, /expectedStock: plan\.stockAnterior/);
   assert.doesNotMatch(backendSource, /auto_\$\{Date\.now/);
   assert.match(posSource, /setIdempotencyKey\(`ik_\$\{crypto\.randomUUID\(\)\}`\)/);
 });

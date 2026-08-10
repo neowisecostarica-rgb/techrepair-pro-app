@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { applyInventoryStockCas, rollbackInventoryStockCas } from '../_shared/inventoryStockCas.ts';
 
 /*
  * createSale — TRP-MVP-003
@@ -614,17 +615,14 @@ async function applyInventory(base44, context, plans, mutations) {
     let result = { updated: 1, recovered_interrupted_update: plan.stockAlreadyApplied };
     if (!plan.stockAlreadyApplied) {
       try {
-        result = await base44.asServiceRole.entities.Inventario.updateMany({
-          id: plan.invItem.id,
-          organization_id: orgId,
-          cantidad_disponible: plan.stockAnterior,
-        }, {
-          $set: {
-            cantidad_disponible: plan.stockNuevo,
-            fecha_ultimo_movimiento: new Date().toISOString().split('T')[0],
-            last_sale_id: sale.id,
-            last_sale_operation_key: operationKey,
-          },
+        result = await applyInventoryStockCas(base44.asServiceRole.entities.Inventario, {
+          inventoryId: plan.invItem.id,
+          organizationId: orgId,
+          expectedStock: plan.stockAnterior,
+          newStock: plan.stockNuevo,
+          movementDate: new Date().toISOString().split('T')[0],
+          operationId: sale.id,
+          operationKey,
         });
       } catch (updateError) {
         const reconciled = await findOne(base44.asServiceRole.entities.Inventario, {
@@ -802,15 +800,14 @@ async function rollback(base44, context, mutations, originalError) {
 
   for (const plan of [...mutations.stockChanges].reverse()) {
     try {
-      const reverted = await base44.asServiceRole.entities.Inventario.updateMany({
-        id: plan.invItem.id,
-        organization_id: orgId,
-        cantidad_disponible: plan.stockNuevo,
-        last_sale_id: sale.id,
-        last_sale_operation_key: operationKey,
-      }, {
-        $set: { cantidad_disponible: plan.stockAnterior },
-        $unset: { last_sale_id: '', last_sale_operation_key: '' },
+      const reverted = await rollbackInventoryStockCas(base44.asServiceRole.entities.Inventario, {
+        inventoryId: plan.invItem.id,
+        organizationId: orgId,
+        expectedCurrentStock: plan.stockNuevo,
+        previousStock: plan.stockAnterior,
+        previousMovementDate: plan.invItem.fecha_ultimo_movimiento || null,
+        operationId: sale.id,
+        operationKey,
       });
       if (reverted?.updated !== 1) errors.push(`stock:${plan.invItem.id}:ownership_lost`);
     } catch (error) { errors.push(`stock:${plan.invItem.id}:${error.message}`); }

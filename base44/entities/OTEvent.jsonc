@@ -26,6 +26,7 @@
         "TRANSITION_APROBADA",
         "TRANSITION_EN_REPARACION",
         "TRANSITION_PRUEBAS",
+        "ATTENTION_STATUS_CHANGED",
         "CUSTODIA_CONTACTO",
         "CUSTODIA_ABANDONO",
         "CUSTODIA_DISPOSICION",
@@ -76,13 +77,7 @@
     "tipo"
   ],
   "rls": {
-    "create": {
-      "$or": [
-        { "organization_id": "{{user.organization_id}}" },
-        { "organization_id": "{{user.impersonating_org_id}}" },
-        { "user_condition": { "is_super_admin": true } }
-      ]
-    },
+    "create": false,
     "read": {
       "$or": [
         { "organization_id": "{{user.organization_id}}" },
@@ -90,13 +85,7 @@
         { "user_condition": { "is_super_admin": true } }
       ]
     },
-    "update": {
-      "$or": [
-        { "organization_id": "{{user.organization_id}}" },
-        { "organization_id": "{{user.impersonating_org_id}}" },
-        { "user_condition": { "is_super_admin": true } }
-      ]
-    },
+    "update": false,
     "delete": false
   }
 }

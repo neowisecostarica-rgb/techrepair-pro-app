@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { evaluateCurrentQaEvidence } from '../_shared/qaEvidence.ts';
 
 // ─── STATE MACHINE OFICIAL ────────────────────────────────────────────────────
 const ALLOWED_TRANSITIONS = {
@@ -932,9 +934,12 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
       }
       const account = orgHint
-        ? (userAccounts.find(a => a.organization_id === orgHint) || userAccounts[0])
-        : userAccounts[0];
-      if (account.status !== 'active') {
+        ? userAccounts.find(a => a.organization_id === orgHint)
+        : (userAccounts.length === 1 ? userAccounts[0] : null);
+      if (!account) {
+        return Response.json({ error: 'No existe una cuenta para la organizacion activa' }, { status: 403 });
+      }
+      if (!isCanonicalActiveUserAccount(account)) {
         return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
       }
       orgId = account.organization_id;
@@ -1086,26 +1091,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Una OT no puede cerrarse como FINALIZADA sin evidencia de control de calidad.
-    // PruebaTecnica ya es el registro canónico del módulo existente de pruebas.
-    if (newStatus === 'FINALIZADA') {
-      const pruebasExitosas = await base44.asServiceRole.entities.PruebaTecnica.filter({
-        organization_id: orgId,
-        orden_trabajo_id,
-        resultado: 'exitoso',
-      }, 1);
-
-      if (!pruebasExitosas || pruebasExitosas.length === 0) {
-        return Response.json({
-          error: 'No se puede finalizar la OT: registra al menos una prueba técnica con resultado exitoso.',
-          code: 'FINALIZADA_SIN_PRUEBA_EXITOSA',
-          orden_trabajo_id,
-        }, { status: 422 });
-      }
-
-      extra.prueba_tecnica_exitosa_verificada = true;
-    }
-
     if (newStatus === 'ENTREGADA') {
       const ventasPagadas = await base44.asServiceRole.entities.Venta.filter({
         organization_id: orgId,
@@ -1150,6 +1135,10 @@ Deno.serve(async (req) => {
     if (newStatus === 'FINALIZADA') {
       updatePayload.fecha_cierre = now;
     }
+    if (newStatus === 'PRUEBAS') {
+      updatePayload.qa_cycle_id = crypto.randomUUID();
+      updatePayload.qa_cycle_started_at = now;
+    }
 
     // ── 11. Serializar y ejecutar la transición ───────────────────────────────
     const lifecycleLock = await acquireLifecycleLock({
@@ -1169,6 +1158,44 @@ Deno.serve(async (req) => {
     }
 
     try {
+      const lockedOt = await loadWorkOrder(base44, orgId, orden_trabajo_id);
+      if (!lockedOt || lockedOt.lifecycle_lock_token !== lifecycleLock.token) {
+        return Response.json({
+          error: 'No se pudo confirmar el estado actual de la OT bajo el lock del lifecycle.',
+          code: 'LIFECYCLE_LOCK_LOST',
+          retryable: true,
+        }, { status: 409 });
+      }
+      if (lockedOt.estado !== currentStatus || !canTransition(lockedOt.estado, newStatus)) {
+        return Response.json({
+          error: `La OT cambio antes de confirmar la transicion. Estado actual: ${lockedOt.estado}.`,
+          code: 'ORDEN_TRABAJO_CONCURRENT_UPDATE',
+          retryable: true,
+        }, { status: 409 });
+      }
+
+      if (newStatus === 'FINALIZADA') {
+        const qaRecords = await base44.asServiceRole.entities.PruebaTecnica.filter({
+          organization_id: orgId,
+          orden_trabajo_id,
+        }, 'recorded_at', 200);
+        const qaValidation = evaluateCurrentQaEvidence(qaRecords, {
+          organizationId: orgId,
+          workOrderId: orden_trabajo_id,
+          assignedTechnicianId: lockedOt?.tecnico_asignado_id,
+          cycleId: lockedOt?.qa_cycle_id,
+          cycleStartedAt: lockedOt?.qa_cycle_started_at,
+        });
+        if (!qaValidation.valid) {
+          return Response.json({
+            error: 'No se puede finalizar la OT: la evidencia QA vigente no es valida.',
+            code: qaValidation.code,
+            orden_trabajo_id,
+          }, { status: 422 });
+        }
+        extra.prueba_tecnica_exitosa_verificada = true;
+      }
+
       let transitionResult;
       let transitionError;
       try {
@@ -1238,6 +1265,9 @@ Deno.serve(async (req) => {
                 created_by_user_id: effectiveUser.id,
                 processed: false,
                 created_at: now,
+                detalle: newStatus === 'PRUEBAS'
+                  ? JSON.stringify({ qa_cycle_id: updatePayload.qa_cycle_id })
+                  : undefined,
               });
             } catch (eventError) {
               const reconciledEvents = await base44.asServiceRole.entities.OTEvent.filter({

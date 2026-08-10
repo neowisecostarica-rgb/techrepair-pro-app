@@ -38,6 +38,16 @@
       "type": "string",
       "description": "Identidad comercial del movimiento para recuperacion idempotente.",
       "rls": { "write": false }
+    },
+    "stock_operation_id": {
+      "type": "string",
+      "description": "Operacion CAS de stock que origino el movimiento.",
+      "rls": { "write": false }
+    },
+    "stock_operation_key": {
+      "type": "string",
+      "description": "Identidad de concurrencia del ajuste manual.",
+      "rls": { "write": false }
     }
   },
   "required": [

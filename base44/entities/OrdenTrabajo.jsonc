@@ -294,6 +294,18 @@
         "write": false
       }
     },
+    "qa_cycle_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identidad backend del ciclo vigente de PRUEBAS.",
+      "rls": { "read": false, "write": false }
+    },
+    "qa_cycle_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Inicio confirmado del ciclo vigente de PRUEBAS.",
+      "rls": { "read": false, "write": false }
+    },
     "reception_correlation_id": {
       "type": "string",
       "format": "uuid",

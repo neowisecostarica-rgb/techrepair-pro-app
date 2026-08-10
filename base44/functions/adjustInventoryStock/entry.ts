@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { isCanonicalActiveUserAccount } from '../_shared/userAuthorization.ts';
+import { applyInventoryStockCas, rollbackInventoryStockCas } from '../_shared/inventoryStockCas.ts';
 
 /**
  * adjustInventoryStock — Owner único de ajustes manuales de stock
@@ -36,7 +38,7 @@ Deno.serve(async (req) => {
 
   const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id, organization_id: orgId });
   const canManageInventory = user.is_super_admin === true || accounts.some(account =>
-    account.role === 'ORG_ADMIN' && account.status !== 'suspended' && account.active !== false
+    account.role === 'ORG_ADMIN' && isCanonicalActiveUserAccount(account)
   );
   if (!canManageInventory) {
     return Response.json({ error: 'Acceso denegado: se requiere ORG_ADMIN para modificar inventario' }, { status: 403 });
@@ -104,11 +106,45 @@ Deno.serve(async (req) => {
     stockNuevo = stockActual - delta;
   }
 
-  // 6. ACTUALIZAR STOCK
-  await base44.asServiceRole.entities.Inventario.update(inventario_id, {
-    cantidad_disponible: stockNuevo,
-    fecha_ultimo_movimiento: new Date().toISOString().split('T')[0],
-  });
+  // 6. ACTUALIZAR STOCK CON EL MISMO CAS CANONICO UTILIZADO POR ATOMIC SALE
+  const operationId = `manual-adjust:${crypto.randomUUID()}`;
+  const operationKey = crypto.randomUUID();
+  const movementDate = new Date().toISOString().split('T')[0];
+  let stockResult;
+  try {
+    stockResult = await applyInventoryStockCas(base44.asServiceRole.entities.Inventario, {
+      inventoryId: inventario_id,
+      organizationId: orgId,
+      expectedStock: stockActual,
+      newStock: stockNuevo,
+      movementDate,
+      operationId,
+      operationKey,
+    });
+  } catch (updateError) {
+    const [reconciled] = await base44.asServiceRole.entities.Inventario.filter({
+      id: inventario_id,
+      organization_id: orgId,
+    }, 1);
+    if (reconciled?.last_sale_id === operationId && reconciled?.last_sale_operation_key === operationKey) {
+      stockResult = { updated: 1, recovered_ambiguous_update: true };
+    } else {
+      return Response.json({ error: `No se pudo confirmar el ajuste: ${updateError.message}` }, { status: 500 });
+    }
+  }
+
+  if (stockResult?.updated !== 1) {
+    const [current] = await base44.asServiceRole.entities.Inventario.filter({
+      id: inventario_id,
+      organization_id: orgId,
+    }, 1);
+    return Response.json({
+      error: 'El inventario cambio durante el ajuste. Reintenta con el stock actualizado.',
+      code: 'INVENTORY_CONCURRENT_UPDATE',
+      stock_actual: current?.cantidad_disponible,
+      retryable: true,
+    }, { status: 409 });
+  }
 
   // 7. CREAR HISTORIAL — OBLIGATORIO. Si falla, revertir stock.
   try {
@@ -122,16 +158,24 @@ Deno.serve(async (req) => {
       valor_nuevo: String(stockNuevo),
       modificado_por: user.id,
       motivo: motivoFinal,
+      stock_operation_id: operationId,
+      stock_operation_key: operationKey,
     });
   } catch (historialError) {
     // ATOMICIDAD: revertir stock si falla el historial
     console.error('[adjustInventoryStock] CRÍTICO: Fallo en InventarioHistorial — revirtiendo stock:', historialError.message);
 
     try {
-      await base44.asServiceRole.entities.Inventario.update(inventario_id, {
-        cantidad_disponible: stockActual,
-        fecha_ultimo_movimiento: invItem.fecha_ultimo_movimiento || null,
+      const reverted = await rollbackInventoryStockCas(base44.asServiceRole.entities.Inventario, {
+        inventoryId: inventario_id,
+        organizationId: orgId,
+        expectedCurrentStock: stockNuevo,
+        previousStock: stockActual,
+        previousMovementDate: invItem.fecha_ultimo_movimiento || null,
+        operationId,
+        operationKey,
       });
+      if (reverted?.updated !== 1) throw new Error('CAS rollback ownership lost');
     } catch (revertError) {
       console.error('[adjustInventoryStock] CRÍTICO: No se pudo revertir stock:', revertError.message);
       return Response.json({

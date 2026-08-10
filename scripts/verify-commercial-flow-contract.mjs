@@ -17,6 +17,8 @@ const [
   transition,
   publicReader,
   authContext,
+  canonicalAuthorization,
+  qaEvidence,
 ] = await Promise.all([
   read('src/App.jsx'),
   read('src/pages/PortalCliente.jsx'),
@@ -30,6 +32,8 @@ const [
   read('base44/functions/transitionWorkOrderStatus/entry.ts'),
   read('base44/functions/getPublicCommercialDocument/entry.ts'),
   read('src/components/contexts/AuthContext.jsx'),
+  read('base44/functions/_shared/userAuthorization.ts'),
+  read('base44/functions/_shared/qaEvidence.ts'),
 ]);
 
 const pass = (name, check) => {
@@ -83,8 +87,10 @@ pass('POS no longer skips repair and QA states after payment',
 pass('work orders cannot finalize without successful technical QA evidence',
   transition.includes("newStatus === 'FINALIZADA'")
   && transition.includes('entities.PruebaTecnica.filter')
-  && transition.includes("resultado: 'exitoso'")
-  && transition.includes("code: 'FINALIZADA_SIN_PRUEBA_EXITOSA'"));
+  && transition.includes('evaluateCurrentQaEvidence')
+  && qaEvidence.includes("record?.author_role === 'TECHNICIAN'")
+  && qaEvidence.includes("record?.recorded_via_backend === true")
+  && qaEvidence.includes('QA_LATER_INCOMPATIBLE_RESULT'));
 
 pass('repair warranty issuance is deferred until delivery',
   pos.includes('if (esReparacion) return;'));
@@ -97,7 +103,9 @@ pass('delivery evidence and warranty are idempotent before the terminal transiti
 pass('branch administrators can complete delivery as allowed by the backend state machine',
   delivery.includes("['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES']"));
 
-pass('canonical UserAccount.status takes precedence over the legacy active flag',
-  authContext.includes("a.status ? a.status === 'active' : a.active !== false"));
+pass('canonical UserAccount.status is the only authorization source',
+  canonicalAuthorization.includes("account?.status === 'active'")
+  && authContext.includes('isCanonicalActiveUserAccount')
+  && !canonicalAuthorization.includes('account?.active'));
 
 console.log('\n16 commercial-flow recovery contract checks passed.');

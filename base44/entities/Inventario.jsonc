@@ -122,7 +122,7 @@
     },
     "last_sale_id": {
       "type": "string",
-      "description": "Venta propietaria del ultimo CAS de stock; permite reconciliar respuestas ambiguas.",
+      "description": "Operacion propietaria del ultimo CAS de stock (venta o ajuste manual); permite reconciliar respuestas ambiguas.",
       "rls": { "read": false, "write": false }
     },
     "last_sale_operation_key": {

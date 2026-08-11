@@ -16,6 +16,7 @@
     "test:inventory-integrity": "node scripts/verify-inventory-integrity-contract.mjs",
     "test:atomic-sale": "node scripts/verify-atomic-sale-contract.mjs",
     "test:delivery-atomicity": "node scripts/verify-delivery-atomicity-contract.mjs",
+    "test:branch-lifecycle": "node scripts/verify-branch-deletion-protection-contract.mjs",
     "test:security-integrity": "node scripts/verify-security-integrity-contract.mjs",
     "test:identity-tenant-security": "node scripts/verify-identity-tenant-security-contract.mjs",
     "test:crm-customer360": "node scripts/verify-crm-customer360-contract.mjs",

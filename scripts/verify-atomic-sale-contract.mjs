@@ -16,6 +16,10 @@ import {
   validateRequestedBranch,
 } from '../base44/functions/_shared/operationalAuthorization.ts';
 import {
+  assertActiveBranch,
+  BranchProtectionError,
+} from '../base44/functions/_shared/branchProtection.ts';
+import {
   assertClientFinancialHints,
   assertPersistedTotalsMatch,
   calculateCommercialTotals,
@@ -214,6 +218,8 @@ function loadHandler(client) {
     resolveAuthorizedContext,
     getCanonicalBranchScope,
     validateRequestedBranch,
+    assertActiveBranch,
+    BranchProtectionError,
     assertClientFinancialHints,
     assertPersistedTotalsMatch,
     calculateCommercialTotals,

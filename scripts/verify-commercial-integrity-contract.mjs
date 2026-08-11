@@ -16,7 +16,6 @@ import {
   renewLifecycleLock,
   workflowError,
 } from '../base44/functions/_shared/workOrderLifecycleLock.ts';
-
 const transitionSource = await readFile(
   new URL('../base44/functions/transitionWorkOrderStatus/entry.ts', import.meta.url),
   'utf8',
@@ -49,6 +48,7 @@ function applyUpdate(record, update) {
 
 function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0, physical = false, transitionFailures = 0 } = {}) {
   const collections = {
+    Branch: [{ id: 'branch-a', organization_id: 'org-a', name: 'Central', active: true }],
     Cotizacion: [{
       id: 'quote-1', organization_id: 'org-a', branch_id: 'branch-a', cliente_id: 'client-1',
       orden_trabajo_id: 'ot-1', diagnostico_tecnico_id: 'diagnostic-1',

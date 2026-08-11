@@ -46,6 +46,10 @@ function scenario(options = {}) {
       garantia_config: { texto_reparaciones: 'Garantia MVP', meses_vigencia_reparaciones: 3 },
       created_date: '2026-01-01T00:00:00.000Z',
     }],
+    Branch: [{
+      id: branchId, organization_id: orgId, name: 'Central', active: options.branchActive !== false,
+      created_date: '2026-01-01T00:00:00.000Z',
+    }],
     OrdenTrabajo: [{
       id: 'ot-1', organization_id: orgId, branch_id: branchId, cliente_id: 'client-1', equipo_id: 'equipment-1',
       codigo_ot: 'OT-1', estado: options.state || 'FINALIZADA', diagnostico_habilitado: !warrantyApplicable,

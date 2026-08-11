@@ -4,8 +4,31 @@
  * Solo ORG_ADMIN puede ejecutar (verificado server-side).
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
+import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
+
+const BRANCH_SCOPED_ROLES = new Set(['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT']);
+
+async function validateBranchAssignment(base44, organizationId, role, branchId) {
+  if (BRANCH_SCOPED_ROLES.has(role) && !branchId) {
+    return { ok: false, status: 400, code: 'USER_BRANCH_REQUIRED', error: 'El rol requiere una sucursal activa.' };
+  }
+  if (!branchId) return { ok: true };
+  try {
+    await assertActiveBranch(base44, organizationId, branchId, {
+      code: 'USER_BRANCH_INVALID',
+      status: 409,
+      message: 'La sucursal asignada no existe, pertenece a otra organizacion o esta inactiva.',
+    });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof BranchProtectionError) {
+      return { ok: false, status: error.status, code: error.code, error: error.message };
+    }
+    throw error;
+  }
+}
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -46,6 +69,9 @@ Deno.serve(async (req) => {
     if (!allowedRoles.includes(role)) {
       return Response.json({ error: 'Rol inválido' }, { status: 400 });
     }
+
+    const branchAssignment = await validateBranchAssignment(base44, effectiveOrgId, role, branch_id || null);
+    if (!branchAssignment.ok) return Response.json(branchAssignment, { status: branchAssignment.status });
 
     // Invitar al usuario a la plataforma Base44
     try {
@@ -134,6 +160,13 @@ Deno.serve(async (req) => {
     }
 
     // Proteger último ORG_ADMIN activo
+    if (status !== 'suspended') {
+      const branchAssignment = await validateBranchAssignment(
+        base44, effectiveOrgId, target[0].role, target[0].branch_id || null,
+      );
+      if (!branchAssignment.ok) return Response.json(branchAssignment, { status: branchAssignment.status });
+    }
+
     if (status === 'suspended' && target[0].role === 'ORG_ADMIN') {
       const activeAdmins = await base44.asServiceRole.entities.UserAccount.filter({
         organization_id: effectiveOrgId,
@@ -177,6 +210,10 @@ Deno.serve(async (req) => {
     if (!target[0] || target[0].organization_id !== effectiveOrgId) {
       return Response.json({ error: 'Cuenta no encontrada en esta organización' }, { status: 404 });
     }
+
+    const nextBranchId = branch_id !== undefined ? branch_id : target[0].branch_id;
+    const branchAssignment = await validateBranchAssignment(base44, effectiveOrgId, role, nextBranchId || null);
+    if (!branchAssignment.ok) return Response.json(branchAssignment, { status: branchAssignment.status });
 
     const removesActiveAdmin =
       target[0].role === 'ORG_ADMIN' &&
@@ -227,6 +264,10 @@ Deno.serve(async (req) => {
     if (!target[0] || target[0].organization_id !== effectiveOrgId) {
       return Response.json({ error: 'Cuenta no encontrada en esta organización' }, { status: 404 });
     }
+
+    const nextBranchId = branch_id !== undefined ? branch_id : target[0].branch_id;
+    const branchAssignment = await validateBranchAssignment(base44, effectiveOrgId, role, nextBranchId || null);
+    if (!branchAssignment.ok) return Response.json(branchAssignment, { status: branchAssignment.status });
 
     if (target[0].role === 'ORG_ADMIN' && role !== 'ORG_ADMIN' && isCanonicalActiveUserAccount(target[0])) {
       const activeAdmins = await base44.asServiceRole.entities.UserAccount.filter({

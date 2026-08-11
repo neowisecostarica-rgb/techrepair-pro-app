@@ -32,6 +32,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { executeInventoryCommand } from '../_shared/inventoryMutationService.ts';
+import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
@@ -302,6 +303,18 @@ Deno.serve(async (req) => {
     const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
     if (!branchAuthorization.ok) {
       return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+    }
+    try {
+      await assertActiveBranch(base44, orgId, ot.branch_id, {
+        code: 'TECHNICAL_ACTIVITY_BRANCH_INACTIVE',
+        status: 409,
+        message: 'La sucursal esta inactiva y no admite nuevas actividades tecnicas.',
+      });
+    } catch (error) {
+      if (error instanceof BranchProtectionError) {
+        return Response.json({ error: error.message, code: error.code }, { status: error.status });
+      }
+      throw error;
     }
     if (confirmar_consumo_repuesto === true
       && (!inventario_id || !Number.isFinite(Number(inventario_cantidad)) || Number(inventario_cantidad) <= 0)) {

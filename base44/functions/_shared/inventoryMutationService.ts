@@ -2,6 +2,7 @@ import {
   applyInventoryProjectionCas,
   rollbackInventoryProjectionCas,
 } from './inventoryStockCas.ts';
+import { assertActiveBranch, BranchProtectionError } from './branchProtection.ts';
 
 export const INVENTORY_MOVEMENT_TYPES = Object.freeze([
   'INITIAL_BALANCE',
@@ -695,6 +696,21 @@ export async function executeInventoryCommand(base44, rawInput, providedLockAdap
     );
   }
   const movements = normalizeMovements(input.movements);
+  const isRecoveryOnly = movements.every(movement => movement.type === 'REVERSAL');
+  if (!isRecoveryOnly) {
+    try {
+      await assertActiveBranch(base44, input.organizationId, input.branchId, {
+        code: 'INVENTORY_BRANCH_INACTIVE',
+        status: 409,
+        message: 'La sucursal esta inactiva y no admite mutaciones ordinarias de inventario.',
+      });
+    } catch (error) {
+      if (error instanceof BranchProtectionError) {
+        throw new InventoryCommandError(error.message, error.code, error.status, error.details);
+      }
+      throw error;
+    }
+  }
   const fingerprint = await commandFingerprint(input, movements);
   if (input.fingerprint && input.fingerprint !== fingerprint) {
     throw new InventoryCommandError('El fingerprint no coincide con el comando', 'INVENTORY_FINGERPRINT_MISMATCH', 409);

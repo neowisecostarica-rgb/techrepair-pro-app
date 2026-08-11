@@ -4,6 +4,7 @@ import {
   resolveAuthorizedContext,
 } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
+import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
@@ -14,8 +15,8 @@ function clean(value, maxLength = 1000) {
   return String(value).trim().slice(0, maxLength);
 }
 
-function jsonError(error, status) {
-  return Response.json({ error }, { status });
+function jsonError(error, status, code = undefined) {
+  return Response.json({ error, ...(code ? { code } : {}) }, { status });
 }
 
 Deno.serve(async (req) => {
@@ -37,6 +38,19 @@ Deno.serve(async (req) => {
     if (!branchScope.ok) return jsonError(branchScope.error, branchScope.status);
     const branchFilter = branchScope.organizationWide ? {} : { branch_id: branchScope.branchId };
     const action = body.action || 'list';
+
+    if (action !== 'list' && branchScope.branchId) {
+      try {
+        await assertActiveBranch(base44, organizationId, branchScope.branchId, {
+          code: 'CRM_BRANCH_INACTIVE',
+          status: 409,
+          message: 'La sucursal esta inactiva y no admite nuevas operaciones CRM.',
+        });
+      } catch (error) {
+        if (error instanceof BranchProtectionError) return jsonError(error.message, error.status, error.code);
+        throw error;
+      }
+    }
 
     if (action === 'list') {
       const [leads, accounts] = await Promise.all([

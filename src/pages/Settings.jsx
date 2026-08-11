@@ -9,12 +9,21 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, MapPin, Users, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Building2, MapPin, Users, Plus, Power, RotateCcw, AlertCircle } from 'lucide-react';
 import PageGuard from '../components/guards/PageGuard';
 import UserManagementPanel from '../components/settings/UserManagementPanel';
 import ConfiguracionPanel from '../components/admin/ConfiguracionPanel';
 import ConfiguracionNegocio from '../components/settings/ConfiguracionNegocio';
 import { useAuthContext } from '../components/contexts/AuthContext';
+
+function branchLifecycleError(error, fallback) {
+  const payload = error?.data || error?.response?.data || error || {};
+  const blockers = (payload.blockers || [])
+    .map(blocker => `${blocker.category}: ${(blocker.ids || []).join(', ') || 'detectado'}`)
+    .join('\n');
+  const message = payload.error || payload.message || fallback;
+  return new Error(`${message}${blockers ? `\n${blockers}` : ''}`);
+}
 
 export default function Settings() {
   return (
@@ -45,37 +54,67 @@ function SettingsContent() {
   });
 
   const createBranchMutation = useMutation({
-    mutationFn: (data) => base44.entities.Branch.create(data),
+    mutationFn: async (/** @type {any} */ data) => {
+      try {
+        const response = await base44.functions.invoke('manageBranchLifecycle', /** @type {any} */ (data));
+        const result = response?.data ?? response;
+        if (!result?.success) throw branchLifecycleError(result, 'No se pudo crear la sucursal');
+        return result;
+      } catch (error) {
+        throw branchLifecycleError(error, 'No se pudo crear la sucursal');
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] });
       setShowBranchModal(false);
     },
   });
 
-  const deleteBranchMutation = useMutation({
-    mutationFn: async (id) => {
-      const branches = queryClient.getQueryData(['branches']);
-
-      if (branches && branches.length <= 1) {
-        throw new Error("No se puede eliminar la última sucursal.");
+  const lifecycleMutation = useMutation({
+    mutationFn: async (/** @type {any} */ data) => {
+      try {
+        const response = await base44.functions.invoke('manageBranchLifecycle', /** @type {any} */ (data));
+        const result = response?.data ?? response;
+        if (!result?.success) throw branchLifecycleError(result, 'No se pudo cambiar la sucursal');
+        return result;
+      } catch (error) {
+        throw branchLifecycleError(error, 'No se pudo cambiar la sucursal');
       }
-
-      return base44.entities.Branch.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] });
     },
+    onError: error => alert(error.message),
   });
 
   const handleCreateBranch = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     createBranchMutation.mutate({
-      organization_id: effectiveOrgId,
+      action: 'CREATE',
+      operation_key: `branch_create_${crypto.randomUUID()}`,
       name: formData.get('name'),
       address: formData.get('address'),
       phone: formData.get('phone'),
-      active: true,
+    });
+  };
+
+  const handleBranchLifecycle = (branch) => {
+    if (branch.active) {
+      const reason = window.prompt('Motivo de desactivacion de la sucursal:');
+      if (!reason?.trim()) return;
+      lifecycleMutation.mutate({
+        action: 'DEACTIVATE',
+        branch_id: branch.id,
+        reason,
+        operation_key: `branch_deactivate_${crypto.randomUUID()}`,
+      });
+      return;
+    }
+    lifecycleMutation.mutate({
+      action: 'REACTIVATE',
+      branch_id: branch.id,
+      operation_key: `branch_reactivate_${crypto.randomUUID()}`,
     });
   };
 
@@ -240,12 +279,16 @@ function SettingsContent() {
                         : 'bg-slate-100 text-slate-700 border-0'}>
                         {branch.active ? 'Activa' : 'Inactiva'}
                       </Badge>
-                      <Button 
+                      <Button
                         variant="ghost" 
                         size="sm"
-                        onClick={() => deleteBranchMutation.mutate(branch.id)}
+                        onClick={() => handleBranchLifecycle(branch)}
+                        disabled={lifecycleMutation.isPending}
+                        title={branch.active ? 'Desactivar sucursal' : 'Reactivar sucursal'}
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        {branch.active
+                          ? <Power className="w-4 h-4 text-amber-600" />
+                          : <RotateCcw className="w-4 h-4 text-emerald-600" />}
                       </Button>
                     </div>
                   </div>

@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 import { executeInventoryCommand, reverseInventoryCommand } from '../_shared/inventoryMutationService.ts';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope, validateRequestedBranch } from '../_shared/operationalAuthorization.ts';
+import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 import {
   assertClientFinancialHints,
   assertPersistedTotalsMatch,
@@ -1005,6 +1006,18 @@ Deno.serve(async req => {
     if (!branchCheck.ok) throw new SaleError(branchCheck.error, branchCheck.code, branchCheck.status);
     if (!branchScope.organizationWide) input.ventaData.branch_id = branchScope.branchId;
     await resolveAuthoritativeCommercialInput(base44, orgId, input);
+    try {
+      await assertActiveBranch(base44, orgId, input.ventaData.branch_id, {
+        code: 'SALE_BRANCH_NOT_AVAILABLE',
+        status: 409,
+        message: 'La sucursal no existe o esta inactiva; no admite nuevas ventas.',
+      });
+    } catch (error) {
+      if (error instanceof BranchProtectionError) {
+        throw new SaleError(error.message, error.code, error.status);
+      }
+      throw error;
+    }
     const identity = await buildIdentity(orgId, input);
     anchor = await resolveAnchor(base44, orgId, input.ventaData);
     lock = await claimCommerceLock(anchor, orgId, identity.operationKey);

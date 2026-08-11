@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
+import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'];
 const MESSAGE_TYPES = ['estado_ot', 'cotizacion', 'seguimiento', 'general', 'recordatorio'];
@@ -11,8 +12,8 @@ function clean(value, maxLength = 1000) {
   return String(value).trim().slice(0, maxLength);
 }
 
-function jsonError(error, status) {
-  return Response.json({ error }, { status });
+function jsonError(error, status, code = undefined) {
+  return Response.json({ error, ...(code ? { code } : {}) }, { status });
 }
 
 Deno.serve(async (req) => {
@@ -68,11 +69,7 @@ Deno.serve(async (req) => {
 
     if (action === 'recordMessage') {
       const input = body.message || {};
-      const tipo = MESSAGE_TYPES.includes(input.tipo) ? input.tipo : 'general';
-      const canal = CHANNELS.includes(input.canal) ? input.canal : null;
-      const contenido = clean(input.contenido, 12000);
-      if (!canal || !contenido) return jsonError('Canal y contenido son obligatorios', 400);
-
+      let linkedOrder = null;
       if (input.orden_trabajo_id) {
         const orders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
           id: input.orden_trabajo_id,
@@ -80,12 +77,30 @@ Deno.serve(async (req) => {
           cliente_id: clienteId,
           ...branchFilter,
         });
-        if (!orders?.[0]) return jsonError('La orden no pertenece a este cliente', 400);
+        linkedOrder = orders?.[0] || null;
+        if (!linkedOrder) return jsonError('La orden no pertenece a este cliente', 400);
       }
+      const messageBranchId = branchScope.branchId || linkedOrder?.branch_id || cliente.branch_id || null;
+      if (messageBranchId) {
+        try {
+          await assertActiveBranch(base44, organizationId, messageBranchId, {
+            code: 'CUSTOMER_MESSAGE_BRANCH_INACTIVE',
+            status: 409,
+            message: 'La sucursal esta inactiva y no admite nuevos mensajes operacionales.',
+          });
+        } catch (error) {
+          if (error instanceof BranchProtectionError) return jsonError(error.message, error.status, error.code);
+          throw error;
+        }
+      }
+      const tipo = MESSAGE_TYPES.includes(input.tipo) ? input.tipo : 'general';
+      const canal = CHANNELS.includes(input.canal) ? input.canal : null;
+      const contenido = clean(input.contenido, 12000);
+      if (!canal || !contenido) return jsonError('Canal y contenido son obligatorios', 400);
 
       const mensaje = await base44.asServiceRole.entities.MensajeCliente.create({
         organization_id: organizationId,
-        ...branchFilter,
+        ...(messageBranchId ? { branch_id: messageBranchId } : {}),
         cliente_id: clienteId,
         orden_trabajo_id: input.orden_trabajo_id || null,
         remitente_id: user.id,

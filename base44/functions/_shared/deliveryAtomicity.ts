@@ -4,6 +4,7 @@ import {
   releaseLifecycleLock,
   renewLifecycleLock,
 } from './workOrderLifecycleLock.ts';
+import { assertActiveBranch, BranchProtectionError } from './branchProtection.ts';
 
 export const DELIVERY_LEGAL_TEXT = 'Confirmo que he recibido el equipo y el servicio descrito en esta orden de trabajo, y que el equipo ha sido entregado en las condiciones acordadas.';
 export const DELIVERY_LEGAL_VERSION = 'DELIVERY_MVP_V1';
@@ -645,6 +646,18 @@ export async function executeDeliveryCommand(base44, context, input) {
     throw new DeliveryCommandError('La OT pertenece a otra organizacion.', 'DELIVERY_CROSS_ORGANIZATION_DENIED', 403);
   }
   if (typeof context.authorizeBranch === 'function') context.authorizeBranch(initial.branch_id);
+  try {
+    await assertActiveBranch(base44, context.organizationId, initial.branch_id, {
+      code: 'DELIVERY_BRANCH_INACTIVE',
+      status: 409,
+      message: 'La sucursal esta inactiva y no admite nuevas entregas.',
+    });
+  } catch (error) {
+    if (error instanceof BranchProtectionError) {
+      throw new DeliveryCommandError(error.message, error.code, error.status, error.details);
+    }
+    throw error;
+  }
 
   const lock = await acquireLifecycleLock({
     base44,

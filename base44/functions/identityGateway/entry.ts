@@ -221,6 +221,7 @@ Deno.serve(async (req) => {
         const branch = await base44.asServiceRole.entities.Branch.create({
           organization_id: organization.id,
           name: 'Sucursal Principal',
+          normalized_name: 'sucursal principal',
           active: true,
         });
         created.push({ entity: 'Branch', id: branch.id });
@@ -425,6 +426,7 @@ Deno.serve(async (req) => {
         const branch = await base44.asServiceRole.entities.Branch.create({
           organization_id: organization.id,
           name: 'Sucursal Principal',
+          normalized_name: 'sucursal principal',
           active: true,
         });
         created.push({ entity: 'Branch', id: branch.id });

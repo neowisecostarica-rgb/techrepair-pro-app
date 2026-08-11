@@ -23,6 +23,51 @@
       "default": true,
       "description": "Estado de la sucursal"
     },
+    "normalized_name": {
+      "type": "string",
+      "description": "Nombre canonico para detectar duplicados dentro de la organizacion.",
+      "rls": { "write": false }
+    },
+    "deactivated_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "write": false }
+    },
+    "deactivated_by": {
+      "type": "string",
+      "rls": { "write": false }
+    },
+    "deactivation_reason": {
+      "type": "string",
+      "rls": { "write": false }
+    },
+    "reactivated_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "write": false }
+    },
+    "reactivated_by": {
+      "type": "string",
+      "rls": { "write": false }
+    },
+    "lifecycle_operation_key": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_request_fingerprint": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_action": {
+      "type": "string",
+      "enum": ["CREATE", "UPDATE_DETAILS", "DEACTIVATE", "REACTIVATE"],
+      "rls": { "write": false }
+    },
+    "lifecycle_committed_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "write": false }
+    },
     "sale_lock_token": {
       "type": "string",
       "description": "Mutex persistido para ventas directas de la sucursal.",

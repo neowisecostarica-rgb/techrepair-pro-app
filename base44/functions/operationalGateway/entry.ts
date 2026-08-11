@@ -212,7 +212,7 @@ async function assertBranchExists(base44, organizationId, branchId) {
     id: branchId,
     organization_id: organizationId,
   });
-  return Boolean(branch?.active !== false);
+  return Boolean(branch?.active === true);
 }
 
 async function determineCreateBranch(base44, authorization, decision, entityName, data) {
@@ -647,6 +647,20 @@ Deno.serve(async (req) => {
 
     const authorization = await resolveAuthorization(base44, user, body);
     if (!authorization.ok) return fail(authorization.error, authorization.status, authorization.code || 'OPERATIONAL_AUTH_DENIED');
+    if (body.entity === 'Branch' && operation !== 'read') {
+      if (operation === 'delete') {
+        return fail(
+          'Las sucursales no pueden eliminarse fisicamente en el MVP.',
+          409,
+          'BRANCH_HARD_DELETE_FORBIDDEN',
+        );
+      }
+      return fail(
+        'Toda mutacion de sucursal debe ejecutarse mediante manageBranchLifecycle.',
+        403,
+        'BRANCH_LIFECYCLE_COMMAND_REQUIRED',
+      );
+    }
     const decision = authorizeOperationalAction(authorization, body.entity, operation);
     if (!decision.ok) return fail(decision.error, decision.status, decision.code);
 

@@ -27,8 +27,8 @@ function responseError(code, message, status, options = {}) {
   }, { status });
 }
 
-async function resolveOrganization(base44, user) {
-  const authorization = await resolveAuthorizedContext(base44, user);
+async function resolveOrganization(base44, user, organizationHint = null) {
+  const authorization = await resolveAuthorizedContext(base44, user, { organizationHint });
   return authorization.ok ? authorization.organizationId : null;
 }
 
@@ -204,10 +204,10 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return responseError('LOCK_UNAUTHORIZED', 'Debe iniciar sesión nuevamente.', 401);
-    const orgId = await resolveOrganization(base44, user);
+    const body = await req.json();
+    const orgId = await resolveOrganization(base44, user, body.organization_id || null);
     if (!orgId) return responseError('LOCK_ORGANIZATION_UNRESOLVED', 'No se pudo determinar la organización.', 403);
 
-    const body = await req.json();
     const action = body.action;
     const operation = String(body.operation || '').trim();
     const correlationId = body.correlation_id;

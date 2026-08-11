@@ -55,12 +55,12 @@
     "cantidad_disponible": {
       "type": "number",
       "default": 0,
-      "description": "Cantidad disponible en stock"
+      "description": "Proyeccion canonica AVAILABLE. Solo inventoryMutationService puede modificarla."
     },
     "cantidad_reservada": {
       "type": "number",
       "default": 0,
-      "description": "Cantidad reservada para OT"
+      "description": "Proyeccion canonica RESERVED. ON_HAND = cantidad_disponible + cantidad_reservada."
     },
     "ubicacion": {
       "type": "string",
@@ -133,6 +133,16 @@
       "type": "string",
       "rls": { "read": false, "write": false }
     },
+    "last_inventory_operation_key": {
+      "type": "string",
+      "description": "Ultimo comando canonico aplicado a la proyeccion.",
+      "rls": { "read": false, "write": false }
+    },
+    "last_inventory_movement_key": {
+      "type": "string",
+      "description": "Ultimo movimiento canonico aplicado a la proyeccion.",
+      "rls": { "read": false, "write": false }
+    },
     "estado": {
       "type": "string",
       "enum": [
@@ -160,6 +170,7 @@
   },
   "required": [
     "organization_id",
+    "branch_id",
     "codigo_interno",
     "nombre",
     "categoria_id",

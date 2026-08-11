@@ -36,6 +36,7 @@ const protectedOperationalEntities = new Set([
   'Garantia',
   'Inventario',
   'InventarioHistorial',
+  'InventarioReserva',
   'NoConformidad',
   'NotaInterna',
   'Notificacion',

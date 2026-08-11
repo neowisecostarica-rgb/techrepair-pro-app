@@ -8,7 +8,7 @@ const DEFAULT_TIMEOUT_MS = 3 * 1000;
 const MAX_TIMEOUT_MS = 10 * 1000;
 const SETTLE_MS = 100;
 const BASE_BACKOFF_MS = 40;
-const MAX_RESOURCES = 10;
+const MAX_RESOURCES = 100;
 
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const nowIso = () => new Date().toISOString();

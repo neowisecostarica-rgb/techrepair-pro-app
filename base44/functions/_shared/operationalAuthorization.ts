@@ -38,6 +38,7 @@ export const OPERATIONAL_ENTITY_POLICIES = Object.freeze({
   Garantia: { read: [...COMMERCIAL_ROLES, 'SUPPORT'], create: COMMERCIAL_ROLES, update: ADMIN_ROLES, delete: ['ORG_ADMIN'], scope: 'warranty' },
   Inventario: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: 'branch' },
   InventarioHistorial: { read: ['ORG_ADMIN', 'BRANCH_ADMIN', 'INVENTORY'], create: [], update: [], delete: [], scope: 'inventory_history' },
+  InventarioReserva: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: 'work_order' },
   NoConformidad: { read: TECHNICAL_ROLES, create: ADMIN_ROLES, update: ADMIN_ROLES, delete: ['ORG_ADMIN'], scope: 'work_order_optional' },
   NotaInterna: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: [], delete: ADMIN_ROLES, scope: 'work_order' },
   Notificacion: { read: ALL_OPERATIONAL_ROLES, create: ALL_OPERATIONAL_ROLES, update: ALL_OPERATIONAL_ROLES, delete: ['ORG_ADMIN'], scope: 'notification' },

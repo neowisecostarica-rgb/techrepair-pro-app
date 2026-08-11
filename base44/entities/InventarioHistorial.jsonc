@@ -6,10 +6,36 @@
       "type": "string",
       "description": "ID de la organizaci\u00f3n (tenant)"
     },
+    "branch_id": { "type": "string" },
     "inventario_id": {
       "type": "string",
       "description": "ID del producto de inventario"
     },
+    "inventory_id": { "type": "string", "rls": { "write": false } },
+    "movement_key": { "type": "string", "rls": { "write": false } },
+    "movement_type": {
+      "type": "string",
+      "enum": ["INITIAL_BALANCE", "RESERVE", "RELEASE", "CONSUME", "RETURN", "SALE", "ADJUST_IN", "ADJUST_OUT", "REVERSAL"],
+      "rls": { "write": false }
+    },
+    "quantity": { "type": "number", "rls": { "write": false } },
+    "quantity_delta": { "type": "number", "rls": { "write": false } },
+    "available_delta": { "type": "number", "rls": { "write": false } },
+    "reserved_delta": { "type": "number", "rls": { "write": false } },
+    "available_before": { "type": "number", "rls": { "write": false } },
+    "available_after": { "type": "number", "rls": { "write": false } },
+    "reserved_before": { "type": "number", "rls": { "write": false } },
+    "reserved_after": { "type": "number", "rls": { "write": false } },
+    "reference_type": { "type": "string", "rls": { "write": false } },
+    "reference_id": { "type": "string", "rls": { "write": false } },
+    "work_order_id": { "type": "string", "rls": { "write": false } },
+    "quote_id": { "type": "string", "rls": { "write": false } },
+    "reservation_id": { "type": "string", "rls": { "write": false } },
+    "operation_key": { "type": "string", "rls": { "write": false } },
+    "fingerprint": { "type": "string", "rls": { "read": false, "write": false } },
+    "reversal_of": { "type": "string", "rls": { "write": false } },
+    "actor_user_id": { "type": "string", "rls": { "write": false } },
+    "effective_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
     "campo": {
       "type": "string",
       "description": "Campo modificado (costo_unitario, precio_venta, cantidad_disponible, ubicacion, estado, categoria_id)"

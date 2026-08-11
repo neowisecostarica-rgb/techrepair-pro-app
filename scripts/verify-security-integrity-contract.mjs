@@ -83,7 +83,13 @@ test('a later incompatible QA result invalidates prior success', () => {
 function inventoryEntity(record) {
   return {
     async updateMany(query, mutation) {
-      const matches = Object.entries(query).every(([key, value]) => record[key] === value);
+      const matchesQuery = candidate => Object.entries(candidate).every(([key, value]) => {
+        if (key === '$or') return value.some(option => matchesQuery(option));
+        if (value && typeof value === 'object' && '$exists' in value) return Object.hasOwn(record, key) === value.$exists;
+        if (value === null) return record[key] == null;
+        return record[key] === value;
+      });
+      const matches = matchesQuery(query);
       if (!matches) return { updated: 0 };
       Object.assign(record, mutation.$set || {});
       for (const key of Object.keys(mutation.$unset || {})) delete record[key];

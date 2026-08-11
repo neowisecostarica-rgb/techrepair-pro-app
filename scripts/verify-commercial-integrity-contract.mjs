@@ -9,6 +9,13 @@ import {
   quoteDecisionOperationKey,
 } from '../base44/functions/_shared/commercialIntegrity.ts';
 import { executeInventoryCommand, reverseInventoryCommand } from '../base44/functions/_shared/inventoryMutationService.ts';
+import {
+  acquireLifecycleLock,
+  loadWorkOrder,
+  releaseLifecycleLock,
+  renewLifecycleLock,
+  workflowError,
+} from '../base44/functions/_shared/workOrderLifecycleLock.ts';
 
 const transitionSource = await readFile(
   new URL('../base44/functions/transitionWorkOrderStatus/entry.ts', import.meta.url),
@@ -142,6 +149,11 @@ function loadHandler(client) {
     quoteDecisionOperationKey,
     executeInventoryCommand,
     reverseInventoryCommand,
+    acquireLifecycleLock,
+    loadWorkOrder,
+    releaseLifecycleLock,
+    renewLifecycleLock,
+    workflowError,
     console,
     crypto: webcrypto,
     Request,

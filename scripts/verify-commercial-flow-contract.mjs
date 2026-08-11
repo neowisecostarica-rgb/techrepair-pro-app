@@ -14,6 +14,7 @@ const [
   quotePage,
   pos,
   delivery,
+  deliveryBackend,
   transition,
   publicReader,
   authContext,
@@ -29,6 +30,7 @@ const [
   read('src/pages/VentasCotizaciones.jsx'),
   read('src/pages/PuntoVenta.jsx'),
   read('src/components/ot/EntregarOT.jsx'),
+  read('base44/functions/_shared/deliveryAtomicity.ts'),
   read('base44/functions/transitionWorkOrderStatus/entry.ts'),
   read('base44/functions/getPublicCommercialDocument/entry.ts'),
   read('src/components/contexts/AuthContext.jsx'),
@@ -96,10 +98,13 @@ pass('work orders cannot finalize without successful technical QA evidence',
 pass('repair warranty issuance is deferred until delivery',
   pos.includes('if (esReparacion) return;'));
 
-pass('delivery evidence and warranty are idempotent before the terminal transition',
-  delivery.includes('logsExistentes.length === 0')
-  && delivery.includes('garantiasExistentes.length === 0')
-  && delivery.indexOf('logsExistentes.length === 0') < delivery.lastIndexOf("transicionarEstadoOT(ordenTrabajo.id, 'ENTREGADA'"));
+pass('delivery evidence and warranty are owned by one recoverable backend command',
+  delivery.includes("functions.invoke('deliverWorkOrder'")
+  && !delivery.includes('entities.EntregaLog.create')
+  && !delivery.includes('entities.Garantia.create')
+  && deliveryBackend.includes("delivery_status: 'PENDING'")
+  && deliveryBackend.includes("delivery_status: 'COMMITTED'")
+  && deliveryBackend.includes('fingerprintDeliveryRequest'));
 
 pass('branch administrators can complete delivery as allowed by the backend state machine',
   delivery.includes("['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES']"));

@@ -256,6 +256,75 @@
       "default": false,
       "description": "Flag de idempotencia: email de entrega ya enviado"
     },
+    "delivery_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED"],
+      "description": "Commit logico recuperable de la entrega.",
+      "rls": { "write": false }
+    },
+    "delivery_operation_key": {
+      "type": "string",
+      "description": "Identidad estable del comando soberano de entrega.",
+      "rls": { "read": false, "write": false }
+    },
+    "delivery_request_fingerprint": {
+      "type": "string",
+      "description": "SHA-256 del payload normalizado de entrega.",
+      "rls": { "read": false, "write": false }
+    },
+    "delivery_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "write": false }
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp efectivo de entrega emitido por backend.",
+      "rls": { "write": false }
+    },
+    "delivery_committed_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "write": false }
+    },
+    "delivery_log_id": {
+      "type": "string",
+      "rls": { "write": false }
+    },
+    "delivery_warranty_outcome": {
+      "type": "string",
+      "enum": ["ISSUED", "NOT_APPLICABLE"],
+      "rls": { "write": false }
+    },
+    "delivery_warranty_id": {
+      "type": "string",
+      "rls": { "write": false }
+    },
+    "delivery_warranty_terms_snapshot": {
+      "type": "string",
+      "description": "Texto soberano de garantia persistido al iniciar la entrega.",
+      "rls": { "write": false }
+    },
+    "delivery_warranty_months": {
+      "type": "number",
+      "description": "Duracion soberana persistida al iniciar la entrega.",
+      "rls": { "write": false }
+    },
+    "delivery_intervention_type": {
+      "type": "string",
+      "description": "tipo_intervencion canonico usado para decidir garantia.",
+      "rls": { "write": false }
+    },
+    "delivery_commercial_snapshot": {
+      "type": "object",
+      "description": "Resultado inmutable del gate comercial de entrega.",
+      "rls": { "write": false }
+    },
+    "delivery_error": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
     "email_cancelada_sent": {
       "type": "boolean",
       "default": false,

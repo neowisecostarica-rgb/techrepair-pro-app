@@ -360,6 +360,55 @@ async function validateMutationContext(base44, authorization, decision, entityNa
     if (!saleScope.ok) return saleScope;
   }
 
+  if (entityName === 'EntregaLog') {
+    return {
+      ok: false,
+      status: 403,
+      code: 'DELIVERY_COMMAND_REQUIRED',
+      error: 'EntregaLog solo puede crearse mediante deliverWorkOrder',
+    };
+  }
+
+  if (entityName === 'Garantia') {
+    if (operation === 'create') {
+      if (data.origen_tipo !== 'VENTA') {
+        return {
+          ok: false,
+          status: 403,
+          code: 'DELIVERY_COMMAND_REQUIRED',
+          error: 'Las garantias de OrdenTrabajo solo pueden emitirse mediante deliverWorkOrder',
+        };
+      }
+      return { ok: true, data };
+    }
+    if (operation === 'update') {
+      const allowed = pickAllowedFields(data, ['estado']);
+      if (!['ACTIVA', 'VENCIDA', 'ANULADA'].includes(allowed.estado)) {
+        return {
+          ok: false,
+          status: 422,
+          code: 'WARRANTY_STATUS_INVALID',
+          error: 'Solo se permite una transicion administrativa valida del estado de garantia',
+        };
+      }
+      if (current?.delivery_status && current.delivery_status !== 'COMMITTED') {
+        return {
+          ok: false,
+          status: 409,
+          code: 'WARRANTY_DELIVERY_PENDING',
+          error: 'Una garantia pendiente pertenece al recovery de deliverWorkOrder',
+        };
+      }
+      return { ok: true, data: allowed };
+    }
+    return {
+      ok: false,
+      status: 403,
+      code: 'WARRANTY_IMMUTABLE',
+      error: 'Una garantia emitida no puede eliminarse ni reparentarse',
+    };
+  }
+
   if (entityName === 'Cotizacion' && ['create', 'update'].includes(operation)) {
     const keys = Object.keys(data);
     const touchesApproval = keys.some(key => QUOTE_APPROVAL_FIELDS.has(key));
@@ -558,7 +607,13 @@ async function handleMutation(base44, user, authorization, decision, body) {
     if (['ActividadTecnica', 'RegistroTiempo'].includes(entityName) && authorization.role === 'TECHNICIAN') {
       data.tecnico_id = actorId;
     }
-    if (entityName === 'Garantia') data.creado_por = actorId;
+    if (entityName === 'Garantia') {
+      data.creado_por = actorId;
+      data.source = 'SALE';
+      data.source_id = data.origen_id;
+      data.source_identity = `SALE:${data.origen_id}`;
+      data.public_access_token = `gar_${crypto.randomUUID()}`;
+    }
     if (entityName === 'EntregaLog') {
       data.delivered_by_user_id = actorId;
       data.delivered_by_role = authorization.role;

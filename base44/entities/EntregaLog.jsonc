@@ -6,6 +6,10 @@
       "type": "string",
       "description": "ID de la organizaci\u00f3n (tenant)"
     },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal canonica derivada de la OT"
+    },
     "orden_trabajo_id": {
       "type": "string",
       "description": "ID de la OT entregada"
@@ -23,6 +27,10 @@
       "format": "date-time",
       "description": "Timestamp exacto de entrega"
     },
+    "acceptance": {
+      "type": "boolean",
+      "description": "Aceptacion explicita validada por backend"
+    },
     "ip_address": {
       "type": "string",
       "description": "IP del dispositivo (si disponible)"
@@ -39,15 +47,47 @@
       "type": "boolean",
       "default": false,
       "description": "Si se entreg\u00f3 con saldo pendiente"
+    },
+    "operation_key": {
+      "type": "string",
+      "description": "Identidad estable de la entrega"
+    },
+    "fingerprint": {
+      "type": "string",
+      "description": "SHA-256 del payload normalizado",
+      "rls": { "read": false, "write": false }
+    },
+    "delivery_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED"]
+    },
+    "delivery_warranty_outcome": {
+      "type": "string",
+      "enum": ["ISSUED", "NOT_APPLICABLE"]
+    },
+    "warranty_id": {
+      "type": "string"
+    },
+    "intervention_type": {
+      "type": "string"
+    },
+    "commercial_snapshot": {
+      "type": "object"
     }
   },
   "required": [
     "organization_id",
+    "branch_id",
     "orden_trabajo_id",
     "delivered_by_user_id",
     "delivered_by_role",
     "delivered_at",
-    "checkbox_texto_legal"
+    "acceptance",
+    "checkbox_texto_legal",
+    "operation_key",
+    "fingerprint",
+    "delivery_status",
+    "delivery_warranty_outcome"
   ],
   "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

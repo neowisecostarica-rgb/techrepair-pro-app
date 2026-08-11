@@ -12,7 +12,7 @@ Responsabilidad:
   - Validar venta existe y es válida (pagada, org correcta)
   - Crear OTEvent tipo SALE_COMPLETED (solo si hay referencia_ot_id)
   - Aplicar desbloqueos operacionales autoritativos
-  - Disparar transiciones de lifecycle vía transitionWorkOrderStatus cuando corresponda
+  - Disparar transiciones de lifecycle no terminales cuando corresponda
   - Ser idempotente: no duplicar OTEvent ni repetir efectos confirmados
 
 NO hace:
@@ -32,7 +32,7 @@ Desbloqueos implementados:
     APROBADA → EN_REPARACION
 
   CASO 3 — saldo_final:
-    FINALIZADA → ENTREGADA
+    Registra/habilita el pago. La entrega fisica pertenece a deliverWorkOrder.
 
   CASO 4 — venta_producto:
     Solo trazabilidad, NO mueve lifecycle
@@ -44,7 +44,7 @@ Desbloqueos implementados:
 const DESBLOQUEO_MAP = {
   revision_diagnostico: {}, // Desbloquea la OT; no mueve lifecycle
   reparacion:           { COTIZADA: 'APROBADA', APROBADA: 'EN_REPARACION' },
-  saldo_final:          { FINALIZADA: 'ENTREGADA' },
+  saldo_final:          {},
   venta_producto:       {}, // No mueve lifecycle
 };
 
@@ -307,12 +307,8 @@ Deno.serve(async (req) => {
     }
 
   } else if (tipo_concepto === 'saldo_final') {
-    // CASO 3: pago de saldo final → habilitar entrega
-    if (estadoActual === 'FINALIZADA') {
-      estadoDestino = 'ENTREGADA';
-    } else {
-      skipReason = `saldo_final: estado "${estadoActual}" no es FINALIZADA — no se puede mover a ENTREGADA`;
-    }
+    // El pago habilita comercialmente. Nunca constituye evidencia de entrega fisica.
+    skipReason = 'saldo_final: pago registrado; la entrega requiere deliverWorkOrder';
 
   } else {
     // CASO 4: venta_producto, otro — no mover lifecycle

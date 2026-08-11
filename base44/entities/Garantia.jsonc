@@ -26,6 +26,37 @@
       "type": "string",
       "description": "ID de la orden de trabajo o venta que genera la garant\u00eda"
     },
+    "source": {
+      "type": "string",
+      "enum": ["WORK_ORDER", "SALE"],
+      "description": "Identidad canonica del origen"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "ID canonico del work order o sale de origen"
+    },
+    "source_identity": {
+      "type": "string",
+      "description": "Clave canonica SOURCE:source_id",
+      "rls": { "write": false }
+    },
+    "equipo_id": {
+      "type": "string",
+      "description": "Equipo canonico de la OT cuando existe"
+    },
+    "delivery_operation_key": {
+      "type": "string",
+      "rls": { "write": false }
+    },
+    "delivery_request_fingerprint": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
+    "delivery_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED"],
+      "rls": { "write": false }
+    },
     "public_access_token": {
       "type": "string",
       "description": "Token \u00fanico para acceso p\u00fablico sin autenticaci\u00f3n"
@@ -48,6 +79,7 @@
     "estado": {
       "type": "string",
       "enum": [
+        "PENDIENTE_ACTIVACION",
         "ACTIVA",
         "VENCIDA",
         "ANULADA"
@@ -62,6 +94,11 @@
     "creado_por": {
       "type": "string",
       "description": "ID del usuario que gener\u00f3 la garant\u00eda"
+    },
+    "activated_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "write": false }
     }
   },
   "required": [

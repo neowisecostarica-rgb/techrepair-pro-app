@@ -39,6 +39,20 @@
       "type": "string",
       "description": "Repuesto principal asociado (nullable)"
     },
+    "inventario_cantidad": {
+      "type": "number",
+      "description": "Cantidad explicita del repuesto asociado."
+    },
+    "inventory_consumption_status": {
+      "type": "string",
+      "enum": ["NOT_REQUESTED", "PENDING", "COMMITTED", "FAILED"],
+      "default": "NOT_REQUESTED",
+      "rls": { "write": false }
+    },
+    "inventory_operation_key": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
     "estado": {
       "type": "string",
       "enum": [

@@ -59,6 +59,10 @@
           "descripcion": {
             "type": "string"
           },
+          "referencia_id": {
+            "type": "string",
+            "description": "Identidad canonica del producto, repuesto o servicio."
+          },
           "cantidad": {
             "type": "number"
           },

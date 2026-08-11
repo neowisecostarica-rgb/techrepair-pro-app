@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
-import { applyInventoryStockCas, rollbackInventoryStockCas } from '../_shared/inventoryStockCas.ts';
+import { executeInventoryCommand, reverseInventoryCommand } from '../_shared/inventoryMutationService.ts';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope, validateRequestedBranch } from '../_shared/operationalAuthorization.ts';
 import {
@@ -98,9 +98,12 @@ function normalizeInput(body) {
     if (rawItem.costo != null || rawItem.costo_unitario != null || rawItem.costo_unitario_snapshot != null) {
       throw new SaleError('El costo es autoridad exclusiva del servidor', 'SALE_SERVER_AUTHORITY_FIELD_FORBIDDEN', 409);
     }
+    if (rawItem.referencia_id && rawItem.item_id && rawItem.referencia_id !== rawItem.item_id) {
+      throw new SaleError(`Item ${index + 1}: referencias en conflicto`, 'SALE_CATALOG_REFERENCE_CONFLICT', 409);
+    }
     return {
       tipo: rawItem.tipo,
-      referencia_id: rawItem.referencia_id || null,
+      referencia_id: rawItem.referencia_id || rawItem.item_id || null,
       descripcion: String(rawItem.descripcion || '').trim(),
       cantidad,
       precio_unitario: rawItem.precio_unitario,
@@ -136,6 +139,18 @@ function normalizeInput(body) {
 
 function saleItemType(type) {
   return ['producto', 'repuesto'].includes(type) ? 'producto' : 'servicio';
+}
+
+function normalizeCatalogReference(item, index) {
+  if (item.referencia_id && item.item_id && item.referencia_id !== item.item_id) {
+    throw new SaleError(`Item ${index + 1}: referencias en conflicto`, 'SALE_CATALOG_REFERENCE_CONFLICT', 409);
+  }
+  const referenceId = item.referencia_id || item.item_id || null;
+  if (!referenceId) {
+    throw new SaleError(`Item ${index + 1}: referencia de catalogo requerida`, 'SALE_CATALOG_REFERENCE_REQUIRED', 409);
+  }
+  const { item_id: _legacyItemId, ...normalized } = item;
+  return { ...normalized, referencia_id: referenceId };
 }
 
 function financialError(error, fallbackCode = 'SALE_COMMERCIAL_INTEGRITY_INVALID') {
@@ -213,8 +228,8 @@ async function resolveAuthoritativeCommercialInput(base44, orgId, input) {
     }
     let calculated;
     try {
-      calculated = calculateCommercialTotals(snapshot.items.map(item => ({
-        ...item,
+      calculated = calculateCommercialTotals(snapshot.items.map((item, index) => ({
+        ...normalizeCatalogReference(item, index),
         tipo: saleItemType(item.tipo),
       })));
       assertPersistedTotalsMatch(snapshot, calculated, 'Snapshot aprobado');
@@ -549,6 +564,7 @@ async function buildInventoryPlans(base44, orgId, sale, operationKey, items) {
     const invItem = await findOne(base44.asServiceRole.entities.Inventario, {
       id: product.inventarioId,
       organization_id: orgId,
+      branch_id: sale.branch_id,
     });
     if (!invItem) {
       throw new SaleError(
@@ -566,19 +582,30 @@ async function buildInventoryPlans(base44, orgId, sale, operationKey, items) {
       if (category?.permite_stock === false) permiteStock = false;
     }
 
-    const existingMovement = await findOne(base44.asServiceRole.entities.InventarioHistorial, {
-      organization_id: orgId,
-      inventario_id: product.inventarioId,
-      sale_id: sale.id,
-      sale_operation_key: operationKey,
-    });
-    const stockAlreadyApplied = invItem.last_sale_id === sale.id
-      && invItem.last_sale_operation_key === operationKey;
+    let reservation = null;
+    if (sale.referencia_ot_id && permiteStock) {
+      const reservations = await base44.asServiceRole.entities.InventarioReserva.filter({
+        organization_id: orgId,
+        branch_id: sale.branch_id,
+        work_order_id: sale.referencia_ot_id,
+        inventario_id: product.inventarioId,
+        state: { $in: ['RESERVED', 'CONSUMED'] },
+      }, '-created_date', 2);
+      if ((reservations || []).length > 1) {
+        throw new SaleError('Existen reservas activas duplicadas para el producto', 'SALE_INVENTORY_RESERVATION_DUPLICATE', 409);
+      }
+      reservation = reservations?.[0] || null;
+      if (reservation && Number(reservation.quantity) !== product.cantidad) {
+        throw new SaleError('La cantidad facturada no coincide con la reserva de la OT', 'SALE_INVENTORY_RESERVATION_QUANTITY_MISMATCH', 409);
+      }
+    }
+    const movementType = reservation?.state === 'CONSUMED'
+      ? null
+      : (reservation?.state === 'RESERVED' ? 'CONSUME' : 'SALE');
     const currentStock = Number(invItem.cantidad_disponible || 0);
-    const stockAnterior = stockAlreadyApplied ? currentStock + product.cantidad : currentStock;
-    if (permiteStock && !existingMovement && !stockAlreadyApplied && product.cantidad > stockAnterior) {
+    if (permiteStock && movementType === 'SALE' && product.cantidad > currentStock) {
       throw new SaleError(
-        `Stock insuficiente para "${invItem.nombre}": disponible ${stockAnterior}, solicitado ${product.cantidad}`,
+        `Stock insuficiente para "${invItem.nombre}": disponible ${currentStock}, solicitado ${product.cantidad}`,
         'SALE_STOCK_INSUFFICIENT'
       );
     }
@@ -586,10 +613,8 @@ async function buildInventoryPlans(base44, orgId, sale, operationKey, items) {
       invItem,
       cantidad: product.cantidad,
       permiteStock,
-      existingMovement,
-      stockAlreadyApplied,
-      stockAnterior,
-      stockNuevo: stockAlreadyApplied ? currentStock : stockAnterior - product.cantidad,
+      movementType,
+      reservation,
     });
   }
   return plans;
@@ -748,85 +773,29 @@ async function ensureSaleItems(base44, context, inventoryPlans, mutations) {
 
 async function applyInventory(base44, context, plans, mutations) {
   const { orgId, user, sale, operationKey } = context;
-  for (const plan of plans) {
-    if (!plan.permiteStock || plan.existingMovement) continue;
-    const movementData = {
-      organization_id: orgId,
-      inventario_id: plan.invItem.id,
-      campo: 'cantidad_disponible',
-      valor_anterior: String(plan.stockAnterior),
-      valor_nuevo: String(plan.stockNuevo),
-      modificado_por: user.id,
-      motivo: `Venta - Ref: ${sale.id}`,
-      sale_id: sale.id,
-      sale_operation_key: operationKey,
-    };
-
-    let result = { updated: 1, recovered_interrupted_update: plan.stockAlreadyApplied };
-    if (!plan.stockAlreadyApplied) {
-      try {
-        result = await applyInventoryStockCas(base44.asServiceRole.entities.Inventario, {
-          inventoryId: plan.invItem.id,
-          organizationId: orgId,
-          expectedStock: plan.stockAnterior,
-          newStock: plan.stockNuevo,
-          movementDate: new Date().toISOString().split('T')[0],
-          operationId: sale.id,
-          operationKey,
-        });
-      } catch (updateError) {
-        const reconciled = await findOne(base44.asServiceRole.entities.Inventario, {
-          id: plan.invItem.id,
-          organization_id: orgId,
-        });
-        if (reconciled?.last_sale_id === sale.id
-          && reconciled?.last_sale_operation_key === operationKey) {
-          result = { updated: 1, recovered_ambiguous_update: true };
-        } else {
-          throw updateError;
-        }
-      }
-    }
-
-    if (result?.updated !== 1) {
-      const current = await findOne(base44.asServiceRole.entities.Inventario, {
-        id: plan.invItem.id,
-        organization_id: orgId,
-      });
-      if (current?.last_sale_id === sale.id && current?.last_sale_operation_key === operationKey) {
-        plan.stockNuevo = Number(current.cantidad_disponible);
-      } else if (Number(current?.cantidad_disponible || 0) < plan.cantidad) {
-        throw new SaleError(
-          `Stock insuficiente para "${plan.invItem.nombre}" despues de una actualizacion concurrente`,
-          'SALE_STOCK_INSUFFICIENT',
-          409
-        );
-      } else {
-        throw new SaleError(
-          `El inventario de "${plan.invItem.nombre}" cambio durante el cobro`,
-          'SALE_INVENTORY_CONCURRENT_UPDATE',
-          409,
-          { retryable: true }
-        );
-      }
-    }
-
-    if (!plan.stockAlreadyApplied) mutations.stockChanges.push(plan);
-    let history;
-    try {
-      history = await base44.asServiceRole.entities.InventarioHistorial.create(movementData);
-      mutations.historiesCreated.push(history);
-    } catch (historyError) {
-      history = await findOne(base44.asServiceRole.entities.InventarioHistorial, {
-        organization_id: orgId,
-        inventario_id: plan.invItem.id,
-        sale_id: sale.id,
-        sale_operation_key: operationKey,
-      });
-      if (!history) throw historyError;
-      mutations.historiesCreated.push(history);
-    }
-  }
+  const movements = plans
+    .filter(plan => plan.permiteStock && plan.movementType)
+    .map(plan => ({
+      inventoryId: plan.invItem.id,
+      movementType: plan.movementType,
+      quantity: plan.cantidad,
+      reservationId: plan.reservation?.id || null,
+      workOrderId: sale.referencia_ot_id || null,
+      quoteId: sale.cotizacion_id || null,
+    }));
+  if (movements.length === 0) return;
+  const inventoryOperationKey = `inventory:${operationKey}:${sale.inventory_attempt_key || sale.id}`;
+  await executeInventoryCommand(base44, {
+    organizationId: orgId,
+    branchId: sale.branch_id,
+    actorId: user.id || user.email,
+    operationKey: inventoryOperationKey,
+    referenceType: 'SALE',
+    referenceId: sale.id,
+    reason: `Venta ${sale.id}`,
+    movements,
+  });
+  mutations.inventoryOperationKey = inventoryOperationKey;
 }
 
 async function convertQuote(base44, context) {
@@ -945,24 +914,17 @@ async function rollback(base44, context, mutations, originalError) {
   const { orgId, sale, operationKey, input } = context;
   const errors = [];
 
-  for (const history of [...mutations.historiesCreated].reverse()) {
-    try { await base44.asServiceRole.entities.InventarioHistorial.delete(history.id); }
-    catch (error) { errors.push(`history:${history.id}:${error.message}`); }
-  }
-
-  for (const plan of [...mutations.stockChanges].reverse()) {
+  if (mutations.inventoryOperationKey) {
     try {
-      const reverted = await rollbackInventoryStockCas(base44.asServiceRole.entities.Inventario, {
-        inventoryId: plan.invItem.id,
+      await reverseInventoryCommand(base44, {
         organizationId: orgId,
-        expectedCurrentStock: plan.stockNuevo,
-        previousStock: plan.stockAnterior,
-        previousMovementDate: plan.invItem.fecha_ultimo_movimiento || null,
-        operationId: sale.id,
-        operationKey,
+        branchId: sale.branch_id,
+        actorId: context.user.id || context.user.email,
+        operationKey: mutations.inventoryOperationKey,
+        reversalOperationKey: `inventory-rollback:${operationKey}`,
+        reason: `Rollback de venta ${sale.id}`,
       });
-      if (reverted?.updated !== 1) errors.push(`stock:${plan.invItem.id}:ownership_lost`);
-    } catch (error) { errors.push(`stock:${plan.invItem.id}:${error.message}`); }
+    } catch (error) { errors.push(`inventory_reversal:${error.message}`); }
   }
 
   for (const item of [...mutations.createdItems].reverse()) {
@@ -998,7 +960,7 @@ async function rollback(base44, context, mutations, originalError) {
   } else if (mutations.salePreload && errors.length === 0) {
     try {
       await base44.asServiceRole.entities.Venta.updateMany({ id: sale.id, organization_id: orgId }, {
-        $set: { estado: 'borrador' },
+        $set: { estado: 'borrador', inventory_attempt_key: crypto.randomUUID() },
         $unset: {
           idempotency_key: '', request_fingerprint: '', inventory_commit_status: '',
           post_sale_status: '', public_access_token: '',
@@ -1085,8 +1047,7 @@ Deno.serve(async req => {
       resumedExisting: reservation.recovered,
       createdItems: [],
       deletedPreloadItems: [],
-      stockChanges: [],
-      historiesCreated: [],
+      inventoryOperationKey: null,
       quoteSnapshot: null,
     };
 

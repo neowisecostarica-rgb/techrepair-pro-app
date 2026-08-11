@@ -132,7 +132,6 @@ function InventarioContent() {
       tipo_item: formData.get('tipo_item') || 'producto',
       marca: formData.get('marca'),
       modelo: formData.get('modelo'),
-      cantidad_disponible: categoriaSeleccionada?.permite_stock ? (parseFloat(formData.get('cantidad_disponible')) || 0) : 0,
       ubicacion: formData.get('ubicacion'),
       costo_unitario: parseFloat(formData.get('costo_unitario')) || 0,
       precio_venta: categoriaSeleccionada?.es_vendible ? (parseFloat(formData.get('precio_venta')) || 0) : 0,
@@ -147,6 +146,12 @@ function InventarioContent() {
       valor_recuperado: parseFloat(formData.get('valor_recuperado')) || 0,
       notas_reciclaje: formData.get('notas_reciclaje') || undefined
     };
+
+    if (!editingItem) {
+      data.cantidad_disponible = categoriaSeleccionada?.permite_stock
+        ? (parseFloat(formData.get('cantidad_disponible')) || 0)
+        : 0;
+    }
 
     if (editingItem) {
       updateMutation.mutate({ id: editingItem.id, data });
@@ -616,7 +621,7 @@ function InventarioContent() {
               </div>
 
               {/* CAMPOS DINÁMICOS SEGÚN CATEGORÍA */}
-              {selectedCategoriaId && categorias.find(c => c.id === selectedCategoriaId)?.permite_stock && (
+              {!editingItem && selectedCategoriaId && categorias.find(c => c.id === selectedCategoriaId)?.permite_stock && (
                 <div className="space-y-2">
                   <Label htmlFor="cantidad_disponible">Cantidad Disponible</Label>
                   <Input
@@ -627,6 +632,11 @@ function InventarioContent() {
                     min="0"
                   />
                 </div>
+              )}
+              {editingItem && (
+                <p className="text-xs text-slate-500">
+                  Existencia disponible: {editingItem.cantidad_disponible ?? 0}. Usa Ajustar stock para registrar un movimiento fisico.
+                </p>
               )}
 
               <div className="space-y-2">

@@ -8,6 +8,7 @@ import {
   quoteDecisionIsCommitted,
   quoteDecisionOperationKey,
 } from '../base44/functions/_shared/commercialIntegrity.ts';
+import { executeInventoryCommand, reverseInventoryCommand } from '../base44/functions/_shared/inventoryMutationService.ts';
 
 const transitionSource = await readFile(
   new URL('../base44/functions/transitionWorkOrderStatus/entry.ts', import.meta.url),
@@ -39,13 +40,16 @@ function applyUpdate(record, update) {
   for (const field of Object.keys(update.$unset || {})) delete record[field];
 }
 
-function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0 } = {}) {
+function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0, physical = false, transitionFailures = 0 } = {}) {
   const collections = {
     Cotizacion: [{
       id: 'quote-1', organization_id: 'org-a', branch_id: 'branch-a', cliente_id: 'client-1',
       orden_trabajo_id: 'ot-1', diagnostico_tecnico_id: 'diagnostic-1',
       public_access_token: 'cot_contract_token_123456789', estado: 'enviada',
-      items: [{
+      items: physical ? [{
+        tipo: 'repuesto', referencia_id: 'inventory-1', descripcion: 'Pantalla',
+        cantidad: 1, precio_unitario: 100, descuento_porcentaje: 0, subtotal: 100,
+      }] : [{
         tipo: 'servicio', referencia_id: 'service-1', descripcion: 'Reparacion',
         cantidad: 1, precio_unitario: 100, descuento_porcentaje: 0, subtotal: 100,
       }],
@@ -60,9 +64,16 @@ function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0 } = {}) {
       aprobacion_status: 'PENDIENTE',
     }],
     OTEvent: [],
+    Inventario: [{
+      id: 'inventory-1', organization_id: 'org-a', branch_id: 'branch-a',
+      cantidad_disponible: 2, cantidad_reservada: 0, nombre: 'Pantalla',
+    }],
+    InventarioHistorial: [],
+    InventarioReserva: [],
   };
   let remainingEventFailures = eventFailures;
   let remainingAmbiguousQuoteCommits = ambiguousQuoteCommits;
+  let remainingTransitionFailures = transitionFailures;
 
   function entity(name) {
     return {
@@ -73,6 +84,10 @@ function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0 } = {}) {
           .map(record => structuredClone(record));
       },
       async updateMany(query, update) {
+        if (name === 'OrdenTrabajo' && update.$set?.estado === 'APROBADA' && remainingTransitionFailures > 0) {
+          remainingTransitionFailures -= 1;
+          throw new Error('simulated work-order transition failure');
+        }
         const targets = collections[name].filter(record => matches(record, query));
         targets.forEach(record => applyUpdate(record, update));
         if (name === 'Cotizacion'
@@ -125,6 +140,8 @@ function loadHandler(client) {
     calculateCommercialTotals,
     quoteDecisionIsCommitted,
     quoteDecisionOperationKey,
+    executeInventoryCommand,
+    reverseInventoryCommand,
     console,
     crypto: webcrypto,
     Request,
@@ -175,6 +192,22 @@ test('replay is idempotent and cannot duplicate the lifecycle event', async () =
   assert.equal(scenario.collections.OTEvent.length, 1);
 });
 
+test('physical quote approval reserves once and replay does not reserve twice', async () => {
+  const scenario = createScenario({ physical: true });
+  const handler = loadHandler(scenario.client);
+  const first = await decide(handler);
+  const replay = await decide(handler);
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.equal(replay.status, 200, JSON.stringify(replay.body));
+  assert.deepEqual([
+    scenario.collections.Inventario[0].cantidad_disponible,
+    scenario.collections.Inventario[0].cantidad_reservada,
+  ], [1, 1]);
+  assert.equal(scenario.collections.InventarioReserva.length, 1);
+  assert.equal(scenario.collections.InventarioReserva[0].state, 'RESERVED');
+  assert.equal(scenario.collections.InventarioHistorial.filter(row => row.movement_type === 'RESERVE').length, 1);
+});
+
 test('partial failure remains recoverable and retry completes the same decision', async () => {
   const scenario = createScenario({ eventFailures: 1 });
   const handler = loadHandler(scenario.client);
@@ -188,6 +221,41 @@ test('partial failure remains recoverable and retry completes the same decision'
   assert.equal(recovered.status, 200, JSON.stringify(recovered.body));
   assert.equal(scenario.collections.Cotizacion[0].decision_status, 'COMMITTED');
   assert.equal(scenario.collections.OTEvent.length, 1);
+});
+
+test('physical reservation survives a recoverable post-transition failure without duplication', async () => {
+  const scenario = createScenario({ eventFailures: 1, physical: true });
+  const handler = loadHandler(scenario.client);
+  const failed = await decide(handler);
+  assert.equal(failed.status, 500, JSON.stringify(failed.body));
+  assert.equal(scenario.collections.OrdenTrabajo[0].estado, 'APROBADA');
+  assert.equal(scenario.collections.InventarioReserva[0].state, 'RESERVED');
+  const recovered = await decide(handler);
+  assert.equal(recovered.status, 200, JSON.stringify(recovered.body));
+  assert.deepEqual([
+    scenario.collections.Inventario[0].cantidad_disponible,
+    scenario.collections.Inventario[0].cantidad_reservada,
+  ], [1, 1]);
+  assert.equal(scenario.collections.InventarioHistorial.filter(row => row.movement_type === 'RESERVE').length, 1);
+});
+
+test('physical reservation compensates a pre-transition failure and same-key retry succeeds', async () => {
+  const scenario = createScenario({ transitionFailures: 1, physical: true });
+  const handler = loadHandler(scenario.client);
+  const failed = await decide(handler);
+  assert.equal(failed.status, 500, JSON.stringify(failed.body));
+  assert.deepEqual([
+    scenario.collections.Inventario[0].cantidad_disponible,
+    scenario.collections.Inventario[0].cantidad_reservada,
+  ], [2, 0]);
+  assert.equal(scenario.collections.InventarioReserva[0].state, 'RELEASED');
+  const recovered = await decide(handler);
+  assert.equal(recovered.status, 200, JSON.stringify(recovered.body));
+  assert.deepEqual([
+    scenario.collections.Inventario[0].cantidad_disponible,
+    scenario.collections.Inventario[0].cantidad_reservada,
+  ], [1, 1]);
+  assert.equal(scenario.collections.InventarioReserva[0].state, 'RESERVED');
 });
 
 test('an ambiguous final quote commit is reconciled without reporting a false failure', async () => {
@@ -220,7 +288,8 @@ test('a conflicting public decision cannot overwrite an approved quote', async (
 
 test('source contract closes generic final-state, conversion and client token writes', () => {
   assert.match(gatewaySource, /Una cotizacion nueva siempre inicia en borrador/);
-  assert.match(gatewaySource, /calculateCommercialTotals\(data\.items \|\| current\?\.items \|\| \[\]\)/);
+  assert.match(gatewaySource, /normalizeQuoteItems/);
+  assert.match(gatewaySource, /calculateCommercialTotals\(canonicalItems\)/);
   assert.match(gatewaySource, /\['aprobada', 'rechazada', 'vencida'\]\.includes\(data\.estado\)/);
   assert.match(gatewaySource, /conversion de cotizacion solo puede materializarse mediante createSale/);
   assert.match(gatewaySource, /cot_\$\{crypto\.randomUUID\(\)\}/);

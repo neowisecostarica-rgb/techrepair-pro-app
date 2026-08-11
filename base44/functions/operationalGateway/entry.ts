@@ -34,6 +34,28 @@ async function findOne(entity, query) {
   return records?.[0] || null;
 }
 
+async function normalizeQuoteItems(base44, organizationId, branchId, items) {
+  const normalized = [];
+  for (const [index, raw] of (items || []).entries()) {
+    if (raw.referencia_id && raw.item_id && raw.referencia_id !== raw.item_id) {
+      throw new Error(`Item ${index + 1}: referencias de catalogo en conflicto`);
+    }
+    const referenceId = cleanId(raw.referencia_id || raw.item_id);
+    const { item_id: _legacyItemId, ...item } = raw;
+    if (['producto', 'repuesto'].includes(item.tipo)) {
+      if (!referenceId) throw new Error(`Item ${index + 1}: referencia de inventario requerida`);
+      const inventory = await findOne(base44.asServiceRole.entities.Inventario, {
+        id: referenceId,
+        organization_id: organizationId,
+        branch_id: branchId,
+      });
+      if (!inventory) throw new Error(`Item ${index + 1}: producto no existe en la sucursal`);
+    }
+    normalized.push({ ...item, ...(referenceId ? { referencia_id: referenceId } : {}) });
+  }
+  return normalized;
+}
+
 async function resolveAuthorization(base44, user, body) {
   const identity = await resolveIdentitySnapshot(base44, user);
   if (!identity.ok) return identity;
@@ -374,7 +396,25 @@ async function validateMutationContext(base44, authorization, decision, entityNa
 
     if (operation === 'create' || touchesContent || data.estado === 'enviada') {
       try {
-        const calculated = calculateCommercialTotals(data.items || current?.items || []);
+        let quoteBranchId = data.branch_id || current?.branch_id || null;
+        if (!quoteBranchId && (data.orden_trabajo_id || current?.orden_trabajo_id)) {
+          const quoteWorkOrder = await loadWorkOrder(
+            base44, authorization.organizationId, data.orden_trabajo_id || current?.orden_trabajo_id,
+          );
+          quoteBranchId = quoteWorkOrder?.branch_id || null;
+        }
+        if (!quoteBranchId && !decision.branchScope.organizationWide) quoteBranchId = decision.branchScope.branchId;
+        if (!quoteBranchId) {
+          const branches = await base44.asServiceRole.entities.Branch.filter({
+            organization_id: authorization.organizationId,
+            active: true,
+          }, '-created_date', 2);
+          if (branches?.length === 1) quoteBranchId = branches[0].id;
+        }
+        const canonicalItems = await normalizeQuoteItems(
+          base44, authorization.organizationId, quoteBranchId, data.items || current?.items || [],
+        );
+        const calculated = calculateCommercialTotals(canonicalItems);
         data.items = calculated.items;
         data.subtotal = calculated.subtotal;
         data.descuento_total = calculated.descuento_total;

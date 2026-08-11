@@ -6,6 +6,10 @@ import {
   applyInventoryStockCas,
   rollbackInventoryStockCas,
 } from '../base44/functions/_shared/inventoryStockCas.ts';
+import {
+  executeInventoryCommand,
+  reverseInventoryCommand,
+} from '../base44/functions/_shared/inventoryMutationService.ts';
 import { resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
 import {
   getCanonicalBranchScope,
@@ -66,10 +70,12 @@ function createScenario({ stock = 10, failure = null, preload = false, postSaleF
     Inventario: [{
       id: 'inventory-1', organization_id: 'org-a', categoria_id: 'category-1', nombre: 'Repuesto',
       branch_id: 'branch-1', cantidad_disponible: stock, costo_unitario: 8, precio_venta: 20,
+      cantidad_reservada: 0,
     }],
     Servicio: [{ id: 'service-1', organization_id: 'org-a', nombre: 'Servicio', precio: 20, activo: true }],
     CategoriaInventario: [{ id: 'category-1', organization_id: 'org-a', permite_stock: true }],
     InventarioHistorial: [],
+    InventarioReserva: [],
     Cotizacion: [{
       id: 'quote-1', organization_id: 'org-a', branch_id: 'branch-1', cliente_id: 'client-1',
       orden_trabajo_id: 'ot-1', estado: 'aprobada', decision_status: 'COMMITTED',
@@ -152,8 +158,13 @@ function createScenario({ stock = 10, failure = null, preload = false, postSaleF
     auth: { me: async () => ({ id: 'user-1', organization_id: 'org-a', email: 'qa@example.com' }) },
     asServiceRole: { entities },
     functions: {
-      async invoke(name, { sale_id }) {
+      async invoke(name, payload) {
+        if (name === 'resourceLockLite') {
+          if (payload.action === 'acquireMany') return { data: { success: true, lease: { resources: payload.resources } } };
+          return { data: { success: true } };
+        }
         assert.equal(name, 'processPostSaleActions');
+        const { sale_id } = payload;
         metrics.postSaleCalls += 1;
         if (remainingPostSaleFailures > 0) {
           remainingPostSaleFailures -= 1;
@@ -198,6 +209,8 @@ function loadHandler(client) {
     setTimeout,
     applyInventoryStockCas,
     rollbackInventoryStockCas,
+    executeInventoryCommand,
+    reverseInventoryCommand,
     resolveAuthorizedContext,
     getCanonicalBranchScope,
     validateRequestedBranch,
@@ -356,6 +369,36 @@ test('altered monetary payload is rejected before idempotency can mask tampering
   assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 5);
 });
 
+test('billing an OT part already consumed does not decrement available stock twice', async () => {
+  const scenario = createScenario({ stock: 5 });
+  scenario.collections.InventarioReserva.push({
+    id: 'reservation-consumed', organization_id: 'org-a', branch_id: 'branch-1',
+    work_order_id: 'ot-1', inventario_id: 'inventory-1', inventory_id: 'inventory-1',
+    quote_id: 'quote-1', quantity: 5, state: 'CONSUMED',
+  });
+  const result = await invoke(loadHandler(scenario.client), repairPayload());
+  assert.equal(result.body.success, true, JSON.stringify(result.body));
+  assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 5);
+  assert.equal(scenario.collections.Inventario[0].cantidad_reservada, 0);
+  assert.equal(scenario.collections.InventarioHistorial.length, 0);
+});
+
+test('billing a reserved OT part consumes reserved without another available decrement', async () => {
+  const scenario = createScenario({ stock: 5 });
+  scenario.collections.Inventario[0].cantidad_reservada = 5;
+  scenario.collections.InventarioReserva.push({
+    id: 'reservation-active', organization_id: 'org-a', branch_id: 'branch-1',
+    work_order_id: 'ot-1', inventario_id: 'inventory-1', inventory_id: 'inventory-1',
+    quote_id: 'quote-1', quantity: 5, state: 'RESERVED', reserve_operation_key: 'quote-reserve',
+  });
+  const result = await invoke(loadHandler(scenario.client), repairPayload());
+  assert.equal(result.body.success, true, JSON.stringify(result.body));
+  assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 5);
+  assert.equal(scenario.collections.Inventario[0].cantidad_reservada, 0);
+  assert.equal(scenario.collections.InventarioReserva[0].state, 'CONSUMED');
+  assert.equal(scenario.collections.InventarioHistorial[0].movement_type, 'CONSUME');
+});
+
 test('unit-price tampering is rejected against the approved snapshot', async () => {
   const scenario = createScenario();
   const payload = repairPayload();
@@ -471,9 +514,30 @@ test('failure on a later product compensates every prior inventory mutation', as
   const failed = await invoke(loadHandler(scenario.client), payload);
   assert.equal(failed.status, 500, JSON.stringify(failed.body));
   assert.deepEqual(scenario.collections.Inventario.map(item => item.cantidad_disponible), [10, 7]);
-  assert.equal(scenario.collections.InventarioHistorial.length, 0);
+  assert.equal(scenario.collections.InventarioHistorial.length, 2);
+  assert.equal(scenario.collections.InventarioHistorial[1].movement_type, 'REVERSAL');
+  assert.equal(scenario.collections.InventarioHistorial[1].reversal_of, scenario.collections.InventarioHistorial[0].id);
   assert.equal(scenario.collections.Venta.length, 0);
   assert.equal(scenario.collections.VentaItem.length, 0);
+});
+
+test('retry after a fully compensated sale uses a new inventory attempt and decrements once', async () => {
+  const scenario = createScenario({
+    failure: {
+      entity: 'Cotizacion', method: 'updateMany', phase: 'before', times: 1,
+      predicate: ({ update }) => update.$set?.estado_conversion === 'CONVERTIDA',
+    },
+  });
+  const handler = loadHandler(scenario.client);
+  const failed = await invoke(handler, repairPayload());
+  assert.equal(failed.status, 500, JSON.stringify(failed.body));
+  assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 10);
+  assert.equal(scenario.collections.Venta.length, 0);
+  const retry = await invoke(handler, repairPayload());
+  assert.equal(retry.body.success, true, JSON.stringify(retry.body));
+  assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 5);
+  const net = scenario.collections.InventarioHistorial.reduce((sum, row) => sum + Number(row.available_delta || 0), 0);
+  assert.equal(net, -5);
 });
 
 test('ambiguous sale create response is reconciled instead of duplicated', async () => {
@@ -484,11 +548,11 @@ test('ambiguous sale create response is reconciled instead of duplicated', async
   assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 5);
 });
 
-test('ambiguous inventory CAS response is reconciled by sale ownership markers', async () => {
+test('ambiguous inventory CAS response is reconciled by canonical movement markers', async () => {
   const scenario = createScenario({
     failure: {
       entity: 'Inventario', method: 'updateMany', phase: 'after', times: 1,
-      predicate: ({ update }) => update.$set?.last_sale_id,
+      predicate: ({ update }) => update.$set?.last_inventory_movement_key,
     },
   });
   const result = await invoke(loadHandler(scenario.client), repairPayload());
@@ -561,11 +625,13 @@ test('preloaded quote sale is claimed and committed without a second Venta', asy
   assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 5);
 });
 
-test('source contract uses persisted CAS and has no random idempotency fallback', () => {
+test('source contract delegates inventory to the canonical command service', () => {
   assert.match(backendSource, /sale_lock_token/);
   assert.match(backendSource, /updateMany\(\{/);
   assert.match(backendSource, /request_fingerprint/);
-  assert.match(backendSource, /expectedStock: plan\.stockAnterior/);
+  assert.match(backendSource, /executeInventoryCommand\(base44/);
+  assert.match(backendSource, /reverseInventoryCommand\(base44/);
+  assert.doesNotMatch(backendSource, /InventarioHistorial\.delete/);
   assert.doesNotMatch(backendSource, /auto_\$\{Date\.now/);
   assert.match(posSource, /setIdempotencyKey\(`ik_\$\{crypto\.randomUUID\(\)\}`\)/);
 });

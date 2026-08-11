@@ -8,6 +8,7 @@ import {
   quoteDecisionIsCommitted,
   quoteDecisionOperationKey,
 } from '../_shared/commercialIntegrity.ts';
+import { executeInventoryCommand, reverseInventoryCommand } from '../_shared/inventoryMutationService.ts';
 
 // ─── STATE MACHINE OFICIAL ────────────────────────────────────────────────────
 const ALLOWED_TRANSITIONS = {
@@ -309,6 +310,7 @@ async function ensureDiagnosticQuote({ base44, ot, diagnostico, orgId, effective
 
   const items = (diagnostico.repuestos_requeridos || []).map(part => ({
     tipo: 'repuesto',
+    referencia_id: part.inventario_id || null,
     descripcion: part.descripcion,
     cantidad: part.cantidad,
     precio_unitario: 0,
@@ -332,6 +334,7 @@ async function ensureDiagnosticQuote({ base44, ot, diagnostico, orgId, effective
   try {
     const quote = await base44.asServiceRole.entities.Cotizacion.create({
       organization_id: orgId,
+      branch_id: ot.branch_id,
       orden_trabajo_id: ot.id,
       diagnostico_tecnico_id: diagnostico.id,
       idempotency_key: idempotencyKey,
@@ -940,6 +943,96 @@ async function commitPublicQuoteDecision(base44, quote, targetStatus, operationK
   return reloaded;
 }
 
+function lifecycleInventoryLockAdapter(base44, ot, lock) {
+  return {
+    async acquire() { return { work_order_id: ot.id, token: lock.token }; },
+    async assertOwned() {
+      const current = await loadWorkOrder(base44, ot.organization_id, ot.id);
+      if (current?.lifecycle_lock_token !== lock.token) {
+        throw workflowError('Se perdio el lock antes de mutar inventario', 'LIFECYCLE_LOCK_LOST', 409);
+      }
+      return true;
+    },
+    async release() { return true; },
+  };
+}
+
+async function reserveApprovedQuoteInventory(base44, quote, ot, snapshot, operationKey, lock) {
+  if (!ot) return null;
+  const grouped = new Map();
+  for (const [index, item] of snapshot.items.entries()) {
+    if (!['producto', 'repuesto'].includes(item.tipo)) continue;
+    if (item.referencia_id && item.item_id && item.referencia_id !== item.item_id) {
+      throw workflowError(`Item ${index + 1}: referencias de inventario en conflicto`, 'INVENTORY_REFERENCE_CONFLICT', 409);
+    }
+    const inventoryId = item.referencia_id || item.item_id || null;
+    if (!inventoryId) {
+      throw workflowError(`Item ${index + 1}: referencia de inventario requerida`, 'INVENTORY_REFERENCE_REQUIRED', 409);
+    }
+    const quantity = Number(item.cantidad);
+    const current = grouped.get(inventoryId) || 0;
+    grouped.set(inventoryId, current + quantity);
+  }
+  if (grouped.size === 0) return null;
+  const commandKey = `quote-reserve:${quote.id}:${operationKey}`;
+  return executeInventoryCommand(base44, {
+    organizationId: ot.organization_id,
+    branchId: ot.branch_id,
+    actorId: 'portal_cliente',
+    operationKey: commandKey,
+    referenceType: 'QUOTE_APPROVAL',
+    referenceId: quote.id,
+    reason: `Reserva por aprobacion de cotizacion ${quote.id}`,
+    movements: [...grouped.entries()].map(([inventoryId, quantity]) => ({
+      inventoryId,
+      movementType: 'RESERVE',
+      quantity,
+      workOrderId: ot.id,
+      quoteId: quote.id,
+    })),
+  }, lifecycleInventoryLockAdapter(base44, ot, lock));
+}
+
+async function releaseReservationResults(base44, quote, ot, reserveResult, operationKey, lock) {
+  if (!reserveResult?.operation_key) return;
+  await reverseInventoryCommand(base44, {
+    organizationId: ot.organization_id,
+    branchId: ot.branch_id,
+    actorId: 'portal_cliente',
+    operationKey: reserveResult.operation_key,
+    reversalOperationKey: `${reserveResult.operation_key}:automatic-reversal:approval-compensation`,
+    reason: `Compensacion de aprobacion fallida ${quote.id}:${operationKey}`,
+  }, lifecycleInventoryLockAdapter(base44, ot, lock));
+}
+
+async function releaseCancelledWorkOrderReservations(base44, ot, actorId) {
+  const reservations = await base44.asServiceRole.entities.InventarioReserva.filter({
+    organization_id: ot.organization_id,
+    branch_id: ot.branch_id,
+    work_order_id: ot.id,
+    state: 'RESERVED',
+  }, 'created_date', 500);
+  for (const reservation of reservations || []) {
+    await executeInventoryCommand(base44, {
+      organizationId: ot.organization_id,
+      branchId: ot.branch_id,
+      actorId,
+      operationKey: `ot-cancel-release:${ot.id}:${reservation.id}`,
+      referenceType: 'WORK_ORDER_CANCELLATION',
+      referenceId: ot.id,
+      reason: `Liberacion por cancelacion de OT ${ot.id}`,
+      movements: [{
+        inventoryId: reservation.inventario_id || reservation.inventory_id,
+        movementType: 'RELEASE',
+        quantity: Number(reservation.quantity),
+        reservationId: reservation.id,
+        workOrderId: ot.id,
+        quoteId: reservation.quote_id || null,
+      }],
+    });
+  }
+}
+
 async function handlePublicCustomerDecisionV2({ base44, body, req }) {
   const token = body.customer_token;
   const targetStatus = body.newStatus;
@@ -957,6 +1050,7 @@ async function handlePublicCustomerDecisionV2({ base44, body, req }) {
   let ot = null;
   let lock = null;
   let operationKey = null;
+  let reserveResult = null;
   try {
     ({ quote, ot } = await loadPublicDecisionContext(base44, token));
     validatePublicDecisionExpiry(quote, ot);
@@ -992,6 +1086,9 @@ async function handlePublicCustomerDecisionV2({ base44, body, req }) {
     const claim = await claimPublicQuoteDecision(base44, quote, targetStatus, operationKey, now);
     quote = claim.quote;
     if (targetStatus === 'APROBADA') await ensureDiagnosticApprovalEvidence(base44, quote, now);
+    if (targetStatus === 'APROBADA') {
+      reserveResult = await reserveApprovedQuoteInventory(base44, quote, ot, snapshot, operationKey, lock);
+    }
     const otResult = await ensurePublicDecisionWorkOrder(base44, quote, ot, targetStatus, rejectionReason, now, lock);
     await ensurePublicDecisionEvent(base44, quote, otResult.ot, targetStatus, operationKey, now);
     const committedQuote = await commitPublicQuoteDecision(
@@ -1016,6 +1113,17 @@ async function handlePublicCustomerDecisionV2({ base44, body, req }) {
       decision_status: 'COMMITTED',
     });
   } catch (error) {
+    if (reserveResult && quote && ot && lock?.acquired) {
+      const committed = (await base44.asServiceRole.entities.Cotizacion.filter({
+        id: quote.id, organization_id: quote.organization_id,
+      }, '-created_date', 1))?.[0];
+      const currentOt = await loadWorkOrder(base44, ot.organization_id, ot.id);
+      if (!quoteDecisionIsCommitted(committed, 'APROBADA') && currentOt?.estado !== 'APROBADA') {
+        await releaseReservationResults(base44, quote, ot, reserveResult, operationKey, lock).catch(compensationError => {
+          console.error('[publicQuoteDecision] inventory compensation failed', compensationError.message);
+        });
+      }
+    }
     if (quote?.id && operationKey) {
       await base44.asServiceRole.entities.Cotizacion.updateMany({
         id: quote.id,
@@ -1225,6 +1333,9 @@ Deno.serve(async (req) => {
         }
         extra._aprobacion_cliente_verificada = true;
       }
+      if (newStatus === 'CANCELADA') {
+        await releaseCancelledWorkOrderReservations(base44, ot, effectiveUser.id || effectiveUser.email);
+      }
     }
 
     if (newStatus === 'ENTREGADA') {
@@ -1370,6 +1481,9 @@ Deno.serve(async (req) => {
         }, { status: 409 });
       }
       const updatedOT = transitionRecovered ? reconciled : { ...ot, ...updatePayload };
+      if (newStatus === 'CANCELADA') {
+        await releaseCancelledWorkOrderReservations(base44, updatedOT, effectiveUser.id || effectiveUser.email);
+      }
 
       // ── 12. OTEvent idempotente mientras el lock continúa activo ────────────
       const CANONICAL_EVENTS = ['FINALIZADA', 'ENTREGADA', 'CANCELADA'];

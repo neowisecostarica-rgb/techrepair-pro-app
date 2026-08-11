@@ -140,7 +140,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     newItems[index].descripcion = item.nombre;
     newItems[index].precio_unitario = item.precio_venta || 0;
     newItems[index].tipo = item.tipo_sugerido;
-    newItems[index].item_id = item.id;
+    newItems[index].referencia_id = item.id;
+    delete newItems[index].item_id;
     newItems[index].origen = item.origen;
     
     // Recalcular subtotal

@@ -31,6 +31,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
+import { executeInventoryCommand } from '../_shared/inventoryMutationService.ts';
 
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
@@ -80,6 +81,69 @@ async function loadWorkOrderForInit(base44, orgId, workOrderId) {
     organization_id: orgId,
   });
   return records?.[0] || null;
+}
+
+async function commitExplicitInventoryConsumption(base44, { orgId, ot, activity, inventoryId, quantity, actorId }) {
+  if (activity.inventory_consumption_status === 'COMMITTED') return activity;
+  const reservations = await base44.asServiceRole.entities.InventarioReserva.filter({
+    organization_id: orgId,
+    branch_id: ot.branch_id,
+    work_order_id: ot.id,
+    inventario_id: inventoryId,
+    state: { $in: ['RESERVED', 'CONSUMED'] },
+  }, '-created_date', 2);
+  if ((reservations || []).length !== 1) {
+    throw new Error(reservations?.length > 1
+      ? 'Existen reservas duplicadas para el repuesto'
+      : 'No existe una reserva activa para consumir este repuesto');
+  }
+  const reservation = reservations[0];
+  if (Number(reservation.quantity) !== Number(quantity)) {
+    throw new Error('La cantidad confirmada no coincide con la reserva aprobada');
+  }
+  const operationKey = `technical-consume:${activity.id}:${reservation.id}`;
+  if (reservation.state === 'CONSUMED') {
+    if (reservation.consume_operation_key !== operationKey) {
+      throw new Error('El repuesto ya fue consumido por otra actividad');
+    }
+    return base44.asServiceRole.entities.ActividadTecnica.update(activity.id, {
+      inventario_id: inventoryId,
+      inventario_cantidad: Number(quantity),
+      inventory_consumption_status: 'COMMITTED',
+      inventory_operation_key: operationKey,
+    });
+  }
+  try {
+    await executeInventoryCommand(base44, {
+      organizationId: orgId,
+      branchId: ot.branch_id,
+      actorId,
+      operationKey,
+      referenceType: 'TECHNICAL_ACTIVITY',
+      referenceId: activity.id,
+      reason: `Consumo explicito en actividad ${activity.id}`,
+      movements: [{
+        inventoryId,
+        movementType: 'CONSUME',
+        quantity: Number(quantity),
+        reservationId: reservation.id,
+        workOrderId: ot.id,
+        quoteId: reservation.quote_id || null,
+      }],
+    });
+    return await base44.asServiceRole.entities.ActividadTecnica.update(activity.id, {
+      inventario_id: inventoryId,
+      inventario_cantidad: Number(quantity),
+      inventory_consumption_status: 'COMMITTED',
+      inventory_operation_key: operationKey,
+    });
+  } catch (error) {
+    await base44.asServiceRole.entities.ActividadTecnica.update(activity.id, {
+      inventory_consumption_status: 'FAILED',
+      inventory_operation_key: operationKey,
+    }).catch(() => null);
+    throw error;
+  }
 }
 
 async function acquireInitLock(base44, { ot, orgId, userId }) {
@@ -192,7 +256,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Body inválido o vacío' }, { status: 400 });
     }
 
-    const { orden_trabajo_id, tecnico_id, tipo_actividad, subtipo } = body;
+    const {
+      orden_trabajo_id, tecnico_id, tipo_actividad, subtipo,
+      inventario_id, inventario_cantidad, confirmar_consumo_repuesto,
+    } = body;
 
     if (!orden_trabajo_id) {
       return Response.json({ error: 'orden_trabajo_id es requerido' }, { status: 400 });
@@ -235,6 +302,13 @@ Deno.serve(async (req) => {
     const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
     if (!branchAuthorization.ok) {
       return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+    }
+    if (confirmar_consumo_repuesto === true
+      && (!inventario_id || !Number.isFinite(Number(inventario_cantidad)) || Number(inventario_cantidad) <= 0)) {
+      return Response.json({
+        error: 'Para confirmar consumo se requiere inventario_id e inventario_cantidad mayor a cero',
+        codigo: 'INVENTORY_CONSUMPTION_CONFIRMATION_INVALID',
+      }, { status: 422 });
     }
     const estadoActualOT = ot.estado;
 
@@ -330,12 +404,26 @@ Deno.serve(async (req) => {
     // ── 9. Regla: Actividad ACTIVO mismo técnico → idempotente ────────────────
     const actividadMismoTecnico = actividadesActivas.find(a => a.tecnico_id === efectiveTecnicoId);
     if (actividadMismoTecnico && estadoActualOT === 'EN_REVISION') {
+      let recoveredActivity = actividadMismoTecnico;
+      if (confirmar_consumo_repuesto === true) {
+        if (actividadMismoTecnico.inventario_id && actividadMismoTecnico.inventario_id !== inventario_id) {
+          return Response.json({ error: 'La actividad existente esta asociada a otro repuesto', codigo: 'ACTIVITY_INVENTORY_CONFLICT' }, { status: 409 });
+        }
+        try {
+          recoveredActivity = await commitExplicitInventoryConsumption(base44, {
+            orgId, ot, activity: actividadMismoTecnico,
+            inventoryId: inventario_id, quantity: Number(inventario_cantidad), actorId: runtimeUser.id,
+          });
+        } catch (error) {
+          return Response.json({ error: error.message, codigo: error.code || 'INVENTORY_CONSUMPTION_FAILED', retryable: true }, { status: error.status || 409 });
+        }
+      }
       console.log(`[initTechnicalActivity] Idempotencia — actividad activa existente id=${actividadMismoTecnico.id}`);
       return Response.json({
         success: true,
         idempotent: true,
         message: 'Actividad activa existente reutilizada.',
-        actividad: actividadMismoTecnico,
+        actividad: recoveredActivity,
         estado_ot: estadoActualOT,
         estado_atencion: ot.estado_atencion || null,
       });
@@ -434,6 +522,9 @@ Deno.serve(async (req) => {
         tecnico_email: tecnicoEmail,
         tipo_actividad,
         subtipo: subtipo || '',
+        inventario_id: inventario_id || null,
+        inventario_cantidad: inventario_id ? Number(inventario_cantidad || 0) : null,
+        inventory_consumption_status: confirmar_consumo_repuesto === true ? 'PENDING' : 'NOT_REQUESTED',
         estado: ESTADO_ACTIVO,
         started_at: new Date().toISOString(),
         ended_at: null,
@@ -582,6 +673,23 @@ Deno.serve(async (req) => {
     } catch (attentionErr) {
       console.warn(`[initTechnicalActivity] updateWorkOrderAttentionStatus excepción (non-fatal): ${attentionErr.message}`);
       atencionOk = false;
+    }
+
+    if (confirmar_consumo_repuesto === true) {
+      try {
+        nuevaActividad = await commitExplicitInventoryConsumption(base44, {
+          orgId, ot, activity: nuevaActividad,
+          inventoryId: inventario_id, quantity: Number(inventario_cantidad), actorId: runtimeUser.id,
+        });
+      } catch (error) {
+        return Response.json({
+          error: error.message,
+          codigo: error.code || 'INVENTORY_CONSUMPTION_FAILED',
+          actividad_id: nuevaActividad.id,
+          consumo_pendiente: true,
+          retryable: true,
+        }, { status: error.status || 409 });
+      }
     }
 
     // ── 17. Respuesta unificada ───────────────────────────────────────────────

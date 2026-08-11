@@ -126,6 +126,11 @@
       "description": "Momento en que inventario y venta quedaron confirmados.",
       "rls": { "write": false }
     },
+    "inventory_attempt_key": {
+      "type": "string",
+      "description": "Generacion persistida para reintentar inventario despues de una compensacion completa.",
+      "rls": { "read": false, "write": false }
+    },
     "post_sale_status": {
       "type": "string",
       "enum": ["PENDING", "COMPLETED"],

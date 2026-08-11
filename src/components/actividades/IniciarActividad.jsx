@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -22,6 +23,8 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
   const [tipoActividad, setTipoActividad] = useState('');
   const [subtipo, setSubtipo] = useState('');
   const [inventarioId, setInventarioId] = useState('');
+  const [inventarioCantidad, setInventarioCantidad] = useState('1');
+  const [confirmarConsumo, setConfirmarConsumo] = useState(false);
   const queryClient = useQueryClient();
   const { user, effectiveOrgId } = useAuthContext();
 
@@ -50,6 +53,8 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
         tipo_actividad: tipoActividad,
         subtipo: subtipo || '',
         inventario_id: inventarioId || null,
+        inventario_cantidad: inventarioId ? Number(inventarioCantidad) : null,
+        confirmar_consumo_repuesto: Boolean(inventarioId && confirmarConsumo),
       });
 
       if (!response?.data?.success) {
@@ -65,6 +70,8 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
       setTipoActividad('');
       setSubtipo('');
       setInventarioId('');
+      setInventarioCantidad('1');
+      setConfirmarConsumo(false);
       if (onSuccess) onSuccess();
     }
   });
@@ -110,6 +117,32 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
                 </SelectContent>
               </Select>
             </div>
+
+            {inventarioId && (
+              <div className="space-y-3 rounded-lg border p-3">
+                <div className="space-y-2">
+                  <Label htmlFor="inventario_cantidad">Cantidad del repuesto</Label>
+                  <Input
+                    id="inventario_cantidad"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={inventarioCantidad}
+                    onChange={(event) => setInventarioCantidad(event.target.value)}
+                  />
+                </div>
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="confirmar_consumo_repuesto"
+                    checked={confirmarConsumo}
+                    onCheckedChange={(checked) => setConfirmarConsumo(checked === true)}
+                  />
+                  <Label htmlFor="confirmar_consumo_repuesto" className="text-sm leading-5">
+                    Confirmo que este repuesto se consumira ahora. Iniciar la actividad por si solo no descuenta inventario.
+                  </Label>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="subtipo">Detalle (opcional)</Label>

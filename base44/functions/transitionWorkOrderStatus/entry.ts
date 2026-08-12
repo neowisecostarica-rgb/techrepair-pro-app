@@ -837,6 +837,7 @@ async function reserveApprovedQuoteInventory(base44, quote, ot, snapshot, operat
     organizationId: ot.organization_id,
     branchId: ot.branch_id,
     actorId: 'portal_cliente',
+    principalClass: 'CUSTOMER_TOKEN',
     operationKey: commandKey,
     referenceType: 'QUOTE_APPROVAL',
     referenceId: quote.id,

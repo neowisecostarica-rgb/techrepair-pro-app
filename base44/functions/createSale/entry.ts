@@ -9,6 +9,7 @@ import {
   calculateCommercialTotals,
   moneyMatches,
 } from '../_shared/commercialIntegrity.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
 
 /*
  * createSale — TRP-MVP-003
@@ -25,6 +26,25 @@ const LOCK_BACKOFF_MS = 40;
 
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const nowIso = () => new Date().toISOString();
+
+async function ensureSaleAudit(base44, authorization, user, sale, operationKey, idempotent) {
+  return appendAuditEvent(base44, {
+    eventType: 'SALE_PAYMENT_COMMITTED',
+    principalClass: authorization.principalClass,
+    actorUserId: user.id,
+    actorPrimaryRole: authorization.persistedRole,
+    organizationId: authorization.organizationId,
+    branchId: sale.branch_id,
+    resourceType: 'Venta',
+    resourceId: sale.id,
+    commandPolicyId: 'CP-SALE-001',
+    correlationId: operationKey,
+    operationKey,
+    outcome: idempotent ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
+    newState: { estado: sale.estado, total: sale.total, metodo_pago: sale.metodo_pago },
+    metadata: { quote_id: sale.cotizacion_id || null, work_order_id: sale.referencia_ot_id || null },
+  });
+}
 
 class SaleError extends Error {
   constructor(message, code, status = 400, options = {}) {
@@ -1026,6 +1046,7 @@ Deno.serve(async req => {
     let sale = reservation.sale;
 
     if (sale.estado === 'pagada') {
+      await ensureSaleAudit(base44, authorization, user, sale, identity.operationKey, true);
       const postSale = await runPostSale(base44, orgId, sale);
       const recovered = await loadSaleWithItems(base44, orgId, sale.id);
       return Response.json({
@@ -1073,6 +1094,7 @@ Deno.serve(async req => {
       await renewCommerceLock(anchor, orgId, lock);
       mutations.quoteSnapshot = await convertQuote(base44, context);
       sale = await markSalePaid(base44, context);
+      await ensureSaleAudit(base44, authorization, user, sale, identity.operationKey, reservation.recovered);
       const postSale = await runPostSale(base44, orgId, sale);
       const committed = await loadSaleWithItems(base44, orgId, sale.id);
 
@@ -1086,6 +1108,7 @@ Deno.serve(async req => {
     } catch (error) {
       const current = await findOne(base44.asServiceRole.entities.Venta, { id: sale.id, organization_id: orgId });
       if (current?.estado === 'pagada' && current?.request_fingerprint === identity.requestFingerprint) {
+        await ensureSaleAudit(base44, authorization, user, current, identity.operationKey, true);
         const postSale = await runPostSale(base44, orgId, current);
         const committed = await loadSaleWithItems(base44, orgId, current.id);
         return Response.json({

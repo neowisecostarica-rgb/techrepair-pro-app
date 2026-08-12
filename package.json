@@ -26,6 +26,7 @@
     "test:multiuser-technical": "node scripts/verify-multiuser-technical-contract.mjs",
     "test:multiuser-public-tokens": "node scripts/verify-multiuser-public-token-contract.mjs",
     "test:multiuser-technical-requests": "node scripts/verify-multiuser-technical-requests-contract.mjs",
+    "test:multiuser-audit": "node scripts/verify-multiuser-audit-contract.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },

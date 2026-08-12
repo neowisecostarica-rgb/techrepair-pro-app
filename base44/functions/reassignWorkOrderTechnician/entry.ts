@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 import { normalizeTenantRole } from '../_shared/roleCapabilities.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
 
 // Assignment is an intake operation owned by administration and sales.
 // Keep this contract aligned with workflowConfig and both assignment UIs.
@@ -198,12 +199,40 @@ async function createRequiredAuditEvent({
       processed: false,
       created_at: now,
     });
+    await appendAuditEvent(base44, {
+      eventType: operation === 'REASSIGNMENT' ? 'WORK_ORDER_TECHNICIAN_REASSIGNED' : 'WORK_ORDER_TECHNICIAN_ASSIGNED',
+      principalClass: 'HUMAN_MEMBER',
+      actorUserId: user.id,
+      actorPrimaryRole: null,
+      effectiveTechnicianUserId: destinationTechnician.user_id === user.id ? user.id : null,
+      organizationId: orgId,
+      branchId: ot.branch_id,
+      resourceType: 'OrdenTrabajo',
+      resourceId: ot.id,
+      commandPolicyId: operation === 'REASSIGNMENT' ? 'CP-ASG-002' : 'CP-ASG-001',
+      correlationId: operationToken,
+      operationKey: operationToken,
+      priorState: { tecnico_asignado_id: previousTechnicianId },
+      newState: { tecnico_asignado_id: destinationTechnician.user_id },
+      custodySnapshot: { tecnico_anterior_id: previousTechnicianId, tecnico_nuevo_id: destinationTechnician.user_id },
+      metadata: { operation, reason: reason || null, legacy_event_id: event.id },
+    });
     return { event, created: true };
   } catch (error) {
     const recovered = operation === 'REASSIGNMENT'
       ? await findReassignmentEvent(base44, orgId, ot.id, operationToken)
       : await findAssignmentEvent(base44, orgId, ot.id);
-    if (recovered) return { event: recovered, created: false, recovered: true };
+    if (recovered) {
+      await appendAuditEvent(base44, {
+        eventType: operation === 'REASSIGNMENT' ? 'WORK_ORDER_TECHNICIAN_REASSIGNED' : 'WORK_ORDER_TECHNICIAN_ASSIGNED',
+        principalClass: 'HUMAN_MEMBER', actorUserId: user.id, organizationId: orgId,
+        branchId: ot.branch_id, resourceType: 'OrdenTrabajo', resourceId: ot.id,
+        commandPolicyId: operation === 'REASSIGNMENT' ? 'CP-ASG-002' : 'CP-ASG-001', correlationId: operationToken, operationKey: operationToken,
+        outcome: 'IDEMPOTENT_REPLAY', priorState: { tecnico_asignado_id: previousTechnicianId },
+        newState: { tecnico_asignado_id: destinationTechnician.user_id },
+      });
+      return { event: recovered, created: false, recovered: true };
+    }
     throw error;
   }
 }

@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { BranchLifecycleError, executeBranchLifecycle } from '../_shared/branchLifecycle.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
 
 Deno.serve(async req => {
   if (req.method !== 'POST') {
@@ -23,6 +24,21 @@ Deno.serve(async req => {
       role: authorization.role,
       actor: { id: user.id, email: user.email || null },
     }, body);
+    await appendAuditEvent(base44, {
+      eventType: 'BRANCH_LIFECYCLE_COMMITTED',
+      principalClass: authorization.principalClass,
+      actorUserId: user.id,
+      actorPrimaryRole: authorization.persistedRole,
+      organizationId: authorization.organizationId,
+      branchId: result.branch?.id || body.branch_id || null,
+      resourceType: 'Branch',
+      resourceId: result.branch?.id || body.branch_id,
+      commandPolicyId: 'CP-BR-001',
+      correlationId: body.operation_key,
+      operationKey: body.operation_key,
+      outcome: result.idempotent ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
+      newState: { action: result.action, active: result.branch?.active },
+    });
     return Response.json(result);
   } catch (error) {
     if (error instanceof BranchLifecycleError) {

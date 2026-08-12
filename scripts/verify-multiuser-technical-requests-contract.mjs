@@ -79,7 +79,8 @@ test('fulfillment reserves then consumes and persists ledger references', async 
   assert.deepEqual(target.collections.InventarioHistorial.map(row => row.movement_type), ['RESERVE', 'CONSUME']);
   assert.ok(target.collections.SolicitudTecnica[0].inventory_reservation_id);
   assert.ok(target.collections.SolicitudTecnica[0].inventory_movement_id);
-  assert.equal(target.collections.AuditEvent.length, 1);
+  assert.equal(target.collections.AuditEvent.filter(event => event.event_type === 'TECHNICAL_REQUEST_FULFILLED').length, 1);
+  assert.equal(target.collections.AuditEvent.filter(event => event.event_type === 'INVENTORY_COMMAND_COMMITTED').length, 2);
 });
 
 test('same operation replay is idempotent and never consumes twice', async () => {

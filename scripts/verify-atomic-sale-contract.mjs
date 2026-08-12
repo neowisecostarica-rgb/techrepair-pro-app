@@ -25,6 +25,7 @@ import {
   calculateCommercialTotals,
   moneyMatches,
 } from '../base44/functions/_shared/commercialIntegrity.ts';
+import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 
 const backendPath = new URL('../base44/functions/createSale/entry.ts', import.meta.url);
 const posPath = new URL('../src/pages/PuntoVenta.jsx', import.meta.url);
@@ -99,6 +100,7 @@ function createScenario({ stock = 10, failure = null, preload = false, postSaleF
       },
     }],
     OTEvent: [],
+    AuditEvent: [],
   };
   const counters = Object.fromEntries(Object.keys(collections).map(name => [name, collections[name].length]));
   const metrics = { transitions: 0, postSaleCalls: 0 };
@@ -225,6 +227,7 @@ function loadHandler(client) {
     assertPersistedTotalsMatch,
     calculateCommercialTotals,
     moneyMatches,
+    appendAuditEvent,
   };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename: 'createSale/entry.ts' });

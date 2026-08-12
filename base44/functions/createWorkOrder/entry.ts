@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope, validateRequestedBranch } from '../_shared/operationalAuthorization.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
 
 const LOCK_OPERATION = 'RECEPTION_CREATE';
 const VALID_EQUIPMENT_TYPES = ['laptop', 'desktop', 'tablet', 'smartphone', 'impresora', 'otro'];
@@ -510,6 +511,22 @@ Deno.serve(async (req) => {
       dmr_id: dmr.id,
       event_id: event.id,
       created_by: user.id,
+    });
+    await appendAuditEvent(base44, {
+      eventType: 'WORK_ORDER_RECEPTION_CREATED',
+      principalClass: authorization.principalClass,
+      actorUserId: user.id,
+      actorPrimaryRole: authorization.persistedRole,
+      organizationId: orgId,
+      branchId,
+      resourceType: 'OrdenTrabajo',
+      resourceId: workOrder.id,
+      commandPolicyId: 'CP-OT-001',
+      correlationId,
+      operationKey: correlationId,
+      outcome: reconciledExistingArtifact ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
+      newState: { estado: workOrder.estado, equipment_id: equipment.id, dmr_id: dmr.id },
+      metadata: { legacy_event_id: event.id, equipment_created: equipmentCreated },
     });
 
     return Response.json(buildSuccess({

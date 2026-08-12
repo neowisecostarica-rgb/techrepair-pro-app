@@ -7,6 +7,7 @@ import {
   getCanonicalBranchScope,
   validateRequestedBranch,
 } from '../base44/functions/_shared/operationalAuthorization.ts';
+import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 
 const backendPath = new URL('../base44/functions/createWorkOrder/entry.ts', import.meta.url);
 const lockBackendPath = new URL('../base44/functions/resourceLockLite/entry.ts', import.meta.url);
@@ -58,6 +59,7 @@ function createScenario({
     DiagnosticMasterRecord: [],
     OTEvent: [],
     SuperAdminAudit: [],
+    AuditEvent: [],
     UserAccount: [{
       id: 'account-1',
       user_id: 'user-1',
@@ -146,6 +148,7 @@ function loadServerHandler(source, client, filename) {
     resolveAuthorizedContext,
     getCanonicalBranchScope,
     validateRequestedBranch,
+    appendAuditEvent,
   };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename });

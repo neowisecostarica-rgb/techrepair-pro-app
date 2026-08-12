@@ -7,6 +7,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
 
 const BRANCH_SCOPED_ROLES = new Set(['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT']);
 
@@ -51,12 +52,30 @@ Deno.serve(async (req) => {
   });
   if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
   const effectiveOrgId = authorization.organizationId;
+  const membershipCorrelationId = typeof body.correlation_id === 'string' && body.correlation_id.trim()
+    ? body.correlation_id.trim().slice(0, 240)
+    : crypto.randomUUID();
   const auditMembership = async (operation, accountId) => {
-    if (!authorization.isSuperAdmin) return;
-    await appendSuperAdminAudit(base44, user, {
-      action: 'membership_admin',
+    if (authorization.isSuperAdmin) {
+      await appendSuperAdminAudit(base44, user, {
+        action: 'membership_admin',
+        organizationId: effectiveOrgId,
+        metadata: { operation, account_id: accountId || null },
+      });
+    }
+    await appendAuditEvent(base44, {
+      eventType: 'USER_MEMBERSHIP_MUTATED',
+      principalClass: authorization.principalClass,
+      actorUserId: user.id,
+      actorPrimaryRole: authorization.persistedRole,
       organizationId: effectiveOrgId,
-      metadata: { operation, account_id: accountId || null },
+      branchId: null,
+      resourceType: 'UserAccount',
+      resourceId: accountId,
+      commandPolicyId: 'CP-USER-001',
+      correlationId: membershipCorrelationId,
+      operationKey: membershipCorrelationId,
+      newState: { operation },
     });
   };
   const allowedRoles = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];

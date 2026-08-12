@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../base44/functions/_shared/operationalAuthorization.ts';
 import { normalizeTenantRole } from '../base44/functions/_shared/roleCapabilities.ts';
+import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 
 const backendPath = new URL('../base44/functions/reassignWorkOrderTechnician/entry.ts', import.meta.url);
 const queuePath = new URL('../src/pages/ColaRevision.jsx', import.meta.url);
@@ -59,6 +60,7 @@ function createScenario({
         organization_id: 'org-a',
       };
   const workOrders = [{ organization_id: 'org-a', branch_id: 'branch-a', ...workOrder }];
+  const auditEvents = [];
   const userAccounts = [
     {
       id: 'caller-account',
@@ -128,6 +130,10 @@ function createScenario({
         return event;
       },
     },
+    AuditEvent: {
+      async filter(query) { return auditEvents.filter(record => matches(record, query)).map(record => structuredClone(record)); },
+      async create(data) { const event = { id: `audit-${auditEvents.length + 1}`, ...data }; auditEvents.push(event); return structuredClone(event); },
+    },
   };
 
   return {
@@ -165,6 +171,7 @@ function loadHandler(client) {
     resolveAuthorizedContext,
     getCanonicalBranchScope,
     normalizeTenantRole,
+    appendAuditEvent,
   };
   context.globalThis = context;
   vm.runInNewContext(

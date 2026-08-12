@@ -3,6 +3,7 @@ import {
   rollbackInventoryProjectionCas,
 } from './inventoryStockCas.ts';
 import { assertActiveBranch, BranchProtectionError } from './branchProtection.ts';
+import { appendAuditEvent } from './auditEvent.ts';
 
 export const INVENTORY_MOVEMENT_TYPES = Object.freeze([
   'INITIAL_BALANCE',
@@ -716,8 +717,31 @@ export async function executeInventoryCommand(base44, rawInput, providedLockAdap
     throw new InventoryCommandError('El fingerprint no coincide con el comando', 'INVENTORY_FINGERPRINT_MISMATCH', 409);
   }
   const entities = base44.asServiceRole.entities;
+  const auditCommitted = async result => {
+    const audit = await appendAuditEvent(base44, {
+      eventType: 'INVENTORY_COMMAND_COMMITTED',
+      principalClass: input.principalClass || 'HUMAN_MEMBER',
+      actorUserId: input.principalClass === 'CUSTOMER_TOKEN' ? null : input.actorId,
+      actorPrimaryRole: input.actorPrimaryRole || null,
+      organizationId: input.organizationId,
+      branchId: input.branchId,
+      resourceType: 'InventarioHistorial',
+      resourceId: input.operationKey,
+      commandPolicyId: 'CP-INV-001',
+      correlationId: input.correlationId || input.operationKey,
+      operationKey: input.operationKey,
+      outcome: result.idempotent ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
+      newState: { movement_count: result.results?.length || 0 },
+      metadata: {
+        reference_type: input.referenceType || null,
+        reference_id: input.referenceId || null,
+        movements: (result.results || []).map(row => ({ movement_id: row.movement_id, movement_type: row.movement_type, inventory_id: row.inventory_id, reservation_id: row.reservation_id || null })),
+      },
+    });
+    return { ...result, audit_event_id: audit.event.id };
+  };
   const preexisting = await replayResult(entities, input, movements, fingerprint);
-  if (preexisting) return preexisting;
+  if (preexisting) return auditCommitted(preexisting);
 
   const lockAdapter = providedLockAdapter || createBase44InventoryLockAdapter(base44);
   const lease = await lockAdapter.acquire({
@@ -730,20 +754,20 @@ export async function executeInventoryCommand(base44, rawInput, providedLockAdap
   try {
     await lockAdapter.assertOwned({ operationKey: input.operationKey, lease });
     const replay = await replayResult(entities, input, movements, fingerprint);
-    if (replay) return replay;
+    if (replay) return auditCommitted(replay);
     for (const movement of movements) {
       await lockAdapter.assertOwned({ operationKey: input.operationKey, lease });
       const committed = await replayResult(entities, input, [movement], fingerprint);
       if (committed) applied.push(committed.results[0]);
       else applied.push(await applyMovement(entities, input, movement, fingerprint));
     }
-    return {
+    return auditCommitted({
       success: true,
       operation_key: input.operationKey,
       fingerprint,
       idempotent: false,
       results: applied,
-    };
+    });
   } catch (error) {
     if (applied.length > 0) {
       const compensationErrors = await compensateApplied(entities, input, applied, fingerprint);

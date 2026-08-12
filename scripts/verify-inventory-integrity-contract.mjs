@@ -40,6 +40,7 @@ function createScenario({ available = 10, reserved = 0, branchId = 'branch-a', f
     }],
     InventarioHistorial: [],
     InventarioReserva: [],
+    AuditEvent: [],
   };
   let sequence = 0;
   const shouldFail = (entity, method, phase, payload) => {
@@ -76,6 +77,7 @@ function createScenario({ available = 10, reserved = 0, branchId = 'branch-a', f
         Inventario: entity('Inventario'),
         InventarioHistorial: entity('InventarioHistorial'),
         InventarioReserva: entity('InventarioReserva'),
+        AuditEvent: entity('AuditEvent'),
       },
     },
   };

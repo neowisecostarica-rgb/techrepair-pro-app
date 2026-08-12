@@ -18,6 +18,7 @@ import QuickCreateCategoria from '@/components/inventario/QuickCreateCategoria';
 import { generarCodigoInterno } from '@/components/inventario/utils/generarCodigoInterno';
 import ModalAjusteStock from '@/components/inventario/ModalAjusteStock';
 import PageGuard from '@/components/guards/PageGuard';
+import TechnicalRequestFulfillmentPanel from '@/components/inventario/TechnicalRequestFulfillmentPanel';
 
 export default function Inventario() {
   return (
@@ -237,6 +238,8 @@ function InventarioContent() {
           )}
         </div>
       </div>
+
+      {['ORG_ADMIN', 'BRANCH_ADMIN', 'INVENTORY'].includes(effectiveRole) && <TechnicalRequestFulfillmentPanel items={items} />}
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -73,7 +73,29 @@
     "inventario_id": {
       "type": "string",
       "description": "ID del item de inventario (si aplica)"
-    }
+    },
+    "fulfillment_mode": {
+      "type": "string",
+      "enum": ["EXISTING_STOCK", "NEW_SPEND"],
+      "description": "Clasificacion explicita; nunca inferida desde la UI"
+    },
+    "requester_user_id": { "type": "string", "rls": { "write": false } },
+    "requested_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "approver_user_id": { "type": "string", "rls": { "write": false } },
+    "rejected_by_user_id": { "type": "string", "rls": { "write": false } },
+    "rejected_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "fulfiller_user_id": { "type": "string", "rls": { "write": false } },
+    "fulfilled_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "inventory_operation_key": { "type": "string", "rls": { "write": false } },
+    "inventory_reservation_id": { "type": "string", "rls": { "write": false } },
+    "inventory_movement_id": { "type": "string", "rls": { "write": false } },
+    "fulfillment_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED"],
+      "rls": { "write": false }
+    },
+    "fulfillment_error": { "type": "string", "rls": { "write": false } },
+    "fulfillment_claimed_at": { "type": "string", "format": "date-time", "rls": { "write": false } }
   },
   "required": [
     "organization_id",

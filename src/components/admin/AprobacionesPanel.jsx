@@ -11,7 +11,7 @@ import { CheckCircle, XCircle, FileText, Package, AlertCircle } from 'lucide-rea
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-export default function AprobacionesPanel({ userAccount, user }) {
+export default function AprobacionesPanel({ userAccount }) {
   const [showRechazoModal, setShowRechazoModal] = useState(false);
   const [itemActual, setItemActual] = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState('');
@@ -36,10 +36,10 @@ export default function AprobacionesPanel({ userAccount, user }) {
   // Solicitudes técnicas pendientes
   const { data: solicitudesPendientes = [] } = useQuery({
     queryKey: ['solicitudes-aprobacion', userAccount?.organization_id],
-    queryFn: () => base44.entities.SolicitudTecnica.filter({
-      organization_id: userAccount.organization_id,
-      estado: 'requested'
-    }),
+    queryFn: async () => {
+      const response = await base44.functions.invoke('technicalRequestCommand', { action: 'LIST_PENDING' });
+      return ((response?.data || response)?.requests || []).filter(item => item.estado === 'requested' && item.fulfillment_mode === 'NEW_SPEND');
+    },
     enabled: !!userAccount?.organization_id,
   });
 
@@ -69,10 +69,8 @@ export default function AprobacionesPanel({ userAccount, user }) {
 
   // Aprobar solicitud técnica
   const aprobarSolicitudMutation = useMutation({
-    mutationFn: (solicitudId) => base44.entities.SolicitudTecnica.update(solicitudId, {
-      estado: 'approved',
-      aprobado_por: user.id,
-      aprobado_at: new Date().toISOString()
+    mutationFn: (solicitudId) => base44.functions.invoke('technicalRequestCommand', {
+      action: 'APPROVE', request_id: solicitudId, correlation_id: crypto.randomUUID(),
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['solicitudes-aprobacion'] });
@@ -81,9 +79,8 @@ export default function AprobacionesPanel({ userAccount, user }) {
 
   // Rechazar solicitud técnica
   const rechazarSolicitudMutation = useMutation({
-    mutationFn: ({ id, motivo }) => base44.entities.SolicitudTecnica.update(id, {
-      estado: 'rejected',
-      motivo_rechazo: motivo
+    mutationFn: ({ id, motivo }) => base44.functions.invoke('technicalRequestCommand', {
+      action: 'REJECT', request_id: id, reason: motivo, correlation_id: crypto.randomUUID(),
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['solicitudes-aprobacion'] });

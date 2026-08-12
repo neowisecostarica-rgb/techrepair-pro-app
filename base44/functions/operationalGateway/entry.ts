@@ -659,6 +659,13 @@ Deno.serve(async (req) => {
         'BRANCH_LIFECYCLE_COMMAND_REQUIRED',
       );
     }
+    if (body.entity === 'SolicitudTecnica' && operation !== 'read') {
+      return fail(
+        'Toda mutacion de solicitud tecnica debe ejecutarse mediante technicalRequestCommand.',
+        403,
+        'TECHNICAL_REQUEST_COMMAND_REQUIRED',
+      );
+    }
     const decision = authorizeOperationalAction(authorization, body.entity, operation);
     if (!decision.ok) return fail(decision.error, decision.status, decision.code);
 

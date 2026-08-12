@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { evaluateCurrentQaEvidence } from '../_shared/qaEvidence.ts';
+import { OT_TRANSITION_POLICIES } from '../_shared/commandPolicy.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
 import {
   assertPersistedTotalsMatch,
   calculateCommercialTotals,
@@ -33,6 +35,25 @@ const ALLOWED_TRANSITIONS = {
 };
 
 const IRREVERSIBLE_STATES = ['ENTREGADA', 'CANCELADA'];
+
+async function ensureLifecycleAudit(base44, { authorization, user, ot, previousStatus, newStatus, correlationId }) {
+  return appendAuditEvent(base44, {
+    eventType: 'WORK_ORDER_STATUS_TRANSITIONED',
+    principalClass: authorization.principalClass,
+    actorUserId: user.id,
+    actorPrimaryRole: authorization.persistedRole,
+    effectiveTechnicianUserId: ot.tecnico_asignado_id === user.id ? user.id : null,
+    organizationId: authorization.organizationId,
+    branchId: ot.branch_id,
+    resourceType: 'OrdenTrabajo',
+    resourceId: ot.id,
+    commandPolicyId: 'CP-OT-002',
+    correlationId,
+    priorState: { estado: previousStatus },
+    newState: { estado: newStatus },
+    custodySnapshot: { tecnico_asignado_id: ot.tecnico_asignado_id || null, qa_cycle_id: ot.qa_cycle_id || null },
+  });
+}
 
 const AUTHORIZED_ROLES_FOR_TARGET = {
   ASIGNADA:      ['ORG_ADMIN', 'BRANCH_ADMIN'],
@@ -1018,6 +1039,7 @@ Deno.serve(async (req) => {
       diagnostico_id,
       diagnostico_resumido,
       _lifecycle_lock_token,
+      correlation_id,
     } = body;
 
     // ── 3. Resolver identidad efectiva ────────────────────────────────────────
@@ -1109,6 +1131,17 @@ Deno.serve(async (req) => {
           user_role: effectiveRole,
         }, { status: 403 });
       }
+      const auditCorrelationId = typeof correlation_id === 'string' && correlation_id.trim()
+        ? correlation_id.trim().slice(0, 240)
+        : `transition:${ot.id}:${newStatus}:${ot.qa_cycle_id || ot.updated_date || 'v1'}`;
+      try {
+        await ensureLifecycleAudit(base44, {
+          authorization, user: effectiveUser, ot,
+          previousStatus: currentStatus, newStatus, correlationId: auditCorrelationId,
+        });
+      } catch (error) {
+        return Response.json({ error: 'La transicion existe pero su auditoria requerida esta pendiente', code: 'LIFECYCLE_AUDIT_PENDING', retryable: true }, { status: 500 });
+      }
       return Response.json({
         success: true,
         idempotent: true,
@@ -1139,6 +1172,23 @@ Deno.serve(async (req) => {
         target_status: newStatus,
         allowed_targets: allowed,
       }, { status: 422 });
+    }
+
+    // Frozen capability + relationship authority. CANCELADA remains on its
+    // explicitly mapped legacy admin authority until its own cutover.
+    if (newStatus !== 'CANCELADA') {
+      const transitionPolicy = OT_TRANSITION_POLICIES[`${currentStatus}->${newStatus}`];
+      if (!transitionPolicy) {
+        return Response.json({ error: 'La transicion no tiene una politica de comando congelada', code: 'TRANSITION_POLICY_UNMAPPED' }, { status: 403 });
+      }
+      const requiredCapabilities = transitionPolicy.capability?.allOf || [];
+      if (!requiredCapabilities.every(capability => authorization.capabilities.includes(capability))) {
+        return Response.json({ error: 'La capacidad efectiva no autoriza esta transicion', code: 'TRANSITION_CAPABILITY_DENIED' }, { status: 403 });
+      }
+      if (transitionPolicy.relationship === 'EFFECTIVE_TECHNICIAN'
+        && runtimeUser.id !== ot.tecnico_asignado_id) {
+        return Response.json({ error: 'Debes asumir la custodia tecnica antes de ejecutar esta transicion', code: 'EFFECTIVE_TECHNICIAN_REQUIRED' }, { status: 403 });
+      }
     }
 
     // ── 8. Validar rol para el estado destino ─────────────────────────────────
@@ -1360,6 +1410,17 @@ Deno.serve(async (req) => {
         console.warn('[transitionWorkOrderStatus] trazabilidad_fallida:', traceError.message);
       }
 
+      const auditCorrelationId = typeof correlation_id === 'string' && correlation_id.trim()
+        ? correlation_id.trim().slice(0, 240)
+        : `transition:${ot.id}:${currentStatus}:${newStatus}:${updatedOT.qa_cycle_id || ot.qa_cycle_id || 'v1'}`;
+      try {
+        await ensureLifecycleAudit(base44, {
+          authorization, user: effectiveUser, ot: updatedOT,
+          previousStatus: currentStatus, newStatus, correlationId: auditCorrelationId,
+        });
+      } catch (error) {
+        return Response.json({ error: 'La transicion existe pero su auditoria requerida esta pendiente', code: 'LIFECYCLE_AUDIT_PENDING', retryable: true }, { status: 500 });
+      }
       console.log(`[transitionWorkOrderStatus] OK — OT: ${orden_trabajo_id}, ${currentStatus} → ${newStatus}, usuario: ${effectiveUser.email}, rol: ${effectiveRole}`);
       return Response.json({
         success: true,

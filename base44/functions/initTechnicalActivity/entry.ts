@@ -33,12 +33,30 @@ import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { executeInventoryCommand } from '../_shared/inventoryMutationService.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
 
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
-const ROLES_ADMIN = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'];
+const ROLES_ADMIN = ['ORG_ADMIN', 'BRANCH_ADMIN'];
 const ROLES_INICIO_TECNICO = [...ROLES_ADMIN, 'TECHNICIAN'];
 const INIT_LOCK_TTL_MS = 15 * 60 * 1000;
+
+async function ensureTechnicalStartAudit(base44, { authorization, user, ot, activity, correlationId }) {
+  return appendAuditEvent(base44, {
+    eventType: 'TECHNICAL_ACTIVITY_STARTED',
+    principalClass: authorization.principalClass,
+    actorUserId: user.id,
+    actorPrimaryRole: authorization.persistedRole,
+    effectiveTechnicianUserId: user.id,
+    organizationId: authorization.organizationId,
+    branchId: ot.branch_id,
+    resourceType: 'ActividadTecnica',
+    resourceId: activity.id,
+    commandPolicyId: 'CP-TECH-001',
+    correlationId,
+    custodySnapshot: { work_order_id: ot.id, tecnico_asignado_id: ot.tecnico_asignado_id },
+  });
+}
 
 // ── WF-004A: WorkflowGate constants ──────────────────────────────────────────
 // Vertical slice TechRepairPro: wait_reason=COMMERCIAL_AUTHORIZATION, provider_key=COMMERCE_GATEWAY
@@ -259,7 +277,7 @@ Deno.serve(async (req) => {
 
     const {
       orden_trabajo_id, tecnico_id, tipo_actividad, subtipo,
-      inventario_id, inventario_cantidad, confirmar_consumo_repuesto,
+      inventario_id, inventario_cantidad, confirmar_consumo_repuesto, correlation_id,
     } = body;
 
     if (!orden_trabajo_id) {
@@ -278,6 +296,9 @@ Deno.serve(async (req) => {
     const orgId = authorization.organizationId;
     const effectiveRole = authorization.role;
     const tecnicoEmail = authorization.account?.user_email || runtimeUser.email;
+    const correlationId = typeof correlation_id === 'string' && correlation_id.trim()
+      ? correlation_id.trim().slice(0, 240)
+      : crypto.randomUUID();
 
     // CC-001-02: no tratar todo rol no administrativo como técnico.
     // Rechazar antes de consultar reglas con side-effects o crear registros.
@@ -384,13 +405,16 @@ Deno.serve(async (req) => {
       }, { status: 422 });
     }
 
-    const esAdmin = ROLES_ADMIN.includes(effectiveRole);
-    let efectiveTecnicoId;
-
-    if (esAdmin) {
-      // Admin delega la actividad al técnico asignado a la OT
-      efectiveTecnicoId = ot.tecnico_asignado_id;
-      console.log(`[initTechnicalActivity] Admin delega al técnico asignado ${efectiveTecnicoId}`);
+    if (ROLES_ADMIN.includes(effectiveRole)) {
+      // Admin work is never attributed to the currently assigned technician.
+      // The admin must first assume primary custody via the assignment command.
+      if (runtimeUser.id !== ot.tecnico_asignado_id || tecnico_id !== runtimeUser.id) {
+        return Response.json({
+          error: 'Debes asumir la custodia tecnica de la OT antes de iniciar trabajo.',
+          codigo: 'TECHNICAL_CUSTODY_MUST_BE_ASSUMED',
+          tecnico_asignado: ot.tecnico_asignado_id,
+        }, { status: 403 });
+      }
     } else {
       // TECHNICIAN debe ser el usuario autenticado y el técnico asignado a la OT.
       // El tecnico_id del payload no es una fuente de identidad confiable.
@@ -402,8 +426,8 @@ Deno.serve(async (req) => {
           tecnico_asignado: ot.tecnico_asignado_id,
         }, { status: 403 });
       }
-      efectiveTecnicoId = tecnico_id;
     }
+    const efectiveTecnicoId = runtimeUser.id;
 
     // ── 8. Consultar actividades existentes de la OT ─────────────────────────
     const actividadesOT = await base44.asServiceRole.entities.ActividadTecnica.filter({
@@ -430,6 +454,14 @@ Deno.serve(async (req) => {
         } catch (error) {
           return Response.json({ error: error.message, codigo: error.code || 'INVENTORY_CONSUMPTION_FAILED', retryable: true }, { status: error.status || 409 });
         }
+      }
+      try {
+        await ensureTechnicalStartAudit(base44, {
+          authorization, user: runtimeUser, ot, activity: recoveredActivity,
+          correlationId: recoveredActivity.correlation_id || correlationId,
+        });
+      } catch (error) {
+        return Response.json({ error: 'No se pudo confirmar la auditoria tecnica', codigo: 'TECHNICAL_AUDIT_PENDING', retryable: true }, { status: 500 });
       }
       console.log(`[initTechnicalActivity] Idempotencia — actividad activa existente id=${actividadMismoTecnico.id}`);
       return Response.json({
@@ -477,20 +509,21 @@ Deno.serve(async (req) => {
     }
 
     // ── 12. Validar técnico sin otra OT con estado_atencion ACTIVO ───────────
-    const otsTecnicoActivo = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+    const activeSegmentsForTechnician = await base44.asServiceRole.entities.ActividadTecnica.filter({
       organization_id: orgId,
-      tecnico_asignado_id: efectiveTecnicoId,
-      estado_atencion: 'ACTIVO',
+      tecnico_id: efectiveTecnicoId,
+      estado: ESTADO_ACTIVO,
+      soft_deleted: false,
     });
 
-    const otraOTActiva = otsTecnicoActivo.find(o => o.id !== orden_trabajo_id);
+    const otraOTActiva = activeSegmentsForTechnician.find(segment => segment.orden_trabajo_id !== orden_trabajo_id);
     if (otraOTActiva) {
-      console.warn(`[initTechnicalActivity] BLOQUEO: técnico ${efectiveTecnicoId} ya ACTIVO en OT ${otraOTActiva.id}`);
+      console.warn(`[initTechnicalActivity] BLOQUEO: tecnico ${efectiveTecnicoId} ya ACTIVO en OT ${otraOTActiva.orden_trabajo_id}`);
       return Response.json({
-        error: `El técnico ya tiene una actividad activa en la OT ${otraOTActiva.codigo_ot || otraOTActiva.id}. Finalice o pause esa actividad antes de continuar.`,
+        error: 'El tecnico ya tiene otro segmento tecnico activo. Finalice o pause esa actividad antes de continuar.',
         codigo: 'TECNICO_ACTIVO_OTRA_OT',
-        ot_bloqueante_id: otraOTActiva.id,
-        ot_bloqueante_codigo: otraOTActiva.codigo_ot,
+        ot_bloqueante_id: otraOTActiva.orden_trabajo_id,
+        actividad_bloqueante_id: otraOTActiva.id,
       }, { status: 409 });
     }
 
@@ -533,6 +566,11 @@ Deno.serve(async (req) => {
         orden_trabajo_id,
         tecnico_id: efectiveTecnicoId,
         tecnico_email: tecnicoEmail,
+        actor_user_id: runtimeUser.id,
+        actor_primary_role: authorization.persistedRole,
+        effective_technician_user_id: runtimeUser.id,
+        assignment_snapshot: { tecnico_asignado_id: ot.tecnico_asignado_id, branch_id: ot.branch_id },
+        correlation_id: correlationId,
         tipo_actividad,
         subtipo: subtipo || '',
         inventario_id: inventario_id || null,
@@ -707,6 +745,18 @@ Deno.serve(async (req) => {
 
     // ── 17. Respuesta unificada ───────────────────────────────────────────────
     // OTEvent (TRANSITION_EN_REVISION) fue creado por transitionWorkOrderStatus en PASO 2.
+    try {
+      await ensureTechnicalStartAudit(base44, {
+        authorization, user: runtimeUser, ot, activity: nuevaActividad, correlationId,
+      });
+    } catch (error) {
+      return Response.json({
+        error: 'La actividad existe pero la auditoria requerida esta pendiente de reconciliacion',
+        codigo: 'TECHNICAL_AUDIT_PENDING',
+        actividad_id: nuevaActividad.id,
+        retryable: true,
+      }, { status: 500 });
+    }
     console.log(`[initTechnicalActivity] ✓ Flujo completo — OT=${orden_trabajo_id}, actividad=${nuevaActividad.id}`);
 
     return Response.json({

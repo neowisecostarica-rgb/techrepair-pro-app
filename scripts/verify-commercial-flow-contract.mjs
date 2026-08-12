@@ -91,7 +91,7 @@ pass('work orders cannot finalize without successful technical QA evidence',
   transition.includes("newStatus === 'FINALIZADA'")
   && transition.includes('entities.PruebaTecnica.filter')
   && transition.includes('evaluateCurrentQaEvidence')
-  && qaEvidence.includes("record?.author_role === 'TECHNICIAN'")
+  && qaEvidence.includes("record?.effective_technician_user_id === context.assignedTechnicianId")
   && qaEvidence.includes("record?.recorded_via_backend === true")
   && qaEvidence.includes('QA_LATER_INCOMPATIBLE_RESULT'));
 

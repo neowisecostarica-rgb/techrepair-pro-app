@@ -35,7 +35,7 @@ import NotasInternas from '@/components/tecnico/NotasInternas';
 import MensajesMotivacion from '@/components/tecnico/MensajesMotivacion';
 import ActividadActiva from '@/components/actividades/ActividadActiva';
 import { createPageUrl } from '../../utils';
-import { transicionarEstadoOT, cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
+import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { retomarOrdenTrabajo } from '@/components/ot/retomarOrdenTrabajo';
@@ -181,27 +181,14 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     if (!ordenActiva) return;
     
     try {
-      if (actividadActiva) {
-        await base44.entities.ActividadTecnica.update(actividadActiva.id, {
-          estado: 'finalizada',
-          ended_at: new Date().toISOString(),
-          duracion_minutos: Math.round(
-            (new Date() - new Date(actividadActiva.started_at)) / 60000
-          ),
-          resultado: 'incompleto',
-          notas: `Actividad cerrada por pausa. Motivo: ${motivoPausa}`
-        });
-      }
-
-      await cambiarEstadoAtencionOT({
-        ordenTrabajoId: ordenActiva.id,
-        nuevoEstadoAtencion: 'PAUSADO',
-        motivoPausa: motivoPausa,
-        observaciones: observacionesPausa || 'Trabajo pausado',
-        effectiveOrgId: effectiveOrgId,
-        userId: user?.id,
-        userEmail: user?.email
+      const response = await base44.functions.invoke('technicalActivityCommand', {
+        action: 'PAUSE',
+        work_order_id: ordenActiva.id,
+        pause_reason: motivoPausa,
+        reason: observacionesPausa || `Trabajo pausado: ${motivoPausa}`,
+        correlation_id: crypto.randomUUID(),
       });
+      if (response?.data?.error) throw new Error(response.data.error);
 
       queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
       queryClient.invalidateQueries({ queryKey: ['actividad_activa'] });
@@ -226,27 +213,14 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           return;
         }
 
-        if (actividadActiva) {
-          await base44.entities.ActividadTecnica.update(actividadActiva.id, {
-            estado: 'finalizada',
-            ended_at: new Date().toISOString(),
-            duracion_minutos: Math.round(
-              (new Date() - new Date(actividadActiva.started_at)) / 60000
-            ),
-            resultado: 'incompleto',
-            notas: 'Actividad cerrada por cambio de trabajo'
-          });
-        }
-
-        await cambiarEstadoAtencionOT({
-          ordenTrabajoId: ordenActiva.id,
-          nuevoEstadoAtencion: 'PAUSADO',
-          motivoPausa: 'interrupcion',
-          observaciones: 'Trabajo pausado automáticamente',
-          effectiveOrgId: effectiveOrgId,
-          userId: user?.id,
-          userEmail: user?.email
+        const pauseResponse = await base44.functions.invoke('technicalActivityCommand', {
+          action: 'PAUSE',
+          work_order_id: ordenActiva.id,
+          pause_reason: 'interrupcion',
+          reason: 'Trabajo pausado por cambio de OT',
+          correlation_id: crypto.randomUUID(),
         });
+        if (pauseResponse?.data?.error) throw new Error(pauseResponse.data.error);
       }
 
       await retomarOrdenTrabajo({

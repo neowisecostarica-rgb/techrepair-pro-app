@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../base44/functions/_shared/operationalAuthorization.ts';
+import { normalizeTenantRole } from '../base44/functions/_shared/roleCapabilities.ts';
 
 const backendPath = new URL('../base44/functions/reassignWorkOrderTechnician/entry.ts', import.meta.url);
 const queuePath = new URL('../src/pages/ColaRevision.jsx', import.meta.url);
@@ -82,6 +83,18 @@ function createScenario({
   ];
 
   const entities = {
+    Organization: {
+      async filter(query) {
+        return query.id === 'org-a' && query.status === 'active' ? [{ id: 'org-a', status: 'active' }] : [];
+      },
+    },
+    Branch: {
+      async filter(query) {
+        return query.organization_id === 'org-a' && query.id === 'branch-a' && query.active === true
+          ? [{ id: 'branch-a', organization_id: 'org-a', active: true }]
+          : [];
+      },
+    },
     UserAccount: {
       async filter(query) {
         return userAccounts
@@ -151,6 +164,7 @@ function loadHandler(client) {
     isCanonicalActiveUserAccount,
     resolveAuthorizedContext,
     getCanonicalBranchScope,
+    normalizeTenantRole,
   };
   context.globalThis = context;
   vm.runInNewContext(

@@ -20,9 +20,13 @@
     },
     "author_role": {
       "type": "string",
-      "enum": ["TECHNICIAN"],
+      "enum": ["ORG_ADMIN", "BRANCH_ADMIN", "TECHNICIAN"],
       "description": "Rol autenticado del autor al registrar la evidencia"
     },
+    "effective_technician_user_id": { "type": "string", "rls": { "write": false } },
+    "assignment_snapshot": { "type": "object", "rls": { "write": false } },
+    "technical_activity_segment_id": { "type": "string", "rls": { "write": false } },
+    "correlation_id": { "type": "string", "rls": { "write": false } },
     "qa_cycle_id": {
       "type": "string",
       "description": "Identificador del ciclo vigente de PRUEBAS"

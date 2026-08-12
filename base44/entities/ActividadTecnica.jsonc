@@ -39,6 +39,11 @@
       "type": "string",
       "description": "Repuesto principal asociado (nullable)"
     },
+    "actor_user_id": { "type": "string", "rls": { "write": false } },
+    "actor_primary_role": { "type": "string", "rls": { "write": false } },
+    "effective_technician_user_id": { "type": "string", "rls": { "write": false } },
+    "assignment_snapshot": { "type": "object", "rls": { "write": false } },
+    "correlation_id": { "type": "string", "rls": { "write": false } },
     "inventario_cantidad": {
       "type": "number",
       "description": "Cantidad explicita del repuesto asociado."

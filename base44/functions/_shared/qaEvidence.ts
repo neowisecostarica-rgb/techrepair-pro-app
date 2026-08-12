@@ -13,7 +13,8 @@ export function evaluateCurrentQaEvidence(records, context) {
       record?.qa_cycle_started_at === context.cycleStartedAt &&
       record?.tecnico_id === context.assignedTechnicianId &&
       record?.author_user_id === context.assignedTechnicianId &&
-      record?.author_role === 'TECHNICIAN' &&
+      typeof record?.author_role === 'string' &&
+      record?.effective_technician_user_id === context.assignedTechnicianId &&
       record?.recorded_via_backend === true &&
       Number.isFinite(timestampOf(record)) &&
       Number.isFinite(cycleStartedAt) &&

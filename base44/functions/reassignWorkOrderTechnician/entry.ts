@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
+import { normalizeTenantRole } from '../_shared/roleCapabilities.ts';
 
 // Assignment is an intake operation owned by administration and sales.
 // Keep this contract aligned with workflowConfig and both assignment UIs.
@@ -54,18 +55,25 @@ async function resolveCaller(base44, user) {
   return {
     orgId: authorization.organizationId,
     effectiveRole: authorization.role,
+    account: authorization.account,
     branchScope,
     isSuperAdmin: authorization.isSuperAdmin,
   };
 }
 
-async function loadDestinationTechnician(base44, orgId, technicianUserId) {
+async function loadDestinationTechnician(base44, orgId, technicianUserId, options = {}) {
   const accounts = await base44.asServiceRole.entities.UserAccount.filter({
     user_id: technicianUserId,
     organization_id: orgId,
-    role: 'TECHNICIAN',
   }, 5);
-  return (accounts || []).find(isCanonicalActiveUserAccount) || null;
+  return (accounts || []).find(account => {
+    if (!isCanonicalActiveUserAccount(account)) return false;
+    const role = normalizeTenantRole(account.role);
+    if (role === 'TECHNICIAN') return true;
+    return options.allowAdminSelf === true
+      && technicianUserId === options.actorUserId
+      && ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(role);
+  }) || null;
 }
 
 function buildRollbackUpdate(originalOT) {
@@ -383,7 +391,15 @@ Deno.serve(async (req) => {
       orden_trabajo_id,
       tecnico_asignado_id,
       motivo,
+      action,
     } = body;
+    const assumeSelf = action === 'ASSUME_TECHNICAL_CUSTODY';
+    if (assumeSelf
+      && (!['ORG_ADMIN', 'BRANCH_ADMIN'].includes(caller.effectiveRole)
+        || tecnico_asignado_id !== user.id)) {
+      return errorResponse(403, 'TECHNICAL_CUSTODY_ASSUME_DENIED',
+        'Solo un administrador puede asumir personalmente la custodia tecnica');
+    }
     const hasValidIds = typeof orden_trabajo_id === 'string'
       && orden_trabajo_id.trim().length > 0
       && typeof tecnico_asignado_id === 'string'
@@ -401,7 +417,10 @@ Deno.serve(async (req) => {
 
     const [ot, destinationTechnician] = await Promise.all([
       loadWorkOrder(base44, caller.orgId, orden_trabajo_id),
-      loadDestinationTechnician(base44, caller.orgId, tecnico_asignado_id),
+      loadDestinationTechnician(base44, caller.orgId, tecnico_asignado_id, {
+        allowAdminSelf: assumeSelf,
+        actorUserId: user.id,
+      }),
     ]);
 
     if (!ot) {
@@ -450,6 +469,11 @@ Deno.serve(async (req) => {
           ? 'INITIAL_ASSIGNMENT_RECOVERY'
           : 'INITIAL_ASSIGNMENT',
       });
+    }
+
+    if (caller.effectiveRole === 'SALES') {
+      return errorResponse(403, 'REASSIGNMENT_ROLE_NOT_AUTHORIZED',
+        'SALES solo puede realizar la asignacion inicial antes de iniciar trabajo tecnico');
     }
 
     if (!previousTechnicianId) {

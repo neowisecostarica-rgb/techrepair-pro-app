@@ -55,6 +55,7 @@ const qaRecord = (overrides = {}) => ({
   tecnico_id: 'tech-1',
   author_user_id: 'tech-1',
   author_role: 'TECHNICIAN',
+  effective_technician_user_id: 'tech-1',
   qa_cycle_id: 'cycle-2',
   qa_cycle_started_at: '2026-08-05T10:00:00.000Z',
   recorded_via_backend: true,
@@ -66,6 +67,7 @@ const qaRecord = (overrides = {}) => ({
 test('QA evidence validates author, tenant, technician, cycle and freshness', () => {
   assert.equal(evaluateCurrentQaEvidence([qaRecord()], qaContext).valid, true);
   assert.equal(evaluateCurrentQaEvidence([qaRecord({ author_user_id: 'forged' })], qaContext).valid, false);
+  assert.equal(evaluateCurrentQaEvidence([qaRecord({ effective_technician_user_id: 'forged' })], qaContext).valid, false);
   assert.equal(evaluateCurrentQaEvidence([qaRecord({ organization_id: 'org-b' })], qaContext).valid, false);
   assert.equal(evaluateCurrentQaEvidence([qaRecord({ qa_cycle_id: 'cycle-1' })], qaContext).valid, false);
   assert.equal(evaluateCurrentQaEvidence([qaRecord({ recorded_at: '2026-08-05T09:59:00.000Z' })], qaContext).valid, false);

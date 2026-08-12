@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const authorization = await resolveAuthorizedContext(base44, user, {
-      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'],
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'],
     });
     if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
     const orgId = authorization.organizationId;

@@ -4,12 +4,12 @@ const ALL_OPERATIONAL_ROLES = [
   'TECHNICIAN',
   'SALES',
   'INVENTORY',
-  'SUPPORT',
+  'CUSTOMER_SERVICE',
 ];
 
 const ADMIN_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN'];
 const COMMERCIAL_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
-const CUSTOMER_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'];
+const CUSTOMER_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'];
 const TECHNICAL_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'];
 const INVENTORY_READ_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY'];
 
@@ -25,17 +25,17 @@ export const OPERATIONAL_ENTITY_POLICIES = Object.freeze({
   Cita: { read: ALL_OPERATIONAL_ROLES, create: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES'], update: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES'], delete: ADMIN_ROLES, scope: 'branch' },
   Cliente: { read: CUSTOMER_ROLES, create: CUSTOMER_ROLES, update: CUSTOMER_ROLES, delete: ['ORG_ADMIN'], scope: 'customer' },
   ComprobanteVentaLog: { read: COMMERCIAL_ROLES, create: COMMERCIAL_ROLES, update: [], delete: [], scope: 'sale' },
-  Cotizacion: { read: [...COMMERCIAL_ROLES, 'TECHNICIAN', 'SUPPORT'], create: COMMERCIAL_ROLES, update: COMMERCIAL_ROLES, delete: ['ORG_ADMIN'], scope: 'quote' },
-  DiagnosticMasterRecord: { read: [...TECHNICAL_ROLES, 'SALES', 'SUPPORT'], create: [], update: [], delete: [], scope: 'work_order' },
-  Diagnostico: { read: [...TECHNICAL_ROLES, 'SALES', 'SUPPORT'], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ['ORG_ADMIN'], scope: 'work_order' },
-  DiagnosticoDocumento: { read: [...TECHNICAL_ROLES, 'SALES', 'SUPPORT'], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ['ORG_ADMIN'], scope: 'diagnostic_document' },
+  Cotizacion: { read: [...COMMERCIAL_ROLES, 'TECHNICIAN', 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: COMMERCIAL_ROLES, delete: ['ORG_ADMIN'], scope: 'quote' },
+  DiagnosticMasterRecord: { read: [...TECHNICAL_ROLES, 'SALES', 'CUSTOMER_SERVICE'], create: [], update: [], delete: [], scope: 'work_order' },
+  Diagnostico: { read: [...TECHNICAL_ROLES, 'SALES', 'CUSTOMER_SERVICE'], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ['ORG_ADMIN'], scope: 'work_order' },
+  DiagnosticoDocumento: { read: [...TECHNICAL_ROLES, 'SALES', 'CUSTOMER_SERVICE'], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ['ORG_ADMIN'], scope: 'diagnostic_document' },
   DiagnosticoEvidencia: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: [], delete: ['ORG_ADMIN'], scope: 'work_order' },
   DiagnosticoResultado: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: [], delete: ['ORG_ADMIN'], scope: 'work_order' },
-  DiagnosticoTecnico: { read: [...TECHNICAL_ROLES, 'SALES', 'SUPPORT'], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ['ORG_ADMIN'], scope: 'work_order' },
+  DiagnosticoTecnico: { read: [...TECHNICAL_ROLES, 'SALES', 'CUSTOMER_SERVICE'], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ['ORG_ADMIN'], scope: 'work_order' },
   EntregaLog: { read: COMMERCIAL_ROLES, create: [], update: [], delete: [], scope: 'work_order' },
   Equipo: { read: [...CUSTOMER_ROLES, 'TECHNICIAN'], create: CUSTOMER_ROLES, update: CUSTOMER_ROLES, delete: ['ORG_ADMIN'], scope: 'equipment' },
   Expense: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: ADMIN_ROLES, delete: ADMIN_ROLES, scope: 'branch' },
-  Garantia: { read: [...COMMERCIAL_ROLES, 'SUPPORT'], create: COMMERCIAL_ROLES, update: ADMIN_ROLES, delete: [], scope: 'warranty' },
+  Garantia: { read: [...COMMERCIAL_ROLES, 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: ADMIN_ROLES, delete: [], scope: 'warranty' },
   Inventario: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: 'branch' },
   InventarioHistorial: { read: ['ORG_ADMIN', 'BRANCH_ADMIN', 'INVENTORY'], create: [], update: [], delete: [], scope: 'inventory_history' },
   InventarioReserva: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: 'work_order' },
@@ -44,7 +44,7 @@ export const OPERATIONAL_ENTITY_POLICIES = Object.freeze({
   Notificacion: { read: ALL_OPERATIONAL_ROLES, create: ALL_OPERATIONAL_ROLES, update: ALL_OPERATIONAL_ROLES, delete: ['ORG_ADMIN'], scope: 'notification' },
   OTEvent: { read: ALL_OPERATIONAL_ROLES, create: [], update: [], delete: [], scope: 'work_order' },
   OrdenTrabajo: { read: ALL_OPERATIONAL_ROLES, create: [], update: CUSTOMER_ROLES, delete: ['ORG_ADMIN'], scope: 'branch' },
-  PreDiagnostico: { read: [...TECHNICAL_ROLES, 'SALES', 'SUPPORT'], create: [...TECHNICAL_ROLES, 'SALES'], update: [...TECHNICAL_ROLES, 'SALES'], delete: ['ORG_ADMIN'], scope: 'work_order' },
+  PreDiagnostico: { read: [...TECHNICAL_ROLES, 'SALES', 'CUSTOMER_SERVICE'], create: [...TECHNICAL_ROLES, 'SALES'], update: [...TECHNICAL_ROLES, 'SALES'], delete: ['ORG_ADMIN'], scope: 'work_order' },
   PruebaTecnica: { read: TECHNICAL_ROLES, create: [], update: [], delete: [], scope: 'work_order' },
   PurchaseInvoice: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: ADMIN_ROLES, delete: ['ORG_ADMIN'], scope: 'branch' },
   Reciclaje: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ['ORG_ADMIN'], scope: 'branch' },
@@ -54,8 +54,8 @@ export const OPERATIONAL_ENTITY_POLICIES = Object.freeze({
   Supplier: { read: ADMIN_ROLES, create: ['ORG_ADMIN'], update: ['ORG_ADMIN'], delete: ['ORG_ADMIN'], scope: 'organization' },
   SupplierPayment: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: [], delete: ['ORG_ADMIN'], scope: 'purchase_invoice' },
   TerminosYCondiciones: { read: ALL_OPERATIONAL_ROLES, create: ['ORG_ADMIN'], update: ['ORG_ADMIN'], delete: ['ORG_ADMIN'], scope: 'organization' },
-  Venta: { read: [...COMMERCIAL_ROLES, 'SUPPORT'], create: COMMERCIAL_ROLES, update: [], delete: COMMERCIAL_ROLES, scope: 'branch' },
-  VentaItem: { read: [...COMMERCIAL_ROLES, 'SUPPORT'], create: COMMERCIAL_ROLES, update: [], delete: [], scope: 'sale' },
+  Venta: { read: [...COMMERCIAL_ROLES, 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: [], delete: COMMERCIAL_ROLES, scope: 'branch' },
+  VentaItem: { read: [...COMMERCIAL_ROLES, 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: [], delete: [], scope: 'sale' },
   WorkflowGate: { read: TECHNICAL_ROLES, create: [], update: [], delete: [], scope: 'workflow_gate' },
 });
 

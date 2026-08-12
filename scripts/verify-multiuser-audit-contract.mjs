@@ -16,6 +16,7 @@ const sources = Object.fromEntries(await Promise.all([
   ['branch', 'base44/functions/manageBranchLifecycle/entry.ts'],
   ['user', 'base44/functions/manageOrgUser/entry.ts'],
   ['token', 'base44/functions/issuePublicDocumentToken/entry.ts'],
+  ['provisioning', 'base44/functions/identityGateway/entry.ts'],
 ].map(async ([name, path]) => [name, await read(path)])));
 
 const tests = [];

@@ -28,6 +28,7 @@
     "test:multiuser-technical-requests": "node scripts/verify-multiuser-technical-requests-contract.mjs",
     "test:multiuser-audit": "node scripts/verify-multiuser-audit-contract.mjs",
     "test:multiuser-automation": "node scripts/verify-multiuser-automation-notification-contract.mjs",
+    "test:multiuser-provisioning": "node scripts/verify-multiuser-provisioning-contract.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },

@@ -74,6 +74,10 @@ export function sanitizeOrganization(organization) {
     ultima_actualizacion_caja,
     inventario_config,
     marketing_spend,
+    authorization_preset_version,
+    custom_grants_enabled,
+    provisioning_status,
+    provisioned_at,
   } = organization;
   return {
     id,
@@ -98,6 +102,10 @@ export function sanitizeOrganization(organization) {
     ultima_actualizacion_caja,
     inventario_config,
     marketing_spend,
+    authorization_preset_version,
+    custom_grants_enabled,
+    provisioning_status,
+    provisioned_at,
   };
 }
 

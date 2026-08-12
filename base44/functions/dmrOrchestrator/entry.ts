@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
 
     const authorization = await resolveAuthorizedContext(base44, user, {
       organizationHint: ot.organization_id,
-      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'],
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'],
     });
     if (!authorization.ok) {
       return Response.json({ error: authorization.error }, { status: authorization.status });

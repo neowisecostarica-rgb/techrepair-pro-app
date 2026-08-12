@@ -122,7 +122,7 @@ async function releaseResourceLease(base44, lease, correlationId) {
 
 async function resolveOrganization(base44, user) {
   const authorization = await resolveAuthorizedContext(base44, user, {
-    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'],
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'],
   });
   return authorization;
 }

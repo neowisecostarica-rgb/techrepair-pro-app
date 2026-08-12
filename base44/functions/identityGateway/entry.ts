@@ -8,8 +8,16 @@ import {
   sanitizeUserAccount,
 } from '../_shared/userAuthorization.ts';
 import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import {
+  canonicalOrganizationData,
+  canonicalOwnerMembershipData,
+  canonicalPrimaryBranchData,
+  seedBaselineCategories,
+  validateTenantReadiness,
+} from '../_shared/tenantProvisioning.ts';
 
-const ORG_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
+const ORG_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE', 'SUPPORT'];
 const ORG_UPDATE_FIELDS = new Set([
   'name', 'legal_name', 'country', 'currency', 'telefono_negocio', 'logo_url', 'email',
   'direccion_comercial', 'tipo_entidad', 'identificacion_fiscal', 'direccion_fiscal',
@@ -17,13 +25,6 @@ const ORG_UPDATE_FIELDS = new Set([
   'ultima_actualizacion_caja', 'inventario_config', 'marketing_spend',
 ]);
 const ADMIN_ORG_UPDATE_FIELDS = new Set(['status', 'plan', ...ORG_UPDATE_FIELDS]);
-const BASE_CATEGORIES = [
-  { nombre: 'Servicios', permite_stock: false, permite_precio: true, es_vendible: true },
-  { nombre: 'Repuestos', permite_stock: true, permite_precio: true, es_vendible: true },
-  { nombre: 'Equipos / Portatiles', permite_stock: true, permite_precio: true, es_vendible: true },
-  { nombre: 'Accesorios', permite_stock: true, permite_precio: true, es_vendible: true },
-  { nombre: 'Reciclaje', permite_stock: true, permite_precio: false, es_vendible: false },
-];
 
 function jsonError(error, status, code = undefined) {
   return Response.json({ error, ...(code ? { code } : {}) }, { status });
@@ -125,6 +126,39 @@ async function compensate(base44, records) {
   }
 }
 
+async function finalizeProvisioning(base44, { organization, branch, account, actor, principalClass, correlationId }) {
+  const structural = await validateTenantReadiness(base44, organization.id, { requireReadyMarker: false });
+  if (!structural.ready) {
+    const error = new Error('PROVISIONING_READINESS_VALIDATION_FAILED');
+    error.code = 'PROVISIONING_READINESS_VALIDATION_FAILED';
+    error.details = structural;
+    throw error;
+  }
+  await appendAuditEvent(base44, {
+    eventType: 'TENANT_PROVISIONED',
+    principalClass,
+    actorUserId: actor.id,
+    actorPrimaryRole: principalClass === 'PLATFORM_ADMIN' ? 'SUPER_ADMIN' : 'ORG_ADMIN',
+    organizationId: organization.id,
+    branchId: branch.id,
+    resourceType: 'Organization',
+    resourceId: organization.id,
+    commandPolicyId: 'CP-PROV-001',
+    correlationId,
+    operationKey: correlationId,
+    newState: { provisioning_status: 'READY', owner_account_id: account.id, primary_branch_id: branch.id },
+    metadata: { preset_version: structural.preset_version, custom_grants_enabled: false, checks: structural.checks },
+  });
+  const provisionedAt = new Date().toISOString();
+  const readyOrganization = await base44.asServiceRole.entities.Organization.update(organization.id, {
+    provisioning_status: 'READY',
+    provisioned_at: provisionedAt,
+  });
+  const readiness = await validateTenantReadiness(base44, organization.id);
+  if (!readiness.ready) throw Object.assign(new Error('PROVISIONING_READY_MARKER_INVALID'), { code: 'PROVISIONING_READY_MARKER_INVALID', details: readiness });
+  return { organization: readyOrganization, readiness };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return jsonError('Metodo no permitido', 405, 'METHOD_NOT_ALLOWED');
 
@@ -200,39 +234,24 @@ Deno.serve(async (req) => {
 
       const created = [];
       try {
-        const organization = await base44.asServiceRole.entities.Organization.create({
+        const correlationId = clean(body.correlation_id, 240) || crypto.randomUUID();
+        const organization = await base44.asServiceRole.entities.Organization.create(canonicalOrganizationData({
           name,
           country,
           currency,
           plan: 'basic',
-          status: 'active',
-        });
+        }, correlationId));
         created.push({ entity: 'Organization', id: organization.id });
-        const account = await base44.asServiceRole.entities.UserAccount.create({
-          user_id: user.id,
-          user_email: user.email,
-          organization_id: organization.id,
-          role: 'ORG_ADMIN',
-          status: 'active',
-          active: true,
-          accepted_at: new Date().toISOString(),
-        });
+        const account = await base44.asServiceRole.entities.UserAccount.create(canonicalOwnerMembershipData({
+          organizationId: organization.id, userId: user.id, email: user.email, status: 'active',
+        }));
         created.push({ entity: 'UserAccount', id: account.id });
-        const branch = await base44.asServiceRole.entities.Branch.create({
-          organization_id: organization.id,
-          name: 'Sucursal Principal',
-          normalized_name: 'sucursal principal',
-          active: true,
-        });
+        const branch = await base44.asServiceRole.entities.Branch.create(canonicalPrimaryBranchData(organization.id));
         created.push({ entity: 'Branch', id: branch.id });
-        for (const category of BASE_CATEGORIES) {
-          const record = await base44.asServiceRole.entities.CategoriaInventario.create({
-            ...category,
-            organization_id: organization.id,
-            activo: true,
-          });
-          created.push({ entity: 'CategoriaInventario', id: record.id });
-        }
+        await seedBaselineCategories(base44, organization.id, created);
+        const finalized = await finalizeProvisioning(base44, {
+          organization, branch, account, actor: user, principalClass: 'HUMAN_MEMBER', correlationId,
+        });
         await persistUserIdentity(base44, user.id, {
           organization_id: organization.id,
           impersonating_org_id: null,
@@ -242,9 +261,10 @@ Deno.serve(async (req) => {
         });
         return Response.json({
           success: true,
-          organization: sanitizeOrganization(organization),
+          organization: sanitizeOrganization(finalized.organization),
           account: sanitizeUserAccount(account),
           branch,
+          readiness: finalized.readiness,
         }, { status: 201 });
       } catch (error) {
         await compensate(base44, created);
@@ -414,45 +434,39 @@ Deno.serve(async (req) => {
       }
       const created = [];
       try {
-        const organization = await base44.asServiceRole.entities.Organization.create({
+        const correlationId = clean(body.correlation_id, 240) || crypto.randomUUID();
+        const organization = await base44.asServiceRole.entities.Organization.create(canonicalOrganizationData({
           ...pick(input, ADMIN_ORG_UPDATE_FIELDS),
           name,
           country,
           currency,
           plan,
-          status: 'active',
-        });
+        }, correlationId));
         created.push({ entity: 'Organization', id: organization.id });
-        const branch = await base44.asServiceRole.entities.Branch.create({
-          organization_id: organization.id,
-          name: 'Sucursal Principal',
-          normalized_name: 'sucursal principal',
-          active: true,
-        });
+        const branch = await base44.asServiceRole.entities.Branch.create(canonicalPrimaryBranchData(organization.id));
         created.push({ entity: 'Branch', id: branch.id });
-        const account = await base44.asServiceRole.entities.UserAccount.create({
-          user_email: adminEmail,
-          organization_id: organization.id,
-          branch_id: branch.id,
-          role: 'ORG_ADMIN',
-          status: 'invited',
-          active: false,
-          invited_at: new Date().toISOString(),
-        });
+        const account = await base44.asServiceRole.entities.UserAccount.create(canonicalOwnerMembershipData({
+          organizationId: organization.id, email: adminEmail, status: 'invited',
+        }));
         created.push({ entity: 'UserAccount', id: account.id });
+        await seedBaselineCategories(base44, organization.id, created);
         try { await base44.users.inviteUser(adminEmail, 'user'); }
         catch (error) { console.warn('[identityGateway] invite warning', error?.message); }
         await appendSuperAdminAudit(base44, user, {
           action: 'create_org',
           organizationId: organization.id,
           organizationName: organization.name,
-          correlationId: body.correlation_id,
+          correlationId,
           metadata: { admin_email: adminEmail },
         });
+        const finalized = await finalizeProvisioning(base44, {
+          organization, branch, account, actor: user, principalClass: 'PLATFORM_ADMIN', correlationId,
+        });
         return Response.json({
-          organization: sanitizeOrganization(organization),
+          organization: sanitizeOrganization(finalized.organization),
           account: sanitizeUserAccount(account),
           branch,
+          readiness: finalized.readiness,
         }, { status: 201 });
       } catch (error) {
         await compensate(base44, created);

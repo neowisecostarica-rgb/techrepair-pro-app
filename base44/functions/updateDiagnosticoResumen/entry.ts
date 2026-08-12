@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     // 3. VALIDACIÓN MULTI-TENANT (asServiceRole omite RLS — validar manualmente)
     const authorization = await resolveAuthorizedContext(base44, user, {
       organizationHint: ot.organization_id,
-      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SUPPORT'],
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
     });
     if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
     const orgId = authorization.organizationId;

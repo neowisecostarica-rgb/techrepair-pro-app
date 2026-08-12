@@ -9,7 +9,7 @@ import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
 
-const BRANCH_SCOPED_ROLES = new Set(['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT']);
+const BRANCH_SCOPED_ROLES = new Set(['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE']);
 
 async function validateBranchAssignment(base44, organizationId, role, branchId) {
   if (BRANCH_SCOPED_ROLES.has(role) && !branchId) {
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       newState: { operation },
     });
   };
-  const allowedRoles = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
+  const allowedRoles = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE'];
 
   if (action === 'invite') {
     const { user_email, role, branch_id } = data;

@@ -28,6 +28,11 @@
       "description": "Nombre canonico para detectar duplicados dentro de la organizacion.",
       "rls": { "write": false }
     },
+    "is_primary": {
+      "type": "boolean",
+      "default": false,
+      "rls": { "write": false }
+    },
     "deactivated_at": {
       "type": "string",
       "format": "date-time",

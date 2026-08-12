@@ -21,12 +21,32 @@ export function sanitizeUserAccount(account) {
     user_email: account.user_email,
     organization_id: account.organization_id,
     branch_id: account.branch_id || null,
-    role: account.role,
+    role: normalizeTenantRole(account.role),
+    persisted_role: account.role,
     status: account.status,
     active: account.status === 'active',
     invited_at: account.invited_at || null,
     accepted_at: account.accepted_at || null,
   };
+}
+
+async function loadActiveOrganization(base44, organizationId) {
+  if (!organizationId) return null;
+  const organizations = await base44.asServiceRole.entities.Organization.filter({
+    id: organizationId,
+    status: 'active',
+  }, '-created_date', 2);
+  return organizations?.length === 1 ? organizations[0] : null;
+}
+
+async function loadActiveBranch(base44, organizationId, branchId) {
+  if (!organizationId || !branchId) return null;
+  const branches = await base44.asServiceRole.entities.Branch.filter({
+    id: branchId,
+    organization_id: organizationId,
+    active: true,
+  }, '-created_date', 2);
+  return branches?.length === 1 ? branches[0] : null;
 }
 
 export function sanitizeOrganization(organization) {
@@ -165,10 +185,25 @@ export async function resolveAuthorizedContext(base44, user, options = {}) {
     if (requireOrganization && !impersonatedOrgId) {
       return { ok: false, status: 403, error: 'Inicia una impersonacion autorizada antes de continuar' };
     }
+    const organization = impersonatedOrgId
+      ? await loadActiveOrganization(base44, impersonatedOrgId)
+      : null;
+    if (impersonatedOrgId && !organization) {
+      return { ok: false, status: 403, code: 'ORGANIZATION_INACTIVE', error: 'La organizacion no existe o no esta activa' };
+    }
     return {
       ok: true,
       organizationId: impersonatedOrgId || null,
       role: impersonatedOrgId ? 'ORG_ADMIN' : 'SUPER_ADMIN',
+      persistedRole: 'SUPER_ADMIN',
+      normalizedRole: impersonatedOrgId ? 'ORG_ADMIN' : null,
+      capabilities: impersonatedOrgId ? getRoleCapabilities('ORG_ADMIN') : [],
+      scope: impersonatedOrgId ? 'ORGANIZATION' : 'PLATFORM',
+      branchId: null,
+      principalClass: impersonatedOrgId ? 'HUMAN_MEMBER' : 'PLATFORM_ADMIN',
+      presetVersion: AUTHORIZATION_PRESET_VERSION,
+      organization,
+      branch: null,
       account: null,
       isSuperAdmin: true,
       isImpersonating: Boolean(impersonatedOrgId),
@@ -179,8 +214,19 @@ export async function resolveAuthorizedContext(base44, user, options = {}) {
   const activeAccounts = identity.activeMemberships;
   const persistedOrgId = identity.user.organization_id;
   const requestedOrgId = organizationHint || persistedOrgId || null;
+  const matchingAccounts = requestedOrgId
+    ? activeAccounts.filter(candidate => candidate.organization_id === requestedOrgId)
+    : [];
+  if (matchingAccounts.length > 1) {
+    return {
+      ok: false,
+      status: 409,
+      code: 'MEMBERSHIP_AMBIGUOUS',
+      error: 'Existen multiples membresias activas para la organizacion',
+    };
+  }
   const account = requestedOrgId
-    ? activeAccounts.find(candidate => candidate.organization_id === requestedOrgId) || null
+    ? matchingAccounts[0] || null
     : (activeAccounts.length === 1 ? activeAccounts[0] : null);
 
   if (!account) {
@@ -189,17 +235,66 @@ export async function resolveAuthorizedContext(base44, user, options = {}) {
       : 'No existe una membresia activa para esta organizacion';
     return { ok: false, status: 403, error };
   }
-  if (allowedRoles.length > 0 && !allowedRoles.includes(account.role)) {
+  const normalizedRole = normalizeTenantRole(account.role);
+  if (!normalizedRole) {
+    return { ok: false, status: 403, code: 'ROLE_UNKNOWN', error: 'La membresia tiene un rol no autorizado' };
+  }
+  const normalizedAllowedRoles = allowedRoles.map(normalizeTenantRole).filter(Boolean);
+  if (normalizedAllowedRoles.length > 0 && !normalizedAllowedRoles.includes(normalizedRole)) {
     return { ok: false, status: 403, error: 'Tu rol no permite realizar esta accion' };
+  }
+
+  const organization = await loadActiveOrganization(base44, account.organization_id);
+  if (!organization) {
+    return { ok: false, status: 403, code: 'ORGANIZATION_INACTIVE', error: 'La organizacion no existe o no esta activa' };
+  }
+  const scope = getRoleScope(normalizedRole);
+  const branch = scope === 'SINGLE_BRANCH'
+    ? await loadActiveBranch(base44, account.organization_id, account.branch_id)
+    : null;
+  if (scope === 'SINGLE_BRANCH' && !branch) {
+    return { ok: false, status: 403, code: 'BRANCH_INACTIVE', error: 'La sucursal canonica no existe o no esta activa' };
   }
 
   return {
     ok: true,
     organizationId: account.organization_id,
-    role: account.role,
+    role: normalizedRole,
+    persistedRole: account.role,
+    normalizedRole,
+    capabilities: getRoleCapabilities(normalizedRole),
+    scope,
+    branchId: branch?.id || null,
+    principalClass: 'HUMAN_MEMBER',
+    presetVersion: AUTHORIZATION_PRESET_VERSION,
+    organization,
+    branch,
     account,
     isSuperAdmin: false,
     isImpersonating: false,
     identity,
   };
 }
+
+/** Frozen architecture name. Kept as an alias while callers migrate. */
+export const ResolveAuthorizationContext = resolveAuthorizedContext;
+
+/** Request-owned resolver cache. Callers decide its lifetime; no global authority is cached. */
+export function createRequestAuthorizationResolver(base44, user) {
+  const cache = new Map();
+  return async (options = {}) => {
+    const key = JSON.stringify({
+      organizationHint: options.organizationHint || null,
+      allowedRoles: [...(options.allowedRoles || [])].sort(),
+      requireOrganization: options.requireOrganization !== false,
+    });
+    if (!cache.has(key)) cache.set(key, resolveAuthorizedContext(base44, user, options));
+    return cache.get(key);
+  };
+}
+import {
+  AUTHORIZATION_PRESET_VERSION,
+  getRoleCapabilities,
+  getRoleScope,
+  normalizeTenantRole,
+} from './roleCapabilities.ts';

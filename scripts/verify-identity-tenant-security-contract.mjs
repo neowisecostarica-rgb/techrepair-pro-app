@@ -26,11 +26,16 @@ function matches(record, query = {}) {
 }
 
 function identityClient(accounts) {
+  const organizations = [...new Set(accounts.map(account => account.organization_id).filter(Boolean))]
+    .map(id => ({ id, status: 'active' }));
   return {
     asServiceRole: {
       entities: {
         UserAccount: {
           filter: async query => accounts.filter(account => matches(account, query)),
+        },
+        Organization: {
+          filter: async query => organizations.filter(organization => matches(organization, query)),
         },
       },
     },

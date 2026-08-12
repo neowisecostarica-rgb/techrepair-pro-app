@@ -10,11 +10,22 @@ function pass(name) {
 }
 
 function makeBase44(accounts) {
+  const normalized = accounts.map(account => account.role === 'ORG_ADMIN'
+    ? account
+    : { branch_id: account.branch_id || 'branch-a', ...account });
   return {
     asServiceRole: {
       entities: {
         UserAccount: {
-          filter: async ({ user_id }) => accounts.filter(account => account.user_id === user_id),
+          filter: async ({ user_id }) => normalized.filter(account => account.user_id === user_id),
+        },
+        Organization: {
+          filter: async ({ id, status }) => id && status === 'active' ? [{ id, status }] : [],
+        },
+        Branch: {
+          filter: async ({ id, organization_id, active }) => id && organization_id && active === true
+            ? [{ id, organization_id, active }]
+            : [],
         },
       },
     },

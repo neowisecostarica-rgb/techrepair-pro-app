@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
 
 export default function PortalComprobante() {
   const [token, setToken] = useState('');
@@ -93,9 +92,7 @@ export default function PortalComprobante() {
     );
   }
 
-  const urlGarantia = garantia 
-    ? `${getPublicBaseUrl(organization)}/PortalGarantia?token=${garantia.public_access_token}`
-    : null;
+  const urlGarantia = null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 p-6">

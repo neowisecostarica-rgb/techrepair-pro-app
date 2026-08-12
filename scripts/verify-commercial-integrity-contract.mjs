@@ -16,6 +16,8 @@ import {
   renewLifecycleLock,
   workflowError,
 } from '../base44/functions/_shared/workOrderLifecycleLock.ts';
+import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
+import { publicTokenReference, validatePublicTokenRecord } from '../base44/functions/_shared/publicTokenContract.ts';
 const transitionSource = await readFile(
   new URL('../base44/functions/transitionWorkOrderStatus/entry.ts', import.meta.url),
   'utf8',
@@ -47,12 +49,18 @@ function applyUpdate(record, update) {
 }
 
 function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0, physical = false, transitionFailures = 0 } = {}) {
+  const issuedAt = new Date().toISOString();
+  const expiresAt = new Date(Date.parse(issuedAt) + 7 * 24 * 60 * 60 * 1000).toISOString();
   const collections = {
     Branch: [{ id: 'branch-a', organization_id: 'org-a', name: 'Central', active: true }],
     Cotizacion: [{
       id: 'quote-1', organization_id: 'org-a', branch_id: 'branch-a', cliente_id: 'client-1',
       orden_trabajo_id: 'ot-1', diagnostico_tecnico_id: 'diagnostic-1',
-      public_access_token: 'cot_contract_token_123456789', estado: 'enviada',
+      public_access_token: 'cot_contract_token_123456789',
+      public_access_purpose: 'QUOTE_DECISION', public_access_resource_id: 'quote-1',
+      public_access_version: 'v1', public_access_issued_at: issuedAt,
+      public_access_expires_at: expiresAt, public_access_revoked_at: null,
+      public_access_consumed_at: null, estado: 'enviada',
       items: physical ? [{
         tipo: 'repuesto', referencia_id: 'inventory-1', descripcion: 'Pantalla',
         cantidad: 1, precio_unitario: 100, descuento_porcentaje: 0, subtotal: 100,
@@ -71,6 +79,7 @@ function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0, physical
       aprobacion_status: 'PENDIENTE',
     }],
     OTEvent: [],
+    AuditEvent: [],
     Inventario: [{
       id: 'inventory-1', organization_id: 'org-a', branch_id: 'branch-a',
       cantidad_disponible: 2, cantidad_reservada: 0, nombre: 'Pantalla',
@@ -154,6 +163,9 @@ function loadHandler(client) {
     releaseLifecycleLock,
     renewLifecycleLock,
     workflowError,
+    appendAuditEvent,
+    publicTokenReference,
+    validatePublicTokenRecord,
     console,
     crypto: webcrypto,
     Request,
@@ -304,7 +316,8 @@ test('source contract closes generic final-state, conversion and client token wr
   assert.match(gatewaySource, /calculateCommercialTotals\(canonicalItems\)/);
   assert.match(gatewaySource, /\['aprobada', 'rechazada', 'vencida'\]\.includes\(data\.estado\)/);
   assert.match(gatewaySource, /conversion de cotizacion solo puede materializarse mediante createSale/);
-  assert.match(gatewaySource, /cot_\$\{crypto\.randomUUID\(\)\}/);
+  assert.doesNotMatch(gatewaySource, /cot_\$\{crypto\.randomUUID\(\)\}/);
+  assert.doesNotMatch(gatewaySource, /data\.public_access_token\s*=/);
   assert.match(saleSource, /quote\.decision_status !== 'COMMITTED'/);
   assert.match(saleSource, /calculateCommercialTotals\(sourceItems\)/);
   assert.match(transitionSource, /handlePublicCustomerDecisionV2/);

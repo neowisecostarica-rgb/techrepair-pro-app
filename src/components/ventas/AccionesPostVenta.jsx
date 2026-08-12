@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Printer, Mail, MessageSquare } from 'lucide-react';
 import TiqueteVenta from './TiqueteVenta';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { issuePublicLink } from '@/api/publicLinks';
 
 export default function AccionesPostVenta({ venta, variant = 'default' }) {
   const [showTiquete, setShowTiquete] = useState(false);
@@ -47,12 +48,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
       return;
     }
 
-    if (!venta.public_access_token) {
-      alert('Esta venta no tiene un enlace público de comprobante disponible');
-      return;
-    }
-
-    const receiptUrl = `${window.location.origin}/PortalComprobante?token=${venta.public_access_token}`;
+    const receiptUrl = await issuePublicLink('receipt', venta.id);
     const mensaje = `Comprobante de venta: ${receiptUrl}`;
 
     if (canalReenvio === 'whatsapp') {

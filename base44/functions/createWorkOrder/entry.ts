@@ -418,7 +418,6 @@ Deno.serve(async (req) => {
         contrasena_ingreso: body.contrasena_ingreso?.trim() || undefined,
         responsable_recepcion: body.responsable_recepcion?.trim() || undefined,
         tracking_code: body.tracking_code?.trim() || undefined,
-        public_access_token: body.public_access_token || `ot-${correlationId}`,
         created_by_user_id: user.id,
         fecha_ingreso: nowIso(),
         reception_correlation_id: correlationId,

@@ -577,7 +577,6 @@ async function handleMutation(base44, user, authorization, decision, body) {
       data.enviada_at = sentAt;
       data.ultimo_envio = envio;
       data.historial_envios = [...(current?.historial_envios || []), envio];
-      data.public_access_token = current?.public_access_token || `cot_${crypto.randomUUID()}`;
       data.public_access_expires_at = current?.public_access_expires_at || expiry;
     }
   }
@@ -612,7 +611,6 @@ async function handleMutation(base44, user, authorization, decision, body) {
       data.source = 'SALE';
       data.source_id = data.origen_id;
       data.source_identity = `SALE:${data.origen_id}`;
-      data.public_access_token = `gar_${crypto.randomUUID()}`;
     }
     if (entityName === 'EntregaLog') {
       data.delivered_by_user_id = actorId;

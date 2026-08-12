@@ -61,6 +61,17 @@
       "type": "string",
       "description": "Token \u00fanico para acceso p\u00fablico sin autenticaci\u00f3n"
     },
+    "public_access_expires_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } },
+    "public_access_purpose": {
+      "type": "string",
+      "enum": ["WORK_ORDER_STATUS_READ", "QUOTE_DECISION", "WARRANTY_READ", "RECEIPT_READ"],
+      "rls": { "read": false, "write": false }
+    },
+    "public_access_resource_id": { "type": "string", "rls": { "read": false, "write": false } },
+    "public_access_version": { "type": "string", "rls": { "read": false, "write": false } },
+    "public_access_issued_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } },
+    "public_access_revoked_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } },
+    "public_access_consumed_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } },
     "fecha_emision": {
       "type": "string",
       "format": "date",

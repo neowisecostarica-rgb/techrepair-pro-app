@@ -366,11 +366,6 @@ function OrdenesTrabajoContent() {
       contrasena_ingreso: newEquipoData.contrasena_ingreso || undefined,
     };
 
-    // Generar token único para nuevas OTs
-    if (!editingOT) {
-      data.public_access_token = `ot-${correlationId}`;
-    }
-
     if (editingOT) {
       if (!motivoIngreso.trim()) {
         toast({ variant: 'destructive', title: 'El motivo de ingreso es obligatorio' });
@@ -385,8 +380,15 @@ function OrdenesTrabajoContent() {
   };
 
   const handleCopiarLink = async (orden) => {
+    const response = await base44.functions.invoke('issuePublicDocumentToken', {
+      type: 'work_order',
+      resource_id: orden.id,
+      correlation_id: crypto.randomUUID(),
+    });
+    const token = response?.data?.token;
+    if (!token) throw new Error(response?.data?.error || 'No se pudo emitir el enlace publico');
     const baseUrl = window.location.origin;
-    const link = `${baseUrl}${createPageUrl('PortalCliente')}?token=${orden.public_access_token}`;
+    const link = `${baseUrl}${createPageUrl('PortalCliente')}?token=${token}`;
     navigator.clipboard.writeText(link);
     toast({ title: 'Link copiado al portapapeles' });
   };
@@ -1563,7 +1565,7 @@ function OrdenesTrabajoContent() {
                           onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['citas'] }); }}
                         />
                       )}
-                      {selectedOT.public_access_token && ['DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION', 'FINALIZADA'].includes(selectedOT.estado) && (
+                      {['DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION', 'FINALIZADA'].includes(selectedOT.estado) && (
                         <Button variant="outline" className="border-blue-500 text-blue-700 hover:bg-blue-50"
                           onClick={() => handleCopiarLink(selectedOT)}>
                           📋 Copiar Link Cliente

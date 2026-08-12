@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
+import { issuePublicLink } from '@/api/publicLinks';
 
 export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [], openDirectly = false }) {
   const [showModal, setShowModal] = useState(openDirectly);
@@ -299,14 +300,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     }
   };
 
-  const copiarLink = (cotizacion, organization) => {
-    if (!cotizacion.public_access_token) {
-      alert('Primero debes enviar la cotización para generar el link');
-      return;
-    }
-
+  const copiarLink = async (cotizacion, organization) => {
     const baseUrl = organization?.public_base_url || window.location.origin;
-    const link = `${baseUrl}/PortalCotizacion?token=${cotizacion.public_access_token}`;
+    const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
     navigator.clipboard.writeText(link);
     alert('Link copiado al portapapeles');
   };
@@ -420,14 +416,10 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     doc.save(`Cotizacion_${cotizacion.id}.pdf`);
   };
 
-  const imprimirCotizacion = (cotizacion, organization) => {
-    if (cotizacion.public_access_token) {
-      const baseUrl = organization?.public_base_url || window.location.origin;
-      const link = `${baseUrl}/PortalCotizacion?token=${cotizacion.public_access_token}`;
-      window.open(link, '_blank');
-    } else {
-      alert('Primero debes enviar la cotización para poder imprimirla');
-    }
+  const imprimirCotizacion = async (cotizacion, organization) => {
+    const baseUrl = organization?.public_base_url || window.location.origin;
+    const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
+    window.open(link, '_blank', 'noopener,noreferrer');
   };
 
   const handleEditar = (cotizacion) => {

@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { validatePublicTokenRecord } from '../_shared/publicTokenContract.ts';
 
 const PUBLIC_TYPES = ['work_order', 'quote', 'warranty', 'receipt'];
 
@@ -71,7 +72,6 @@ function publicWarranty(warranty) {
     cliente_id: warranty.cliente_id,
     origen_tipo: warranty.origen_tipo,
     origen_id: warranty.origen_id,
-    public_access_token: warranty.public_access_token,
     fecha_emision: warranty.fecha_emision,
     fecha_inicio: warranty.fecha_inicio,
     fecha_fin: warranty.fecha_fin,
@@ -111,17 +111,17 @@ function publicWorkOrder(workOrder) {
     fecha_diagnostico: workOrder.fecha_diagnostico,
     fecha_cierre: workOrder.fecha_cierre,
     created_date: workOrder.created_date,
-    public_access_expires_at: workOrder.public_access_expires_at,
     cliente_aprobado: workOrder.cliente_aprobado,
     cliente_aprobado_at: workOrder.cliente_aprobado_at,
     cliente_rechazo_motivo: workOrder.cliente_rechazo_motivo,
   };
 }
 
-function tokenExpired(record) {
-  if (!record?.public_access_expires_at) return false;
-  const expiresAt = Date.parse(record.public_access_expires_at);
-  return Number.isFinite(expiresAt) && expiresAt < Date.now();
+function requireToken(record, token, purpose, version = 'v1') {
+  const validation = validatePublicTokenRecord(record, {
+    token, purpose, resourceId: record?.id, version,
+  });
+  if (!validation.ok) throw new Error(validation.code);
 }
 
 async function one(base44, entity, query, sort = '-created_date') {
@@ -143,7 +143,9 @@ Deno.serve(async (req) => {
 
     if (type === 'quote') {
       const cotizacion = await one(base44, 'Cotizacion', { public_access_token: token });
-      if (!cotizacion || tokenExpired(cotizacion)) return fail('Cotizacion no encontrada', 404);
+      if (!cotizacion) return fail('Cotizacion no encontrada', 404);
+      try { requireToken(cotizacion, token, 'QUOTE_DECISION', cotizacion.version || 'v1'); }
+      catch { return fail('Cotizacion no encontrada', 404); }
 
       const [cliente, organization] = await Promise.all([
         one(base44, 'Cliente', { id: cotizacion.cliente_id }, 'created_date'),
@@ -163,6 +165,8 @@ Deno.serve(async (req) => {
     if (type === 'warranty') {
       const garantia = await one(base44, 'Garantia', { public_access_token: token });
       if (!garantia) return fail('Garantia no encontrada', 404);
+      try { requireToken(garantia, token, 'WARRANTY_READ'); }
+      catch { return fail('Garantia no encontrada', 404); }
 
       const [cliente, organization] = await Promise.all([
         one(base44, 'Cliente', { id: garantia.cliente_id }, 'created_date'),
@@ -182,6 +186,8 @@ Deno.serve(async (req) => {
     if (type === 'receipt') {
       const venta = await one(base44, 'Venta', { public_access_token: token });
       if (!venta || venta.estado !== 'pagada') return fail('Comprobante no encontrado', 404);
+      try { requireToken(venta, token, 'RECEIPT_READ'); }
+      catch { return fail('Comprobante no encontrado', 404); }
 
       const [items, cliente, organization, ordenTrabajo] = await Promise.all([
         base44.asServiceRole.entities.VentaItem.filter({
@@ -233,7 +239,9 @@ Deno.serve(async (req) => {
     }
 
     const orden = await one(base44, 'OrdenTrabajo', { public_access_token: token });
-    if (!orden || tokenExpired(orden)) return fail('Orden no encontrada', 404);
+    if (!orden) return fail('Orden no encontrada', 404);
+    try { requireToken(orden, token, 'WORK_ORDER_STATUS_READ'); }
+    catch { return fail('Orden no encontrada', 404); }
 
     const [cliente, equipo, organization, diagnosticos, cotizaciones] = await Promise.all([
       one(base44, 'Cliente', { id: orden.cliente_id }, 'created_date'),

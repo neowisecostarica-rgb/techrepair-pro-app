@@ -642,7 +642,6 @@ async function createOrRecoverSale(base44, context) {
     return { sale, created, preload, recovered: true };
   }
 
-  const publicToken = `vta_${crypto.randomUUID()}`;
   const saleData = {
     organization_id: orgId,
     branch_id: input.ventaData.branch_id,
@@ -659,7 +658,6 @@ async function createOrRecoverSale(base44, context) {
     metodo_pago: input.ventaData.metodo_pago,
     estado: 'procesando',
     created_by_user_id: user.id,
-    public_access_token: publicToken,
     idempotency_key: operationKey,
     request_fingerprint: requestFingerprint,
     inventory_commit_status: 'PENDING',
@@ -964,7 +962,7 @@ async function rollback(base44, context, mutations, originalError) {
         $set: { estado: 'borrador', inventory_attempt_key: crypto.randomUUID() },
         $unset: {
           idempotency_key: '', request_fingerprint: '', inventory_commit_status: '',
-          post_sale_status: '', public_access_token: '',
+          post_sale_status: '',
         },
       });
     } catch (error) { errors.push(`preload:${sale.id}:${error.message}`); }

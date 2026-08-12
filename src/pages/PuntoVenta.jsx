@@ -396,7 +396,6 @@ function PuntoVentaContent() {
 
       if (garantiasExistentes.length > 0) return;
 
-      const token = `gar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const fechaEmision = new Date();
       const fechaInicio = new Date();
       const fechaFin = new Date();
@@ -404,10 +403,10 @@ function PuntoVentaContent() {
 
       await base44.entities.Garantia.create({
         organization_id: venta.organization_id,
+        branch_id: venta.branch_id,
         cliente_id: venta.cliente_id,
         origen_tipo: esReparacion ? 'OT' : 'VENTA',
         origen_id: esReparacion ? venta.referencia_ot_id : venta.id,
-        public_access_token: token,
         fecha_emision: fechaEmision.toISOString().split('T')[0],
         fecha_inicio: fechaInicio.toISOString().split('T')[0],
         fecha_fin: fechaFin.toISOString().split('T')[0],

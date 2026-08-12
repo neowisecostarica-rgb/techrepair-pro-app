@@ -24,6 +24,7 @@
     "test:multiuser-foundation": "node scripts/verify-multiuser-foundation-contract.mjs",
     "test:multiuser-projections": "node scripts/verify-multiuser-projections-contract.mjs",
     "test:multiuser-technical": "node scripts/verify-multiuser-technical-contract.mjs",
+    "test:multiuser-public-tokens": "node scripts/verify-multiuser-public-token-contract.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },

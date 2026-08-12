@@ -45,6 +45,7 @@ function createScenario({
   branchActive = true,
 } = {}) {
   const collections = {
+    Organization: [{ id: 'org-a', name: 'QA Organization', status: 'active' }],
     OperationLock: [],
     Cliente: [
       { id: 'client-1', organization_id: clientOrg, nombre_completo: 'Cliente QA 1', identificacion: 'QA-1', telefono: '8888-0001' },

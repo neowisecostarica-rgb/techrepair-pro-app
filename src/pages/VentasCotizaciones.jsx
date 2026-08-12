@@ -46,6 +46,17 @@ function VentasCotizacionesContent() {
   const [showNuevaCotizacion, setShowNuevaCotizacion] = useState(false);
   const [cotizacionEditar, setCotizacionEditar] = useState(null);
 
+  const emitirEnlaceCotizacion = async (quoteId) => {
+    const response = await base44.functions.invoke('issuePublicDocumentToken', {
+      type: 'quote',
+      resource_id: quoteId,
+      correlation_id: crypto.randomUUID(),
+    });
+    const token = response?.data?.token;
+    if (!token) throw new Error(response?.data?.error || 'No se pudo emitir el enlace de cotizacion');
+    return `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${token}`;
+  };
+
   // Escuchar eventos de cotización creada/actualizada
   React.useEffect(() => {
     const handleCotizacionCreada = (e) => {
@@ -445,7 +456,7 @@ function VentasCotizacionesContent() {
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
                           queryClient.invalidateQueries({ queryKey: ['ordenes'] });
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${updatedQuote.public_access_token}`;
+                          const link = await emitirEnlaceCotizacion(updatedQuote.id);
                           navigator.clipboard.writeText(link);
                           alert('✅ Cotización enviada. Link copiado al portapapeles.');
                           setCotizacionSeleccionada(updatedQuote);
@@ -472,7 +483,7 @@ function VentasCotizacionesContent() {
                             historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
                           alert('✅ Link copiado. Reenvío registrado.');
                           setCotizacionSeleccionada({ ...cotizacionSeleccionada, ultimo_envio: envio });
@@ -483,8 +494,8 @@ function VentasCotizacionesContent() {
                         Reenviar Cotización
                       </Button>
                       <Button
-                        onClick={() => {
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                        onClick={async () => {
+                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
                           alert('Link copiado al portapapeles');
                         }}
@@ -495,8 +506,8 @@ function VentasCotizacionesContent() {
                         Copiar Link
                       </Button>
                       <Button
-                        onClick={() => {
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                        onClick={async () => {
+                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           window.open(link, '_blank');
                         }}
                         variant="outline"

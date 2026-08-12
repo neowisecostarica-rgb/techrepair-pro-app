@@ -11,6 +11,7 @@ import { Search, Eye, Shield, Copy, ExternalLink, CheckCircle2 } from 'lucide-re
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { issuePublicLink } from '@/api/publicLinks';
 
 export default function VentasGarantias() {
   return (
@@ -116,15 +117,15 @@ function VentasGarantiasContent() {
     return true;
   });
 
-  const copiarLink = (token) => {
-    const link = `${window.location.origin}/PortalGarantia?token=${token}`;
+  const copiarLink = async (garantia) => {
+    const link = await issuePublicLink('warranty', garantia.id);
     navigator.clipboard.writeText(link);
-    setCopiedToken(token);
+    setCopiedToken(garantia.id);
     setTimeout(() => setCopiedToken(null), 2000);
   };
 
-  const abrirPortal = (token) => {
-    const link = `${window.location.origin}/PortalGarantia?token=${token}`;
+  const abrirPortal = async (garantia) => {
+    const link = await issuePublicLink('warranty', garantia.id);
     window.open(link, '_blank');
   };
 
@@ -237,20 +238,20 @@ function VentasGarantiasContent() {
                       Ver
                     </Button>
                     <Button
-                      onClick={() => copiarLink(gar.public_access_token)}
+                      onClick={() => copiarLink(gar)}
                       variant="outline"
                       size="sm"
-                      className={copiedToken === gar.public_access_token ? 'bg-emerald-50 border-emerald-200' : ''}
+                      className={copiedToken === gar.id ? 'bg-emerald-50 border-emerald-200' : ''}
                     >
-                      {copiedToken === gar.public_access_token ? (
+                      {copiedToken === gar.id ? (
                         <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
                       ) : (
                         <Copy className="w-3 h-3 mr-1" />
                       )}
-                      {copiedToken === gar.public_access_token ? 'Copiado' : 'Copiar Link'}
+                      {copiedToken === gar.id ? 'Copiado' : 'Copiar Link'}
                     </Button>
                     <Button
-                      onClick={() => abrirPortal(gar.public_access_token)}
+                      onClick={() => abrirPortal(gar)}
                       size="sm"
                       className="bg-indigo-600 hover:bg-indigo-700"
                     >
@@ -386,7 +387,7 @@ function VentasGarantiasContent() {
               {/* Acciones Portal */}
               <div className="flex gap-3 pt-4 border-t">
                 <Button
-                  onClick={() => copiarLink(garantiaSeleccionada.public_access_token)}
+                  onClick={() => copiarLink(garantiaSeleccionada)}
                   variant="outline"
                   className="flex-1"
                 >
@@ -394,7 +395,7 @@ function VentasGarantiasContent() {
                   Copiar Enlace Público
                 </Button>
                 <Button
-                  onClick={() => abrirPortal(garantiaSeleccionada.public_access_token)}
+                  onClick={() => abrirPortal(garantiaSeleccionada)}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700"
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />

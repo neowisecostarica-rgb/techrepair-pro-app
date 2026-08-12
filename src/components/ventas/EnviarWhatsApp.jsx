@@ -4,6 +4,7 @@ import { MessageSquare, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { generarResumenTrabajo } from './utils/generarResumenTrabajo';
 import { getPublicBaseUrl } from './getPublicBaseUrl';
+import { issuePublicLink } from '@/api/publicLinks';
 
 export default function EnviarWhatsApp({ 
   venta, 
@@ -29,15 +30,15 @@ export default function EnviarWhatsApp({
     );
   }
 
-  const handleEnviar = () => {
+  const handleEnviar = async () => {
     const resumen = diagnostico && cotizacion 
       ? generarResumenTrabajo(diagnostico, cotizacion)
       : 'Servicio completado';
 
     const baseUrl = getPublicBaseUrl(organization);
-    const linkComprobante = `${baseUrl}/PortalComprobante?token=${venta.public_access_token}`;
+    const linkComprobante = await issuePublicLink('receipt', venta.id, baseUrl);
     const linkGarantia = garantia 
-      ? `${baseUrl}/PortalGarantia?token=${garantia.public_access_token}`
+      ? await issuePublicLink('warranty', garantia.id, baseUrl)
       : null;
 
     const mensaje = `¡Hola ${cliente.nombre_completo}! 👋

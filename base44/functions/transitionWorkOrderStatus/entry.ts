@@ -4,6 +4,7 @@ import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { evaluateCurrentQaEvidence } from '../_shared/qaEvidence.ts';
 import { OT_TRANSITION_POLICIES } from '../_shared/commandPolicy.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { publicTokenReference, validatePublicTokenRecord } from '../_shared/publicTokenContract.ts';
 import {
   assertPersistedTotalsMatch,
   calculateCommercialTotals,
@@ -572,20 +573,15 @@ async function loadPublicDecisionContext(base44, token) {
   if (quote?.orden_trabajo_id) {
     ot = await loadWorkOrder(base44, quote.organization_id, quote.orden_trabajo_id);
   }
-  if (!quote) {
-    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
-      public_access_token: token,
-    }, '-created_date', 2);
-    if (workOrders?.length !== 1) throw workflowError('Enlace no valido', 'PUBLIC_QUOTE_TOKEN_INVALID', 404);
-    ot = workOrders[0];
-    const related = await base44.asServiceRole.entities.Cotizacion.filter({
-      organization_id: ot.organization_id,
-      orden_trabajo_id: ot.id,
-      estado: { $in: ['enviada', 'aprobada', 'rechazada'] },
-    }, '-created_date', 5);
-    quote = related?.[0] || null;
-  }
   if (!quote) throw workflowError('No existe una cotizacion asociada para registrar la decision', 'PUBLIC_QUOTE_NOT_FOUND', 422);
+  const tokenValidation = validatePublicTokenRecord(quote, {
+    token,
+    purpose: 'QUOTE_DECISION',
+    resourceId: quote.id,
+    version: quote.version || 'v1',
+    allowConsumed: true,
+  });
+  if (!tokenValidation.ok) throw workflowError('Enlace no valido', tokenValidation.code, 404);
   if (quote.orden_trabajo_id && (!ot || ot.organization_id !== quote.organization_id)) {
     throw workflowError('La OT asociada no es valida', 'PUBLIC_QUOTE_WORK_ORDER_INVALID', 409);
   }
@@ -747,7 +743,7 @@ async function ensurePublicDecisionEvent(base44, quote, ot, targetStatus, operat
       orden_trabajo_id: ot.id,
       tipo: eventType,
       detalle: operationKey,
-      created_by_user_id: 'portal_cliente',
+      created_by_user_id: null,
       processed: false,
       created_at: now,
     });
@@ -782,6 +778,7 @@ async function commitPublicQuoteDecision(base44, quote, targetStatus, operationK
       estado: targetQuoteStatus,
       decision_status: 'COMMITTED',
       decision_committed_at: now,
+      public_access_consumed_at: now,
       decision_error: null,
       ...(approved ? {
         aprobada_at: now,
@@ -962,6 +959,30 @@ async function handlePublicCustomerDecisionV2({ base44, body, req }) {
       req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
       now,
     );
+    await appendAuditEvent(base44, {
+      eventType: 'PUBLIC_QUOTE_DECISION_COMMITTED',
+      principalClass: 'CUSTOMER_TOKEN',
+      actorUserId: null,
+      actorPrimaryRole: null,
+      effectiveTechnicianUserId: null,
+      organizationId: quote.organization_id,
+      branchId: quote.branch_id || otResult.ot?.branch_id || null,
+      resourceType: 'Cotizacion',
+      resourceId: quote.id,
+      commandPolicyId: 'CP-QUOTE-002',
+      correlationId: operationKey,
+      operationKey,
+      outcome: claim.committed || claim.recovered ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
+      priorState: { quote_status: claim.quote?.estado || quote.estado, work_order_status: otResult.previousStatus },
+      newState: { quote_status: targetQuoteStatus, work_order_status: targetStatus },
+      metadata: {
+        authority_contract: 'QUOTE_DECISION',
+        token_reference: await publicTokenReference(token),
+        token_version: quote.public_access_version,
+        decision: targetStatus,
+      },
+      occurredAt: now,
+    });
     return Response.json({
       success: true,
       idempotent: Boolean(claim.committed || claim.recovered || !otResult.transitioned),

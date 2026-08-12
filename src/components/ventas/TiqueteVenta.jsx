@@ -144,9 +144,7 @@ export default function TiqueteVenta({ venta, onClose }) {
 
   if (!venta) return null;
 
-  const urlGarantia = garantia 
-    ? `${window.location.origin}/PortalGarantia?token=${garantia.public_access_token}`
-    : null;
+  const urlGarantia = null;
 
   // Renderizar template de diagnóstico 80mm
   if (vistaActiva === '80mm' && esDiagnostico && ordenTrabajo && diagnostico) {

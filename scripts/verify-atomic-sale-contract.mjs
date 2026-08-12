@@ -54,6 +54,7 @@ function applyUpdate(record, update) {
 
 function createScenario({ stock = 10, failure = null, preload = false, postSaleFailures = 0 } = {}) {
   const collections = {
+    Organization: [{ id: 'org-a', name: 'QA Organization', status: 'active' }],
     UserAccount: [{
       id: 'account-1', user_id: 'user-1', user_email: 'qa@example.com',
       organization_id: 'org-a', branch_id: 'branch-1', role: 'SALES', status: 'active', active: true,

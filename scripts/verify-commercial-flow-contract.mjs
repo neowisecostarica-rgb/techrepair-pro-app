@@ -78,7 +78,8 @@ pass('all generated quote links target the registered PortalCotizacion route',
   !quotePage.includes('/cotizacion?token=')
   && !quoteManagement.includes('/cotizacion?token=')
   && quotePage.includes('/PortalCotizacion?token=')
-  && quoteManagement.includes('/PortalCotizacion?token='));
+  && quoteManagement.includes("issuePublicLink('quote'")
+  && (await readFile(new URL('../src/api/publicLinks.js', import.meta.url), 'utf8')).includes("quote: 'PortalCotizacion'"));
 
 pass('sending an OT quote advances DIAGNOSTICADA to COTIZADA through the lifecycle helper',
   quotePage.includes("transicionarEstadoOT(ot.id, 'COTIZADA'")

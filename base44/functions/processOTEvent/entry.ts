@@ -128,7 +128,14 @@ Deno.serve(async (req) => {
     try {
       callerUser = await base44.auth.me();
     } catch {
-      // Automation call — sin sesión de usuario. OK.
+      callerUser = null;
+    }
+    if (!callerUser) {
+      return Response.json({
+        error: 'La automatizacion no tiene attestation verificable en el runtime actual.',
+        code: 'AUTOMATION_TRUST_ATTESTATION_UNAVAILABLE',
+        side_effects_executed: false,
+      }, { status: 503 });
     }
 
     // ── 2. Parsear payload ──────────────────────────────────────────────────────

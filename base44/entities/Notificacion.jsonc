@@ -20,7 +20,11 @@
         "TECHNICIAN",
         "ADMIN",
         "CASHIER",
-        "ORG_ADMIN"
+        "ORG_ADMIN",
+        "BRANCH_ADMIN",
+        "SALES",
+        "INVENTORY",
+        "CUSTOMER_SERVICE"
       ],
       "description": "Rol objetivo (nullable)"
     },
@@ -54,7 +58,10 @@
       ],
       "default": "pendiente",
       "description": "Estado de la notificaci\u00f3n"
-    }
+    },
+    "event_key": { "type": "string", "rls": { "write": false } },
+    "source_event_id": { "type": "string", "rls": { "write": false } },
+    "created_by_command": { "type": "string", "rls": { "write": false } }
   },
   "required": [
     "organization_id",

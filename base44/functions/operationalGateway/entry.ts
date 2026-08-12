@@ -666,6 +666,13 @@ Deno.serve(async (req) => {
         'TECHNICAL_REQUEST_COMMAND_REQUIRED',
       );
     }
+    if (body.entity === 'Notificacion' && operation === 'create') {
+      return fail(
+        'La produccion de notificaciones workflow pertenece a notificationCommand.',
+        403,
+        'NOTIFICATION_COMMAND_REQUIRED',
+      );
+    }
     const decision = authorizeOperationalAction(authorization, body.entity, operation);
     if (!decision.ok) return fail(decision.error, decision.status, decision.code);
 

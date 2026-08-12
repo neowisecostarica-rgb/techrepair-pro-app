@@ -45,14 +45,11 @@ export default function WorkOrderCard({ ot, tecnicos = [], onClick }) {
     : null;
 
   // ── Cliente / Equipo (llegan embebidos desde listWorkOrders) ───────────────
-  const clienteName = ot.cliente?.nombre_completo || 'Sin cliente';
-  const equipoData  = ot.equipo;
-  const equipoInfo  = equipoData
-    ? [equipoData.tipo, equipoData.marca, equipoData.modelo].filter(Boolean).join(' ')
-    : null;
+  const clienteName = ot.cliente_nombre_completo || 'Sin cliente';
+  const equipoInfo = ot.equipo_display || null;
 
   // ── Antigüedad ─────────────────────────────────────────────────────────────
-  const fechaBase      = ot.fecha_ingreso || ot.created_date;
+  const fechaBase      = ot.created_at;
   const tiempoTexto    = tiempoDesde(fechaBase);
   const horasAntiguedad = fechaBase ? differenceInHours(new Date(), new Date(fechaBase)) : 0;
   const esVieja        = horasAntiguedad >= 48;

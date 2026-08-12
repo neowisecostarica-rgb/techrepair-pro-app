@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
+import { projectWorkOrderList, projectWorkOrderTeamAwareness } from '../_shared/dataProjections.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -26,18 +27,11 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.Equipo.filter({ organization_id: orgId }),
     ]);
 
-    // Enriquecer con datos de cliente y equipo para la UI
-    const clienteMap = {};
-    for (const c of (clientes || [])) clienteMap[c.id] = c;
-
-    const equipoMap = {};
-    for (const e of (equipos || [])) equipoMap[e.id] = e;
-
-    const result = (ordenes || []).map(orden => ({
-      ...orden,
-      cliente: clienteMap[orden.cliente_id] || null,
-      equipo: equipoMap[orden.equipo_id] || null,
-    }));
+    const clienteMap = new Map((clientes || []).map(cliente => [cliente.id, cliente]));
+    const equipoMap = new Map((equipos || []).map(equipo => [equipo.id, equipo]));
+    const result = (ordenes || []).map(orden => authorization.role === 'TECHNICIAN'
+      ? projectWorkOrderTeamAwareness(orden, equipoMap.get(orden.equipo_id))
+      : projectWorkOrderList(orden, clienteMap.get(orden.cliente_id), equipoMap.get(orden.equipo_id)));
 
     return Response.json(result);
   } catch (error) {

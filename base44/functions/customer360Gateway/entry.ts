@@ -2,8 +2,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
+import {
+  projectCustomerMessage,
+  projectCustomerQuote,
+  projectCustomerSale,
+  projectCustomerServiceEquipment,
+  projectCustomerServiceWorkOrder,
+  projectReceptionCustomer,
+} from '../_shared/dataProjections.ts';
 
-const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'SUPPORT'];
+const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'];
 const MESSAGE_TYPES = ['estado_ot', 'cotizacion', 'seguimiento', 'general', 'recordatorio'];
 const CHANNELS = ['email', 'sms', 'whatsapp', 'sistema'];
 
@@ -64,7 +72,15 @@ Deno.serve(async (req) => {
         : (equipos || []).filter(equipo =>
             equipo.branch_id === branchScope.branchId
             || (ordenes || []).some(orden => orden.equipo_id === equipo.id));
-      return Response.json({ cliente, ordenes, equipos: equiposVisibles, ventas, cotizaciones, mensajes });
+      return Response.json({
+        projection: 'CUSTOMER_360_AUTHORIZED',
+        cliente: projectReceptionCustomer(cliente),
+        ordenes: (ordenes || []).map(projectCustomerServiceWorkOrder),
+        equipos: (equiposVisibles || []).map(projectCustomerServiceEquipment),
+        ventas: (ventas || []).map(projectCustomerSale),
+        cotizaciones: (cotizaciones || []).map(projectCustomerQuote),
+        mensajes: (mensajes || []).map(projectCustomerMessage),
+      });
     }
 
     if (action === 'recordMessage') {
@@ -112,7 +128,7 @@ Deno.serve(async (req) => {
         canal,
         enviado: false,
       });
-      return Response.json({ mensaje }, { status: 201 });
+      return Response.json({ mensaje: projectCustomerMessage(mensaje) }, { status: 201 });
     }
 
     return jsonError(`Accion Customer 360 desconocida: ${action}`, 400);

@@ -22,6 +22,7 @@
     "test:crm-customer360": "node scripts/verify-crm-customer360-contract.mjs",
     "test:operational-authorization": "node scripts/verify-operational-authorization-contract.mjs",
     "test:multiuser-foundation": "node scripts/verify-multiuser-foundation-contract.mjs",
+    "test:multiuser-projections": "node scripts/verify-multiuser-projections-contract.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },

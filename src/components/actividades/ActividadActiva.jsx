@@ -35,45 +35,12 @@ export default function ActividadActiva({ actividad, onUpdated }) {
 
   const finalizarMutation = useMutation({
     mutationFn: async () => {
-      // 1) now ISO
-      const now = new Date().toISOString();
-
-      // 2) Update #1
-      await base44.entities.ActividadTecnica.update(actividad.id, {
-        ended_at: now,
-        estado: 'finalizada'
+      const response = await base44.functions.invoke('technicalActivityCommand', {
+        action: 'COMPLETE',
+        work_order_id: actividad.orden_trabajo_id,
+        correlation_id: crypto.randomUUID(),
       });
-
-      // 3) Re-fetch
-      const actualizada = await base44.entities.ActividadTecnica.filter({ id: actividad.id });
-      if (actualizada.length === 0) {
-        throw new Error('Actividad no encontrada');
-      }
-      const a = actualizada[0];
-
-      // 4) Calcular duracion_minutos
-      const duracion = Math.floor((new Date(now) - new Date(a.started_at)) / 60000);
-      if (duracion < 0) {
-        throw new Error('Duración inválida');
-      }
-
-      // 5) Update #2
-      await base44.entities.ActividadTecnica.update(actividad.id, {
-        duracion_minutos: duracion
-      });
-
-      // 6) Auditoría
-      await base44.entities.SuperAdminAudit.create({
-        super_admin_id: user.id,
-        super_admin_email: user.email,
-        action: 'actividad_finished',
-        target_organization_id: effectiveOrgId,
-        context: JSON.stringify({
-          actividad_id: actividad.id,
-          duracion_minutos: duracion,
-          resultado: a.resultado || null
-        })
-      });
+      if (response?.data?.error) throw new Error(response.data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
@@ -87,45 +54,13 @@ export default function ActividadActiva({ actividad, onUpdated }) {
         throw new Error('La causa del bloqueo es obligatoria');
       }
 
-      // 1) now ISO
-      const now = new Date().toISOString();
-
-      // 2) Update #1
-      await base44.entities.ActividadTecnica.update(actividad.id, {
-        ended_at: now,
-        estado: 'bloqueada',
-        causa_bloqueo: causaBloqueo
+      const response = await base44.functions.invoke('technicalActivityCommand', {
+        action: 'BLOCK',
+        work_order_id: actividad.orden_trabajo_id,
+        reason: causaBloqueo,
+        correlation_id: crypto.randomUUID(),
       });
-
-      // 3) Re-fetch
-      const actualizada = await base44.entities.ActividadTecnica.filter({ id: actividad.id });
-      if (actualizada.length === 0) {
-        throw new Error('Actividad no encontrada');
-      }
-      const a = actualizada[0];
-
-      // 4) Calcular duracion_minutos
-      const duracion = Math.floor((new Date(now) - new Date(a.started_at)) / 60000);
-      if (duracion < 0) {
-        throw new Error('Duración inválida');
-      }
-
-      // 5) Update #2
-      await base44.entities.ActividadTecnica.update(actividad.id, {
-        duracion_minutos: duracion
-      });
-
-      // 6) Auditoría
-      await base44.entities.SuperAdminAudit.create({
-        super_admin_id: user.id,
-        super_admin_email: user.email,
-        action: 'actividad_blocked',
-        target_organization_id: effectiveOrgId,
-        context: JSON.stringify({
-          actividad_id: actividad.id,
-          causa_bloqueo: causaBloqueo
-        })
-      });
+      if (response?.data?.error) throw new Error(response.data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });

@@ -1,29 +1,28 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, TrendingUp, UserPlus, Phone, Mail, ArrowRight } from 'lucide-react';
+import { Plus, Search, UserPlus, Phone, Mail, ArrowRight } from 'lucide-react';
+import { crmQueryKeys, invokeCrm } from '@/api/crm';
 
 export default function CRM() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'SALES']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE']}>
       <CRMContent />
     </PageGuard>
   );
 }
 
 function CRMContent() {
-  const { effectiveOrgId, effectiveRole, user, status } = useAuthContext();
+  const { effectiveOrgId, effectiveRole, status } = useAuthContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
@@ -31,70 +30,46 @@ function CRMContent() {
   const [statusFilter, setStatusFilter] = useState('all');
   const queryClient = useQueryClient();
 
-  const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['leads', effectiveOrgId],
-    queryFn: () => base44.entities.Lead.filter({ organization_id: effectiveOrgId }),
+  const { data: crmData, isLoading, isError, error } = useQuery({
+    queryKey: crmQueryKeys.list(effectiveOrgId),
+    queryFn: () => invokeCrm('list', effectiveOrgId),
     enabled: !!effectiveOrgId && status === 'ready',
   });
-
-  const { data: salesUsers = [] } = useQuery({
-    queryKey: ['salesUsers', effectiveOrgId],
-    queryFn: () => base44.entities.UserAccount.filter({ 
-      organization_id: effectiveOrgId,
-      role: 'SALES'
-    }),
-    enabled: !!effectiveOrgId && effectiveRole === 'ORG_ADMIN',
-  });
+  const leads = crmData?.leads || [];
+  const salesUsers = crmData?.salesUsers || [];
 
   const createLeadMutation = useMutation({
-    mutationFn: (data) => base44.entities.Lead.create({
-      ...data,
-      organization_id: effectiveOrgId,
-    }),
+    mutationFn: (data) => invokeCrm('create', effectiveOrgId, { lead: data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['crm'] });
       setShowCreateModal(false);
     },
+    onError: (error) => alert(`No se pudo crear el lead: ${error.message}`),
   });
 
   const updateLeadMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Lead.update(id, data),
+    mutationFn: ({ id, data }) => invokeCrm('update', effectiveOrgId, {
+      lead_id: id,
+      changes: data,
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['crm'] });
       setShowEditModal(false);
       setEditingLead(null);
     },
+    onError: (error) => alert(`No se pudo actualizar el lead: ${error.message}`),
   });
 
   const convertToClienteMutation = useMutation({
-    mutationFn: async (lead) => {
-      // Check if already converted
-      if (lead.converted_to_cliente_id) {
-        throw new Error('Lead ya fue convertido');
-      }
-
-      // Create Cliente
-      const cliente = await base44.entities.Cliente.create({
-        organization_id: effectiveOrgId,
-        nombre_completo: lead.name,
-        email: lead.email || '',
-        telefono: lead.phone,
-        notas: `Convertido desde Lead. Notas: ${lead.notes || ''}`,
-      });
-
-      // Update Lead
-      await base44.entities.Lead.update(lead.id, {
-        status: 'won',
-        converted_to_cliente_id: cliente.id,
-        converted_at: new Date().toISOString(),
-      });
-
-      return cliente;
-    },
+    mutationFn: ({ lead, identificacion }) => invokeCrm('convert', effectiveOrgId, {
+      lead_id: lead.id,
+      identificacion,
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['crm'] });
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
     },
+    onError: (error) => alert(`No se pudo convertir el lead: ${error.message}`),
   });
 
   const handleCreateLead = (e) => {
@@ -117,7 +92,9 @@ function CRMContent() {
       id: editingLead.id,
       data: {
         status: formData.get('status'),
-        assigned_to: formData.get('assigned_to') || null,
+        assigned_to: formData.get('assigned_to') === '__UNASSIGNED__'
+          ? null
+          : (formData.get('assigned_to') || undefined),
         notes: formData.get('notes'),
         lost_reason: formData.get('lost_reason') || null,
       },
@@ -125,8 +102,10 @@ function CRMContent() {
   };
 
   const handleConvertToCliente = (lead) => {
+    const identificacion = window.prompt(`Identificación de ${lead.name}:`);
+    if (!identificacion?.trim()) return;
     if (confirm(`¿Convertir "${lead.name}" a cliente?\n\nSe creará un registro en Clientes y el lead se marcará como ganado.`)) {
-      convertToClienteMutation.mutate(lead);
+      convertToClienteMutation.mutate({ lead, identificacion: identificacion.trim() });
     }
   };
 
@@ -166,6 +145,18 @@ function CRMContent() {
 
   if (isLoading) {
     return <div className="max-w-7xl mx-auto p-6 text-center">Cargando leads...</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="max-w-xl mx-auto p-6 text-center">
+        <p className="font-semibold text-red-700">No se pudo cargar el CRM</p>
+        <p className="text-sm text-slate-500 mt-2">{error?.message || 'Verifica tu organizacion activa e intenta nuevamente.'}</p>
+        <Button className="mt-4" onClick={() => queryClient.invalidateQueries({ queryKey: ['crm'] })}>
+          Reintentar
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -271,7 +262,7 @@ function CRMContent() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {Object.entries(statusConfig).map(([status, config]) => (
+                              {Object.entries(statusConfig).filter(([status]) => status !== 'won').map(([status, config]) => (
                                 <SelectItem key={status} value={status}>{config.label}</SelectItem>
                               ))}
                             </SelectContent>
@@ -389,7 +380,7 @@ function CRMContent() {
                       <SelectValue placeholder="Sin asignar" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={null}>Sin asignar</SelectItem>
+                      <SelectItem value="__UNASSIGNED__">Sin asignar</SelectItem>
                       {salesUsers.map(u => (
                         <SelectItem key={u.id} value={u.user_id}>{u.user_email}</SelectItem>
                       ))}

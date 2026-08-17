@@ -14,12 +14,10 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import {
-  CreditCard, FileText, ShoppingCart, ChevronDown, ChevronUp,
-  CheckCircle2, AlertCircle, Loader2, ExternalLink
+import { FileText, ShoppingCart, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { issuePublicLink } from '@/api/publicLinks';
 
 // ── Bloque colapsable ─────────────────────────────────────────────────────
 function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge, children }) {
@@ -215,16 +213,14 @@ export default function ExpedienteComercial({ ot, ventas = [], cotizaciones = []
                   )}
 
                   {/* Comprobante público */}
-                  {venta.public_access_token && venta.estado === 'pagada' && (
+                  {venta.estado === 'pagada' && (
                     <div className="mt-2">
-                      <a
-                        href={`/PortalComprobante?token=${venta.public_access_token}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={async () => window.open(await issuePublicLink('receipt', venta.id), '_blank', 'noopener,noreferrer')}
                         className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
                       >
                         <ExternalLink className="w-3 h-3" /> Ver comprobante
-                      </a>
+                      </button>
                     </div>
                   )}
                 </div>

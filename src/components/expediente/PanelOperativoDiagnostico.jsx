@@ -20,14 +20,13 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   FileText, Play, PenLine, Send, Eye, RotateCcw, Ban,
   CheckCircle2, XCircle, Clock, MessageSquare, Mail,
-  Loader2, AlertCircle, ChevronRight
+  Loader2, AlertCircle
 } from 'lucide-react';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import WizardDiagnosticoTecnico from '@/components/diagnostico-tecnico/WizardDiagnosticoTecnico';
@@ -120,7 +119,7 @@ export default function PanelOperativoDiagnostico({
   const [documentoOpen, setDocumentoOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError]     = useState(null);
-  const { user } = useAuthContext();
+  const { user, controlledPilotMode } = useAuthContext();
 
   // RC2-GOLD-05: Para ORG_ADMIN/BRANCH_ADMIN, el tecnicoId del wizard es el técnico asignado a la OT.
   // Si no hay técnico asignado, usa el propio user.id como fallback.
@@ -160,12 +159,25 @@ export default function PanelOperativoDiagnostico({
     staleTime: 60_000,
   });
 
+  const { data: quoteList = [] } = useQuery({
+    queryKey: ['panel-cotizaciones', ot.id],
+    queryFn: () => base44.entities.Cotizacion.filter({
+      orden_trabajo_id: ot.id,
+      organization_id: organizationId,
+    }, '-created_date', 20),
+    enabled: controlledPilotMode && !!ot.id,
+    staleTime: 30_000,
+  });
+  const pendingQuote = quoteList.find(quote => quote.estado === 'enviada') || null;
+
   const invalidarPanel = () => {
     queryClient.invalidateQueries({ queryKey: ['panel-diag-tecnico', ot.id] });
     queryClient.invalidateQueries({ queryKey: ['panel-diag-doc', ot.id] });
     queryClient.invalidateQueries({ queryKey: ['expediente-diag-tecnico', ot.id] });
     // RC2-GOLD-02: invalidar OT raíz para sincronizar CentroMando sin F5
     queryClient.invalidateQueries({ queryKey: ['expediente-ot', ot.id] });
+    queryClient.invalidateQueries({ queryKey: ['panel-cotizaciones', ot.id] });
+    queryClient.invalidateQueries({ queryKey: ['expediente-cotizaciones', ot.id] });
   };
 
   // ── Calcular estado documental ─────────────────────────────────────────────
@@ -347,6 +359,40 @@ export default function PanelOperativoDiagnostico({
     );
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
     await handleMarcarEnviado('EMAIL');
+  };
+
+  const registrarDecisionCliente = async (newStatus) => {
+    if (!controlledPilotMode) {
+      await base44.entities.DiagnosticoDocumento.update(docActivo.id, {
+        aprobacion_status: newStatus === 'APROBADA' ? 'APROBADA' : 'RECHAZADA',
+        aprobacion_at: new Date().toISOString(),
+        metodo_aprobacion: 'VERBAL',
+      });
+      return { success: true, legacy_nonpilot: true };
+    }
+    if (!pendingQuote) throw new Error('No existe una cotizacion enviada pendiente para esta OT');
+    const rejectionReason = newStatus === 'CANCELADA'
+      ? window.prompt('Motivo comunicado por el cliente (opcional):') || ''
+      : '';
+    const response = await base44.functions.invoke('transitionWorkOrderStatus', {
+      action: 'RECORD_CUSTOMER_DECISION',
+      orden_trabajo_id: ot.id,
+      quote_id: pendingQuote.id,
+      expected_quote_version: String(pendingQuote.version || 'v1'),
+      newStatus,
+      decision_method: 'VERBAL',
+      decision_channel: 'REGISTRO_OPERADOR',
+      rejection_reason: rejectionReason,
+      correlation_id: crypto.randomUUID(),
+    });
+    const result = response?.data ?? response;
+    if (!result?.success) {
+      throw Object.assign(
+        new Error(result?.error || 'No se pudo registrar la decision del cliente'),
+        { code: result?.code },
+      );
+    }
+    return result;
   };
 
   // ── Wizard onComplete ──────────────────────────────────────────────────────
@@ -575,12 +621,9 @@ export default function PanelOperativoDiagnostico({
                     size="sm"
                     onClick={async () => {
                       setActionLoading(true);
+                      setActionError(null);
                       try {
-                        await base44.entities.DiagnosticoDocumento.update(docActivo.id, {
-                          aprobacion_status: 'APROBADA',
-                          aprobacion_at: new Date().toISOString(),
-                          metodo_aprobacion: 'VERBAL',
-                        });
+                        await registrarDecisionCliente('APROBADA');
                         invalidarPanel();
                       } catch (e) { setActionError(e.message); }
                       finally { setActionLoading(false); }
@@ -595,12 +638,9 @@ export default function PanelOperativoDiagnostico({
                     size="sm"
                     onClick={async () => {
                       setActionLoading(true);
+                      setActionError(null);
                       try {
-                        await base44.entities.DiagnosticoDocumento.update(docActivo.id, {
-                          aprobacion_status: 'RECHAZADA',
-                          aprobacion_at: new Date().toISOString(),
-                          metodo_aprobacion: 'VERBAL',
-                        });
+                        await registrarDecisionCliente('CANCELADA');
                         invalidarPanel();
                       } catch (e) { setActionError(e.message); }
                       finally { setActionLoading(false); }

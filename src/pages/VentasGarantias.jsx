@@ -11,6 +11,7 @@ import { Search, Eye, Shield, Copy, ExternalLink, CheckCircle2 } from 'lucide-re
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { issuePublicLink } from '@/api/publicLinks';
 
 export default function VentasGarantias() {
   return (
@@ -86,6 +87,11 @@ function VentasGarantiasContent() {
     return diffDays;
   };
 
+  const getEstadoEfectivo = (garantia) => {
+    const hoy = new Date().toISOString().slice(0, 10);
+    return garantia.estado === 'ACTIVA' && garantia.fecha_fin < hoy ? 'VENCIDA' : garantia.estado;
+  };
+
   const garantiasFiltradas = garantias.filter(g => {
     if (busqueda) {
       const cliente = getClienteName(g.cliente_id).toLowerCase();
@@ -95,14 +101,15 @@ function VentasGarantiasContent() {
       }
     }
 
-    if (filtroEstado !== 'todas' && g.estado !== filtroEstado) {
+    const estadoEfectivo = getEstadoEfectivo(g);
+    if (filtroEstado !== 'todas' && estadoEfectivo !== filtroEstado) {
       return false;
     }
 
     // Filtro "Por Vencer" (≤15 días)
     if (filtroPorVencer) {
       const dias = calcularDiasParaVencer(g.fecha_fin);
-      if (g.estado !== 'ACTIVA' || dias <= 0 || dias > 15) {
+      if (estadoEfectivo !== 'ACTIVA' || dias <= 0 || dias > 15) {
         return false;
       }
     }
@@ -110,15 +117,15 @@ function VentasGarantiasContent() {
     return true;
   });
 
-  const copiarLink = (token) => {
-    const link = `${window.location.origin}/PortalGarantia?token=${token}`;
+  const copiarLink = async (garantia) => {
+    const link = await issuePublicLink('warranty', garantia.id);
     navigator.clipboard.writeText(link);
-    setCopiedToken(token);
+    setCopiedToken(garantia.id);
     setTimeout(() => setCopiedToken(null), 2000);
   };
 
-  const abrirPortal = (token) => {
-    const link = `${window.location.origin}/PortalGarantia?token=${token}`;
+  const abrirPortal = async (garantia) => {
+    const link = await issuePublicLink('warranty', garantia.id);
     window.open(link, '_blank');
   };
 
@@ -183,11 +190,12 @@ function VentasGarantiasContent() {
           {/* Lista */}
           <div className="space-y-3">
             {garantiasFiltradas.map((gar) => {
-              const config = estadoConfig[gar.estado];
+              const estadoEfectivo = getEstadoEfectivo(gar);
+              const config = estadoConfig[estadoEfectivo];
               const origen = getOrigen(gar);
               const telefono = getClienteTelefono(gar.cliente_id);
               const diasRestantes = calcularDiasParaVencer(gar.fecha_fin);
-              const porVencer = gar.estado === 'ACTIVA' && diasRestantes > 0 && diasRestantes <= 15;
+              const porVencer = estadoEfectivo === 'ACTIVA' && diasRestantes > 0 && diasRestantes <= 15;
 
               return (
                 <div
@@ -230,20 +238,20 @@ function VentasGarantiasContent() {
                       Ver
                     </Button>
                     <Button
-                      onClick={() => copiarLink(gar.public_access_token)}
+                      onClick={() => copiarLink(gar)}
                       variant="outline"
                       size="sm"
-                      className={copiedToken === gar.public_access_token ? 'bg-emerald-50 border-emerald-200' : ''}
+                      className={copiedToken === gar.id ? 'bg-emerald-50 border-emerald-200' : ''}
                     >
-                      {copiedToken === gar.public_access_token ? (
+                      {copiedToken === gar.id ? (
                         <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
                       ) : (
                         <Copy className="w-3 h-3 mr-1" />
                       )}
-                      {copiedToken === gar.public_access_token ? 'Copiado' : 'Copiar Link'}
+                      {copiedToken === gar.id ? 'Copiado' : 'Copiar Link'}
                     </Button>
                     <Button
-                      onClick={() => abrirPortal(gar.public_access_token)}
+                      onClick={() => abrirPortal(gar)}
                       size="sm"
                       className="bg-indigo-600 hover:bg-indigo-700"
                     >
@@ -289,8 +297,8 @@ function VentasGarantiasContent() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Estado</p>
-                  <Badge className={estadoConfig[garantiaSeleccionada.estado].color}>
-                    {estadoConfig[garantiaSeleccionada.estado].label}
+                  <Badge className={estadoConfig[getEstadoEfectivo(garantiaSeleccionada)].color}>
+                    {estadoConfig[getEstadoEfectivo(garantiaSeleccionada)].label}
                   </Badge>
                 </div>
                 <div>
@@ -379,7 +387,7 @@ function VentasGarantiasContent() {
               {/* Acciones Portal */}
               <div className="flex gap-3 pt-4 border-t">
                 <Button
-                  onClick={() => copiarLink(garantiaSeleccionada.public_access_token)}
+                  onClick={() => copiarLink(garantiaSeleccionada)}
                   variant="outline"
                   className="flex-1"
                 >
@@ -387,7 +395,7 @@ function VentasGarantiasContent() {
                   Copiar Enlace Público
                 </Button>
                 <Button
-                  onClick={() => abrirPortal(garantiaSeleccionada.public_access_token)}
+                  onClick={() => abrirPortal(garantiaSeleccionada)}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700"
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />

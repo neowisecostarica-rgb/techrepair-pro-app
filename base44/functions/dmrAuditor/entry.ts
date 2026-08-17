@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { isCanonicalSuperAdmin } from '../_shared/userAuthorization.ts';
+import { projectSuperAdminAudit } from '../_shared/dataProjections.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // dmrAuditor — Endpoint dedicado de observabilidad del DMR
@@ -17,7 +19,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (user.role !== 'admin' && !user.is_super_admin) {
+    if (!isCanonicalSuperAdmin(user)) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -35,7 +37,7 @@ Deno.serve(async (req) => {
         e.action && e.action.startsWith('DMR_')
       );
 
-      return Response.json({ events: dmrEvents, count: dmrEvents.length });
+      return Response.json({ events: dmrEvents.map(projectSuperAdminAudit), count: dmrEvents.length });
     }
 
     // ── Operación: consultar fallos de rollback (OTs huérfanas detectadas) ───
@@ -45,7 +47,10 @@ Deno.serve(async (req) => {
         '-created_date',
         limit || 20
       );
-      return Response.json({ failures: events || [], count: events ? events.length : 0 });
+      return Response.json({
+        failures: (events || []).map(projectSuperAdminAudit),
+        count: events ? events.length : 0,
+      });
     }
 
     // ── Operación: contar DMRs creados por org en período ────────────────────

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Printer, Mail, MessageSquare, FileText } from 'lucide-react';
+import { Printer, Mail, MessageSquare } from 'lucide-react';
 import TiqueteVenta from './TiqueteVenta';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { issuePublicLink } from '@/api/publicLinks';
 
 export default function AccionesPostVenta({ venta, variant = 'default' }) {
   const [showTiquete, setShowTiquete] = useState(false);
@@ -15,8 +16,6 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
   const [canalReenvio, setCanalReenvio] = useState(null);
   const [destinatario, setDestinatario] = useState('');
   const { user, effectiveOrgId } = useAuthContext();
-  const queryClient = useQueryClient();
-
   const logMutation = useMutation({
     mutationFn: async (logData) => {
       return await base44.entities.ComprobanteVentaLog.create({
@@ -49,14 +48,25 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
       return;
     }
 
+    const receiptUrl = await issuePublicLink('receipt', venta.id);
+    const mensaje = `Comprobante de venta: ${receiptUrl}`;
+
+    if (canalReenvio === 'whatsapp') {
+      const telefono = destinatario.replace(/\D/g, '');
+      window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
+    } else {
+      window.open(`mailto:${encodeURIComponent(destinatario)}?subject=${encodeURIComponent('Comprobante de venta')}&body=${encodeURIComponent(mensaje)}`, '_blank');
+    }
+
     await logMutation.mutateAsync({
       accion: canalReenvio === 'whatsapp' ? 'reenvio_whatsapp' : 'reenvio_email',
       canal: canalReenvio,
       formato: venta.tipo_concepto === 'revision_diagnostico' ? 'a4' : 'normal',
-      destinatario: destinatario
+      destinatario: destinatario,
+      notas: 'Canal externo abierto; entrega pendiente de confirmación por el usuario'
     });
 
-    alert(`📨 Comprobante enviado por ${canalReenvio === 'whatsapp' ? 'WhatsApp' : 'correo'}`);
+    alert(`Canal de ${canalReenvio === 'whatsapp' ? 'WhatsApp' : 'correo'} abierto. Confirma el envío en la aplicación externa.`);
     setShowReenvio(false);
     setDestinatario('');
   };

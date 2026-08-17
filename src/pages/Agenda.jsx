@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Plus, Clock, Video, MapPin, ExternalLink, AlertCircle } from 'lucide-react';
+import { Plus, Video, MapPin, ExternalLink, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -88,7 +89,7 @@ const estadoCitaConfig = {
 
 export default function Agenda() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'CUSTOMER_SERVICE']}>
       <AgendaContent />
     </PageGuard>
   );
@@ -135,14 +136,10 @@ function AgendaContent() {
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({
-        organization_id: effectiveOrgId,
-        role: 'TECHNICIAN',
-        active: true,
-      });
-      return accounts;
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
-    enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole),
+    enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'].includes(effectiveRole),
   });
 
   const createMutation = useMutation({
@@ -175,14 +172,6 @@ function AgendaContent() {
       setShowModal(false);
       setEditingCita(null);
 
-      // Auditoría
-      base44.entities.SuperAdminAudit.create({
-        super_admin_id: user?.id || 'system',
-        super_admin_email: user?.email || 'system',
-        action: 'create_cita',
-        target_organization_id: effectiveOrgId,
-        context: `Cita creada por ${effectiveRole}`,
-      });
     },
     onError: (error) => {
       alert('Error al crear cita: ' + error.message);
@@ -212,14 +201,6 @@ function AgendaContent() {
       setShowModal(false);
       setEditingCita(null);
 
-      // Auditoría
-      base44.entities.SuperAdminAudit.create({
-        super_admin_id: user?.id || 'system',
-        super_admin_email: user?.email || 'system',
-        action: 'update_cita',
-        target_organization_id: effectiveOrgId,
-        context: `Cita actualizada por ${effectiveRole}`,
-      });
     },
     onError: (error) => {
       alert('Error al actualizar cita: ' + error.message);
@@ -238,8 +219,8 @@ function AgendaContent() {
     
     if (clienteId && otId) {
       // Verificar que la OT pertenece al cliente
-      const { data: ot } = await base44.entities.OrdenTrabajo.filter({ id: otId });
-      if (ot && ot[0]?.cliente_id !== clienteId) {
+      const ots = await base44.entities.OrdenTrabajo.filter({ id: otId, organization_id: effectiveOrgId });
+      if (ots[0]?.cliente_id !== clienteId) {
         alert('Error: La OT seleccionada no pertenece al cliente elegido');
         setValidando(false);
         return;

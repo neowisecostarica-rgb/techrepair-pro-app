@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import {
   getSmartIntakeByWorkOrder,
   invalidateSmartIntake,
@@ -49,16 +50,10 @@ const estadoConfig = WORK_ORDER_STATUSES;
 
 export default function OrdenesTrabajo() {
   return (
-    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'AUDITOR']}>
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'CUSTOMER_SERVICE']}>
       <OrdenesTrabajoContent />
     </PageGuard>
   );
-}
-
-function isActiveAccount(account) {
-  if (!account) return false;
-  if (typeof account.status === 'string') return account.status === 'active';
-  return account.active === true;
 }
 
 function OrdenesTrabajoContent() {
@@ -202,11 +197,8 @@ function OrdenesTrabajoContent() {
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({
-        organization_id: effectiveOrgId,
-        role: 'TECHNICIAN'
-      });
-      return accounts.filter(isActiveAccount);
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
     enabled: !!effectiveOrgId,
   });
@@ -374,11 +366,6 @@ function OrdenesTrabajoContent() {
       contrasena_ingreso: newEquipoData.contrasena_ingreso || undefined,
     };
 
-    // Generar token único para nuevas OTs
-    if (!editingOT) {
-      data.public_access_token = `ot-${correlationId}`;
-    }
-
     if (editingOT) {
       if (!motivoIngreso.trim()) {
         toast({ variant: 'destructive', title: 'El motivo de ingreso es obligatorio' });
@@ -393,8 +380,15 @@ function OrdenesTrabajoContent() {
   };
 
   const handleCopiarLink = async (orden) => {
+    const response = await base44.functions.invoke('issuePublicDocumentToken', {
+      type: 'work_order',
+      resource_id: orden.id,
+      correlation_id: crypto.randomUUID(),
+    });
+    const token = response?.data?.token;
+    if (!token) throw new Error(response?.data?.error || 'No se pudo emitir el enlace publico');
     const baseUrl = window.location.origin;
-    const link = `${baseUrl}${createPageUrl('PortalCliente')}?token=${orden.public_access_token}`;
+    const link = `${baseUrl}${createPageUrl('PortalCliente')}?token=${token}`;
     navigator.clipboard.writeText(link);
     toast({ title: 'Link copiado al portapapeles' });
   };
@@ -444,7 +438,9 @@ function OrdenesTrabajoContent() {
       base44.entities.DiagnosticoTecnico.filter({ organization_id: ot.organization_id, orden_trabajo_id: ot.id, bloqueado: false }),
       base44.entities.Cliente.filter({ id: ot.cliente_id }),
       base44.entities.Equipo.filter({ id: ot.equipo_id }),
-      base44.entities.UserAccount.filter({ user_id: ot.tecnico_asignado_id, organization_id: ot.organization_id }),
+      listIdentityAccounts(ot.organization_id).then(({ accounts }) =>
+        accounts.filter(account => account.user_id === ot.tecnico_asignado_id)
+      ),
     ]);
     setDiagnosticoPreviewData({
       diagnostico: diagResults[0] || null,
@@ -1569,7 +1565,7 @@ function OrdenesTrabajoContent() {
                           onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['citas'] }); }}
                         />
                       )}
-                      {selectedOT.public_access_token && ['DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION', 'FINALIZADA'].includes(selectedOT.estado) && (
+                      {['DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION', 'FINALIZADA'].includes(selectedOT.estado) && (
                         <Button variant="outline" className="border-blue-500 text-blue-700 hover:bg-blue-50"
                           onClick={() => handleCopiarLink(selectedOT)}>
                           📋 Copiar Link Cliente

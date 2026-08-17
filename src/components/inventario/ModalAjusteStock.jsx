@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,12 +21,14 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
   const [cantidad, setCantidad] = useState('');
   const [motivo, setMotivo] = useState('');
   const [loading, setLoading] = useState(false);
+  const operationKey = useRef(crypto.randomUUID());
   const { toast } = useToast();
 
   const handleClose = () => {
     setCantidad('');
     setMotivo('');
     setTipo('entrada');
+    operationKey.current = crypto.randomUUID();
     onOpenChange(false);
   };
 
@@ -50,6 +52,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
         delta,
         tipo,
         motivo: motivo.trim(),
+        operation_key: operationKey.current,
       });
 
       toast({

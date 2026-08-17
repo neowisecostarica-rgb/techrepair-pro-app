@@ -12,11 +12,12 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Loader2, GitCommitHorizontal, Wrench, CreditCard,
-  MessageCircle, ChevronDown, ChevronUp, AlertCircle, Archive
+  MessageCircle, ChevronDown, AlertCircle, Archive
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -258,7 +259,9 @@ export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
   // ── Técnicos para resolver nombres en reasignaciones ─────────────────
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['timeline-tecnicos', organizationId],
-    queryFn: () => base44.entities.UserAccount.filter({ organization_id: organizationId, role: 'TECHNICIAN' }),
+    queryFn: () => listIdentityAccounts(organizationId).then(({ accounts }) =>
+      accounts.filter(account => account.role === 'TECHNICIAN')
+    ),
     enabled: !!organizationId,
     staleTime: 5 * 60 * 1000,
   });

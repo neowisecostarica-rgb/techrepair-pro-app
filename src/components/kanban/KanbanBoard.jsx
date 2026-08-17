@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { KANBAN_COLUMNS, STATUS_TO_COLUMN } from '@/config/workOrderStatus';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import WorkOrderCard from './WorkOrderCard';
 import { Loader2 } from 'lucide-react';
@@ -27,10 +28,9 @@ export default function KanbanBoard({ onCardClick }) {
   // P0.2-A: workforce técnico REAL — solo TECHNICIAN para resolución de nombres en tarjetas
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['kanban-tecnicos', effectiveOrgId],
-    queryFn: () => base44.entities.UserAccount.filter({
-      organization_id: effectiveOrgId,
-      role: 'TECHNICIAN',
-    }),
+    queryFn: () => listIdentityAccounts(effectiveOrgId).then(({ accounts }) =>
+      accounts.filter(account => account.role === 'TECHNICIAN')
+    ),
     enabled: !!effectiveOrgId,
     staleTime: 5 * 60 * 1000,
   });

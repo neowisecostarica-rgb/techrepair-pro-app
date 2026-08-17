@@ -14,9 +14,12 @@ const [
   quotePage,
   pos,
   delivery,
+  deliveryBackend,
   transition,
   publicReader,
   authContext,
+  canonicalAuthorization,
+  qaEvidence,
 ] = await Promise.all([
   read('src/App.jsx'),
   read('src/pages/PortalCliente.jsx'),
@@ -27,9 +30,12 @@ const [
   read('src/pages/VentasCotizaciones.jsx'),
   read('src/pages/PuntoVenta.jsx'),
   read('src/components/ot/EntregarOT.jsx'),
+  read('base44/functions/_shared/deliveryAtomicity.ts'),
   read('base44/functions/transitionWorkOrderStatus/entry.ts'),
   read('base44/functions/getPublicCommercialDocument/entry.ts'),
   read('src/components/contexts/AuthContext.jsx'),
+  read('base44/functions/_shared/userAuthorization.ts'),
+  read('base44/functions/_shared/qaEvidence.ts'),
 ]);
 
 const pass = (name, check) => {
@@ -58,9 +64,10 @@ pass('public reader uses service role only after validating document type and to
   && publicReader.includes('base44.asServiceRole.entities'));
 
 pass('customer approval is handled by the lifecycle owner and creates canonical timeline evidence',
-  transition.includes('handlePublicCustomerDecision')
+  transition.includes('handlePublicCustomerDecisionV2')
   && transition.includes("newStatus: targetStatus") === false
-  && transition.includes("const eventType = approved ? 'TRANSITION_APROBADA' : 'CANCELADA'")
+  && transition.includes("const eventType = targetStatus === 'APROBADA' ? 'TRANSITION_APROBADA' : 'CANCELADA'")
+  && transition.includes("decision_status: 'COMMITTED'")
   && transition.includes('OrdenTrabajo.updateMany'));
 
 pass('quote portal exposes approve and reject actions',
@@ -71,7 +78,8 @@ pass('all generated quote links target the registered PortalCotizacion route',
   !quotePage.includes('/cotizacion?token=')
   && !quoteManagement.includes('/cotizacion?token=')
   && quotePage.includes('/PortalCotizacion?token=')
-  && quoteManagement.includes('/PortalCotizacion?token='));
+  && quoteManagement.includes("issuePublicLink('quote'")
+  && (await readFile(new URL('../src/api/publicLinks.js', import.meta.url), 'utf8')).includes("quote: 'PortalCotizacion'"));
 
 pass('sending an OT quote advances DIAGNOSTICADA to COTIZADA through the lifecycle helper',
   quotePage.includes("transicionarEstadoOT(ot.id, 'COTIZADA'")
@@ -80,18 +88,32 @@ pass('sending an OT quote advances DIAGNOSTICADA to COTIZADA through the lifecyc
 pass('POS no longer skips repair and QA states after payment',
   !pos.includes("transicionarEstadoOT(ventaData.referencia_ot_id, 'FINALIZADA'"));
 
+pass('work orders cannot finalize without successful technical QA evidence',
+  transition.includes("newStatus === 'FINALIZADA'")
+  && transition.includes('entities.PruebaTecnica.filter')
+  && transition.includes('evaluateCurrentQaEvidence')
+  && qaEvidence.includes("record?.effective_technician_user_id === context.assignedTechnicianId")
+  && qaEvidence.includes("record?.recorded_via_backend === true")
+  && qaEvidence.includes('QA_LATER_INCOMPATIBLE_RESULT'));
+
 pass('repair warranty issuance is deferred until delivery',
   pos.includes('if (esReparacion) return;'));
 
-pass('delivery evidence and warranty are idempotent before the terminal transition',
-  delivery.includes('logsExistentes.length === 0')
-  && delivery.includes('garantiasExistentes.length === 0')
-  && delivery.indexOf('logsExistentes.length === 0') < delivery.lastIndexOf("transicionarEstadoOT(ordenTrabajo.id, 'ENTREGADA'"));
+pass('delivery evidence and warranty are owned by one recoverable backend command',
+  delivery.includes("functions.invoke('deliverWorkOrder'")
+  && !delivery.includes('entities.EntregaLog.create')
+  && !delivery.includes('entities.Garantia.create')
+  && deliveryBackend.includes("delivery_status: 'PENDING'")
+  && deliveryBackend.includes("delivery_status: 'COMMITTED'")
+  && deliveryBackend.includes('fingerprintDeliveryRequest'));
 
 pass('branch administrators can complete delivery as allowed by the backend state machine',
   delivery.includes("['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES']"));
 
-pass('canonical UserAccount.status takes precedence over the legacy active flag',
-  authContext.includes("a.status ? a.status === 'active' : a.active !== false"));
+pass('canonical UserAccount.status is the only authorization source',
+  canonicalAuthorization.includes("account?.status === 'active'")
+  && authContext.includes('getIdentityContext')
+  && !authContext.includes('base44.entities.UserAccount')
+  && !canonicalAuthorization.includes('account?.active'));
 
-console.log('\n15 commercial-flow recovery contract checks passed.');
+console.log('\n16 commercial-flow recovery contract checks passed.');

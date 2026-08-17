@@ -25,7 +25,6 @@ export async function crearOrdenTrabajo(datosOT) {
     contrasena_ingreso: datosOT.contrasena_ingreso,
     responsable_recepcion: datosOT.responsable_recepcion,
     tracking_code: datosOT.tracking_code,
-    public_access_token: datosOT.public_access_token,
   });
   return response.data;
 }

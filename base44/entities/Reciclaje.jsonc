@@ -2,6 +2,14 @@
   "name": "Reciclaje",
   "type": "object",
   "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "Organizacion propietaria del registro"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal operacional derivada de la membresia canonica"
+    },
     "tipo_residuo": {
       "type": "string",
       "enum": [
@@ -83,8 +91,10 @@
     }
   },
   "required": [
+    "organization_id",
     "tipo_residuo",
     "descripcion",
     "accion"
-  ]
+  ],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

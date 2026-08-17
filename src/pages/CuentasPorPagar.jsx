@@ -14,13 +14,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, DollarSign, AlertCircle, Calendar, Building2 } from 'lucide-react';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { withOrgId } from '@/components/hooks/useOrgData';
-import { calcularStatusInvoice, aplicarStatusInvoices, statusInvoiceConfig } from '@/components/finanzas/calcularStatusInvoice';
+import { aplicarStatusInvoices, statusInvoiceConfig } from '@/components/finanzas/calcularStatusInvoice';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function CuentasPorPagar() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'CFO']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN']}>
       <CuentasPorPagarContent />
     </PageGuard>
   );

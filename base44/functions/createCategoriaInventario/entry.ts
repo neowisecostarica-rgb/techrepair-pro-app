@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { projectOperationalReadResult } from '../_shared/dataProjections.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -16,17 +18,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'organization_id y nombre son requeridos' }, { status: 400 });
     }
 
-    // Verificar que el usuario pertenece a esta organización (seguridad multi-tenant)
-    const userOrgId = user.organization_id || user.data?.impersonating_org_id;
-    const isSuperAdmin = user.data?.is_super_admin === true || user.data?.is_super_admin === 'true';
-
-    if (!isSuperAdmin && userOrgId !== organization_id) {
-      return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    // Verificar tenant y rol en servidor; la visibilidad de UI no es una autorización.
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      organizationHint: organization_id,
+      allowedRoles: ['ORG_ADMIN'],
+    });
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
 
     // Usar asServiceRole para evitar RLS
     const categoria = await base44.asServiceRole.entities.CategoriaInventario.create({
-      organization_id,
+      organization_id: authorization.organizationId,
       nombre,
       permite_stock: permite_stock ?? true,
       permite_precio: permite_precio ?? true,
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
       activo: activo ?? true,
     });
 
-    return Response.json(categoria);
+    return Response.json(projectOperationalReadResult('CategoriaInventario', categoria, authorization));
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

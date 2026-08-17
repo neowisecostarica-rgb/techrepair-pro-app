@@ -1,4 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { executeInventoryCommand, reverseInventoryCommand } from '../_shared/inventoryMutationService.ts';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope, validateRequestedBranch } from '../_shared/operationalAuthorization.ts';
+import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
+import {
+  assertClientFinancialHints,
+  assertPersistedTotalsMatch,
+  calculateCommercialTotals,
+  moneyMatches,
+} from '../_shared/commercialIntegrity.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectSaleMutationResult } from '../_shared/dataProjections.ts';
 
 /*
  * createSale — TRP-MVP-003
@@ -15,6 +27,26 @@ const LOCK_BACKOFF_MS = 40;
 
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const nowIso = () => new Date().toISOString();
+
+async function ensureSaleAudit(base44, authorization, user, sale, operationKey, idempotent) {
+  return appendAuditEvent(base44, {
+    eventType: 'SALE_PAYMENT_COMMITTED',
+    principalClass: authorization.principalClass,
+    actorUserId: user.id,
+    actorPrimaryRole: authorization.persistedRole,
+    organizationId: authorization.organizationId,
+    branchId: sale.branch_id,
+    resourceType: 'Venta',
+    resourceId: sale.id,
+    commandPolicyId: 'CP-SALE-001',
+    correlationId: operationKey,
+    auditOperationId: `sale:${sale.id}`,
+    operationKey,
+    outcome: idempotent ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
+    newState: { estado: sale.estado, total: sale.total, metodo_pago: sale.metodo_pago },
+    metadata: { quote_id: sale.cotizacion_id || null, work_order_id: sale.referencia_ot_id || null },
+  });
+}
 
 class SaleError extends Error {
   constructor(message, code, status = 400, options = {}) {
@@ -69,51 +101,37 @@ async function findOne(entity, query, sort = '-created_date') {
 
 function normalizeInput(body) {
   const ventaData = body?.ventaData;
-  const rawItems = body?.itemsCarrito;
+  const rawItems = Array.isArray(body?.itemsCarrito) ? body.itemsCarrito : [];
   if (!ventaData) throw new SaleError('ventaData es requerido', 'SALE_DATA_REQUIRED');
-  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+  const quoteId = body.cotizacionOrigenId || ventaData.cotizacion_id || null;
+  if (body.cotizacionOrigenId && ventaData.cotizacion_id && body.cotizacionOrigenId !== ventaData.cotizacion_id) {
+    throw new SaleError('Los IDs de cotizacion enviados no coinciden', 'SALE_QUOTE_ID_MISMATCH', 409);
+  }
+  if (!quoteId && rawItems.length === 0) {
     throw new SaleError('itemsCarrito es requerido y no puede estar vacio', 'SALE_ITEMS_REQUIRED');
   }
   if (!ventaData.metodo_pago) throw new SaleError('metodo_pago es requerido', 'SALE_PAYMENT_METHOD_REQUIRED');
   if (!ventaData.branch_id) throw new SaleError('branch_id es requerido', 'SALE_BRANCH_REQUIRED');
 
-  const total = Number(ventaData.total);
-  const subtotal = Number(ventaData.subtotal);
-  const impuesto = Number(ventaData.impuesto || 0);
-  const descuento = Number(ventaData.descuento_total || 0);
-  if (!Number.isFinite(total) || total <= 0) {
-    throw new SaleError('total debe ser mayor a cero', 'SALE_TOTAL_INVALID');
-  }
-  if (![subtotal, impuesto, descuento].every(Number.isFinite)) {
-    throw new SaleError('Los totales de la venta no son validos', 'SALE_TOTALS_INVALID');
-  }
-
-  const items = rawItems.map((rawItem, index) => {
+  const itemIntents = rawItems.map((rawItem, index) => {
     const cantidad = Number(rawItem.cantidad);
-    const precioUnitario = Number(rawItem.precio_unitario);
-    const itemSubtotal = Number(rawItem.subtotal);
-    if (!rawItem.descripcion) {
-      throw new SaleError(`Item ${index + 1}: descripcion requerida`, 'SALE_ITEM_DESCRIPTION_REQUIRED');
-    }
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
-      throw new SaleError(`Item "${rawItem.descripcion}": cantidad invalida`, 'SALE_ITEM_QUANTITY_INVALID');
+      throw new SaleError(`Item ${index + 1}: cantidad invalida`, 'SALE_ITEM_QUANTITY_INVALID');
     }
-    if (!Number.isFinite(precioUnitario) || !Number.isFinite(itemSubtotal)) {
-      throw new SaleError(`Item "${rawItem.descripcion}": montos invalidos`, 'SALE_ITEM_AMOUNT_INVALID');
+    if (rawItem.costo != null || rawItem.costo_unitario != null || rawItem.costo_unitario_snapshot != null) {
+      throw new SaleError('El costo es autoridad exclusiva del servidor', 'SALE_SERVER_AUTHORITY_FIELD_FORBIDDEN', 409);
     }
-    if (rawItem.tipo === 'producto' && !rawItem.referencia_id) {
-      throw new SaleError(
-        `Item "${rawItem.descripcion}": todo producto debe referenciar inventario`,
-        'SALE_PRODUCT_INVENTORY_REQUIRED'
-      );
+    if (rawItem.referencia_id && rawItem.item_id && rawItem.referencia_id !== rawItem.item_id) {
+      throw new SaleError(`Item ${index + 1}: referencias en conflicto`, 'SALE_CATALOG_REFERENCE_CONFLICT', 409);
     }
     return {
       tipo: rawItem.tipo,
-      referencia_id: rawItem.referencia_id || null,
-      descripcion: String(rawItem.descripcion).trim(),
+      referencia_id: rawItem.referencia_id || rawItem.item_id || null,
+      descripcion: String(rawItem.descripcion || '').trim(),
       cantidad,
-      precio_unitario: precioUnitario,
-      subtotal: itemSubtotal,
+      precio_unitario: rawItem.precio_unitario,
+      subtotal: rawItem.subtotal,
+      descuento_porcentaje: rawItem.descuento_porcentaje,
       _index: index,
     };
   });
@@ -124,19 +142,190 @@ function normalizeInput(body) {
       origen_venta: ventaData.origen_venta || 'tienda',
       tipo_concepto: ventaData.tipo_concepto || 'venta_producto',
       referencia_ot_id: ventaData.referencia_ot_id || null,
-      cotizacion_id: ventaData.cotizacion_id || body.cotizacionOrigenId || null,
+      cotizacion_id: quoteId,
       metodo_pago: ventaData.metodo_pago,
-      total,
-      subtotal,
-      impuesto,
-      descuento_total: descuento,
       branch_id: ventaData.branch_id,
     },
-    items,
-    cotizacionOrigenId: body.cotizacionOrigenId || null,
+    financialHints: {
+      total: ventaData.total,
+      subtotal: ventaData.subtotal,
+      impuesto: ventaData.impuesto,
+      descuento_total: ventaData.descuento_total,
+    },
+    itemIntents,
+    items: [],
+    cotizacionOrigenId: quoteId,
     ventaPreloadId: body.ventaPreloadId || null,
     clientIdempotencyKey: String(body.idempotency_key || '').trim(),
   };
+}
+
+function saleItemType(type) {
+  return ['producto', 'repuesto'].includes(type) ? 'producto' : 'servicio';
+}
+
+function normalizeCatalogReference(item, index) {
+  if (item.referencia_id && item.item_id && item.referencia_id !== item.item_id) {
+    throw new SaleError(`Item ${index + 1}: referencias en conflicto`, 'SALE_CATALOG_REFERENCE_CONFLICT', 409);
+  }
+  const referenceId = item.referencia_id || item.item_id || null;
+  if (!referenceId) {
+    throw new SaleError(`Item ${index + 1}: referencia de catalogo requerida`, 'SALE_CATALOG_REFERENCE_REQUIRED', 409);
+  }
+  const { item_id: _legacyItemId, ...normalized } = item;
+  return { ...normalized, referencia_id: referenceId };
+}
+
+function financialError(error, fallbackCode = 'SALE_COMMERCIAL_INTEGRITY_INVALID') {
+  if (error instanceof SaleError) return error;
+  return new SaleError(error.message, error.code || fallbackCode, 409);
+}
+
+function assertIntentLinesMatch(intents, canonicalItems, options = {}) {
+  if (!intents.length && options.allowEmpty) return;
+  if (intents.length !== canonicalItems.length) {
+    throw new SaleError('Los items enviados no coinciden con la fuente comercial autorizada', 'SALE_ITEM_TAMPERING', 409);
+  }
+  for (let index = 0; index < canonicalItems.length; index += 1) {
+    const intent = intents[index];
+    const canonical = canonicalItems[index];
+    if (saleItemType(intent.tipo) !== canonical.tipo
+      || (intent.referencia_id || null) !== (canonical.referencia_id || null)
+      || Number(intent.cantidad) !== Number(canonical.cantidad)) {
+      throw new SaleError(`Item ${index + 1} no coincide con la fuente autorizada`, 'SALE_ITEM_TAMPERING', 409);
+    }
+    if (intent.precio_unitario != null && !moneyMatches(intent.precio_unitario, canonical.precio_unitario)) {
+      throw new SaleError(`Item ${index + 1}: precio unitario adulterado`, 'SALE_PRICE_TAMPERING', 409);
+    }
+    if (intent.subtotal != null && !moneyMatches(intent.subtotal, canonical.subtotal)) {
+      throw new SaleError(`Item ${index + 1}: subtotal adulterado`, 'SALE_AMOUNT_TAMPERING', 409);
+    }
+    if (intent.descuento_porcentaje != null
+      && !moneyMatches(intent.descuento_porcentaje, canonical.descuento_porcentaje || 0)) {
+      throw new SaleError(`Item ${index + 1}: descuento adulterado`, 'SALE_DISCOUNT_TAMPERING', 409);
+    }
+  }
+}
+
+function finalizeCanonicalItems(calculated) {
+  return calculated.items.map((item, index) => ({
+    tipo: saleItemType(item.tipo),
+    referencia_id: item.referencia_id || null,
+    descripcion: String(item.descripcion || '').trim(),
+    cantidad: Number(item.cantidad),
+    precio_unitario: Number(item.precio_unitario),
+    subtotal: Number(item.subtotal),
+    _index: index,
+  }));
+}
+
+async function resolveAuthoritativeCommercialInput(base44, orgId, input) {
+  if (input.cotizacionOrigenId) {
+    const quote = await findOne(base44.asServiceRole.entities.Cotizacion, {
+      id: input.cotizacionOrigenId,
+      organization_id: orgId,
+    });
+    if (!quote) throw new SaleError('Cotizacion origen no encontrada', 'SALE_QUOTE_NOT_FOUND', 404);
+    if (quote.estado !== 'aprobada' || quote.decision_status !== 'COMMITTED') {
+      throw new SaleError('Solo una cotizacion aprobada puede convertirse en venta', 'SALE_QUOTE_NOT_APPROVED', 409);
+    }
+    const workOrder = quote.orden_trabajo_id
+      ? await findOne(base44.asServiceRole.entities.OrdenTrabajo, { id: quote.orden_trabajo_id, organization_id: orgId })
+      : null;
+    if (quote.orden_trabajo_id && !workOrder) {
+      throw new SaleError('La OT de la cotizacion no existe', 'SALE_QUOTE_WORK_ORDER_NOT_FOUND', 409);
+    }
+    const quoteBranchId = quote.branch_id || workOrder?.branch_id || null;
+    if (!quoteBranchId || quoteBranchId !== input.ventaData.branch_id) {
+      throw new SaleError('La cotizacion pertenece a otra sucursal', 'SALE_QUOTE_BRANCH_MISMATCH', 409);
+    }
+    if (input.ventaData.referencia_ot_id && input.ventaData.referencia_ot_id !== quote.orden_trabajo_id) {
+      throw new SaleError('La OT enviada no coincide con la cotizacion', 'SALE_QUOTE_WORK_ORDER_MISMATCH', 409);
+    }
+    if (input.ventaData.cliente_id && input.ventaData.cliente_id !== quote.cliente_id) {
+      throw new SaleError('El cliente enviado no coincide con la cotizacion', 'SALE_QUOTE_CUSTOMER_MISMATCH', 409);
+    }
+    const snapshot = quote.contenido_aprobado_snapshot;
+    if (!snapshot || !Array.isArray(snapshot.items) || snapshot.items.length === 0) {
+      throw new SaleError('La cotizacion aprobada no tiene snapshot comercial inmutable', 'SALE_QUOTE_APPROVED_SNAPSHOT_REQUIRED', 409);
+    }
+    let calculated;
+    try {
+      calculated = calculateCommercialTotals(snapshot.items.map((item, index) => ({
+        ...normalizeCatalogReference(item, index),
+        tipo: saleItemType(item.tipo),
+      })));
+      assertPersistedTotalsMatch(snapshot, calculated, 'Snapshot aprobado');
+      assertPersistedTotalsMatch(quote, calculated, 'Cotizacion aprobada');
+      assertClientFinancialHints(input.financialHints, calculated);
+    } catch (error) {
+      throw financialError(error, 'SALE_QUOTE_INTEGRITY_MISMATCH');
+    }
+    const canonicalItems = finalizeCanonicalItems(calculated);
+    assertIntentLinesMatch(input.itemIntents, calculated.items.map(item => ({ ...item, tipo: saleItemType(item.tipo) })), { allowEmpty: true });
+    input.ventaData = {
+      ...input.ventaData,
+      branch_id: quoteBranchId,
+      cliente_id: quote.cliente_id,
+      referencia_ot_id: quote.orden_trabajo_id || null,
+      cotizacion_id: quote.id,
+      subtotal: calculated.subtotal,
+      descuento_total: calculated.descuento_total,
+      impuesto: calculated.impuesto,
+      total: calculated.total,
+    };
+    input.items = canonicalItems;
+    input.authoritativeQuote = quote;
+    return input;
+  }
+
+  const sourceItems = [];
+  for (const [index, intent] of input.itemIntents.entries()) {
+    if (!intent.referencia_id) {
+      throw new SaleError(`Item ${index + 1}: referencia de catalogo requerida`, 'SALE_CATALOG_REFERENCE_REQUIRED', 409);
+    }
+    if (saleItemType(intent.tipo) === 'producto') {
+      const product = await findOne(base44.asServiceRole.entities.Inventario, {
+        id: intent.referencia_id,
+        organization_id: orgId,
+        branch_id: input.ventaData.branch_id,
+      });
+      if (!product) throw new SaleError(`Item ${index + 1}: producto no encontrado en la sucursal`, 'SALE_PRODUCT_NOT_FOUND', 404);
+      sourceItems.push({
+        tipo: 'producto', referencia_id: product.id, descripcion: product.nombre,
+        cantidad: intent.cantidad, precio_unitario: product.precio_venta, descuento_porcentaje: 0,
+      });
+    } else {
+      const service = await findOne(base44.asServiceRole.entities.Servicio, {
+        id: intent.referencia_id,
+        organization_id: orgId,
+        activo: true,
+      });
+      if (!service) throw new SaleError(`Item ${index + 1}: servicio no encontrado`, 'SALE_SERVICE_NOT_FOUND', 404);
+      sourceItems.push({
+        tipo: 'servicio', referencia_id: service.id, descripcion: service.nombre,
+        cantidad: intent.cantidad, precio_unitario: service.precio, descuento_porcentaje: 0,
+      });
+    }
+  }
+  let calculated;
+  try {
+    calculated = calculateCommercialTotals(sourceItems);
+    assertClientFinancialHints(input.financialHints, calculated);
+  } catch (error) {
+    throw financialError(error);
+  }
+  assertIntentLinesMatch(input.itemIntents, calculated.items.map(item => ({ ...item, tipo: saleItemType(item.tipo) })));
+  if (calculated.total <= 0) throw new SaleError('El total autoritativo debe ser mayor a cero', 'SALE_TOTAL_INVALID', 409);
+  input.ventaData = {
+    ...input.ventaData,
+    subtotal: calculated.subtotal,
+    descuento_total: 0,
+    impuesto: calculated.impuesto,
+    total: calculated.total,
+  };
+  input.items = finalizeCanonicalItems(calculated);
+  return input;
 }
 
 async function buildIdentity(orgId, input) {
@@ -398,6 +587,7 @@ async function buildInventoryPlans(base44, orgId, sale, operationKey, items) {
     const invItem = await findOne(base44.asServiceRole.entities.Inventario, {
       id: product.inventarioId,
       organization_id: orgId,
+      branch_id: sale.branch_id,
     });
     if (!invItem) {
       throw new SaleError(
@@ -415,19 +605,30 @@ async function buildInventoryPlans(base44, orgId, sale, operationKey, items) {
       if (category?.permite_stock === false) permiteStock = false;
     }
 
-    const existingMovement = await findOne(base44.asServiceRole.entities.InventarioHistorial, {
-      organization_id: orgId,
-      inventario_id: product.inventarioId,
-      sale_id: sale.id,
-      sale_operation_key: operationKey,
-    });
-    const stockAlreadyApplied = invItem.last_sale_id === sale.id
-      && invItem.last_sale_operation_key === operationKey;
+    let reservation = null;
+    if (sale.referencia_ot_id && permiteStock) {
+      const reservations = await base44.asServiceRole.entities.InventarioReserva.filter({
+        organization_id: orgId,
+        branch_id: sale.branch_id,
+        work_order_id: sale.referencia_ot_id,
+        inventario_id: product.inventarioId,
+        state: { $in: ['RESERVED', 'CONSUMED'] },
+      }, '-created_date', 2);
+      if ((reservations || []).length > 1) {
+        throw new SaleError('Existen reservas activas duplicadas para el producto', 'SALE_INVENTORY_RESERVATION_DUPLICATE', 409);
+      }
+      reservation = reservations?.[0] || null;
+      if (reservation && Number(reservation.quantity) !== product.cantidad) {
+        throw new SaleError('La cantidad facturada no coincide con la reserva de la OT', 'SALE_INVENTORY_RESERVATION_QUANTITY_MISMATCH', 409);
+      }
+    }
+    const movementType = reservation?.state === 'CONSUMED'
+      ? null
+      : (reservation?.state === 'RESERVED' ? 'CONSUME' : 'SALE');
     const currentStock = Number(invItem.cantidad_disponible || 0);
-    const stockAnterior = stockAlreadyApplied ? currentStock + product.cantidad : currentStock;
-    if (permiteStock && !existingMovement && !stockAlreadyApplied && product.cantidad > stockAnterior) {
+    if (permiteStock && movementType === 'SALE' && product.cantidad > currentStock) {
       throw new SaleError(
-        `Stock insuficiente para "${invItem.nombre}": disponible ${stockAnterior}, solicitado ${product.cantidad}`,
+        `Stock insuficiente para "${invItem.nombre}": disponible ${currentStock}, solicitado ${product.cantidad}`,
         'SALE_STOCK_INSUFFICIENT'
       );
     }
@@ -435,10 +636,8 @@ async function buildInventoryPlans(base44, orgId, sale, operationKey, items) {
       invItem,
       cantidad: product.cantidad,
       permiteStock,
-      existingMovement,
-      stockAlreadyApplied,
-      stockAnterior,
-      stockNuevo: stockAlreadyApplied ? currentStock : stockAnterior - product.cantidad,
+      movementType,
+      reservation,
     });
   }
   return plans;
@@ -465,7 +664,6 @@ async function createOrRecoverSale(base44, context) {
     return { sale, created, preload, recovered: true };
   }
 
-  const publicToken = `vta_${crypto.randomUUID()}`;
   const saleData = {
     organization_id: orgId,
     branch_id: input.ventaData.branch_id,
@@ -482,7 +680,6 @@ async function createOrRecoverSale(base44, context) {
     metodo_pago: input.ventaData.metodo_pago,
     estado: 'procesando',
     created_by_user_id: user.id,
-    public_access_token: publicToken,
     idempotency_key: operationKey,
     request_fingerprint: requestFingerprint,
     inventory_commit_status: 'PENDING',
@@ -597,88 +794,29 @@ async function ensureSaleItems(base44, context, inventoryPlans, mutations) {
 
 async function applyInventory(base44, context, plans, mutations) {
   const { orgId, user, sale, operationKey } = context;
-  for (const plan of plans) {
-    if (!plan.permiteStock || plan.existingMovement) continue;
-    const movementData = {
-      organization_id: orgId,
-      inventario_id: plan.invItem.id,
-      campo: 'cantidad_disponible',
-      valor_anterior: String(plan.stockAnterior),
-      valor_nuevo: String(plan.stockNuevo),
-      modificado_por: user.id,
-      motivo: `Venta - Ref: ${sale.id}`,
-      sale_id: sale.id,
-      sale_operation_key: operationKey,
-    };
-
-    let result = { updated: 1, recovered_interrupted_update: plan.stockAlreadyApplied };
-    if (!plan.stockAlreadyApplied) {
-      try {
-        result = await base44.asServiceRole.entities.Inventario.updateMany({
-          id: plan.invItem.id,
-          organization_id: orgId,
-          cantidad_disponible: plan.stockAnterior,
-        }, {
-          $set: {
-            cantidad_disponible: plan.stockNuevo,
-            fecha_ultimo_movimiento: new Date().toISOString().split('T')[0],
-            last_sale_id: sale.id,
-            last_sale_operation_key: operationKey,
-          },
-        });
-      } catch (updateError) {
-        const reconciled = await findOne(base44.asServiceRole.entities.Inventario, {
-          id: plan.invItem.id,
-          organization_id: orgId,
-        });
-        if (reconciled?.last_sale_id === sale.id
-          && reconciled?.last_sale_operation_key === operationKey) {
-          result = { updated: 1, recovered_ambiguous_update: true };
-        } else {
-          throw updateError;
-        }
-      }
-    }
-
-    if (result?.updated !== 1) {
-      const current = await findOne(base44.asServiceRole.entities.Inventario, {
-        id: plan.invItem.id,
-        organization_id: orgId,
-      });
-      if (current?.last_sale_id === sale.id && current?.last_sale_operation_key === operationKey) {
-        plan.stockNuevo = Number(current.cantidad_disponible);
-      } else if (Number(current?.cantidad_disponible || 0) < plan.cantidad) {
-        throw new SaleError(
-          `Stock insuficiente para "${plan.invItem.nombre}" despues de una actualizacion concurrente`,
-          'SALE_STOCK_INSUFFICIENT',
-          409
-        );
-      } else {
-        throw new SaleError(
-          `El inventario de "${plan.invItem.nombre}" cambio durante el cobro`,
-          'SALE_INVENTORY_CONCURRENT_UPDATE',
-          409,
-          { retryable: true }
-        );
-      }
-    }
-
-    if (!plan.stockAlreadyApplied) mutations.stockChanges.push(plan);
-    let history;
-    try {
-      history = await base44.asServiceRole.entities.InventarioHistorial.create(movementData);
-      mutations.historiesCreated.push(history);
-    } catch (historyError) {
-      history = await findOne(base44.asServiceRole.entities.InventarioHistorial, {
-        organization_id: orgId,
-        inventario_id: plan.invItem.id,
-        sale_id: sale.id,
-        sale_operation_key: operationKey,
-      });
-      if (!history) throw historyError;
-      mutations.historiesCreated.push(history);
-    }
-  }
+  const movements = plans
+    .filter(plan => plan.permiteStock && plan.movementType)
+    .map(plan => ({
+      inventoryId: plan.invItem.id,
+      movementType: plan.movementType,
+      quantity: plan.cantidad,
+      reservationId: plan.reservation?.id || null,
+      workOrderId: sale.referencia_ot_id || null,
+      quoteId: sale.cotizacion_id || null,
+    }));
+  if (movements.length === 0) return;
+  const inventoryOperationKey = `inventory:${operationKey}:${sale.inventory_attempt_key || sale.id}`;
+  await executeInventoryCommand(base44, {
+    organizationId: orgId,
+    branchId: sale.branch_id,
+    actorId: user.id || user.email,
+    operationKey: inventoryOperationKey,
+    referenceType: 'SALE',
+    referenceId: sale.id,
+    reason: `Venta ${sale.id}`,
+    movements,
+  });
+  mutations.inventoryOperationKey = inventoryOperationKey;
 }
 
 async function convertQuote(base44, context) {
@@ -695,6 +833,8 @@ async function convertQuote(base44, context) {
     updated = await base44.asServiceRole.entities.Cotizacion.updateMany({
       id: quote.id,
       organization_id: orgId,
+      estado: 'aprobada',
+      decision_status: 'COMMITTED',
       $or: [
         { venta_id: { $exists: false } },
         { venta_id: null },
@@ -795,25 +935,17 @@ async function rollback(base44, context, mutations, originalError) {
   const { orgId, sale, operationKey, input } = context;
   const errors = [];
 
-  for (const history of [...mutations.historiesCreated].reverse()) {
-    try { await base44.asServiceRole.entities.InventarioHistorial.delete(history.id); }
-    catch (error) { errors.push(`history:${history.id}:${error.message}`); }
-  }
-
-  for (const plan of [...mutations.stockChanges].reverse()) {
+  if (mutations.inventoryOperationKey) {
     try {
-      const reverted = await base44.asServiceRole.entities.Inventario.updateMany({
-        id: plan.invItem.id,
-        organization_id: orgId,
-        cantidad_disponible: plan.stockNuevo,
-        last_sale_id: sale.id,
-        last_sale_operation_key: operationKey,
-      }, {
-        $set: { cantidad_disponible: plan.stockAnterior },
-        $unset: { last_sale_id: '', last_sale_operation_key: '' },
+      await reverseInventoryCommand(base44, {
+        organizationId: orgId,
+        branchId: sale.branch_id,
+        actorId: context.user.id || context.user.email,
+        operationKey: mutations.inventoryOperationKey,
+        reversalOperationKey: `inventory-rollback:${operationKey}`,
+        reason: `Rollback de venta ${sale.id}`,
       });
-      if (reverted?.updated !== 1) errors.push(`stock:${plan.invItem.id}:ownership_lost`);
-    } catch (error) { errors.push(`stock:${plan.invItem.id}:${error.message}`); }
+    } catch (error) { errors.push(`inventory_reversal:${error.message}`); }
   }
 
   for (const item of [...mutations.createdItems].reverse()) {
@@ -849,10 +981,10 @@ async function rollback(base44, context, mutations, originalError) {
   } else if (mutations.salePreload && errors.length === 0) {
     try {
       await base44.asServiceRole.entities.Venta.updateMany({ id: sale.id, organization_id: orgId }, {
-        $set: { estado: 'borrador' },
+        $set: { estado: 'borrador', inventory_attempt_key: crypto.randomUUID() },
         $unset: {
           idempotency_key: '', request_fingerprint: '', inventory_commit_status: '',
-          post_sale_status: '', public_access_token: '',
+          post_sale_status: '',
         },
       });
     } catch (error) { errors.push(`preload:${sale.id}:${error.message}`); }
@@ -877,14 +1009,35 @@ Deno.serve(async req => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'No autenticado' }, { status: 401 });
-  const orgId = user.impersonating_org_id || user.organization_id;
-  if (!orgId) return Response.json({ error: 'organization_id no resuelto' }, { status: 403 });
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'],
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+  const orgId = authorization.organizationId;
 
   let anchor = null;
   let lock = null;
   try {
     const body = await req.json();
     const input = normalizeInput(body);
+    const branchScope = getCanonicalBranchScope(authorization);
+    if (!branchScope.ok) throw new SaleError(branchScope.error, branchScope.code || 'SALE_BRANCH_SCOPE_INVALID', branchScope.status);
+    const branchCheck = validateRequestedBranch(branchScope, input.ventaData.branch_id);
+    if (!branchCheck.ok) throw new SaleError(branchCheck.error, branchCheck.code, branchCheck.status);
+    if (!branchScope.organizationWide) input.ventaData.branch_id = branchScope.branchId;
+    await resolveAuthoritativeCommercialInput(base44, orgId, input);
+    try {
+      await assertActiveBranch(base44, orgId, input.ventaData.branch_id, {
+        code: 'SALE_BRANCH_NOT_AVAILABLE',
+        status: 409,
+        message: 'La sucursal no existe o esta inactiva; no admite nuevas ventas.',
+      });
+    } catch (error) {
+      if (error instanceof BranchProtectionError) {
+        throw new SaleError(error.message, error.code, error.status);
+      }
+      throw error;
+    }
     const identity = await buildIdentity(orgId, input);
     anchor = await resolveAnchor(base44, orgId, input.ventaData);
     lock = await claimCommerceLock(anchor, orgId, identity.operationKey);
@@ -895,11 +1048,12 @@ Deno.serve(async req => {
     let sale = reservation.sale;
 
     if (sale.estado === 'pagada') {
+      await ensureSaleAudit(base44, authorization, user, sale, identity.operationKey, true);
       const postSale = await runPostSale(base44, orgId, sale);
       const recovered = await loadSaleWithItems(base44, orgId, sale.id);
       return Response.json({
         success: true,
-        data: recovered,
+        data: projectSaleMutationResult(recovered),
         idempotent: true,
         recovered: true,
         post_sale_pending: !postSale.completed,
@@ -927,8 +1081,7 @@ Deno.serve(async req => {
       resumedExisting: reservation.recovered,
       createdItems: [],
       deletedPreloadItems: [],
-      stockChanges: [],
-      historiesCreated: [],
+      inventoryOperationKey: null,
       quoteSnapshot: null,
     };
 
@@ -943,12 +1096,13 @@ Deno.serve(async req => {
       await renewCommerceLock(anchor, orgId, lock);
       mutations.quoteSnapshot = await convertQuote(base44, context);
       sale = await markSalePaid(base44, context);
+      await ensureSaleAudit(base44, authorization, user, sale, identity.operationKey, reservation.recovered);
       const postSale = await runPostSale(base44, orgId, sale);
       const committed = await loadSaleWithItems(base44, orgId, sale.id);
 
       return Response.json({
         success: true,
-        data: committed,
+        data: projectSaleMutationResult(committed),
         idempotent: reservation.recovered,
         recovered: reservation.recovered,
         post_sale_pending: !postSale.completed,
@@ -956,11 +1110,12 @@ Deno.serve(async req => {
     } catch (error) {
       const current = await findOne(base44.asServiceRole.entities.Venta, { id: sale.id, organization_id: orgId });
       if (current?.estado === 'pagada' && current?.request_fingerprint === identity.requestFingerprint) {
+        await ensureSaleAudit(base44, authorization, user, current, identity.operationKey, true);
         const postSale = await runPostSale(base44, orgId, current);
         const committed = await loadSaleWithItems(base44, orgId, current.id);
         return Response.json({
           success: true,
-          data: committed,
+          data: projectSaleMutationResult(committed),
           idempotent: true,
           recovered: true,
           post_sale_pending: !postSale.completed,

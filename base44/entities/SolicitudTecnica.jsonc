@@ -6,6 +6,10 @@
       "type": "string",
       "description": "ID de la organizaci\u00f3n (tenant)"
     },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal operacional derivada de la membresia canonica"
+    },
     "orden_trabajo_id": {
       "type": "string",
       "description": "ID de la orden de trabajo"
@@ -69,7 +73,29 @@
     "inventario_id": {
       "type": "string",
       "description": "ID del item de inventario (si aplica)"
-    }
+    },
+    "fulfillment_mode": {
+      "type": "string",
+      "enum": ["EXISTING_STOCK", "NEW_SPEND"],
+      "description": "Clasificacion explicita; nunca inferida desde la UI"
+    },
+    "requester_user_id": { "type": "string", "rls": { "write": false } },
+    "requested_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "approver_user_id": { "type": "string", "rls": { "write": false } },
+    "rejected_by_user_id": { "type": "string", "rls": { "write": false } },
+    "rejected_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "fulfiller_user_id": { "type": "string", "rls": { "write": false } },
+    "fulfilled_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "inventory_operation_key": { "type": "string", "rls": { "write": false } },
+    "inventory_reservation_id": { "type": "string", "rls": { "write": false } },
+    "inventory_movement_id": { "type": "string", "rls": { "write": false } },
+    "fulfillment_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED"],
+      "rls": { "write": false }
+    },
+    "fulfillment_error": { "type": "string", "rls": { "write": false } },
+    "fulfillment_claimed_at": { "type": "string", "format": "date-time", "rls": { "write": false } }
   },
   "required": [
     "organization_id",
@@ -79,54 +105,5 @@
     "descripcion",
     "estado"
   ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "read": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    }
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

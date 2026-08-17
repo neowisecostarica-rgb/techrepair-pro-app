@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope, validateRequestedBranch } from '../_shared/operationalAuthorization.ts';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -8,12 +10,18 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const allowedRoles = ["ORG_ADMIN", "BRANCH_ADMIN"];
-  if (!allowedRoles.includes(user.role)) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
 
   const body = await req.json().catch(() => ({}));
+  const branchScope = getCanonicalBranchScope(authorization);
+  if (!branchScope.ok) return Response.json({ error: branchScope.error, code: branchScope.code }, { status: branchScope.status });
+  const requestedBranchId = typeof body.branch_id === 'string' ? body.branch_id.trim() : null;
+  const branchCheck = validateRequestedBranch(branchScope, requestedBranchId);
+  if (!branchCheck.ok) return Response.json({ error: branchCheck.error, code: branchCheck.code }, { status: branchCheck.status });
+  const effectiveBranchId = branchScope.organizationWide ? requestedBranchId : branchScope.branchId;
 
   // Determinar período: por defecto mes actual
   const now = new Date();
@@ -23,10 +31,7 @@ Deno.serve(async (req) => {
   const periodStart = body.period_start || defaultStart;
   const periodEnd = body.period_end || defaultEnd;
 
-  const orgId = user.organization_id || user.impersonating_org_id;
-  if (!orgId) {
-    return Response.json({ error: 'No organization found for user' }, { status: 400 });
-  }
+  const orgId = authorization.organizationId;
 
   // 1. Obtener Organization para marketing_spend
   const orgs = await base44.asServiceRole.entities.Organization.filter({ id: orgId });
@@ -36,7 +41,8 @@ Deno.serve(async (req) => {
   // 2. Obtener ventas pagadas del período
   const ventas = await base44.asServiceRole.entities.Venta.filter({
     organization_id: orgId,
-    estado: 'pagada'
+    estado: 'pagada',
+    ...(effectiveBranchId ? { branch_id: effectiveBranchId } : {}),
   });
 
   const ventasEnPeriodo = ventas.filter(v => {
@@ -107,7 +113,8 @@ Deno.serve(async (req) => {
 
   // 5. CAC = marketing_spend / clientes nuevos en el período
   const clientes = await base44.asServiceRole.entities.Cliente.filter({
-    organization_id: orgId
+    organization_id: orgId,
+    ...(effectiveBranchId ? { branch_id: effectiveBranchId } : {}),
   });
 
   const clientesNuevos = clientes.filter(c => {

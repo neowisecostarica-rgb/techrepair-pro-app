@@ -1,7 +1,7 @@
 /**
  * SidebarMenu — navegación declarativa
- * Filtra MENU_ITEMS por effectiveRole del usuario.
- * No contiene if/else por rol.
+ * Filtra MENU_ITEMS por capacidades resueltas por el backend.
+ * La navegación no es una frontera de autorización.
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -9,9 +9,14 @@ import { ChevronRight, ChevronDown } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { MENU_ITEMS } from '@/config/menuConfig';
 
-export default function SidebarMenu({ effectiveRole, currentPageName, sidebarOpen, sectionsOpen, toggleSection }) {
-  // Filtrar ítems permitidos para este rol
-  const allowedItems = MENU_ITEMS.filter(item => item.roles.includes(effectiveRole));
+export function isMenuItemEligible(item, { effectiveRole, capabilities }) {
+  if (item.platformRoles) return item.platformRoles.includes(effectiveRole);
+  if (!Array.isArray(capabilities)) return false;
+  return item.anyCapabilities?.some(capability => capabilities.includes(capability)) === true;
+}
+
+export default function SidebarMenu({ effectiveRole, capabilities = [], currentPageName, sidebarOpen, sectionsOpen, toggleSection }) {
+  const allowedItems = MENU_ITEMS.filter(item => isMenuItemEligible(item, { effectiveRole, capabilities }));
 
   // Agrupar por categoría manteniendo orden de aparición
   const categories = [];

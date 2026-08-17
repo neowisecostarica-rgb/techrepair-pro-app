@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -9,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MessageSquare, Send, Mail, CheckCircle } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { withOrgId } from '@/components/hooks/useOrgData';
+import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
 
 const PLANTILLAS = {
   estado_ot: {
@@ -36,26 +35,21 @@ const PLANTILLAS = {
   }
 };
 
-export default function ComunicacionCliente({ clienteId, ordenTrabajoId, user, userAccount }) {
+export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente, mensajes = [] }) {
   const [showModal, setShowModal] = useState(false);
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState('');
   const [asunto, setAsunto] = useState('');
   const [contenido, setContenido] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: mensajes = [] } = useQuery({
-    queryKey: ['mensajes-cliente', clienteId],
-    queryFn: () => base44.entities.MensajeCliente.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-  });
-
   const createMensajeMutation = useMutation({
-    mutationFn: (data) => base44.entities.MensajeCliente.create(withOrgId(data, userAccount)),
+    mutationFn: (data) => recordCustomerMessage(clienteId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mensajes-cliente'] });
+      queryClient.invalidateQueries({ queryKey: customer360QueryKeys.detail(clienteId) });
       setShowModal(false);
       resetForm();
     },
+    onError: (error) => alert(error?.message || 'No se pudo registrar el mensaje'),
   });
 
   const resetForm = () => {
@@ -76,19 +70,38 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, user, u
   const handleSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const canal = formData.get('canal');
+    const telefono = cliente?.telefono?.replace(/\D/g, '');
+
+    if (canal === 'email') {
+      if (!cliente?.email) {
+        alert('El cliente no tiene correo electrónico registrado');
+        return;
+      }
+      window.open(`mailto:${encodeURIComponent(cliente.email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(contenido)}`, '_blank');
+    } else if (canal === 'whatsapp') {
+      if (!telefono) {
+        alert('El cliente no tiene teléfono registrado');
+        return;
+      }
+      window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(contenido)}`, '_blank', 'noopener,noreferrer');
+    } else if (canal === 'sms') {
+      if (!telefono) {
+        alert('El cliente no tiene teléfono registrado');
+        return;
+      }
+      window.open(`sms:${telefono}?body=${encodeURIComponent(contenido)}`, '_blank');
+    }
 
     createMensajeMutation.mutate({
       cliente_id: clienteId,
       orden_trabajo_id: ordenTrabajoId || null,
-      remitente_id: user.id,
-      remitente_nombre: user.full_name || user.email,
       tipo: plantillaSeleccionada || 'general',
       plantilla_usada: plantillaSeleccionada ? PLANTILLAS[plantillaSeleccionada].nombre : null,
       asunto: asunto,
       contenido: contenido,
-      canal: formData.get('canal'),
-      enviado: true,
-      enviado_at: new Date().toISOString(),
+      canal,
+      enviado: false,
     });
   };
 
@@ -165,12 +178,12 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, user, u
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Enviar Mensaje al Cliente</DialogTitle>
+            <DialogTitle>Preparar Mensaje al Cliente</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-900">
-                ℹ️ Utiliza las plantillas oficiales para mantener la comunicación profesional y consistente.
+                ℹ️ El sistema abrirá el canal externo elegido y registrará el intento. Debes confirmar el envío en WhatsApp, correo o SMS.
               </p>
             </div>
 
@@ -210,7 +223,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, user, u
             </div>
 
             <div className="space-y-2">
-              <Label>Canal de Envío *</Label>
+              <Label>Canal externo *</Label>
               <Select name="canal" defaultValue="email" required>
                 <SelectTrigger>
                   <SelectValue />
@@ -232,7 +245,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, user, u
               </Button>
               <Button type="submit" disabled={createMensajeMutation.isPending}>
                 <Send className="w-4 h-4 mr-2" />
-                Enviar Mensaje
+                Abrir Canal y Registrar
               </Button>
             </div>
           </form>

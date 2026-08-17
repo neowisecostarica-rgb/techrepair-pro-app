@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { TrendingUp, DollarSign, ShoppingCart, Calendar } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';

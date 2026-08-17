@@ -1,4 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { eventMatchesCurrentWorkOrderState, requiredWorkOrderStateForEvent } from '../_shared/lifecycleSecurity.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 /*
 =====================================
@@ -125,7 +128,14 @@ Deno.serve(async (req) => {
     try {
       callerUser = await base44.auth.me();
     } catch {
-      // Automation call — sin sesión de usuario. OK.
+      callerUser = null;
+    }
+    if (!callerUser) {
+      return Response.json({
+        error: 'La automatizacion no tiene attestation verificable en el runtime actual.',
+        code: 'AUTOMATION_TRUST_ATTESTATION_UNAVAILABLE',
+        side_effects_executed: false,
+      }, { status: 503 });
     }
 
     // ── 2. Parsear payload ──────────────────────────────────────────────────────
@@ -172,6 +182,30 @@ Deno.serve(async (req) => {
 
     const { organization_id, orden_trabajo_id, tipo, processed } = evento;
 
+    if (callerUser) {
+      const authorization = await resolveAuthorizedContext(base44, callerUser, {
+        organizationHint: organization_id,
+        allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
+      });
+      if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+      if (authorization.pilotMode) {
+        return Response.json({ error: 'El consumo automatizado de eventos esta deshabilitado durante el piloto controlado', code: 'CONTROLLED_PILOT_AUTOMATION_MUTATION_DISABLED' }, { status: 409 });
+      }
+      const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+        id: orden_trabajo_id,
+        organization_id,
+      }, '-created_date', 1);
+      const workOrder = workOrders?.[0];
+      if (!workOrder) return Response.json({ error: 'OT no encontrada para el evento' }, { status: 404 });
+      const branchAuthorization = authorizeRecordBranch(authorization, workOrder.branch_id);
+      if (!branchAuthorization.ok) {
+        return Response.json(
+          { error: branchAuthorization.error, code: branchAuthorization.code },
+          { status: branchAuthorization.status },
+        );
+      }
+    }
+
     // ── 4. Guard: organization_id obligatorio ───────────────────────────────────
     // Eventos sin organization_id son pre-0B.2A y no deben procesarse automáticamente.
     // Se retorna error controlado SIN marcar processed para permitir investigación.
@@ -206,6 +240,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    const requiredState = requiredWorkOrderStateForEvent(tipo);
+    if (requiredState) {
+      const currentOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+        id: orden_trabajo_id,
+        organization_id,
+      }, 1);
+      const currentOrder = currentOrders?.[0] || null;
+      if (!currentOrder || !eventMatchesCurrentWorkOrderState(tipo, currentOrder)) {
+        await safeTrack(base44, 'ot_event_skipped', {
+          reason: 'work_order_state_mismatch',
+          event_id: eventId,
+          tipo,
+          required_state: requiredState,
+          current_state: currentOrder?.estado || null,
+        });
+        return Response.json({
+          success: false,
+          skipped: true,
+          reason: 'work_order_state_mismatch',
+          required_state: requiredState,
+          current_state: currentOrder?.estado || null,
+          event_id: eventId,
+        }, { status: 409 });
+      }
+    }
+
     // ── 6. Switch por tipo — hook points para fases futuras ────────────────────
     // En 0B.2B: SOLO logging. Emails/notificaciones se migran en 0B.2C+.
     // Cada case es un hook point documentado para la siguiente fase.
@@ -219,7 +279,10 @@ Deno.serve(async (req) => {
         // a. Cargar OrdenTrabajo
         let ot = null;
         try {
-          const ots = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+          const ots = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+            id: orden_trabajo_id,
+            organization_id,
+          }, 1);
           ot = Array.isArray(ots) && ots.length > 0 ? ots[0] : null;
         } catch (otErr) {
           console.warn(`[processOTEvent] [CREATED] Error cargando OT ${orden_trabajo_id}: ${otErr.message}`);
@@ -291,7 +354,11 @@ Deno.serve(async (req) => {
         // a. Cargar OrdenTrabajo
         let otF = null;
         try {
-          const otsF = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+          const otsF = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+            id: orden_trabajo_id,
+            organization_id,
+            estado: 'FINALIZADA',
+          }, 1);
           otF = Array.isArray(otsF) && otsF.length > 0 ? otsF[0] : null;
         } catch (otErrF) {
           console.warn(`[processOTEvent] [FINALIZADA] Error cargando OT ${orden_trabajo_id}: ${otErrF.message}`);
@@ -361,7 +428,11 @@ Deno.serve(async (req) => {
         // a. Cargar OrdenTrabajo
         let otE = null;
         try {
-          const otsE = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+          const otsE = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+            id: orden_trabajo_id,
+            organization_id,
+            estado: 'ENTREGADA',
+          }, 1);
           otE = Array.isArray(otsE) && otsE.length > 0 ? otsE[0] : null;
         } catch (otErrE) {
           console.warn(`[processOTEvent] [ENTREGADA] Error cargando OT ${orden_trabajo_id}: ${otErrE.message}`);
@@ -430,7 +501,11 @@ Deno.serve(async (req) => {
         // a. Cargar OrdenTrabajo
         let otC = null;
         try {
-          const otsC = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: orden_trabajo_id }, 1);
+          const otsC = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+            id: orden_trabajo_id,
+            organization_id,
+            estado: 'CANCELADA',
+          }, 1);
           otC = Array.isArray(otsC) && otsC.length > 0 ? otsC[0] : null;
         } catch (otErrC) {
           console.warn(`[processOTEvent] [CANCELADA] Error cargando OT ${orden_trabajo_id}: ${otErrC.message}`);
@@ -522,9 +597,24 @@ Deno.serve(async (req) => {
     // Si un side-effect futuro falla antes de llegar aquí, el evento quedará
     // unprocessed y podrá ser reintentado (crash-safe).
     try {
-      await base44.asServiceRole.entities.OTEvent.update(eventId, {
-        processed: true,
-      });
+      const marked = await base44.asServiceRole.entities.OTEvent.updateMany({
+        id: eventId,
+        organization_id,
+        $or: [
+          { processed: false },
+          { processed: null },
+          { processed: { $exists: false } },
+        ],
+      }, { $set: { processed: true } });
+      if (marked?.updated !== 1) {
+        const [currentEvent] = await base44.asServiceRole.entities.OTEvent.filter({
+          id: eventId,
+          organization_id,
+        }, 1);
+        if (currentEvent?.processed !== true) {
+          throw new Error('El evento cambio concurrentemente y no pudo confirmarse como procesado');
+        }
+      }
       // processed=true marcado OK
     } catch (updateError) {
       // Fallo al marcar processed: loggear pero retornar error para que

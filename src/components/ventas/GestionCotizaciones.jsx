@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,8 @@ import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
+import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
+import { issuePublicLink } from '@/api/publicLinks';
 
 export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [], openDirectly = false }) {
   const [showModal, setShowModal] = useState(openDirectly);
@@ -31,6 +34,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const navigate = useNavigate();
 
   const clienteActual = clienteId;
+  const organizationId = userAccount?.organization_id;
 
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['cotizaciones', clienteActual],
@@ -40,12 +44,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const { data: inventario = [] } = useQuery({
     queryKey: ['inventario-disponible'],
-    queryFn: () => base44.entities.Inventario.filter({ estado: 'activo' }),
+    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo' }),
+    enabled: !!organizationId,
   });
 
   const { data: servicios = [] } = useQuery({
     queryKey: ['servicios-disponibles'],
-    queryFn: () => base44.entities.Servicio.filter({ activo: true }),
+    queryFn: () => base44.entities.Servicio.filter({ organization_id: organizationId, activo: true }),
+    enabled: !!organizationId,
   });
 
   const handleGuardar = (nuevaCotizacion) => {
@@ -57,7 +63,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     }
   };
 
-  const withOrgId = (data) => ({ ...data, organization_id: userAccount?.organization_id });
+  const withOrgId = (data) => ({ ...data, organization_id: organizationId });
 
   const createCotizacionMutation = useMutation({
     mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data)),
@@ -75,27 +81,32 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const enviarSeguimientoMutation = useMutation({
-    mutationFn: async ({ cotizacion, cliente }) => {
+    mutationFn: async ({ cotizacion: _cotizacion, cliente }) => {
       const canal = cliente.telefono ? 'whatsapp' : 'email';
       const mensaje = `Hola ${cliente.nombre_completo}, te escribo para dar seguimiento a la cotización que te compartimos. Quedo atento(a) si tienes alguna duda. — ${user.full_name || 'El equipo'}`;
+
+      if (canal === 'whatsapp') {
+        const telefono = cliente.telefono.replace(/\D/g, '');
+        window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
+      } else if (cliente.email) {
+        window.open(`mailto:${encodeURIComponent(cliente.email)}?subject=${encodeURIComponent('Seguimiento de tu cotización')}&body=${encodeURIComponent(mensaje)}`, '_blank');
+      } else {
+        throw new Error('El cliente no tiene teléfono ni correo registrado');
+      }
       
-      return await base44.entities.MensajeCliente.create(withOrgId({
-        cliente_id: clienteActual,
+      return recordCustomerMessage(clienteActual, {
         orden_trabajo_id: ordenTrabajoId || null,
-        remitente_id: user.id,
-        remitente_nombre: user.full_name || user.email,
         tipo: 'seguimiento',
         plantilla_usada: 'Seguimiento de Cotización',
         asunto: 'Seguimiento de tu cotización',
         contenido: mensaje,
         canal: canal,
-        enviado: true,
-        enviado_at: new Date().toISOString(),
-      }, userAccount));
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mensajes-cliente'] });
-      alert('Seguimiento enviado correctamente');
+      queryClient.invalidateQueries({ queryKey: customer360QueryKeys.detail(clienteActual) });
+      alert('Canal externo abierto y seguimiento registrado. Confirma el envío en WhatsApp o correo.');
     },
   });
 
@@ -108,8 +119,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const { data: organization } = useQuery({
     queryKey: ['organization', userAccount?.organization_id],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.list();
-      return orgs.find(o => o.id === userAccount.organization_id);
+      const result = await getIdentityOrganization(userAccount.organization_id);
+      return result.organization;
     },
     enabled: !!userAccount?.organization_id,
   });
@@ -130,7 +141,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     newItems[index].descripcion = item.nombre;
     newItems[index].precio_unitario = item.precio_venta || 0;
     newItems[index].tipo = item.tipo_sugerido;
-    newItems[index].item_id = item.id;
+    newItems[index].referencia_id = item.id;
+    delete newItems[index].item_id;
     newItems[index].origen = item.origen;
     
     // Recalcular subtotal
@@ -256,10 +268,6 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     }
   };
 
-  const generarToken = () => {
-    return `cot_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  };
-
   const handleEnviar = async (cotizacion) => {
     if (!clienteActual) {
       alert('Por favor selecciona un cliente antes de enviar la cotización');
@@ -271,8 +279,6 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       return;
     }
 
-    const token = cotizacion.public_access_token || generarToken();
-    
     try {
       if (ordenTrabajoId) {
         const ots = await base44.entities.OrdenTrabajo.filter({ id: ordenTrabajoId });
@@ -283,9 +289,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
         }
       }
       await base44.entities.Cotizacion.update(cotizacion.id, {
-        estado: 'enviada', 
-        enviada_at: new Date().toISOString(),
-        public_access_token: token
+        estado: 'enviada',
+        ultimo_envio: { canal: 'link' },
       });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
@@ -295,14 +300,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     }
   };
 
-  const copiarLink = (cotizacion, organization) => {
-    if (!cotizacion.public_access_token) {
-      alert('Primero debes enviar la cotización para generar el link');
-      return;
-    }
-
+  const copiarLink = async (cotizacion, organization) => {
     const baseUrl = organization?.public_base_url || window.location.origin;
-    const link = `${baseUrl}/PortalCotizacion?token=${cotizacion.public_access_token}`;
+    const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
     navigator.clipboard.writeText(link);
     alert('Link copiado al portapapeles');
   };
@@ -416,14 +416,10 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     doc.save(`Cotizacion_${cotizacion.id}.pdf`);
   };
 
-  const imprimirCotizacion = (cotizacion, organization) => {
-    if (cotizacion.public_access_token) {
-      const baseUrl = organization?.public_base_url || window.location.origin;
-      const link = `${baseUrl}/PortalCotizacion?token=${cotizacion.public_access_token}`;
-      window.open(link, '_blank');
-    } else {
-      alert('Primero debes enviar la cotización para poder imprimirla');
-    }
+  const imprimirCotizacion = async (cotizacion, organization) => {
+    const baseUrl = organization?.public_base_url || window.location.origin;
+    const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
+    window.open(link, '_blank', 'noopener,noreferrer');
   };
 
   const handleEditar = (cotizacion) => {
@@ -435,81 +431,6 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     setItems(cotizacion.items);
     setShowModal(true);
   };
-
-  const convertirEnFacturaMutation = useMutation({
-    mutationFn: async (cotizacion) => {
-      // Validación backend: verificar que no exista una venta activa con este cotizacion_id
-      const ventasExistentes = await base44.entities.Venta.filter({
-        organization_id: userAccount.organization_id,
-        cotizacion_id: cotizacion.id
-      });
-      
-      const ventaActiva = ventasExistentes.find(v => v.estado !== 'anulada');
-      if (ventaActiva) {
-        throw new Error('Ya existe una venta asociada a esta cotización. No se puede duplicar.');
-      }
-
-      // Crear Venta en estado BORRADOR con snapshots originales
-      const venta = await base44.entities.Venta.create({
-        organization_id: cotizacion.organization_id,
-        branch_id: userAccount.branch_id,
-        cliente_id: cotizacion.cliente_id,
-        origen_venta: 'tienda',
-        origen_detalle: 'DESDE_COTIZACION',
-        tipo_concepto: 'otro',
-        cotizacion_id: cotizacion.id,
-        cotizacion_total_original: cotizacion.total,
-        cotizacion_subtotal_original: cotizacion.subtotal,
-        cotizacion_descuento_original: cotizacion.descuento_total || 0,
-        total: cotizacion.total,
-        subtotal: cotizacion.subtotal,
-        impuesto: cotizacion.impuesto,
-        descuento_total: cotizacion.descuento_total || 0,
-        estado: 'borrador',
-        created_by_user_id: user.id,
-        notas: cotizacion.notas || ''
-      });
-
-      // Crear VentaItems desde cotización
-      for (const item of cotizacion.items) {
-        await base44.entities.VentaItem.create({
-          organization_id: cotizacion.organization_id,
-          venta_id: venta.id,
-          tipo: item.tipo,
-          referencia_id: item.referencia_id || null,
-          descripcion: item.descripcion,
-          cantidad: item.cantidad,
-          precio_unitario: item.precio_unitario,
-          subtotal: item.subtotal
-        });
-      }
-
-      // Actualizar Cotización a EN_PROCESO_FACTURACION
-      await base44.entities.Cotizacion.update(cotizacion.id, {
-        estado_conversion: 'EN_PROCESO_FACTURACION',
-        venta_id: venta.id
-      });
-
-      return { venta, cotizacion };
-    },
-    onSuccess: ({ venta, cotizacion }) => {
-      queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
-      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-      
-      // Redirigir a POS con precarga
-      navigate(createPageUrl('PuntoVenta'), {
-        state: {
-          venta: venta,
-          cotizacion_origen: cotizacion,
-          carrito: cotizacion.items,
-          cliente_id: cotizacion.cliente_id
-        }
-      });
-    },
-    onError: (error) => {
-      alert(`Error al convertir cotización: ${error.message}`);
-    }
-  });
 
   const handleConvertirEnFactura = async (cotizacion) => {
     if (cotizacion.estado !== 'aprobada') {
@@ -531,7 +452,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       return;
     }
 
-    convertirEnFacturaMutation.mutate(cotizacion);
+    navigate(createPageUrl('PuntoVenta'), {
+      state: {
+        cotizacion_origen: cotizacion,
+        carrito: cotizacion.items,
+        cliente_id: cotizacion.cliente_id,
+        orden_trabajo_id: cotizacion.orden_trabajo_id,
+      },
+    });
   };
 
   const estadoConfig = {

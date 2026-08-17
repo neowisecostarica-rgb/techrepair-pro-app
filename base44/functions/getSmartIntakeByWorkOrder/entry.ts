@@ -1,57 +1,26 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 const SOURCE_TYPE = 'LEGACY_PREDIAGNOSTICO';
-
-function isActiveAccount(account) {
-  if (!account) return false;
-  if (typeof account.status === 'string') return account.status === 'active';
-  return account.active === true;
-}
 
 function errorResponse(status, code, error) {
   return Response.json({ error, code }, { status });
 }
 
 async function resolveEffectiveOrganization(base44, user) {
-  const isSuperAdmin = user.is_super_admin === true || user.data?.is_super_admin === true;
-
-  if (isSuperAdmin) {
-    if (!user.impersonating_org_id) {
-      return {
-        error: 'SUPER_ADMIN debe seleccionar una organizacion antes de consultar Smart Intake',
-        code: 'EFFECTIVE_ORGANIZATION_REQUIRED',
-      };
-    }
-
-    return {
-      orgId: user.impersonating_org_id,
-      role: 'ORG_ADMIN',
-      branchId: null,
-    };
-  }
-
-  const orgHint = user.impersonating_org_id || user.organization_id || null;
-  const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 10);
-  const activeAccounts = (accounts || []).filter(isActiveAccount);
-
-  let account = null;
-  if (orgHint) {
-    account = activeAccounts.find(candidate => candidate.organization_id === orgHint) || null;
-  } else if (activeAccounts.length === 1) {
-    account = activeAccounts[0];
-  }
-
-  if (!account) {
-    return {
-      error: 'No existe una cuenta activa para la organizacion seleccionada',
-      code: 'CALLER_MEMBERSHIP_INACTIVE',
-    };
-  }
-
+  const authorization = await resolveAuthorizedContext(base44, user);
+  if (!authorization.ok) return {
+    error: authorization.error,
+    code: authorization.error?.includes('impersonacion')
+      ? 'EFFECTIVE_ORGANIZATION_REQUIRED'
+      : 'CALLER_MEMBERSHIP_INACTIVE',
+  };
   return {
-    orgId: account.organization_id,
-    role: account.role,
-    branchId: account.branch_id || null,
+    orgId: authorization.organizationId,
+    role: authorization.role,
+    branchId: authorization.account?.branch_id || null,
+    authorization,
   };
 }
 
@@ -189,8 +158,15 @@ Deno.serve(async (req) => {
       return errorResponse(404, 'WORK_ORDER_NOT_FOUND', 'Orden de trabajo no encontrada');
     }
 
-    // Existing work-order reads are organization-scoped. This compatibility
-    // sprint intentionally does not introduce a new branch policy.
+    const branchAuthorization = authorizeRecordBranch(access.authorization, workOrder.branch_id);
+    if (!branchAuthorization.ok) {
+      return errorResponse(
+        branchAuthorization.status,
+        branchAuthorization.code,
+        branchAuthorization.error,
+      );
+    }
+
     const legacyRecords = await base44.asServiceRole.entities.PreDiagnostico.filter({
       organization_id: access.orgId,
       orden_trabajo_id: workOrder.id,

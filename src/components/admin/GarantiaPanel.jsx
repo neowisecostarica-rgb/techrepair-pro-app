@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization, updateIdentityOrganization } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,8 +21,7 @@ export default function GarantiaPanel({ organizationId }) {
     queryKey: ['config-garantia', organizationId],
     queryFn: async () => {
       // Usar Organization para almacenar config de garantía
-      const orgs = await base44.entities.Organization.list();
-      const org = orgs.find(o => o.id === organizationId);
+      const { organization: org } = await getIdentityOrganization(organizationId);
       return org?.garantia_config || null;
     },
     enabled: !!organizationId,
@@ -39,10 +38,7 @@ export default function GarantiaPanel({ organizationId }) {
 
   const guardarMutation = useMutation({
     mutationFn: async (configData) => {
-      const orgs = await base44.entities.Organization.list();
-      const org = orgs.find(o => o.id === organizationId);
-      
-      await base44.entities.Organization.update(org.id, {
+      await updateIdentityOrganization(organizationId, {
         garantia_config: configData
       });
     },

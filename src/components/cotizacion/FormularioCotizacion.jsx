@@ -78,7 +78,8 @@ export default function FormularioCotizacion({
     newItems[index].descripcion = item.nombre;
     newItems[index].precio_unitario = item.precio_venta || 0;
     newItems[index].tipo = item.tipo_sugerido;
-    newItems[index].item_id = item.id;
+    newItems[index].referencia_id = item.id;
+    delete newItems[index].item_id;
     newItems[index].origen = item.origen;
     
     const cantidad = parseFloat(newItems[index].cantidad) || 0;

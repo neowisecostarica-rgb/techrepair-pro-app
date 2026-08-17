@@ -2,6 +2,14 @@
   "name": "NoConformidad",
   "type": "object",
   "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "Organizacion propietaria del registro"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal operacional derivada de la membresia canonica"
+    },
     "titulo": {
       "type": "string",
       "description": "T\u00edtulo de la no conformidad"
@@ -88,9 +96,11 @@
     }
   },
   "required": [
+    "organization_id",
     "titulo",
     "tipo",
     "descripcion",
     "reportado_por"
-  ]
+  ],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

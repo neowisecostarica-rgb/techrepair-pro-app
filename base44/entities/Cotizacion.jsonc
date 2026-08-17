@@ -6,6 +6,10 @@
       "type": "string",
       "description": "ID de la organizaci\u00f3n (tenant)"
     },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal operacional validada por backend"
+    },
     "cliente_id": {
       "type": "string",
       "description": "ID del cliente"
@@ -54,6 +58,10 @@
           },
           "descripcion": {
             "type": "string"
+          },
+          "referencia_id": {
+            "type": "string",
+            "description": "Identidad canonica del producto, repuesto o servicio."
           },
           "cantidad": {
             "type": "number"
@@ -137,6 +145,15 @@
       "type": "string",
       "format": "date-time",
       "description": "Fecha de aprobaci\u00f3n"
+    },
+    "aprobacion_interna_status": {
+      "type": "string",
+      "enum": ["PENDIENTE", "APROBADA", "RECHAZADA"],
+      "description": "Decisi\u00f3n interna gobernada para descuentos fuera de pol\u00edtica"
+    },
+    "aprobacion_interna_motivo": {
+      "type": "string",
+      "description": "Motivo interno de rechazo del descuento"
     },
     "enviada_at": {
       "type": "string",
@@ -231,6 +248,45 @@
       "type": "string",
       "format": "date-time",
       "description": "Fecha de expiraci\u00f3n del token p\u00fablico"
+    },
+    "public_access_purpose": {
+      "type": "string",
+      "enum": ["WORK_ORDER_STATUS_READ", "QUOTE_DECISION", "WARRANTY_READ", "RECEIPT_READ"],
+      "rls": { "read": false, "write": false }
+    },
+    "public_access_resource_id": { "type": "string", "rls": { "read": false, "write": false } },
+    "public_access_version": { "type": "string", "rls": { "read": false, "write": false } },
+    "public_access_issued_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } },
+    "public_access_revoked_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } },
+    "public_access_consumed_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } },
+    "decision_status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED", "FAILED"],
+      "description": "Estado recuperable de la decision publica",
+      "rls": { "read": false, "write": false }
+    },
+    "decision_target_status": {
+      "type": "string",
+      "enum": ["APROBADA", "CANCELADA"],
+      "rls": { "read": false, "write": false }
+    },
+    "decision_operation_key": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
+    "decision_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "read": false, "write": false }
+    },
+    "decision_committed_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": { "read": false, "write": false }
+    },
+    "decision_error": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
     }
   },
   "required": [
@@ -242,66 +298,5 @@
     "total",
     "estado"
   ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "organization_id": "{{user.organization_id}}"
-        },
-        {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
-        }
-      ]
-    },
-    "read": {
-      "$or": [
-        {
-          "organization_id": "{{user.organization_id}}"
-        },
-        {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "organization_id": "{{user.organization_id}}"
-        },
-        {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "organization_id": "{{user.organization_id}}"
-        },
-        {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
-        }
-      ]
-    }
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

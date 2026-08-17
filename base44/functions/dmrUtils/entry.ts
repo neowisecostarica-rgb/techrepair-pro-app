@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { isCanonicalSuperAdmin } from '../_shared/userAuthorization.ts';
+import { projectOperationalReadResult } from '../_shared/dataProjections.ts';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // dmrUtils — Endpoint de utilidades de diagnóstico para el DMR
@@ -15,7 +17,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Solo admin o super_admin pueden usar utilidades DMR
-    if (user.role !== 'admin' && !user.is_super_admin) {
+    if (!isCanonicalSuperAdmin(user)) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -32,7 +34,7 @@ Deno.serve(async (req) => {
       return Response.json({
         hasActiveDmr: dmrs && dmrs.length > 0,
         dmrCount: dmrs ? dmrs.length : 0,
-        dmrs: dmrs || []
+        dmrs: (dmrs || []).map(dmr => projectOperationalReadResult('DiagnosticMasterRecord', dmr))
       });
     }
 
@@ -42,7 +44,7 @@ Deno.serve(async (req) => {
       const dmrs = await base44.asServiceRole.entities.DiagnosticMasterRecord.filter({
         orden_trabajo_id: otId
       });
-      return Response.json({ dmrs: dmrs || [] });
+      return Response.json({ dmrs: (dmrs || []).map(dmr => projectOperationalReadResult('DiagnosticMasterRecord', dmr)) });
     }
 
     // ── Operación: verificar si un dmr_number ya existe (idempotencia) ───────

@@ -1,6 +1,4 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { Laptop, Smartphone, Monitor, Printer, Tablet, HelpCircle } from 'lucide-react';
 
 const TIPO_ICON = {
@@ -32,14 +30,7 @@ function EquipoRow({ equipo }) {
   );
 }
 
-export default function EquiposCliente({ clienteId }) {
-  const { data: equipos = [], isLoading } = useQuery({
-    queryKey: ['equipos-cliente', clienteId],
-    queryFn: () => base44.entities.Equipo.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-    staleTime: 60_000,
-  });
-
+export default function EquiposCliente({ equipos = [], isLoading = false }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mt-4">
       <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">

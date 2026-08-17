@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -105,7 +106,7 @@ function PuntoVentaContent() {
                   estado_conversion: 'SIN_CONVERTIR',
                   venta_id: null
                 });
-                await base44.entities.Venta.delete({ id: preloadedVenta.id });
+                await base44.entities.Venta.delete(preloadedVenta.id);
                 alert('Conversión cancelada. Redirigiendo...');
                 window.history.back();
               } catch (error) {
@@ -211,10 +212,12 @@ function PuntoVentaContent() {
     enabled: !!effectiveOrgId,
   });
 
-  const { data: organizations = [] } = useQuery({
-    queryKey: ['organizations-venta'],
-    queryFn: () => base44.entities.Organization.list(),
+  const { data: activeOrganization } = useQuery({
+    queryKey: ['identity-organization-venta', effectiveOrgId],
+    queryFn: () => getIdentityOrganization(effectiveOrgId).then(result => result.organization),
+    enabled: !!effectiveOrgId,
   });
+  const organizations = activeOrganization ? [activeOrganization] : [];
 
   // Validar contexto OT cuando se selecciona (o se precarga vía URL).
   // Incluye `ordenesTrabajo` en las dependencias para evitar la condición de carrera
@@ -370,8 +373,7 @@ function PuntoVentaContent() {
     try {
       if (!venta.cliente_id) return;
 
-      const orgs = await base44.entities.Organization.list();
-      const org = orgs.find(o => o.id === venta.organization_id);
+      const { organization: org } = await getIdentityOrganization(venta.organization_id);
       const config = org?.garantia_config;
 
       if (!config) return;
@@ -394,7 +396,6 @@ function PuntoVentaContent() {
 
       if (garantiasExistentes.length > 0) return;
 
-      const token = `gar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const fechaEmision = new Date();
       const fechaInicio = new Date();
       const fechaFin = new Date();
@@ -402,10 +403,10 @@ function PuntoVentaContent() {
 
       await base44.entities.Garantia.create({
         organization_id: venta.organization_id,
+        branch_id: venta.branch_id,
         cliente_id: venta.cliente_id,
         origen_tipo: esReparacion ? 'OT' : 'VENTA',
         origen_id: esReparacion ? venta.referencia_ot_id : venta.id,
-        public_access_token: token,
         fecha_emision: fechaEmision.toISOString().split('T')[0],
         fecha_inicio: fechaInicio.toISOString().split('T')[0],
         fecha_fin: fechaFin.toISOString().split('T')[0],
@@ -1104,7 +1105,7 @@ function PuntoVentaContent() {
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   <li>Impactará la caja y reportes financieros</li>
                   <li>Descontará inventario de stock</li>
-                  <li>Generará comprobante fiscal</li>
+                  <li>Generará un comprobante de venta</li>
                   <li><strong>NO puede deshacerse</strong></li>
                 </ul>
               </AlertDescription>

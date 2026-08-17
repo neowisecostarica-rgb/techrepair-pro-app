@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../base44/functions/_shared/operationalAuthorization.ts';
 
 const backendPath = new URL('../base44/functions/getSmartIntakeByWorkOrder/entry.ts', import.meta.url);
 const smartIntakeApiPath = new URL('../src/api/smartIntake.js', import.meta.url);
@@ -57,8 +59,33 @@ function createScenario({
     branch_id: 'branch-a',
     diagnostico_resumido: 'Resumen de recepción',
   }];
+  const organizationIds = [...new Set([
+    ...userAccounts.map(account => account.organization_id),
+    ...orders.map(order => order.organization_id),
+    resolvedUser?.impersonating_org_id,
+  ].filter(Boolean))];
+  const branches = [...new Map(userAccounts
+    .filter(account => account.branch_id)
+    .map(account => [account.branch_id, {
+      id: account.branch_id,
+      organization_id: account.organization_id,
+      active: true,
+    }])).values()];
 
   const entities = {
+    Organization: {
+      async filter(query) {
+        return organizationIds
+          .map(id => ({ id, status: 'active' }))
+          .filter(record => matches(record, query))
+          .map(record => structuredClone(record));
+      },
+    },
+    Branch: {
+      async filter(query) {
+        return branches.filter(record => matches(record, query)).map(record => structuredClone(record));
+      },
+    },
     UserAccount: {
       async filter(query) {
         return userAccounts.filter(record => matches(record, query)).map(record => structuredClone(record));
@@ -87,7 +114,7 @@ function createScenario({
 
 function loadHandler(client, logger = console) {
   const executable = backendSource
-    .replace(/^import .*?;\s*/u, '')
+    .replace(/^import .*?;\s*/gmu, '')
     .replace('Deno.serve(async (req) => {', 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
@@ -98,6 +125,9 @@ function loadHandler(client, logger = console) {
     Object,
     Response,
     String,
+    isCanonicalActiveUserAccount,
+    resolveAuthorizedContext,
+    authorizeRecordBranch,
   };
   context.globalThis = context;
   vm.runInNewContext(
@@ -177,7 +207,7 @@ const tests = [
     name: 'SUPER_ADMIN without impersonation is rejected',
     async run() {
       const { response, body } = await invoke(createScenario({
-        user: { id: 'super-a', is_super_admin: true },
+        user: { id: 'super-a', role: 'admin' },
         accounts: [],
       }));
       assert.equal(response.status, 403);
@@ -194,7 +224,7 @@ const tests = [
       const { response, body } = await invoke(createScenario({
         user: {
           id: 'super-a',
-          is_super_admin: true,
+          role: 'admin',
           impersonating_org_id: 'org-b',
         },
         accounts: [],
@@ -217,13 +247,13 @@ const tests = [
         user: { id: 'user-a', organization_id: 'org-b' },
         accounts: [
           {
-            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', role: 'SALES', status: 'active',
+            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', branch_id: 'branch-a', role: 'SALES', status: 'active',
           },
           {
-            id: 'account-b', user_id: 'user-a', organization_id: 'org-b', role: 'TECHNICIAN', status: 'active',
+            id: 'account-b', user_id: 'user-a', organization_id: 'org-b', branch_id: 'branch-b', role: 'TECHNICIAN', status: 'active',
           },
         ],
-        workOrders: [{ id: 'ot-1', organization_id: 'org-b' }],
+        workOrders: [{ id: 'ot-1', organization_id: 'org-b', branch_id: 'branch-b' }],
         preDiagnosticos: [legacy],
       }));
       assert.equal(response.status, 200);
@@ -238,7 +268,7 @@ const tests = [
         user: { id: 'user-a' },
         accounts: [
           {
-            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', role: 'SALES', status: 'active',
+            id: 'account-a', user_id: 'user-a', organization_id: 'org-a', branch_id: 'branch-a', role: 'SALES', status: 'active',
           },
           {
             id: 'account-b', user_id: 'user-a', organization_id: 'org-b', role: 'TECHNICIAN', status: 'active',
@@ -284,7 +314,7 @@ const tests = [
     },
   },
   {
-    name: 'legacy membership without status retains the active fallback',
+    name: 'legacy membership without canonical status is rejected',
     async run() {
       const { response, body } = await invoke(createScenario({
         accounts: [{
@@ -296,8 +326,8 @@ const tests = [
         }],
         preDiagnosticos: [completedLegacy],
       }));
-      assert.equal(response.status, 200);
-      assert.equal(body.status, 'FOUND');
+      assert.equal(response.status, 403);
+      assert.equal(body.code, 'CALLER_MEMBERSHIP_INACTIVE');
     },
   },
   {
@@ -382,17 +412,17 @@ const tests = [
     },
   },
   {
-    name: 'caller without membership in the token organization is rejected',
+    name: 'single canonical membership overrides a stale token organization without leaking the other tenant',
     async run() {
       const scenario = createScenario({
         user: { id: 'user-a', organization_id: 'org-a' },
         accounts: [{
-          id: 'account-b', user_id: 'user-a', organization_id: 'org-b', role: 'SALES', status: 'active',
+          id: 'account-b', user_id: 'user-a', organization_id: 'org-b', branch_id: 'branch-b', role: 'SALES', status: 'active',
         }],
       });
       const { response, body } = await invoke(scenario);
-      assert.equal(response.status, 403);
-      assert.equal(body.code, 'CALLER_MEMBERSHIP_INACTIVE');
+      assert.equal(response.status, 404);
+      assert.equal(body.code, 'WORK_ORDER_NOT_FOUND');
     },
   },
   {

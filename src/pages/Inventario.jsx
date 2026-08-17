@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,17 +9,26 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, DollarSign, Leaf, Shield, CheckCircle2, XCircle, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, DollarSign, Leaf, Shield, CheckCircle2, XCircle, SlidersHorizontal } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useUserAccount, withOrgId } from '@/components/hooks/useOrgData';
+import { useUserAccount } from '@/components/hooks/useOrgData';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import ExportarInventario from '@/components/inventario/ExportarInventario';
-import ImportarInventario from '@/components/inventario/ImportarInventario';
 import QuickCreateCategoria from '@/components/inventario/QuickCreateCategoria';
 import { generarCodigoInterno } from '@/components/inventario/utils/generarCodigoInterno';
 import ModalAjusteStock from '@/components/inventario/ModalAjusteStock';
+import PageGuard from '@/components/guards/PageGuard';
+import TechnicalRequestFulfillmentPanel from '@/components/inventario/TechnicalRequestFulfillmentPanel';
 
 export default function Inventario() {
+  return (
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'INVENTORY']}>
+      <InventarioContent />
+    </PageGuard>
+  );
+}
+
+function InventarioContent() {
   const [showModal, setShowModal] = useState(false);
   const [showQuickCreateCategoria, setShowQuickCreateCategoria] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -29,15 +39,13 @@ export default function Inventario() {
   const [codigoInternoPreview, setCodigoInternoPreview] = useState('');
   const queryClient = useQueryClient();
   const { userAccount } = useUserAccount();
-  const { effectiveRole, effectiveOrgId, user } = useAuthContext();
+  const { effectiveRole, effectiveOrgId } = useAuthContext();
   const [organization, setOrganization] = useState(null);
 
   // Obtener nombre de organización para export
   React.useEffect(() => {
     if (effectiveOrgId) {
-      base44.entities.Organization.filter({ id: effectiveOrgId }).then(orgs => {
-        if (orgs.length > 0) setOrganization(orgs[0]);
-      });
+      getIdentityOrganization(effectiveOrgId).then(result => setOrganization(result.organization));
     }
   }, [effectiveOrgId]);
 
@@ -125,7 +133,6 @@ export default function Inventario() {
       tipo_item: formData.get('tipo_item') || 'producto',
       marca: formData.get('marca'),
       modelo: formData.get('modelo'),
-      cantidad_disponible: categoriaSeleccionada?.permite_stock ? (parseFloat(formData.get('cantidad_disponible')) || 0) : 0,
       ubicacion: formData.get('ubicacion'),
       costo_unitario: parseFloat(formData.get('costo_unitario')) || 0,
       precio_venta: categoriaSeleccionada?.es_vendible ? (parseFloat(formData.get('precio_venta')) || 0) : 0,
@@ -140,6 +147,12 @@ export default function Inventario() {
       valor_recuperado: parseFloat(formData.get('valor_recuperado')) || 0,
       notas_reciclaje: formData.get('notas_reciclaje') || undefined
     };
+
+    if (!editingItem) {
+      data.cantidad_disponible = categoriaSeleccionada?.permite_stock
+        ? (parseFloat(formData.get('cantidad_disponible')) || 0)
+        : 0;
+    }
 
     if (editingItem) {
       updateMutation.mutate({ id: editingItem.id, data });
@@ -206,15 +219,6 @@ export default function Inventario() {
                 organizationName={organization?.name}
               />
               
-              <ImportarInventario
-                effectiveOrgId={effectiveOrgId}
-                effectiveRole={effectiveRole}
-                userEmail={user?.email}
-                onImportSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ['inventario'] });
-                }}
-              />
-
               <Button
                 onClick={() => { setEditingItem(null); setShowModal(true); }}
                 className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
@@ -225,23 +229,17 @@ export default function Inventario() {
             </>
           )}
           
-          {(effectiveRole === 'SALES' || effectiveRole === 'BRANCH_ADMIN') && (
+          {effectiveRole !== 'ORG_ADMIN' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
               <p className="text-sm text-blue-800">
-                👀 Vista de solo lectura - SALES no puede editar inventario
-              </p>
-            </div>
-          )}
-          
-          {effectiveRole === 'TECHNICIAN' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-              <p className="text-sm text-blue-800">
-                👀 Vista de solo lectura - Los técnicos no pueden editar inventario
+                👀 Vista de solo lectura - la gestión de inventario requiere ORG_ADMIN
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {['ORG_ADMIN', 'BRANCH_ADMIN', 'INVENTORY'].includes(effectiveRole) && <TechnicalRequestFulfillmentPanel items={items} />}
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -626,7 +624,7 @@ export default function Inventario() {
               </div>
 
               {/* CAMPOS DINÁMICOS SEGÚN CATEGORÍA */}
-              {selectedCategoriaId && categorias.find(c => c.id === selectedCategoriaId)?.permite_stock && (
+              {!editingItem && selectedCategoriaId && categorias.find(c => c.id === selectedCategoriaId)?.permite_stock && (
                 <div className="space-y-2">
                   <Label htmlFor="cantidad_disponible">Cantidad Disponible</Label>
                   <Input
@@ -637,6 +635,11 @@ export default function Inventario() {
                     min="0"
                   />
                 </div>
+              )}
+              {editingItem && (
+                <p className="text-xs text-slate-500">
+                  Existencia disponible: {editingItem.cantidad_disponible ?? 0}. Usa Ajustar stock para registrar un movimiento fisico.
+                </p>
               )}
 
               <div className="space-y-2">

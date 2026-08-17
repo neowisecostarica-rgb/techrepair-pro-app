@@ -18,7 +18,7 @@ export async function verificarOCrearProductoDiagnostico(organizationId) {
 
     // Crear categoría Servicios si no existe
     if (!categoriaServicios) {
-      categoriaServicios = await base44.entities.CategoriaInventario.create({
+      const categoryResponse = await base44.functions.invoke('createCategoriaInventario', {
         organization_id: organizationId,
         nombre: 'Servicios',
         permite_stock: false,
@@ -26,6 +26,7 @@ export async function verificarOCrearProductoDiagnostico(organizationId) {
         es_vendible: true,
         activo: true
       });
+      categoriaServicios = categoryResponse?.data ?? categoryResponse;
     }
 
     // 2. Buscar si ya existe el producto de diagnóstico
@@ -45,9 +46,7 @@ export async function verificarOCrearProductoDiagnostico(organizationId) {
     }
 
     // 3. Crear producto si no existe
-    const nuevoProducto = await base44.entities.Inventario.create({
-      organization_id: organizationId,
-      codigo_interno: `DIAG-${Date.now()}`,
+    const productResponse = await base44.functions.invoke('createInventoryItem', { itemData: {
       codigo_barras: null,
       sku: 'SERV-DIAG-001',
       nombre: 'Revisión / Diagnóstico',
@@ -64,7 +63,8 @@ export async function verificarOCrearProductoDiagnostico(organizationId) {
       punto_reorden: 0,
       proveedor: null,
       estado: 'activo'
-    });
+    } });
+    const nuevoProducto = productResponse?.data?.data ?? productResponse?.data ?? productResponse;
 
     console.log('Producto diagnóstico creado:', nuevoProducto.id);
     return nuevoProducto;

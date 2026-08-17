@@ -6,6 +6,10 @@
       "type": "string",
       "description": "ID de la organizaci\u00f3n (tenant)"
     },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal operacional derivada por el backend"
+    },
     "user_id": {
       "type": "string",
       "description": "ID del usuario espec\u00edfico (nullable)"
@@ -16,7 +20,11 @@
         "TECHNICIAN",
         "ADMIN",
         "CASHIER",
-        "ORG_ADMIN"
+        "ORG_ADMIN",
+        "BRANCH_ADMIN",
+        "SALES",
+        "INVENTORY",
+        "CUSTOMER_SERVICE"
       ],
       "description": "Rol objetivo (nullable)"
     },
@@ -50,7 +58,10 @@
       ],
       "default": "pendiente",
       "description": "Estado de la notificaci\u00f3n"
-    }
+    },
+    "event_key": { "type": "string", "rls": { "write": false } },
+    "source_event_id": { "type": "string", "rls": { "write": false } },
+    "created_by_command": { "type": "string", "rls": { "write": false } }
   },
   "required": [
     "organization_id",
@@ -58,54 +69,5 @@
     "mensaje",
     "estado"
   ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "read": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    }
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

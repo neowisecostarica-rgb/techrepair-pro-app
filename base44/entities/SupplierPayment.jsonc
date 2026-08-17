@@ -6,6 +6,10 @@
       "type": "string",
       "description": "ID de la organizaci\u00f3n (tenant)"
     },
+    "branch_id": {
+      "type": "string",
+      "description": "Sucursal de la factura de compra relacionada"
+    },
     "purchase_invoice_id": {
       "type": "string",
       "description": "ID de la factura de compra (FK PurchaseInvoice)"
@@ -50,66 +54,5 @@
     "method",
     "created_by"
   ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.organization_id}}"
-        },
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "read": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.organization_id}}"
-        },
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.organization_id}}"
-        },
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.organization_id}}"
-        },
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    }
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

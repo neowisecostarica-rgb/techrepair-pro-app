@@ -26,6 +26,7 @@
         "TRANSITION_APROBADA",
         "TRANSITION_EN_REPARACION",
         "TRANSITION_PRUEBAS",
+        "ATTENTION_STATUS_CHANGED",
         "CUSTODIA_CONTACTO",
         "CUSTODIA_ABANDONO",
         "CUSTODIA_DISPOSICION",
@@ -68,10 +69,17 @@
       "format": "uuid",
       "description": "Idempotency identity of the reception that created the event.",
       "rls": { "read": false, "write": false }
+    },
+    "delivery_operation_key": {
+      "type": "string",
+      "description": "Identidad del delivery command para deduplicar efectos secundarios.",
+      "rls": { "write": false }
     }
   },
   "required": [
+    "organization_id",
     "orden_trabajo_id",
     "tipo"
-  ]
+  ],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

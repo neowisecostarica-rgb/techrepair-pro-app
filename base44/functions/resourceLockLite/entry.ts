@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const MIN_TTL_MS = 30 * 1000;
@@ -7,7 +8,7 @@ const DEFAULT_TIMEOUT_MS = 3 * 1000;
 const MAX_TIMEOUT_MS = 10 * 1000;
 const SETTLE_MS = 100;
 const BASE_BACKOFF_MS = 40;
-const MAX_RESOURCES = 10;
+const MAX_RESOURCES = 100;
 
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const nowIso = () => new Date().toISOString();
@@ -26,13 +27,9 @@ function responseError(code, message, status, options = {}) {
   }, { status });
 }
 
-async function resolveOrganization(base44, user) {
-  let orgId = user.impersonating_org_id || user.organization_id;
-  if (!orgId && user.id) {
-    const accounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, undefined, 1);
-    orgId = accounts?.[0]?.organization_id || null;
-  }
-  return orgId;
+async function resolveOrganization(base44, user, organizationHint = null) {
+  const authorization = await resolveAuthorizedContext(base44, user, { organizationHint });
+  return authorization.ok ? authorization.organizationId : null;
 }
 
 function normalizeResources(resources) {
@@ -207,10 +204,10 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return responseError('LOCK_UNAUTHORIZED', 'Debe iniciar sesión nuevamente.', 401);
-    const orgId = await resolveOrganization(base44, user);
+    const body = await req.json();
+    const orgId = await resolveOrganization(base44, user, body.organization_id || null);
     if (!orgId) return responseError('LOCK_ORGANIZATION_UNRESOLVED', 'No se pudo determinar la organización.', 403);
 
-    const body = await req.json();
     const action = body.action;
     const operation = String(body.operation || '').trim();
     const correlationId = body.correlation_id;

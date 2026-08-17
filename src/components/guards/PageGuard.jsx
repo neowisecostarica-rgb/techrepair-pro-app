@@ -6,14 +6,14 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
- * Guard de página que verifica permisos por rol efectivo.
+ * Guard de página para UX. La autoridad real permanece en cada comando backend.
  * Usa AuthContext unificado.
  * Enforce strict role-based access control per FASE 2.
  * FASE 3: Layout handles onboarding, PageGuard assumes user is ready.
  * FASE 4: Block inactive users from accessing operational routes.
  */
-export default function PageGuard({ allowedRoles, children }) {
-  const { user, userAccount, effectiveRole, effectiveOrgId, status } = useAuthContext();
+export default function PageGuard({ allowedRoles = [], requiredAnyCapabilities = [], children }) {
+  const { user, userAccount, effectiveRole, effectiveOrgId, status, capabilities, authorizationReady } = useAuthContext();
 
   // Wait for auth to be ready
   if (status !== 'ready') {
@@ -58,7 +58,7 @@ export default function PageGuard({ allowedRoles, children }) {
   }
 
   // FASE 4: Block inactive users (soft disabled)
-  if (userAccount && (userAccount.status === 'suspended' || (!userAccount.status && userAccount.active === false))) {
+  if (userAccount && userAccount.status !== 'active') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center max-w-md p-6">
@@ -78,18 +78,21 @@ export default function PageGuard({ allowedRoles, children }) {
     );
   }
 
-  // Verificar si el rol efectivo tiene acceso
-  if (!allowedRoles.includes(effectiveRole)) {
+  const capabilityEligible = requiredAnyCapabilities.length > 0
+    && authorizationReady
+    && requiredAnyCapabilities.some(capability => capabilities.includes(capability));
+  const roleEligible = allowedRoles.includes(effectiveRole);
+
+  if (!capabilityEligible && !roleEligible) {
     // Redirigir a landing page según rol efectivo
     const landingByRole = {
       'SUPER_ADMIN': 'Saas',
       'ORG_ADMIN': 'Dashboard',
       'SALES': 'Clientes',
       'TECHNICIAN': 'MiDia',
+      'INVENTORY': 'Inventario',
+      'CUSTOMER_SERVICE': 'Clientes',
       'BRANCH_ADMIN': 'Dashboard',
-      'AUDITOR': 'Dashboard',
-      'CFO': 'Dashboard',
-      'CEO': 'Dashboard'
     };
 
     const targetLanding = landingByRole[effectiveRole];

@@ -6,13 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CheckCircle, XCircle, AlertCircle, Plus, Upload, Loader2 } from 'lucide-react';
-import { withOrgId } from '@/components/hooks/useOrgData';
 
-export default function PruebasTecnicas({ ordenTrabajoId, tecnicoId, userAccount }) {
+export default function PruebasTecnicas({ ordenTrabajoId, userAccount }) {
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [evidenciaURLs, setEvidenciaURLs] = useState([]);
@@ -20,12 +18,15 @@ export default function PruebasTecnicas({ ordenTrabajoId, tecnicoId, userAccount
 
   const { data: pruebas = [] } = useQuery({
     queryKey: ['pruebas-tecnicas', ordenTrabajoId],
-    queryFn: () => base44.entities.PruebaTecnica.filter({ orden_trabajo_id: ordenTrabajoId }),
+    queryFn: () => base44.entities.PruebaTecnica.filter({
+      orden_trabajo_id: ordenTrabajoId,
+      organization_id: userAccount?.organization_id,
+    }),
     enabled: !!ordenTrabajoId,
   });
 
   const createPruebaMutation = useMutation({
-    mutationFn: (data) => base44.entities.PruebaTecnica.create(withOrgId(data, userAccount)),
+    mutationFn: (data) => base44.functions.invoke('recordTechnicalTest', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pruebas-tecnicas'] });
       setShowModal(false);
@@ -53,7 +54,6 @@ export default function PruebasTecnicas({ ordenTrabajoId, tecnicoId, userAccount
     const formData = new FormData(e.target);
     createPruebaMutation.mutate({
       orden_trabajo_id: ordenTrabajoId,
-      tecnico_id: tecnicoId,
       tipo_prueba: formData.get('tipo_prueba'),
       descripcion: formData.get('descripcion'),
       resultado: formData.get('resultado'),

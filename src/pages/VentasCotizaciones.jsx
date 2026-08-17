@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization } from '@/api/identity';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import PageGuard from '@/components/guards/PageGuard';
@@ -32,8 +33,8 @@ function VentasCotizacionesContent() {
   const { data: organization } = useQuery({
     queryKey: ['org-ventascot', effectiveOrgId],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
-      return orgs[0] || null;
+      const result = await getIdentityOrganization(effectiveOrgId);
+      return result.organization || null;
     },
     enabled: !!effectiveOrgId,
   });
@@ -44,6 +45,17 @@ function VentasCotizacionesContent() {
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showNuevaCotizacion, setShowNuevaCotizacion] = useState(false);
   const [cotizacionEditar, setCotizacionEditar] = useState(null);
+
+  const emitirEnlaceCotizacion = async (quoteId) => {
+    const response = await base44.functions.invoke('issuePublicDocumentToken', {
+      type: 'quote',
+      resource_id: quoteId,
+      correlation_id: crypto.randomUUID(),
+    });
+    const token = response?.data?.token;
+    if (!token) throw new Error(response?.data?.error || 'No se pudo emitir el enlace de cotizacion');
+    return `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${token}`;
+  };
 
   // Escuchar eventos de cotización creada/actualizada
   React.useEffect(() => {
@@ -432,32 +444,22 @@ function VentasCotizacionesContent() {
                             alert('Esta cotización requiere aprobación por el descuento aplicado.');
                             return;
                           }
-                          const token = cotizacionSeleccionada.public_access_token || `cot_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-                          const envio = {
-                            canal: 'link',
-                            fecha: new Date().toISOString(),
-                            enviado_por: user.id,
-                            enviado_por_nombre: user.full_name || user.email
-                          };
                           const ot = getOT(cotizacionSeleccionada.orden_trabajo_id);
                           if (ot?.estado === 'DIAGNOSTICADA') {
                             await transicionarEstadoOT(ot.id, 'COTIZADA', {
                               motivo: `Cotización ${cotizacionSeleccionada.id} enviada al cliente`,
                             });
                           }
-                          await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
+                          const updatedQuote = await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
                             estado: 'enviada',
-                            enviada_at: new Date().toISOString(),
-                            public_access_token: token,
-                            ultimo_envio: envio,
-                            historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
+                            ultimo_envio: { canal: 'link' },
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
                           queryClient.invalidateQueries({ queryKey: ['ordenes'] });
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${token}`;
+                          const link = await emitirEnlaceCotizacion(updatedQuote.id);
                           navigator.clipboard.writeText(link);
                           alert('✅ Cotización enviada. Link copiado al portapapeles.');
-                          setCotizacionSeleccionada({ ...cotizacionSeleccionada, estado: 'enviada', public_access_token: token, ultimo_envio: envio });
+                          setCotizacionSeleccionada(updatedQuote);
                         }}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
@@ -481,7 +483,7 @@ function VentasCotizacionesContent() {
                             historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
                           });
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
                           alert('✅ Link copiado. Reenvío registrado.');
                           setCotizacionSeleccionada({ ...cotizacionSeleccionada, ultimo_envio: envio });
@@ -492,8 +494,8 @@ function VentasCotizacionesContent() {
                         Reenviar Cotización
                       </Button>
                       <Button
-                        onClick={() => {
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                        onClick={async () => {
+                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
                           alert('Link copiado al portapapeles');
                         }}
@@ -504,8 +506,8 @@ function VentasCotizacionesContent() {
                         Copiar Link
                       </Button>
                       <Button
-                        onClick={() => {
-                          const link = `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${cotizacionSeleccionada.public_access_token}`;
+                        onClick={async () => {
+                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           window.open(link, '_blank');
                         }}
                         variant="outline"

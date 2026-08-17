@@ -20,6 +20,8 @@
  */
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 const VALID_ACTIONS = ['REGISTRAR_CONTACTO', 'DECLARAR_ABANDONO', 'MARCAR_DISPOSICION'];
 
@@ -58,6 +60,15 @@ Deno.serve(async (req) => {
 
     if (!ot) {
       return Response.json({ error: 'OT no encontrada' }, { status: 404 });
+    }
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      organizationHint: ot.organization_id,
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
+    });
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
     }
 
     // ── Guardrail: solo FINALIZADA ─────────────────────────────────────────

@@ -1,0 +1,28 @@
+{
+  "name": "InventarioReserva",
+  "type": "object",
+  "description": "Estado durable de la reserva de inventario para una orden de trabajo.",
+  "properties": {
+    "organization_id": { "type": "string" },
+    "branch_id": { "type": "string" },
+    "work_order_id": { "type": "string" },
+    "inventario_id": { "type": "string" },
+    "inventory_id": { "type": "string", "rls": { "write": false } },
+    "quote_id": { "type": "string" },
+    "quantity": { "type": "number" },
+    "state": { "type": "string", "enum": ["PENDING", "RESERVED", "CONSUMED", "RELEASED", "RETURNED"] },
+    "reserve_operation_key": { "type": "string", "rls": { "write": false } },
+    "consume_operation_key": { "type": "string", "rls": { "write": false } },
+    "release_operation_key": { "type": "string", "rls": { "write": false } },
+    "return_operation_key": { "type": "string", "rls": { "write": false } },
+    "last_operation_key": { "type": "string", "rls": { "write": false } },
+    "created_by": { "type": "string", "rls": { "write": false } },
+    "reserved_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "consumed_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "released_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "returned_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "failure_compensated": { "type": "boolean", "default": false, "rls": { "write": false } }
+  },
+  "required": ["organization_id", "branch_id", "work_order_id", "inventario_id", "quantity", "state"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

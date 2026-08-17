@@ -1,7 +1,8 @@
 /**
  * MENU DECLARATIVO — TechRepairPro
  * Fuente única de verdad para navegación.
- * El Layout filtra por `roles` del ítem vs effectiveRole del usuario.
+ * El Layout filtra por capacidades resueltas por el backend.
+ * Esta configuración es solo UX; cada comando sigue autorizado en backend.
  * category: null = sin sección (aparece arriba sin encabezado)
  */
 
@@ -21,14 +22,6 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 
-// Roles que pueden acceder a cada ítem
-const ALL_ORG = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'SUPPORT'];
-const ADMIN_ONLY = ['ORG_ADMIN', 'BRANCH_ADMIN'];
-const ORG_ADMIN_ONLY = ['ORG_ADMIN'];
-const TECH_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'];
-const SALES_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
-const SUPER_ADMIN_ONLY = ['SUPER_ADMIN'];
-
 export const MENU_ITEMS = [
   // ── Sin categoría (siempre visible arriba) ──────────────────────────────────
   {
@@ -36,14 +29,14 @@ export const MENU_ITEMS = [
     path: 'MiDia',
     icon: Sun,
     category: null,
-    roles: ALL_ORG,
+    anyCapabilities: ['TECHNICAL_WORK'],
   },
   {
     label: 'Mis Ventas',
     path: 'MisVentas',
     icon: TrendingUp,
     category: null,
-    roles: ['SALES'],
+    anyCapabilities: ['SALE_OPERATIONS'],
   },
 
   // ── VISIÓN DEL NEGOCIO ──────────────────────────────────────────────────────
@@ -52,7 +45,7 @@ export const MENU_ITEMS = [
     path: 'Dashboard',
     icon: LayoutDashboard,
     category: 'VISIÓN DEL NEGOCIO',
-    roles: ADMIN_ONLY,
+    anyCapabilities: ['FINANCIAL_READ'],
     tooltip: 'Antes: Dashboard',
   },
   {
@@ -60,79 +53,71 @@ export const MENU_ITEMS = [
     path: 'Finanzas',
     icon: LayoutDashboard,
     category: 'VISIÓN DEL NEGOCIO',
-    roles: ADMIN_ONLY,
+    anyCapabilities: ['FINANCIAL_READ'],
   },
   {
     label: 'Ventas y Ganancias',
     path: 'VentasMetricas',
     icon: LayoutDashboard,
     category: 'VISIÓN DEL NEGOCIO',
-    roles: ADMIN_ONLY,
+    anyCapabilities: ['FINANCIAL_READ'],
   },
   {
     label: 'Rendimiento del Equipo',
     path: 'ProductividadTecnicos',
     icon: Users,
     category: 'VISIÓN DEL NEGOCIO',
-    roles: ORG_ADMIN_ONLY,
+    anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
   {
     label: 'Análisis de Operaciones',
     path: 'AnalisisTrabajo',
     icon: FileText,
     category: 'VISIÓN DEL NEGOCIO',
-    roles: ORG_ADMIN_ONLY,
+    anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
   {
     label: 'Supervisión en Vivo',
     path: 'Operacion',
     icon: Wrench,
     category: 'VISIÓN DEL NEGOCIO',
-    roles: ADMIN_ONLY,
+    anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
-  {
-    label: 'Mis Estadísticas',
-    path: 'Dashboard',
-    icon: LayoutDashboard,
-    category: 'VISIÓN DEL NEGOCIO',
-    roles: ['TECHNICIAN'],
-  },
-
   // ── TALLER ──────────────────────────────────────────────────────────────────
   {
     label: 'Órdenes de Trabajo',
     path: 'OrdenesTrabajo',
     icon: Wrench,
     category: 'TALLER',
-    roles: [...TECH_ROLES, 'SALES'],
+    anyCapabilities: ['RECEPTION_OPERATIONS', 'TECHNICAL_WORK'],
   },
   {
     label: 'Cola de Revisión',
     path: 'ColaRevision',
     icon: FileText,
     category: 'TALLER',
-    roles: SALES_ROLES,
+    anyCapabilities: ['TECHNICAL_ASSIGNMENT'],
   },
   {
     label: 'Agenda',
     path: 'Agenda',
     icon: Calendar,
     category: 'TALLER',
-    roles: [...TECH_ROLES, 'SALES'],
+    anyCapabilities: ['AGENDA_OPERATIONS', 'TECHNICAL_WORK'],
   },
   {
     label: 'Reciclaje',
     path: 'Reciclaje',
     icon: Recycle,
     category: 'TALLER',
-    roles: ADMIN_ONLY,
+    anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
   {
     label: 'No Conformidades',
     path: 'Calidad',
     icon: AlertCircle,
     category: 'TALLER',
-    roles: ADMIN_ONLY,
+    anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
 
   // ── VENTAS ──────────────────────────────────────────────────────────────────
@@ -141,7 +126,7 @@ export const MENU_ITEMS = [
     path: 'PuntoVenta',
     icon: ShoppingCart,
     category: 'VENTAS',
-    roles: SALES_ROLES,
+    anyCapabilities: ['SALE_OPERATIONS'],
     tooltip: 'Antes: Punto de Venta',
   },
   {
@@ -149,21 +134,21 @@ export const MENU_ITEMS = [
     path: 'VentasHistorial',
     icon: FileText,
     category: 'VENTAS',
-    roles: SALES_ROLES,
+    anyCapabilities: ['SALE_OPERATIONS'],
   },
   {
     label: 'Cotizaciones',
     path: 'VentasCotizaciones',
     icon: FileText,
     category: 'VENTAS',
-    roles: SALES_ROLES,
+    anyCapabilities: ['QUOTE_OPERATIONS'],
   },
   {
     label: 'Garantías',
     path: 'VentasGarantias',
     icon: ShieldAlert,
     category: 'VENTAS',
-    roles: SALES_ROLES,
+    anyCapabilities: ['DELIVERY_OPERATIONS'],
   },
 
   // ── CLIENTES ────────────────────────────────────────────────────────────────
@@ -172,14 +157,14 @@ export const MENU_ITEMS = [
     path: 'Clientes',
     icon: Users,
     category: 'CLIENTES',
-    roles: [...SALES_ROLES, 'SUPPORT'],
+    anyCapabilities: ['CUSTOMER_SERVICE_OPERATIONS'],
   },
   {
     label: 'Gestión de Leads',
     path: 'CRM',
     icon: Users,
     category: 'CLIENTES',
-    roles: SALES_ROLES,
+    anyCapabilities: ['CRM_OPERATIONS'],
     tooltip: 'Antes: CRM',
   },
 
@@ -189,7 +174,7 @@ export const MENU_ITEMS = [
     path: 'Inventario',
     icon: Package,
     category: 'INVENTARIO',
-    roles: [...ADMIN_ONLY, 'INVENTORY', 'TECHNICIAN'],
+    anyCapabilities: ['INVENTORY_READ'],
   },
 
   // ── CONFIGURACIÓN (siempre al final) ────────────────────────────────────────
@@ -198,7 +183,7 @@ export const MENU_ITEMS = [
     path: 'Settings',
     icon: Settings,
     category: 'CONFIGURACIÓN',
-    roles: ORG_ADMIN_ONLY,
+    anyCapabilities: ['ORG_ADMINISTRATION'],
   },
 
   // ── SUPER_ADMIN (panel SaaS) ────────────────────────────────────────────────
@@ -207,13 +192,13 @@ export const MENU_ITEMS = [
     path: 'Saas',
     icon: LayoutDashboard,
     category: null,
-    roles: SUPER_ADMIN_ONLY,
+    platformRoles: ['SUPER_ADMIN'],
   },
   {
     label: 'Admin Reset',
     path: 'AdminReset',
     icon: AlertCircle,
     category: null,
-    roles: SUPER_ADMIN_ONLY,
+    platformRoles: ['SUPER_ADMIN'],
   },
 ];

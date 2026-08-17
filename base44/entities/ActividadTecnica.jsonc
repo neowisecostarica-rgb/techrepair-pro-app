@@ -39,6 +39,25 @@
       "type": "string",
       "description": "Repuesto principal asociado (nullable)"
     },
+    "actor_user_id": { "type": "string", "rls": { "write": false } },
+    "actor_primary_role": { "type": "string", "rls": { "write": false } },
+    "effective_technician_user_id": { "type": "string", "rls": { "write": false } },
+    "assignment_snapshot": { "type": "object", "rls": { "write": false } },
+    "correlation_id": { "type": "string", "rls": { "write": false } },
+    "inventario_cantidad": {
+      "type": "number",
+      "description": "Cantidad explicita del repuesto asociado."
+    },
+    "inventory_consumption_status": {
+      "type": "string",
+      "enum": ["NOT_REQUESTED", "PENDING", "COMMITTED", "FAILED"],
+      "default": "NOT_REQUESTED",
+      "rls": { "write": false }
+    },
+    "inventory_operation_key": {
+      "type": "string",
+      "rls": { "read": false, "write": false }
+    },
     "estado": {
       "type": "string",
       "enum": [
@@ -95,66 +114,5 @@
     "estado",
     "started_at"
   ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "organization_id": "{{user.organization_id}}"
-        },
-        {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
-        }
-      ]
-    },
-    "read": {
-      "$or": [
-        {
-          "organization_id": "{{user.organization_id}}"
-        },
-        {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "organization_id": "{{user.organization_id}}"
-        },
-        {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "organization_id": "{{user.organization_id}}"
-        },
-        {
-          "organization_id": "{{user.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "is_super_admin": true
-          }
-        }
-      ]
-    }
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

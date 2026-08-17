@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
@@ -312,17 +311,13 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
 
   const registrarEventoEdicion = async (camposModificados) => {
     try {
-      await base44.entities.OTEvent.create({
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id,
-        tipo: 'PRE_DIAGNOSTICO_EDITADO',
-        created_by_user_id: userId,
-        created_at: new Date().toISOString(),
-        detalle: JSON.stringify({
-          campos_modificados: camposModificados,
-          usuario_ejecutor: userId,
-          timestamp: new Date().toISOString(),
-        }),
+      await base44.functions.invoke('updateDiagnosticoResumen', {
+        ordenTrabajoId: ordenTrabajo.id,
+        audit_only: true,
+        audit_event: {
+          type: 'PRE_DIAGNOSTICO_EDITADO',
+          changed_fields: camposModificados,
+        },
       });
     } catch (error) {
       // Non-blocking: la auditoría no debe impedir la operación

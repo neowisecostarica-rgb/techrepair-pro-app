@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Calendar, Clock } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { validarSolapamiento } from '../calendario/validarSolapamiento';
 
 const TIPOS_CON_OT = ['diagnostico', 'reparacion', 'entrega'];
@@ -54,13 +55,10 @@ export default function FormularioCita({
   const { data: tecnicos = [] } = useQuery({
     queryKey: ['tecnicos', effectiveOrgId],
     queryFn: async () => {
-      const accounts = await base44.entities.UserAccount.filter({
-        organization_id: effectiveOrgId,
-        role: 'TECHNICIAN'
-      });
-      return accounts;
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
-    enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'].includes(effectiveRole),
+    enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'].includes(effectiveRole),
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
@@ -84,7 +82,7 @@ export default function FormularioCita({
     if (effectiveRole === 'TECHNICIAN') {
       return ['bloqueo_personal'];
     }
-    if (effectiveRole === 'SALES') {
+    if (['SALES', 'CUSTOMER_SERVICE'].includes(effectiveRole)) {
       return ['consulta'];
     }
     // ORG_ADMIN y BRANCH_ADMIN pueden crear todos los tipos

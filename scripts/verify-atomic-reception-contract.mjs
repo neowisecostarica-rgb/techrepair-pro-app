@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
+import {
+  getCanonicalBranchScope,
+  validateRequestedBranch,
+} from '../base44/functions/_shared/operationalAuthorization.ts';
+import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 
 const backendPath = new URL('../base44/functions/createWorkOrder/entry.ts', import.meta.url);
 const lockBackendPath = new URL('../base44/functions/resourceLockLite/entry.ts', import.meta.url);
@@ -40,6 +46,7 @@ function createScenario({
   branchActive = true,
 } = {}) {
   const collections = {
+    Organization: [{ id: 'org-a', name: 'QA Organization', status: 'active' }],
     OperationLock: [],
     Cliente: [
       { id: 'client-1', organization_id: clientOrg, nombre_completo: 'Cliente QA 1', identificacion: 'QA-1', telefono: '8888-0001' },
@@ -52,7 +59,16 @@ function createScenario({
     DiagnosticMasterRecord: [],
     OTEvent: [],
     SuperAdminAudit: [],
-    UserAccount: [],
+    AuditEvent: [],
+    UserAccount: [{
+      id: 'account-1',
+      user_id: 'user-1',
+      organization_id: 'org-a',
+      branch_id: 'branch-1',
+      role: 'ORG_ADMIN',
+      status: 'active',
+      active: true,
+    }],
   };
   const counters = Object.fromEntries(Object.keys(collections).map(name => [name, 0]));
 
@@ -116,7 +132,7 @@ function createScenario({
 
 function loadServerHandler(source, client, filename) {
   const executable = source
-    .replace(/^import .*?;\s*/u, 'const createClientFromRequest = globalThis.__createClientFromRequest;\n')
+    .replace(/^import .*?;\s*/gmu, '')
     .replace('Deno.serve(async (req) => {', 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
@@ -128,9 +144,14 @@ function loadServerHandler(source, client, filename) {
     Response,
     structuredClone,
     setTimeout,
+    isCanonicalActiveUserAccount,
+    resolveAuthorizedContext,
+    getCanonicalBranchScope,
+    validateRequestedBranch,
+    appendAuditEvent,
   };
   context.globalThis = context;
-  vm.runInNewContext(executable, context, { filename });
+  vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename });
   return context.__handler;
 }
 

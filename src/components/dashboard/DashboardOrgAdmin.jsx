@@ -10,6 +10,7 @@ import { Wrench, DollarSign, Users, UserCog } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { startOfMonth, endOfMonth, format, subDays, parseISO, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getIdentityOrganization, listIdentityAccounts } from '@/api/identity';
 
 const ESTADOS_ABIERTOS = [
   'EN_COLA_REVISION',
@@ -87,22 +88,14 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
 
   const { data: organization } = useQuery({
     queryKey: ['organization', effectiveOrgId],
-    queryFn: () =>
-      base44.entities.Organization
-        .filter({ id: effectiveOrgId })
-        .then(orgs => orgs?.[0] || null),
+    queryFn: () => getIdentityOrganization(effectiveOrgId).then(result => result.organization),
     enabled: canLoadOrgData,
     staleTime: 300_000,
   });
 
   const { data: userAccounts = [] } = useQuery({
     queryKey: ['userAccounts', effectiveOrgId],
-    queryFn: () =>
-      base44.entities.UserAccount.filter(
-        { organization_id: effectiveOrgId },
-        '-created_date',
-        200
-      ),
+    queryFn: () => listIdentityAccounts(effectiveOrgId).then(result => result.accounts),
     enabled: canLoadOrgData,
     staleTime: 300_000,
   });
@@ -193,7 +186,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
   }, [ordenesMes]);
 
   const tecnicosRegistrados = userAccounts.filter(
-    u => u.role === 'TECHNICIAN' && u.active !== false
+    u => u.role === 'TECHNICIAN' && u.status === 'active'
   ).length;
 
   const loadingMetrics = loadingCurrentUser || loadingFinancial || loadingOrdenes;

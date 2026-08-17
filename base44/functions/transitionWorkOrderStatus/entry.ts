@@ -1,4 +1,38 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
+import { evaluateCurrentQaEvidence } from '../_shared/qaEvidence.ts';
+import { OT_TRANSITION_POLICIES } from '../_shared/commandPolicy.ts';
+import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectWorkOrderMutationResult } from '../_shared/dataProjections.ts';
+import { hasWorkOrderTargetAuthority, workOrderTargetRoles } from '../_shared/lifecycleAuthority.ts';
+import {
+  clearLifecycleAuditPending,
+  lifecycleAuditPendingMarker,
+  lifecycleAuditRecoveryFacts,
+  recordLifecycleAuditFailure,
+} from '../_shared/lifecycleAuditRecovery.ts';
+import {
+  evaluateCommandPolicyWithShadow,
+  ExecuteSovereignCommand,
+  SovereignCommandError,
+} from '../_shared/commandExecution.ts';
+import { publicTokenReference, validatePublicTokenRecord } from '../_shared/publicTokenContract.ts';
+import {
+  assertPersistedTotalsMatch,
+  calculateCommercialTotals,
+  quoteDecisionIsCommitted,
+  quoteDecisionOperationKey,
+} from '../_shared/commercialIntegrity.ts';
+import { executeInventoryCommand, reverseInventoryCommand } from '../_shared/inventoryMutationService.ts';
+import { inspectControlledPilotConfiguration } from '../_shared/controlledPilotAuthority.ts';
+import {
+  acquireLifecycleLock,
+  loadWorkOrder,
+  releaseLifecycleLock,
+  renewLifecycleLock,
+  workflowError,
+} from '../_shared/workOrderLifecycleLock.ts';
 
 // ─── STATE MACHINE OFICIAL ────────────────────────────────────────────────────
 const ALLOWED_TRANSITIONS = {
@@ -17,18 +51,103 @@ const ALLOWED_TRANSITIONS = {
 
 const IRREVERSIBLE_STATES = ['ENTREGADA', 'CANCELADA'];
 
-const AUTHORIZED_ROLES_FOR_TARGET = {
-  ASIGNADA:      ['ORG_ADMIN', 'BRANCH_ADMIN'],
-  EN_REVISION:   ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
-  DIAGNOSTICADA: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
-  COTIZADA:      ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'],
-  APROBADA:      ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'],
-  EN_REPARACION: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
-  PRUEBAS:       ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
-  FINALIZADA:    ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
-  ENTREGADA:     ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'],
-  CANCELADA:     ['ORG_ADMIN', 'BRANCH_ADMIN'],
-};
+async function ensureLifecycleAudit(base44, {
+  authorization, user, ot, previousStatus, newStatus, operationId,
+  externalCorrelationId, actorUserId, actorRole, committedAt,
+}) {
+  return appendAuditEvent(base44, {
+    eventType: 'WORK_ORDER_STATUS_TRANSITIONED',
+    principalClass: authorization.principalClass,
+    actorUserId: actorUserId || user.id,
+    actorPrimaryRole: actorRole || authorization.persistedRole,
+    effectiveTechnicianUserId: ot.tecnico_asignado_id === user.id ? user.id : null,
+    organizationId: authorization.organizationId,
+    branchId: ot.branch_id,
+    resourceType: 'OrdenTrabajo',
+    resourceId: ot.id,
+    commandPolicyId: 'CP-OT-002',
+    correlationId: externalCorrelationId || operationId,
+    externalCorrelationId: externalCorrelationId || null,
+    auditOperationId: operationId,
+    operationKey: operationId,
+    operationSemantics: { from_status: previousStatus, to_status: newStatus },
+    priorState: { estado: previousStatus },
+    newState: { estado: newStatus },
+    custodySnapshot: { tecnico_asignado_id: ot.tecnico_asignado_id || null, qa_cycle_id: ot.qa_cycle_id || null },
+    metadata: { external_correlation_id: externalCorrelationId || null },
+    occurredAt: committedAt || undefined,
+  });
+}
+
+async function evaluateStaffTransitionPipeline({
+  base44,
+  authorization,
+  user,
+  ot,
+  currentStatus,
+  newStatus,
+  correlationId,
+}) {
+  const transitionPolicy = OT_TRANSITION_POLICIES[`${currentStatus}->${newStatus}`]
+    || (currentStatus === newStatus
+      ? Object.entries(OT_TRANSITION_POLICIES)
+          .find(([edge]) => edge.endsWith(`->${newStatus}`))?.[1]
+      : null);
+  if (!transitionPolicy) {
+    return evaluateCommandPolicyWithShadow({
+      base44,
+      policyId: 'CP-OT-002',
+      authorization,
+      relationship: 'NONE',
+      commandCapability: { allOf: ['TECHNICAL_WORK'] },
+      commandRelationship: 'NONE',
+      preconditionSatisfied: false,
+      compatibilityDecision: { ok: false, code: 'LEGACY_TRANSITION_UNMAPPED' },
+      audit: {
+        actorUserId: user.id,
+        branchId: ot.branch_id,
+        resourceType: 'OrdenTrabajo',
+        resourceId: ot.id,
+        correlationId,
+      },
+    });
+  }
+  const requiredCapabilities = transitionPolicy.capability?.allOf || [];
+  const capabilitySatisfied = requiredCapabilities.every(capability => authorization.capabilities.includes(capability));
+  const relationshipSatisfied = transitionPolicy.relationship === 'EFFECTIVE_TECHNICIAN'
+    ? user.id === ot.tecnico_asignado_id
+    : transitionPolicy.relationship === 'SUPERVISOR'
+      ? authorization.capabilities.includes('TECHNICAL_ASSIGNMENT')
+      : transitionPolicy.relationship === 'BRANCH_RESOURCE';
+  const stateSatisfied = currentStatus === newStatus
+    || (ALLOWED_TRANSITIONS[currentStatus] || []).includes(newStatus);
+  const roleSatisfied = hasWorkOrderTargetAuthority({
+    targetStatus: newStatus,
+    role: authorization.role,
+    isSuperAdmin: authorization.isSuperAdmin,
+  });
+  const compatibilityAllowed = capabilitySatisfied && relationshipSatisfied && stateSatisfied && roleSatisfied;
+  return evaluateCommandPolicyWithShadow({
+    base44,
+    policyId: 'CP-OT-002',
+    authorization,
+    relationship: relationshipSatisfied ? transitionPolicy.relationship : 'NONE',
+    commandCapability: transitionPolicy.capability,
+    commandRelationship: transitionPolicy.relationship,
+    preconditionSatisfied: stateSatisfied,
+    compatibilityDecision: {
+      ok: compatibilityAllowed,
+      code: compatibilityAllowed ? 'ALLOW' : 'LEGACY_TRANSITION_DENY',
+    },
+    audit: {
+      actorUserId: user.id,
+      branchId: ot.branch_id,
+      resourceType: 'OrdenTrabajo',
+      resourceId: ot.id,
+      correlationId,
+    },
+  });
+}
 
 function validatePayloadForTarget(targetStatus, ot, extra) {
   switch (targetStatus) {
@@ -62,173 +181,6 @@ function validatePayloadForTarget(targetStatus, ot, extra) {
       break;
   }
   return null;
-}
-
-const LIFECYCLE_LOCK_TTL_MS = 15 * 60 * 1000;
-
-function workflowError(message, code, status = 409) {
-  const error = new Error(message);
-  error.code = code;
-  error.status = status;
-  return error;
-}
-
-async function loadWorkOrder(base44, orgId, workOrderId) {
-  const records = await base44.asServiceRole.entities.OrdenTrabajo.filter({
-    id: workOrderId,
-    organization_id: orgId,
-  });
-  return records?.[0] || null;
-}
-
-async function acquireLifecycleLock({
-  base44,
-  ot,
-  orgId,
-  effectiveUser,
-  operation,
-  requestedToken = null,
-}) {
-  const current = await loadWorkOrder(base44, orgId, ot.id);
-  if (!current) return { acquired: false, code: 'ORDEN_TRABAJO_NOT_FOUND' };
-
-  if (requestedToken) {
-    const borrowed = current.lifecycle_lock_token === requestedToken
-      && current.lifecycle_lock_operation === 'initTechnicalActivity'
-      && current.lifecycle_lock_owner_user_id === effectiveUser.id;
-    return borrowed
-      ? { acquired: true, token: requestedToken, owned: false, ot: current }
-      : { acquired: false, code: 'LIFECYCLE_LOCK_INVALID' };
-  }
-
-  const token = crypto.randomUUID();
-  const now = new Date().toISOString();
-  const lockData = {
-    lifecycle_lock_token: token,
-    lifecycle_lock_operation: operation,
-    lifecycle_lock_owner_user_id: effectiveUser.id,
-    lifecycle_lock_at: now,
-  };
-
-  let claim;
-  try {
-    claim = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
-      id: ot.id,
-      organization_id: orgId,
-      $or: [
-        { lifecycle_lock_token: { $exists: false } },
-        { lifecycle_lock_token: null },
-      ],
-    }, { $set: lockData });
-  } catch (claimError) {
-    const reconciled = await loadWorkOrder(base44, orgId, ot.id);
-    if (reconciled?.lifecycle_lock_token === token) {
-      return {
-        acquired: true,
-        token,
-        owned: true,
-        recovered_ambiguous_lock: true,
-        ot: reconciled,
-      };
-    }
-    throw claimError;
-  }
-
-  if (claim?.updated === 1) {
-    return { acquired: true, token, owned: true, ot: { ...current, ...lockData } };
-  }
-
-  const locked = await loadWorkOrder(base44, orgId, ot.id);
-  const lockTimestamp = Date.parse(locked?.lifecycle_lock_at || '');
-  const lockIsStale = locked?.lifecycle_lock_token
-    && Number.isFinite(lockTimestamp)
-    && Date.now() - lockTimestamp > LIFECYCLE_LOCK_TTL_MS;
-
-  if (lockIsStale) {
-    let takeover;
-    try {
-      takeover = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
-        id: ot.id,
-        organization_id: orgId,
-        lifecycle_lock_token: locked.lifecycle_lock_token,
-        lifecycle_lock_at: locked.lifecycle_lock_at,
-      }, { $set: lockData });
-    } catch (takeoverError) {
-      const reconciled = await loadWorkOrder(base44, orgId, ot.id);
-      if (reconciled?.lifecycle_lock_token === token) {
-        return {
-          acquired: true,
-          token,
-          owned: true,
-          recovered_stale_lock: true,
-          recovered_ambiguous_lock: true,
-          ot: reconciled,
-        };
-      }
-      throw takeoverError;
-    }
-
-    if (takeover?.updated === 1) {
-      return {
-        acquired: true,
-        token,
-        owned: true,
-        recovered_stale_lock: true,
-        ot: { ...locked, ...lockData },
-      };
-    }
-  }
-
-  return {
-    acquired: false,
-    code: 'LIFECYCLE_OPERATION_IN_PROGRESS',
-    operation: locked?.lifecycle_lock_operation || null,
-  };
-}
-
-async function renewLifecycleLock(base44, orgId, workOrderId, lock) {
-  const heartbeat = new Date().toISOString();
-  try {
-    const renewed = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
-      id: workOrderId,
-      organization_id: orgId,
-      lifecycle_lock_token: lock.token,
-    }, { $set: { lifecycle_lock_at: heartbeat } });
-
-    if (renewed?.updated === 1) return heartbeat;
-  } catch (renewError) {
-    const reconciled = await loadWorkOrder(base44, orgId, workOrderId);
-    if (reconciled?.lifecycle_lock_token === lock.token) return reconciled.lifecycle_lock_at;
-    throw renewError;
-  }
-
-  const current = await loadWorkOrder(base44, orgId, workOrderId);
-  if (current?.lifecycle_lock_token === lock.token) return current.lifecycle_lock_at;
-  throw workflowError(
-    'El lock del lifecycle fue recuperado por otra operación.',
-    'LIFECYCLE_LOCK_LOST'
-  );
-}
-
-async function releaseLifecycleLock(base44, orgId, workOrderId, lock) {
-  if (!lock?.owned) return;
-
-  const released = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
-    id: workOrderId,
-    organization_id: orgId,
-    lifecycle_lock_token: lock.token,
-  }, {
-    $unset: {
-      lifecycle_lock_token: '',
-      lifecycle_lock_operation: '',
-      lifecycle_lock_owner_user_id: '',
-      lifecycle_lock_at: '',
-    },
-  });
-
-  if (released?.updated !== 1) {
-    console.warn(`[transitionWorkOrderStatus] Lock ya no pertenece a este intento — OT: ${workOrderId}`);
-  }
 }
 
 async function ensureDiagnosticQuote({ base44, ot, diagnostico, orgId, effectiveUser }) {
@@ -300,6 +252,7 @@ async function ensureDiagnosticQuote({ base44, ot, diagnostico, orgId, effective
 
   const items = (diagnostico.repuestos_requeridos || []).map(part => ({
     tipo: 'repuesto',
+    referencia_id: part.inventario_id || null,
     descripcion: part.descripcion,
     cantidad: part.cantidad,
     precio_unitario: 0,
@@ -323,6 +276,7 @@ async function ensureDiagnosticQuote({ base44, ot, diagnostico, orgId, effective
   try {
     const quote = await base44.asServiceRole.entities.Cotizacion.create({
       organization_id: orgId,
+      branch_id: ot.branch_id,
       orden_trabajo_id: ot.id,
       diagnostico_tecnico_id: diagnostico.id,
       idempotency_key: idempotencyKey,
@@ -387,7 +341,6 @@ async function completeDiagnosticWorkflow({
   effectiveUser,
   effectiveRole,
   diagnosticoId,
-  diagnosticoResumido,
 }) {
   let lock;
   try {
@@ -625,10 +578,6 @@ async function completeDiagnosticWorkflow({
         ultima_actividad_at: now,
         fecha_diagnostico: now,
       };
-      if (typeof diagnosticoResumido === 'string' && diagnosticoResumido.trim()) {
-        otUpdate.diagnostico_resumido = diagnosticoResumido.trim();
-      }
-
       const otResult = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
         id: currentOT.id,
         organization_id: orgId,
@@ -663,7 +612,7 @@ async function completeDiagnosticWorkflow({
       updated_at: now,
       updated_by: effectiveUser.email,
       updated_by_role: effectiveRole,
-      orden_trabajo: updatedOT,
+      orden_trabajo: projectWorkOrderMutationResult(updatedOT),
       diagnostico,
       actividad,
       documento: documentoEmitido,
@@ -688,13 +637,350 @@ async function completeDiagnosticWorkflow({
   }
 }
 
-async function handlePublicCustomerDecision({ base44, body, req }) {
+
+async function loadPublicDecisionContext(base44, token) {
+  const quotes = await base44.asServiceRole.entities.Cotizacion.filter({
+    public_access_token: token,
+  }, '-created_date', 2);
+  if (quotes?.length > 1) throw workflowError('El enlace comercial es ambiguo.', 'PUBLIC_QUOTE_TOKEN_AMBIGUOUS', 409);
+  let quote = quotes?.[0] || null;
+  let ot = null;
+  if (quote?.orden_trabajo_id) {
+    ot = await loadWorkOrder(base44, quote.organization_id, quote.orden_trabajo_id);
+  }
+  if (!quote) throw workflowError('No existe una cotizacion asociada para registrar la decision', 'PUBLIC_QUOTE_NOT_FOUND', 422);
+  const tokenValidation = validatePublicTokenRecord(quote, {
+    token,
+    purpose: 'QUOTE_DECISION',
+    resourceId: quote.id,
+    version: quote.version || 'v1',
+    allowConsumed: true,
+  });
+  if (!tokenValidation.ok) throw workflowError('Enlace no valido', tokenValidation.code, 404);
+  if (quote.orden_trabajo_id && (!ot || ot.organization_id !== quote.organization_id)) {
+    throw workflowError('La OT asociada no es valida', 'PUBLIC_QUOTE_WORK_ORDER_INVALID', 409);
+  }
+  const organizations = await base44.asServiceRole.entities.Organization.filter({ id: quote.organization_id }, '-created_date', 2);
+  if (organizations?.length !== 1) throw workflowError('La organizacion asociada no es valida', 'PUBLIC_QUOTE_ORGANIZATION_INVALID', 409);
+  return { quote, ot, organization: organizations[0] };
+}
+
+function validatePublicDecisionExpiry(quote, ot) {
+  const expires = quote.public_access_expires_at || ot?.public_access_expires_at || null;
+  if (expires) {
+    const expiresAt = Date.parse(expires);
+    if (Number.isFinite(expiresAt) && expiresAt < Date.now()) {
+      throw workflowError('El enlace ha expirado', 'PUBLIC_QUOTE_TOKEN_EXPIRED', 410);
+    }
+  }
+  if (quote.valida_hasta) {
+    const validUntil = Date.parse(`${quote.valida_hasta}T23:59:59.999Z`);
+    if (Number.isFinite(validUntil) && validUntil < Date.now()) {
+      throw workflowError('La cotizacion ha vencido', 'PUBLIC_QUOTE_EXPIRED', 410);
+    }
+  }
+}
+
+function buildApprovedQuoteSnapshot(quote) {
+  let calculated;
+  try {
+    calculated = calculateCommercialTotals(quote.items || []);
+    assertPersistedTotalsMatch(quote, calculated, 'Cotizacion');
+  } catch (error) {
+    throw workflowError(error.message, error.code || 'PUBLIC_QUOTE_INTEGRITY_INVALID', 422);
+  }
+  return {
+    items: calculated.items,
+    subtotal: calculated.subtotal,
+    descuento_total: calculated.descuento_total,
+    impuesto: calculated.impuesto,
+    total: calculated.total,
+    version: quote.version || null,
+  };
+}
+
+async function claimPublicQuoteDecision(base44, quote, targetStatus, operationKey, now) {
+  const targetQuoteStatus = targetStatus === 'APROBADA' ? 'aprobada' : 'rechazada';
+  if (quoteDecisionIsCommitted(quote, targetStatus)) return { quote, committed: true };
+  if (['aprobada', 'rechazada'].includes(quote.estado) && quote.estado !== targetQuoteStatus) {
+    throw workflowError('La cotizacion ya tiene una decision diferente', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
+  }
+  if (quote.decision_status === 'PENDING') {
+    if (quote.decision_operation_key !== operationKey || quote.decision_target_status !== targetStatus) {
+      throw workflowError('Otra decision comercial esta en progreso', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
+    }
+    return { quote, recovered: true };
+  }
+  if (!['enviada', targetQuoteStatus].includes(quote.estado)) {
+    throw workflowError('La cotizacion aun no ha sido enviada al cliente', 'PUBLIC_QUOTE_NOT_SENT', 422);
+  }
+  const claimed = await base44.asServiceRole.entities.Cotizacion.updateMany({
+    id: quote.id,
+    organization_id: quote.organization_id,
+    estado: quote.estado,
+    $or: [
+      { decision_status: { $exists: false } },
+      { decision_status: null },
+      { decision_status: 'FAILED' },
+    ],
+  }, { $set: {
+    decision_status: 'PENDING',
+    decision_target_status: targetStatus,
+    decision_operation_key: operationKey,
+    decision_started_at: now,
+    decision_error: null,
+  } });
+  const reloaded = (await base44.asServiceRole.entities.Cotizacion.filter({
+    id: quote.id,
+    organization_id: quote.organization_id,
+  }, '-created_date', 1))?.[0] || null;
+  if (claimed?.updated !== 1
+    && !quoteDecisionIsCommitted(reloaded, targetStatus)
+    && !(reloaded?.decision_status === 'PENDING' && reloaded?.decision_operation_key === operationKey)) {
+    throw workflowError('La cotizacion cambio durante la decision', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
+  }
+  return { quote: reloaded || quote, committed: quoteDecisionIsCommitted(reloaded, targetStatus) };
+}
+
+async function ensureDiagnosticDecisionEvidence(base44, quote, targetStatus, now, options = {}) {
+  if (!quote.diagnostico_tecnico_id) return null;
+  const desiredStatus = targetStatus === 'APROBADA' ? 'APROBADA' : 'RECHAZADA';
+  if (desiredStatus === 'RECHAZADA' && options.recordRejection !== true) return null;
+  const documents = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
+    organization_id: quote.organization_id,
+    diagnostico_id: quote.diagnostico_tecnico_id,
+    estado: { $in: ['EMITIDO', 'ENVIADO'] },
+  }, '-created_date', 5);
+  const document = documents?.[0] || null;
+  if (!document) throw workflowError('No existe un documento de diagnostico vigente para registrar la decision', 'PUBLIC_QUOTE_DIAGNOSTIC_DOCUMENT_REQUIRED', 422);
+  if (document.aprobacion_status === desiredStatus) return document;
+  if (['APROBADA', 'RECHAZADA'].includes(document.aprobacion_status)) {
+    throw workflowError('El documento ya contiene una decision diferente', 'QUOTE_DIAGNOSTIC_DECISION_CONFLICT', 409);
+  }
+  await base44.asServiceRole.entities.DiagnosticoDocumento.update(document.id, {
+    aprobacion_status: desiredStatus,
+    aprobacion_at: now,
+    metodo_aprobacion: options.method || 'PORTAL_DIGITAL',
+    aprobacion_canal: options.channel || 'PORTAL',
+  });
+  const reconciled = (await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
+    id: document.id,
+    organization_id: quote.organization_id,
+  }, '-created_date', 1))?.[0];
+  if (reconciled?.aprobacion_status !== desiredStatus) {
+    throw workflowError('No se pudo confirmar la evidencia de la decision', 'PUBLIC_QUOTE_EVIDENCE_NOT_COMMITTED', 500);
+  }
+  return reconciled;
+}
+
+async function ensurePublicDecisionWorkOrder(base44, quote, ot, targetStatus, rejectionReason, now, lock, activitySource = 'desde el portal') {
+  if (!ot) return { ot: null, transitioned: false, previousStatus: null };
+  const approved = targetStatus === 'APROBADA';
+  const allowedFrom = approved
+    ? ['DIAGNOSTICADA', 'COTIZADA']
+    : ['DIAGNOSTICADA', 'COTIZADA', 'APROBADA'];
+  const current = await loadWorkOrder(base44, ot.organization_id, ot.id);
+  if (!current || current.lifecycle_lock_token !== lock.token) {
+    throw workflowError('No se conserva el lock de la OT', 'LIFECYCLE_LOCK_LOST', 409);
+  }
+  if (current.estado === targetStatus) return { ot: current, transitioned: false, previousStatus: current.estado };
+  if (!allowedFrom.includes(current.estado)) {
+    throw workflowError(`La orden ya no admite esta decision (${current.estado})`, 'PUBLIC_QUOTE_WORK_ORDER_STATE_CONFLICT', 409);
+  }
+  const previousStatus = current.estado;
+  const result = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
+    id: current.id,
+    organization_id: current.organization_id,
+    estado: current.estado,
+    lifecycle_lock_token: lock.token,
+  }, { $set: {
+    estado: targetStatus,
+    cliente_aprobado: approved,
+    cliente_aprobado_at: approved ? now : null,
+    cliente_rechazo_motivo: approved ? null : (rejectionReason || null),
+    ultima_actividad: approved
+      ? `Cotizacion aprobada por el cliente ${activitySource}`
+      : `Cotizacion rechazada por el cliente ${activitySource}`,
+    ultima_actividad_at: now,
+  } });
+  const reconciled = await loadWorkOrder(base44, current.organization_id, current.id);
+  if (result?.updated !== 1 && reconciled?.estado !== targetStatus) {
+    throw workflowError('La OT cambio durante la decision', 'PUBLIC_QUOTE_WORK_ORDER_CONFLICT', 409);
+  }
+  return { ot: reconciled, transitioned: true, previousStatus };
+}
+
+async function ensurePublicDecisionEvent(base44, quote, ot, targetStatus, operationKey, now, actorUserId = null) {
+  if (!ot) return null;
+  const eventType = targetStatus === 'APROBADA' ? 'TRANSITION_APROBADA' : 'CANCELADA';
+  const existing = await base44.asServiceRole.entities.OTEvent.filter({
+    organization_id: ot.organization_id,
+    orden_trabajo_id: ot.id,
+    tipo: eventType,
+    detalle: operationKey,
+  }, '-created_date', 2);
+  if (existing?.[0]) return existing[0];
+  try {
+    return await base44.asServiceRole.entities.OTEvent.create({
+      organization_id: ot.organization_id,
+      orden_trabajo_id: ot.id,
+      tipo: eventType,
+      detalle: operationKey,
+      created_by_user_id: actorUserId,
+      processed: false,
+      created_at: now,
+    });
+  } catch (error) {
+    const reconciled = await base44.asServiceRole.entities.OTEvent.filter({
+      organization_id: ot.organization_id,
+      orden_trabajo_id: ot.id,
+      tipo: eventType,
+      detalle: operationKey,
+    }, '-created_date', 2);
+    if (reconciled?.[0]) return reconciled[0];
+    throw error;
+  }
+}
+
+async function commitPublicQuoteDecision(base44, quote, targetStatus, operationKey, snapshot, rejectionReason, ip, now, consumePublicToken = true) {
+  const targetQuoteStatus = targetStatus === 'APROBADA' ? 'aprobada' : 'rechazada';
+  const approved = targetStatus === 'APROBADA';
+  const reload = async () => (await base44.asServiceRole.entities.Cotizacion.filter({
+    id: quote.id,
+    organization_id: quote.organization_id,
+  }, '-created_date', 1))?.[0];
+  let result;
+  try {
+    result = await base44.asServiceRole.entities.Cotizacion.updateMany({
+      id: quote.id,
+      organization_id: quote.organization_id,
+      decision_status: 'PENDING',
+      decision_operation_key: operationKey,
+      decision_target_status: targetStatus,
+    }, { $set: {
+      estado: targetQuoteStatus,
+      decision_status: 'COMMITTED',
+      decision_committed_at: now,
+      ...(consumePublicToken ? { public_access_consumed_at: now } : {}),
+      decision_error: null,
+      ...(approved ? {
+        aprobada_at: now,
+        contenido_aprobado_snapshot: snapshot,
+        ip_aprobacion: ip,
+        cliente_rechazo_motivo: null,
+      } : {
+        cliente_rechazo_motivo: rejectionReason || null,
+      }),
+    } });
+  } catch (error) {
+    const reconciled = await reload();
+    if (quoteDecisionIsCommitted(reconciled, targetStatus)) return reconciled;
+    throw error;
+  }
+  const reloaded = await reload();
+  if (result?.updated !== 1 && !quoteDecisionIsCommitted(reloaded, targetStatus)) {
+    throw workflowError('No se pudo confirmar la decision comercial', 'PUBLIC_QUOTE_COMMIT_FAILED', 500);
+  }
+  return reloaded;
+}
+
+function lifecycleInventoryLockAdapter(base44, ot, lock) {
+  return {
+    async acquire() { return { work_order_id: ot.id, token: lock.token }; },
+    async assertOwned() {
+      const current = await loadWorkOrder(base44, ot.organization_id, ot.id);
+      if (current?.lifecycle_lock_token !== lock.token) {
+        throw workflowError('Se perdio el lock antes de mutar inventario', 'LIFECYCLE_LOCK_LOST', 409);
+      }
+      return true;
+    },
+    async release() { return true; },
+  };
+}
+
+async function reserveApprovedQuoteInventory(base44, quote, ot, snapshot, operationKey, lock, actor = { id: 'portal_cliente', principalClass: 'CUSTOMER_TOKEN' }) {
+  if (!ot) return null;
+  const grouped = new Map();
+  for (const [index, item] of snapshot.items.entries()) {
+    if (!['producto', 'repuesto'].includes(item.tipo)) continue;
+    if (item.referencia_id && item.item_id && item.referencia_id !== item.item_id) {
+      throw workflowError(`Item ${index + 1}: referencias de inventario en conflicto`, 'INVENTORY_REFERENCE_CONFLICT', 409);
+    }
+    const inventoryId = item.referencia_id || item.item_id || null;
+    if (!inventoryId) {
+      throw workflowError(`Item ${index + 1}: referencia de inventario requerida`, 'INVENTORY_REFERENCE_REQUIRED', 409);
+    }
+    const quantity = Number(item.cantidad);
+    const current = grouped.get(inventoryId) || 0;
+    grouped.set(inventoryId, current + quantity);
+  }
+  if (grouped.size === 0) return null;
+  const commandKey = `quote-reserve:${quote.id}:${operationKey}`;
+  return executeInventoryCommand(base44, {
+    organizationId: ot.organization_id,
+    branchId: ot.branch_id,
+    actorId: actor.id,
+    principalClass: actor.principalClass,
+    operationKey: commandKey,
+    referenceType: 'QUOTE_APPROVAL',
+    referenceId: quote.id,
+    reason: `Reserva por aprobacion de cotizacion ${quote.id}`,
+    movements: [...grouped.entries()].map(([inventoryId, quantity]) => ({
+      inventoryId,
+      movementType: 'RESERVE',
+      quantity,
+      workOrderId: ot.id,
+      quoteId: quote.id,
+    })),
+  }, lifecycleInventoryLockAdapter(base44, ot, lock));
+}
+
+async function releaseReservationResults(base44, quote, ot, reserveResult, operationKey, lock, actorId = 'portal_cliente') {
+  if (!reserveResult?.operation_key) return;
+  await reverseInventoryCommand(base44, {
+    organizationId: ot.organization_id,
+    branchId: ot.branch_id,
+    actorId,
+    operationKey: reserveResult.operation_key,
+    reversalOperationKey: `${reserveResult.operation_key}:automatic-reversal:approval-compensation`,
+    reason: `Compensacion de aprobacion fallida ${quote.id}:${operationKey}`,
+  }, lifecycleInventoryLockAdapter(base44, ot, lock));
+}
+
+async function releaseCancelledWorkOrderReservations(base44, ot, actorId) {
+  const reservations = await base44.asServiceRole.entities.InventarioReserva.filter({
+    organization_id: ot.organization_id,
+    branch_id: ot.branch_id,
+    work_order_id: ot.id,
+    state: 'RESERVED',
+  }, 'created_date', 500);
+  for (const reservation of reservations || []) {
+    await executeInventoryCommand(base44, {
+      organizationId: ot.organization_id,
+      branchId: ot.branch_id,
+      actorId,
+      operationKey: `ot-cancel-release:${ot.id}:${reservation.id}`,
+      referenceType: 'WORK_ORDER_CANCELLATION',
+      referenceId: ot.id,
+      reason: `Liberacion por cancelacion de OT ${ot.id}`,
+      movements: [{
+        inventoryId: reservation.inventario_id || reservation.inventory_id,
+        movementType: 'RELEASE',
+        quantity: Number(reservation.quantity),
+        reservationId: reservation.id,
+        workOrderId: ot.id,
+        quoteId: reservation.quote_id || null,
+      }],
+    });
+  }
+}
+
+async function handlePublicCustomerDecisionV2({ base44, body, req }) {
   const token = body.customer_token;
   const targetStatus = body.newStatus;
   const rejectionReason = typeof body.rejection_reason === 'string'
     ? body.rejection_reason.trim().slice(0, 500)
     : '';
-
   if (typeof token !== 'string' || token.length < 16 || token.length > 256) {
     return Response.json({ error: 'Enlace no valido' }, { status: 404 });
   }
@@ -702,179 +988,386 @@ async function handlePublicCustomerDecision({ base44, body, req }) {
     return Response.json({ error: 'Decision no valida' }, { status: 400 });
   }
 
-  const quotes = await base44.asServiceRole.entities.Cotizacion.filter({
-    public_access_token: token,
-  }, '-created_date', 2);
-  let quote = quotes?.[0] || null;
+  let quote = null;
   let ot = null;
-
-  if (quote?.public_access_expires_at) {
-    const expiresAt = Date.parse(quote.public_access_expires_at);
-    if (Number.isFinite(expiresAt) && expiresAt < Date.now()) {
-      return Response.json({ error: 'El enlace ha expirado' }, { status: 410 });
+  let lock = null;
+  let operationKey = null;
+  let reserveResult = null;
+  try {
+    let organization;
+    ({ quote, ot, organization } = await loadPublicDecisionContext(base44, token));
+    if (inspectControlledPilotConfiguration(organization).enabled) {
+      throw workflowError('La decision publica esta deshabilitada durante el piloto controlado', 'CONTROLLED_PILOT_PUBLIC_DECISION_DISABLED', 409);
     }
-  }
-  if (quote?.valida_hasta) {
-    const validUntil = Date.parse(`${quote.valida_hasta}T23:59:59.999Z`);
-    if (Number.isFinite(validUntil) && validUntil < Date.now()) {
-      return Response.json({ error: 'La cotizacion ha vencido' }, { status: 410 });
+    validatePublicDecisionExpiry(quote, ot);
+    operationKey = quoteDecisionOperationKey(quote.id, targetStatus);
+    const targetQuoteStatus = targetStatus === 'APROBADA' ? 'aprobada' : 'rechazada';
+    const customerAuthorization = {
+      ok: true,
+      principalClass: 'CUSTOMER_TOKEN',
+      organizationId: quote.organization_id,
+      branchId: quote.branch_id || ot?.branch_id || null,
+      role: null,
+      persistedRole: null,
+      capabilities: [],
+    };
+    const policyDecision = await evaluateCommandPolicyWithShadow({
+      base44,
+      policyId: 'CP-QUOTE-002',
+      authorization: customerAuthorization,
+      relationship: 'CUSTOMER_TOKEN_RESOURCE',
+      authorityContract: 'QUOTE_DECISION',
+      compatibilityDecision: { ok: true, code: 'LEGACY_PUBLIC_TOKEN_ALLOW' },
+      audit: {
+        actorUserId: null,
+        branchId: customerAuthorization.branchId,
+        resourceType: 'Cotizacion',
+        resourceId: quote.id,
+        correlationId: operationKey,
+        operationKey,
+      },
+    });
+    return await ExecuteSovereignCommand({
+      decision: policyDecision,
+      sovereignWriter: 'handlePublicCustomerDecisionV2',
+      execute: async () => {
+    if (['aprobada', 'rechazada'].includes(quote.estado) && quote.estado !== targetQuoteStatus) {
+      throw workflowError('La cotizacion ya tiene una decision diferente', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
     }
-  }
 
-  if (quote?.orden_trabajo_id) {
-    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
-      id: quote.orden_trabajo_id,
-      organization_id: quote.organization_id,
-    }, '-created_date', 1);
-    ot = workOrders?.[0] || null;
-  }
-
-  if (!quote) {
-    const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
-      public_access_token: token,
-    }, '-created_date', 2);
-    ot = workOrders?.[0] || null;
-    if (!ot) return Response.json({ error: 'Enlace no valido' }, { status: 404 });
-    if (ot.public_access_expires_at) {
-      const expiresAt = Date.parse(ot.public_access_expires_at);
-      if (Number.isFinite(expiresAt) && expiresAt < Date.now()) {
-        return Response.json({ error: 'El enlace ha expirado' }, { status: 410 });
+    const snapshot = targetStatus === 'APROBADA' ? buildApprovedQuoteSnapshot(quote) : null;
+    if (ot) {
+      lock = await acquireLifecycleLock({
+        base44,
+        ot,
+        orgId: ot.organization_id,
+        effectiveUser: { id: 'portal_cliente' },
+        operation: `customerDecision:${quote.id}`,
+      });
+      if (!lock.acquired) {
+        return Response.json({
+          error: 'Otra operacion del lifecycle esta en progreso',
+          code: lock.code,
+          retryable: true,
+        }, { status: 409 });
       }
+      quote = (await base44.asServiceRole.entities.Cotizacion.filter({
+        id: quote.id,
+        organization_id: quote.organization_id,
+      }, '-created_date', 1))?.[0] || quote;
     }
-    const relatedQuotes = await base44.asServiceRole.entities.Cotizacion.filter({
-      organization_id: ot.organization_id,
-      orden_trabajo_id: ot.id,
-    }, '-created_date', 5);
-    quote = relatedQuotes?.[0] || null;
-  }
 
-  if (!quote) {
-    return Response.json({ error: 'No existe una cotizacion asociada para registrar la decision' }, { status: 422 });
-  }
-  if (!['enviada', 'aprobada', 'rechazada'].includes(quote.estado)) {
-    return Response.json({ error: 'La cotizacion aun no ha sido enviada al cliente' }, { status: 422 });
-  }
-
-  const approved = targetStatus === 'APROBADA';
-  const targetQuoteStatus = approved ? 'aprobada' : 'rechazada';
-  const now = new Date().toISOString();
-  let diagnosticDocument = null;
-
-  if (ot) {
-    const allowedFrom = approved
-      ? ['DIAGNOSTICADA', 'COTIZADA']
-      : ['DIAGNOSTICADA', 'COTIZADA', 'APROBADA'];
-    if (ot.estado !== targetStatus && !allowedFrom.includes(ot.estado)) {
-      return Response.json({
-        error: `La orden ya no admite esta decision (estado actual: ${ot.estado})`,
-        current_status: ot.estado,
-      }, { status: 409 });
+    const now = new Date().toISOString();
+    const claim = await claimPublicQuoteDecision(base44, quote, targetStatus, operationKey, now);
+    quote = claim.quote;
+    if (targetStatus === 'APROBADA') await ensureDiagnosticDecisionEvidence(base44, quote, targetStatus, now);
+    if (targetStatus === 'APROBADA') {
+      reserveResult = await reserveApprovedQuoteInventory(base44, quote, ot, snapshot, operationKey, lock);
     }
-  }
-
-  if (approved && quote.diagnostico_tecnico_id) {
-    const documents = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
-      organization_id: quote.organization_id,
-      diagnostico_id: quote.diagnostico_tecnico_id,
-      estado: { $in: ['EMITIDO', 'ENVIADO'] },
-    }, '-created_date', 5);
-    diagnosticDocument = documents?.[0] || null;
-    if (!diagnosticDocument) {
-      return Response.json({
-        error: 'No existe un documento de diagnostico vigente para registrar la aprobacion',
-      }, { status: 422 });
-    }
-  }
-
-  if (quote.estado !== targetQuoteStatus) {
-    if (['aprobada', 'rechazada'].includes(quote.estado)) {
-      return Response.json({ error: 'La cotizacion ya tiene una decision diferente' }, { status: 409 });
-    }
-    await base44.asServiceRole.entities.Cotizacion.update(quote.id, {
-      estado: targetQuoteStatus,
-      ...(approved ? {
-        aprobada_at: now,
-        contenido_aprobado_snapshot: {
-          items: quote.items,
-          subtotal: quote.subtotal,
-          descuento_total: quote.descuento_total,
-          impuesto: quote.impuesto,
-          total: quote.total,
-          version: quote.version,
-        },
-        ip_aprobacion: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
-      } : {
-        cliente_rechazo_motivo: rejectionReason || null,
-      }),
+    const otResult = await ensurePublicDecisionWorkOrder(base44, quote, ot, targetStatus, rejectionReason, now, lock);
+    await ensurePublicDecisionEvent(base44, quote, otResult.ot, targetStatus, operationKey, now);
+    const committedQuote = await commitPublicQuoteDecision(
+      base44,
+      quote,
+      targetStatus,
+      operationKey,
+      snapshot,
+      rejectionReason,
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+      now,
+    );
+    await appendAuditEvent(base44, {
+      eventType: 'PUBLIC_QUOTE_DECISION_COMMITTED',
+      principalClass: 'CUSTOMER_TOKEN',
+      actorUserId: null,
+      actorPrimaryRole: null,
+      effectiveTechnicianUserId: null,
+      organizationId: quote.organization_id,
+      branchId: quote.branch_id || otResult.ot?.branch_id || null,
+      resourceType: 'Cotizacion',
+      resourceId: quote.id,
+      commandPolicyId: 'CP-QUOTE-002',
+      correlationId: operationKey,
+      auditOperationId: `public-quote-decision:${quote.id}`,
+      operationKey,
+      operationSemantics: { quote_status: targetQuoteStatus, work_order_status: targetStatus },
+      outcome: claim.committed || claim.recovered ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
+      priorState: { quote_status: claim.quote?.estado || quote.estado, work_order_status: otResult.previousStatus },
+      newState: { quote_status: targetQuoteStatus, work_order_status: targetStatus },
+      metadata: {
+        authority_contract: 'QUOTE_DECISION',
+        token_reference: await publicTokenReference(token),
+        token_version: quote.public_access_version,
+        decision: targetStatus,
+      },
+      occurredAt: now,
     });
-  }
-
-  if (diagnosticDocument && diagnosticDocument.aprobacion_status !== 'APROBADA') {
-    await base44.asServiceRole.entities.DiagnosticoDocumento.update(diagnosticDocument.id, {
-      aprobacion_status: 'APROBADA',
-      aprobacion_at: now,
-      metodo_aprobacion: 'PORTAL_DIGITAL',
-    });
-  }
-
-  if (!ot) {
     return Response.json({
       success: true,
-      quote_id: quote.id,
+      idempotent: Boolean(claim.committed || claim.recovered || !otResult.transitioned),
+      quote_id: committedQuote?.id || quote.id,
       quote_status: targetQuoteStatus,
-      work_order_transitioned: false,
+      orden_trabajo_id: otResult.ot?.id || null,
+      previous_status: otResult.previousStatus,
+      new_status: targetStatus,
+      transitioned: otResult.transitioned,
+      decision_status: 'COMMITTED',
     });
-  }
-
-  let transitioned = false;
-  if (ot.estado !== targetStatus) {
-    const updatePayload = {
-      estado: targetStatus,
-      cliente_aprobado: approved,
-      cliente_aprobado_at: approved ? now : null,
-      cliente_rechazo_motivo: approved ? null : (rejectionReason || null),
-      ultima_actividad: approved
-        ? 'Cotizacion aprobada por el cliente desde el portal'
-        : 'Cotizacion rechazada por el cliente desde el portal',
-      ultima_actividad_at: now,
-    };
-    const updated = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
-      id: ot.id,
-      organization_id: ot.organization_id,
-      estado: ot.estado,
-    }, { $set: updatePayload });
-    if (updated?.updated !== 1) {
-      return Response.json({ error: 'La orden cambio mientras se registraba la decision' }, { status: 409 });
+      },
+    });
+  } catch (error) {
+    if (reserveResult && quote && ot && lock?.acquired) {
+      const committed = (await base44.asServiceRole.entities.Cotizacion.filter({
+        id: quote.id, organization_id: quote.organization_id,
+      }, '-created_date', 1))?.[0];
+      const currentOt = await loadWorkOrder(base44, ot.organization_id, ot.id);
+      if (!quoteDecisionIsCommitted(committed, 'APROBADA') && currentOt?.estado !== 'APROBADA') {
+        await releaseReservationResults(base44, quote, ot, reserveResult, operationKey, lock).catch(compensationError => {
+          console.error('[publicQuoteDecision] inventory compensation failed', compensationError.message);
+        });
+      }
     }
-    transitioned = true;
+    if (quote?.id && operationKey) {
+      await base44.asServiceRole.entities.Cotizacion.updateMany({
+        id: quote.id,
+        organization_id: quote.organization_id,
+        decision_status: 'PENDING',
+        decision_operation_key: operationKey,
+      }, { $set: { decision_error: String(error.message || error).slice(0, 500) } }).catch(() => null);
+    }
+    return Response.json({
+      error: error.message || 'No se pudo registrar la decision comercial',
+      code: error.code || 'PUBLIC_QUOTE_DECISION_FAILED',
+      retryable: error.status >= 500 || !error.status,
+      decision_pending: Boolean(quote?.decision_status === 'PENDING' || operationKey),
+    }, { status: error.status || 500 });
+  } finally {
+    if (ot && lock?.acquired) {
+      try { await releaseLifecycleLock(base44, ot.organization_id, ot.id, lock); }
+      catch (error) { console.error('[publicQuoteDecision] lock release failed', error.message); }
+    }
+  }
+}
+
+async function handleOperatorRecordedCustomerDecision({ base44, body, authorization, user }) {
+  if (authorization.pilotMode !== true) {
+    return Response.json({
+      error: 'Este comando solo esta habilitado dentro del piloto controlado',
+      code: 'CONTROLLED_PILOT_OPERATOR_DECISION_REQUIRED',
+    }, { status: 403 });
   }
 
-  const eventType = approved ? 'TRANSITION_APROBADA' : 'CANCELADA';
-  const existingEvents = await base44.asServiceRole.entities.OTEvent.filter({
-    organization_id: ot.organization_id,
-    orden_trabajo_id: ot.id,
-    tipo: eventType,
-  }, '-created_date', 2);
-  if (!existingEvents?.length) {
-    await base44.asServiceRole.entities.OTEvent.create({
-      organization_id: ot.organization_id,
-      orden_trabajo_id: ot.id,
-      tipo: eventType,
-      created_by_user_id: 'portal_cliente',
-      processed: false,
-      created_at: now,
+  const quoteId = typeof body.quote_id === 'string' ? body.quote_id.trim() : '';
+  const expectedVersion = typeof body.expected_quote_version === 'string'
+    ? body.expected_quote_version.trim()
+    : '';
+  const targetStatus = body.newStatus;
+  const method = ['VERBAL', 'WHATSAPP_CONFIRM', 'FIRMA_FISICA'].includes(body.decision_method)
+    ? body.decision_method
+    : null;
+  const channel = typeof body.decision_channel === 'string'
+    ? body.decision_channel.trim().slice(0, 120)
+    : '';
+  const rejectionReason = typeof body.rejection_reason === 'string'
+    ? body.rejection_reason.trim().slice(0, 500)
+    : '';
+  if (!quoteId || !expectedVersion || !['APROBADA', 'CANCELADA'].includes(targetStatus) || !method || !channel) {
+    return Response.json({
+      error: 'quote_id, expected_quote_version, newStatus, decision_method y decision_channel son requeridos',
+      code: 'OPERATOR_CUSTOMER_DECISION_INVALID',
+    }, { status: 400 });
+  }
+
+  let quote = null;
+  let ot = null;
+  let lock = null;
+  let reserveResult = null;
+  const operationKey = quoteDecisionOperationKey(quoteId, targetStatus);
+  try {
+    const quotes = await base44.asServiceRole.entities.Cotizacion.filter({
+      id: quoteId,
+      organization_id: authorization.organizationId,
+    }, '-created_date', 2);
+    if (quotes?.length !== 1) throw workflowError('Cotizacion no encontrada', 'OPERATOR_QUOTE_NOT_FOUND', 404);
+    quote = quotes[0];
+    const canonicalVersion = String(quote.version || 'v1');
+    if (expectedVersion !== canonicalVersion) {
+      throw workflowError('La cotizacion cambio; recargue antes de registrar la decision', 'OPERATOR_QUOTE_VERSION_CONFLICT', 409);
+    }
+    if (!quote.orden_trabajo_id) throw workflowError('La cotizacion no esta asociada a una OT', 'OPERATOR_QUOTE_WORK_ORDER_REQUIRED', 422);
+    if (body.orden_trabajo_id && body.orden_trabajo_id !== quote.orden_trabajo_id) {
+      throw workflowError('La OT solicitada no coincide con la cotizacion', 'OPERATOR_QUOTE_WORK_ORDER_MISMATCH', 409);
+    }
+    ot = await loadWorkOrder(base44, authorization.organizationId, quote.orden_trabajo_id);
+    if (!ot) throw workflowError('La OT asociada no existe', 'OPERATOR_QUOTE_WORK_ORDER_INVALID', 409);
+    const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+    if (!branchAuthorization.ok) throw workflowError(branchAuthorization.error, branchAuthorization.code, branchAuthorization.status);
+    if (quote.branch_id && quote.branch_id !== ot.branch_id) {
+      throw workflowError('La cotizacion y la OT no pertenecen a la misma sucursal', 'OPERATOR_QUOTE_BRANCH_MISMATCH', 409);
+    }
+    if (quote.valida_hasta) {
+      const validUntil = Date.parse(`${quote.valida_hasta}T23:59:59.999Z`);
+      if (Number.isFinite(validUntil) && validUntil < Date.now()) {
+        throw workflowError('La cotizacion ha vencido', 'PUBLIC_QUOTE_EXPIRED', 410);
+      }
+    }
+
+    const policyDecision = await evaluateCommandPolicyWithShadow({
+      base44,
+      policyId: 'CP-QUOTE-003',
+      authorization,
+      relationship: 'BRANCH_RESOURCE',
+      compatibilityDecision: { ok: true, code: 'CONTROLLED_PILOT_OPERATOR_ALLOW' },
+      audit: {
+        actorUserId: user.id,
+        branchId: ot.branch_id,
+        resourceType: 'Cotizacion',
+        resourceId: quote.id,
+        correlationId: operationKey,
+        operationKey,
+      },
     });
-  }
+    return await ExecuteSovereignCommand({
+      decision: policyDecision,
+      sovereignWriter: 'transitionWorkOrderStatus',
+      execute: async () => {
+        const targetQuoteStatus = targetStatus === 'APROBADA' ? 'aprobada' : 'rechazada';
+        if (['aprobada', 'rechazada'].includes(quote.estado) && quote.estado !== targetQuoteStatus) {
+          throw workflowError('La cotizacion ya tiene una decision diferente', 'PUBLIC_QUOTE_DECISION_CONFLICT', 409);
+        }
+        const snapshot = targetStatus === 'APROBADA' ? buildApprovedQuoteSnapshot(quote) : null;
+        lock = await acquireLifecycleLock({
+          base44,
+          ot,
+          orgId: authorization.organizationId,
+          effectiveUser: user,
+          operation: `operatorCustomerDecision:${quote.id}`,
+        });
+        if (!lock.acquired) {
+          return Response.json({
+            error: 'Otra operacion del lifecycle esta en progreso',
+            code: lock.code,
+            retryable: true,
+          }, { status: 409 });
+        }
+        quote = (await base44.asServiceRole.entities.Cotizacion.filter({
+          id: quote.id,
+          organization_id: authorization.organizationId,
+        }, '-created_date', 1))?.[0] || quote;
+        if (String(quote.version || 'v1') !== expectedVersion) {
+          throw workflowError('La cotizacion cambio durante la decision', 'OPERATOR_QUOTE_VERSION_CONFLICT', 409);
+        }
 
-  return Response.json({
-    success: true,
-    quote_id: quote.id,
-    quote_status: targetQuoteStatus,
-    orden_trabajo_id: ot.id,
-    previous_status: ot.estado,
-    new_status: targetStatus,
-    transitioned,
-  });
+        const now = new Date().toISOString();
+        const claim = await claimPublicQuoteDecision(base44, quote, targetStatus, operationKey, now);
+        quote = claim.quote;
+        await ensureDiagnosticDecisionEvidence(base44, quote, targetStatus, now, {
+          method,
+          channel,
+          recordRejection: true,
+        });
+        if (targetStatus === 'APROBADA') {
+          reserveResult = await reserveApprovedQuoteInventory(base44, quote, ot, snapshot, operationKey, lock, {
+            id: user.id,
+            principalClass: authorization.principalClass,
+          });
+        }
+        const otResult = await ensurePublicDecisionWorkOrder(
+          base44,
+          quote,
+          ot,
+          targetStatus,
+          rejectionReason,
+          now,
+          lock,
+          `segun comunicacion externa registrada por el operador (${channel})`,
+        );
+        await ensurePublicDecisionEvent(base44, quote, otResult.ot, targetStatus, operationKey, now, user.id);
+        const committedQuote = await commitPublicQuoteDecision(
+          base44,
+          quote,
+          targetStatus,
+          operationKey,
+          snapshot,
+          rejectionReason,
+          null,
+          now,
+          false,
+        );
+        await appendAuditEvent(base44, {
+          eventType: 'OPERATOR_RECORDED_CUSTOMER_DECISION',
+          principalClass: authorization.principalClass,
+          actorUserId: user.id,
+          actorPrimaryRole: authorization.persistedRole,
+          organizationId: authorization.organizationId,
+          branchId: ot.branch_id,
+          resourceType: 'Cotizacion',
+          resourceId: quote.id,
+          commandPolicyId: 'CP-QUOTE-003',
+          correlationId: typeof body.correlation_id === 'string' && body.correlation_id.trim()
+            ? body.correlation_id.trim().slice(0, 240)
+            : operationKey,
+          auditOperationId: `operator-quote-decision:${quote.id}:${targetStatus}`,
+          operationKey,
+          operationSemantics: { quote_status: targetQuoteStatus, work_order_status: targetStatus },
+          outcome: claim.committed || claim.recovered ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
+          priorState: { quote_status: claim.quote?.estado || quote.estado, work_order_status: otResult.previousStatus },
+          newState: { quote_status: targetQuoteStatus, work_order_status: targetStatus },
+          metadata: {
+            decision_source: 'EXTERNAL_CUSTOMER_COMMUNICATION_RECORDED_BY_OPERATOR',
+            decision_method: method,
+            decision_channel: channel,
+            customer_token_used: false,
+          },
+          occurredAt: now,
+        });
+        return Response.json({
+          success: true,
+          idempotent: Boolean(claim.committed || claim.recovered || !otResult.transitioned),
+          recorded_by_operator_user_id: user.id,
+          quote_id: committedQuote?.id || quote.id,
+          quote_status: targetQuoteStatus,
+          orden_trabajo_id: otResult.ot?.id || ot.id,
+          previous_status: otResult.previousStatus,
+          new_status: targetStatus,
+          transitioned: otResult.transitioned,
+          decision_status: 'COMMITTED',
+        });
+      },
+    });
+  } catch (error) {
+    if (reserveResult && quote && ot && lock?.acquired) {
+      const committed = (await base44.asServiceRole.entities.Cotizacion.filter({
+        id: quote.id,
+        organization_id: authorization.organizationId,
+      }, '-created_date', 1))?.[0];
+      const currentOt = await loadWorkOrder(base44, authorization.organizationId, ot.id);
+      if (!quoteDecisionIsCommitted(committed, 'APROBADA') && currentOt?.estado !== 'APROBADA') {
+        await releaseReservationResults(base44, quote, ot, reserveResult, operationKey, lock, user.id).catch(compensationError => {
+          console.error('[operatorCustomerDecision] inventory compensation failed', compensationError.message);
+        });
+      }
+    }
+    if (quote?.id) {
+      await base44.asServiceRole.entities.Cotizacion.updateMany({
+        id: quote.id,
+        organization_id: authorization.organizationId,
+        decision_status: 'PENDING',
+        decision_operation_key: operationKey,
+      }, { $set: { decision_error: String(error.message || error).slice(0, 500) } }).catch(() => null);
+    }
+    return Response.json({
+      error: error.message || 'No se pudo registrar la decision del cliente',
+      code: error.code || 'OPERATOR_CUSTOMER_DECISION_FAILED',
+      retryable: error.status >= 500 || !error.status,
+      decision_pending: Boolean(quote?.decision_status === 'PENDING'),
+    }, { status: error.status || 500 });
+  } finally {
+    if (ot && lock?.acquired) {
+      try { await releaseLifecycleLock(base44, authorization.organizationId, ot.id, lock); }
+      catch (error) { console.error('[operatorCustomerDecision] lock release failed', error.message); }
+    }
+  }
 }
 
 Deno.serve(async (req) => {
@@ -890,18 +1383,9 @@ Deno.serve(async (req) => {
 
     // ── 1. Auth — obtener runtimeUser del contexto de ejecución inmediato ──────
     const runtimeUser = await base44.auth.me();
-    console.log(`[DIAG:transition] ===== INICIO FUNCIÓN =====`);
-    console.log(`[DIAG:transition] RAW runtimeUser completo:`, JSON.stringify(runtimeUser, null, 2));
-    console.log(`[DIAG:transition] runtimeUser.id:`, runtimeUser?.id);
-    console.log(`[DIAG:transition] runtimeUser.email:`, runtimeUser?.email);
-    console.log(`[DIAG:transition] runtimeUser.role (base44 app level):`, runtimeUser?.role);
-    console.log(`[DIAG:transition] runtimeUser.organization_id:`, runtimeUser?.organization_id);
-    console.log(`[DIAG:transition] runtimeUser.impersonating_org_id:`, runtimeUser?.impersonating_org_id);
-    console.log(`[DIAG:transition] runtimeUser.is_super_admin:`, runtimeUser?.is_super_admin);
-    console.log(`[DIAG:transition] runtimeUser.data completo:`, JSON.stringify(runtimeUser?.data, null, 2));
 
     if (!runtimeUser && body.customer_token) {
-      return handlePublicCustomerDecision({ base44, body, req });
+      return handlePublicCustomerDecisionV2({ base44, body, req });
     }
 
     if (!runtimeUser) {
@@ -916,43 +1400,23 @@ Deno.serve(async (req) => {
       tecnico_asignado_id,
       tecnico_asignado_email,
       diagnostico_id,
-      diagnostico_resumido,
       _lifecycle_lock_token,
+      correlation_id,
     } = body;
 
     // ── 3. Resolver identidad efectiva ────────────────────────────────────────
     // El request body nunca es una fuente confiable de identidad. Las llamadas
     // internas deben conservar el contexto de la sesión original; esta función
     // resuelve siempre organización y rol desde runtimeUser/UserAccount.
-    let effectiveUser;
-    let orgId;
-    let effectiveRole;
-    let isSuperAdmin;
+    const authorization = await resolveAuthorizedContext(base44, runtimeUser);
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    const effectiveUser = runtimeUser;
+    const orgId = authorization.organizationId;
+    const effectiveRole = authorization.role;
+    const isSuperAdmin = authorization.isSuperAdmin;
 
-    isSuperAdmin = runtimeUser.is_super_admin === true || runtimeUser.data?.is_super_admin === true;
-    if (isSuperAdmin) {
-      orgId = runtimeUser.impersonating_org_id || runtimeUser.organization_id;
-      effectiveRole = 'SUPER_ADMIN';
-      effectiveUser = runtimeUser;
-    } else {
-      const orgHint = runtimeUser.impersonating_org_id || runtimeUser.organization_id || null;
-      const userAccounts = await base44.asServiceRole.entities.UserAccount.filter({ user_id: runtimeUser.id }, 5);
-      if (!userAccounts || userAccounts.length === 0) {
-        return Response.json({ error: 'UserAccount no encontrado para este usuario' }, { status: 403 });
-      }
-      const account = orgHint
-        ? (userAccounts.find(a => a.organization_id === orgHint) || userAccounts[0])
-        : userAccounts[0];
-      if (account.status !== 'active') {
-        return Response.json({ error: 'Cuenta no activa' }, { status: 403 });
-      }
-      orgId = account.organization_id;
-      effectiveRole = account.role;
-      effectiveUser = runtimeUser;
-    }
-
-    if (!orgId) {
-      return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
+    if (body.action === 'RECORD_CUSTOMER_DECISION') {
+      return handleOperatorRecordedCustomerDecision({ base44, body, authorization, user: runtimeUser });
     }
 
     if (!orden_trabajo_id) {
@@ -960,6 +1424,12 @@ Deno.serve(async (req) => {
     }
     if (!newStatus) {
       return Response.json({ error: 'newStatus es obligatorio' }, { status: 400 });
+    }
+    if (newStatus === 'ENTREGADA') {
+      return Response.json({
+        error: 'ENTREGADA solo puede confirmarse mediante deliverWorkOrder.',
+        code: 'DELIVERY_COMMAND_REQUIRED',
+      }, { status: 403 });
     }
     if (!ALLOWED_TRANSITIONS.hasOwnProperty(newStatus)) {
       return Response.json({
@@ -978,11 +1448,25 @@ Deno.serve(async (req) => {
     }
 
     const ot = ordenes[0];
+    const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+    }
     const currentStatus = ot.estado;
+
+    if (currentStatus === 'CANCELADA' && newStatus === 'CANCELADA'
+      && !hasWorkOrderTargetAuthority({ targetStatus: newStatus, role: effectiveRole, isSuperAdmin })) {
+      return Response.json({
+        error: 'Solo administracion puede recuperar una cancelacion idempotente',
+        code: 'CANCELLATION_AUTHORITY_REQUIRED',
+      }, { status: 403 });
+    }
 
     // CC-001-01: un técnico solo puede operar la OT que tiene asignada.
     // Esta guarda se ejecuta antes de cualquier mutación, evento o side-effect.
-    if (effectiveRole === 'TECHNICIAN' && runtimeUser.id !== ot.tecnico_asignado_id) {
+    if (newStatus === 'CANCELADA'
+      && effectiveRole === 'TECHNICIAN'
+      && runtimeUser.id !== ot.tecnico_asignado_id) {
       return Response.json({
         error: 'No autorizado: esta Orden de Trabajo está asignada a otro técnico.',
         code: 'TECHNICIAN_OWNERSHIP_REQUIRED',
@@ -992,47 +1476,85 @@ Deno.serve(async (req) => {
     // CC-002: la finalización diagnóstica es una operación compuesta propiedad
     // del backend. Sale antes del pipeline genérico para evitar dobles mutaciones.
     if (newStatus === 'DIAGNOSTICADA') {
-      const rolesPermitidos = AUTHORIZED_ROLES_FOR_TARGET.DIAGNOSTICADA;
-      if (!isSuperAdmin && !rolesPermitidos.includes(effectiveRole)) {
-        return Response.json({
-          error: `Tu rol "${effectiveRole}" no tiene permiso para completar el diagnóstico.`,
-          required_roles: rolesPermitidos,
-          user_role: effectiveRole,
-        }, { status: 403 });
-      }
-
-      return completeDiagnosticWorkflow({
-        base44,
-        ot,
-        orgId,
-        effectiveUser,
-        effectiveRole,
-        diagnosticoId: diagnostico_id,
-        diagnosticoResumido: diagnostico_resumido,
+      const diagnosticCorrelationId = typeof correlation_id === 'string' && correlation_id.trim()
+        ? correlation_id.trim().slice(0, 240)
+        : `transition-shadow:${ot.id}:${currentStatus}:DIAGNOSTICADA:${runtimeUser.id}`;
+      const policyDecision = await evaluateStaffTransitionPipeline({
+        base44, authorization, user: runtimeUser, ot, currentStatus,
+        newStatus, correlationId: diagnosticCorrelationId,
+      });
+      return await ExecuteSovereignCommand({
+        decision: policyDecision,
+        sovereignWriter: 'transitionWorkOrderStatus',
+        execute: () => completeDiagnosticWorkflow({
+          base44,
+          ot,
+          orgId,
+          effectiveUser,
+          effectiveRole,
+          diagnosticoId: diagnostico_id,
+        }),
       });
     }
 
     // Un retry posterior a una respuesta perdida debe observar el estado ya
     // confirmado como éxito, incluso para estados irreversibles.
     if (currentStatus === newStatus) {
-      const rolesPermitidos = AUTHORIZED_ROLES_FOR_TARGET[newStatus];
-      if (!isSuperAdmin && rolesPermitidos && !rolesPermitidos.includes(effectiveRole)) {
-        return Response.json({
-          error: `Tu rol "${effectiveRole}" no tiene permiso para mover la OT a "${newStatus}".`,
-          required_roles: rolesPermitidos,
-          user_role: effectiveRole,
-        }, { status: 403 });
-      }
-      return Response.json({
-        success: true,
-        idempotent: true,
-        transition_recovered: true,
-        orden_trabajo_id,
-        previous_status: currentStatus,
-        new_status: newStatus,
-        updated_by: effectiveUser.email,
-        updated_by_role: effectiveRole,
-        orden_trabajo: ot,
+      const externalCorrelationId = typeof correlation_id === 'string' && correlation_id.trim()
+        ? correlation_id.trim().slice(0, 240)
+        : null;
+      const auditFacts = lifecycleAuditRecoveryFacts(ot, {
+        operationId: crypto.randomUUID(),
+        externalCorrelationId,
+        previousStatus: currentStatus,
+        newStatus,
+        actorUserId: effectiveUser.id,
+        actorRole: authorization.persistedRole,
+        committedAt: ot.updated_date || new Date().toISOString(),
+      });
+      const recoverTransition = async () => {
+          try {
+            await ensureLifecycleAudit(base44, {
+              authorization, user: effectiveUser, ot,
+              ...auditFacts,
+            });
+            await clearLifecycleAuditPending(base44, {
+              organizationId: orgId,
+              workOrderId: ot.id,
+              status: newStatus,
+              operationId: auditFacts.operationId,
+            });
+          } catch (error) {
+            await recordLifecycleAuditFailure(base44, {
+              organizationId: orgId,
+              workOrderId: ot.id,
+              status: newStatus,
+              operationId: auditFacts.operationId,
+              error,
+            });
+            return Response.json({ error: 'La transicion existe pero su auditoria requerida esta pendiente', code: 'LIFECYCLE_AUDIT_PENDING', retryable: true }, { status: 500 });
+          }
+          return Response.json({
+            success: true,
+            idempotent: true,
+            transition_recovered: true,
+            orden_trabajo_id,
+            previous_status: auditFacts.previousStatus,
+            new_status: auditFacts.newStatus,
+            updated_by: effectiveUser.email,
+            updated_by_role: effectiveRole,
+            orden_trabajo: projectWorkOrderMutationResult(ot),
+          });
+      };
+      if (newStatus === 'CANCELADA') return recoverTransition();
+      const policyDecision = await evaluateStaffTransitionPipeline({
+        base44, authorization, user: runtimeUser, ot, currentStatus,
+        newStatus, correlationId: auditFacts.externalCorrelationId || auditFacts.operationId,
+      });
+      return await ExecuteSovereignCommand({
+        decision: policyDecision,
+        sovereignWriter: 'transitionWorkOrderStatus',
+        execute: recoverTransition,
       });
     }
 
@@ -1055,18 +1577,42 @@ Deno.serve(async (req) => {
       }, { status: 422 });
     }
 
+    const pipelineCorrelationId = typeof correlation_id === 'string' && correlation_id.trim()
+      ? correlation_id.trim().slice(0, 240)
+      : `transition-shadow:${ot.id}:${currentStatus}:${newStatus}:${runtimeUser.id}`;
+    const staffPolicyDecision = newStatus === 'CANCELADA'
+      ? null
+      : await evaluateStaffTransitionPipeline({
+          base44, authorization, user: runtimeUser, ot, currentStatus,
+          newStatus, correlationId: pipelineCorrelationId,
+        });
+
+    // Frozen capability + relationship authority. CANCELADA remains on its
+    // explicitly mapped legacy admin authority until its own cutover.
+    if (newStatus !== 'CANCELADA') {
+      const transitionPolicy = OT_TRANSITION_POLICIES[`${currentStatus}->${newStatus}`];
+      if (!transitionPolicy) {
+        return Response.json({ error: 'La transicion no tiene una politica de comando congelada', code: 'TRANSITION_POLICY_UNMAPPED' }, { status: 403 });
+      }
+      const requiredCapabilities = transitionPolicy.capability?.allOf || [];
+      if (!requiredCapabilities.every(capability => authorization.capabilities.includes(capability))) {
+        return Response.json({ error: 'La capacidad efectiva no autoriza esta transicion', code: 'TRANSITION_CAPABILITY_DENIED' }, { status: 403 });
+      }
+      if (transitionPolicy.relationship === 'EFFECTIVE_TECHNICIAN'
+        && runtimeUser.id !== ot.tecnico_asignado_id) {
+        return Response.json({ error: 'Debes asumir la custodia tecnica antes de ejecutar esta transicion', code: 'EFFECTIVE_TECHNICIAN_REQUIRED' }, { status: 403 });
+      }
+    }
+
     // ── 8. Validar rol para el estado destino ─────────────────────────────────
-    if (!isSuperAdmin) {
-      const rolesPermitidos = AUTHORIZED_ROLES_FOR_TARGET[newStatus];
-      console.log(`[DIAG:transition] Validando rol para target '${newStatus}' — rolesPermitidos:`, rolesPermitidos, `— effectiveRole:`, effectiveRole);
-      if (rolesPermitidos && !rolesPermitidos.includes(effectiveRole)) {
+    if (!hasWorkOrderTargetAuthority({ targetStatus: newStatus, role: effectiveRole, isSuperAdmin })) {
+      const rolesPermitidos = workOrderTargetRoles(newStatus);
         console.error(`[DIAG:transition] *** 403: rol '${effectiveRole}' no permitido para '${newStatus}' — rolesPermitidos: [${rolesPermitidos.join(', ')}] ***`);
         return Response.json({
           error: `Tu rol "${effectiveRole}" no tiene permiso para mover la OT a "${newStatus}". Roles permitidos: [${rolesPermitidos.join(', ')}]`,
           required_roles: rolesPermitidos,
           user_role: effectiveRole,
         }, { status: 403 });
-      }
     }
 
     // ── 9. Validar datos mínimos requeridos ───────────────────────────────────
@@ -1094,25 +1640,9 @@ Deno.serve(async (req) => {
         }
         extra._aprobacion_cliente_verificada = true;
       }
+      if (newStatus === 'CANCELADA') {
+        await releaseCancelledWorkOrderReservations(base44, ot, effectiveUser.id || effectiveUser.email);
     }
-
-    if (newStatus === 'ENTREGADA') {
-      const ventasPagadas = await base44.asServiceRole.entities.Venta.filter({
-        organization_id: orgId,
-        referencia_ot_id: orden_trabajo_id,
-        estado: 'pagada',
-      }, 1);
-
-      if (!ventasPagadas || ventasPagadas.length === 0) {
-        console.warn(`[transitionWorkOrderStatus] BLOQUEADO ENTREGADA — sin venta pagada. OT: ${orden_trabajo_id}`);
-        return Response.json({
-          error: 'No se puede entregar la OT: no existe ninguna Venta en estado "pagada" asociada a esta orden de trabajo. Realice el cobro en el Punto de Venta antes de continuar.',
-          code: 'ENTREGADA_SIN_PAGO',
-          orden_trabajo_id,
-        }, { status: 422 });
-      }
-
-      extra.ventas_pagadas_verificadas = true;
     }
 
     const validationError = validatePayloadForTarget(newStatus, ot, extra);
@@ -1140,8 +1670,27 @@ Deno.serve(async (req) => {
     if (newStatus === 'FINALIZADA') {
       updatePayload.fecha_cierre = now;
     }
+    if (newStatus === 'PRUEBAS') {
+      updatePayload.qa_cycle_id = crypto.randomUUID();
+      updatePayload.qa_cycle_started_at = now;
+    }
+    const externalCorrelationId = typeof correlation_id === 'string' && correlation_id.trim()
+      ? correlation_id.trim().slice(0, 240)
+      : `transition:${ot.id}:${currentStatus}:${newStatus}:${updatePayload.qa_cycle_id || ot.qa_cycle_id || 'v1'}`;
+    const auditOperationId = crypto.randomUUID();
+    Object.assign(updatePayload, lifecycleAuditPendingMarker({
+      operationId: auditOperationId,
+      externalCorrelationId,
+      previousStatus: currentStatus,
+      newStatus,
+      command: 'transitionWorkOrderStatus',
+      actorUserId: effectiveUser.id,
+      actorRole: authorization.persistedRole,
+      committedAt: now,
+    }));
 
     // ── 11. Serializar y ejecutar la transición ───────────────────────────────
+    const executeTransitionWriter = async () => {
     const lifecycleLock = await acquireLifecycleLock({
       base44,
       ot,
@@ -1159,6 +1708,44 @@ Deno.serve(async (req) => {
     }
 
     try {
+      const lockedOt = await loadWorkOrder(base44, orgId, orden_trabajo_id);
+      if (!lockedOt || lockedOt.lifecycle_lock_token !== lifecycleLock.token) {
+        return Response.json({
+          error: 'No se pudo confirmar el estado actual de la OT bajo el lock del lifecycle.',
+          code: 'LIFECYCLE_LOCK_LOST',
+          retryable: true,
+        }, { status: 409 });
+      }
+      if (lockedOt.estado !== currentStatus || !canTransition(lockedOt.estado, newStatus)) {
+        return Response.json({
+          error: `La OT cambio antes de confirmar la transicion. Estado actual: ${lockedOt.estado}.`,
+          code: 'ORDEN_TRABAJO_CONCURRENT_UPDATE',
+          retryable: true,
+        }, { status: 409 });
+      }
+
+      if (newStatus === 'FINALIZADA') {
+        const qaRecords = await base44.asServiceRole.entities.PruebaTecnica.filter({
+          organization_id: orgId,
+          orden_trabajo_id,
+        }, 'recorded_at', 200);
+        const qaValidation = evaluateCurrentQaEvidence(qaRecords, {
+          organizationId: orgId,
+          workOrderId: orden_trabajo_id,
+          assignedTechnicianId: lockedOt?.tecnico_asignado_id,
+          cycleId: lockedOt?.qa_cycle_id,
+          cycleStartedAt: lockedOt?.qa_cycle_started_at,
+        });
+        if (!qaValidation.valid) {
+          return Response.json({
+            error: 'No se puede finalizar la OT: la evidencia QA vigente no es valida.',
+            code: qaValidation.code,
+            orden_trabajo_id,
+          }, { status: 422 });
+        }
+        extra.prueba_tecnica_exitosa_verificada = true;
+      }
+
       let transitionResult;
       let transitionError;
       try {
@@ -1197,6 +1784,9 @@ Deno.serve(async (req) => {
         }, { status: 409 });
       }
       const updatedOT = transitionRecovered ? reconciled : { ...ot, ...updatePayload };
+      if (newStatus === 'CANCELADA') {
+        await releaseCancelledWorkOrderReservations(base44, updatedOT, effectiveUser.id || effectiveUser.email);
+      }
 
       // ── 12. OTEvent idempotente mientras el lock continúa activo ────────────
       const CANONICAL_EVENTS = ['FINALIZADA', 'ENTREGADA', 'CANCELADA'];
@@ -1228,6 +1818,9 @@ Deno.serve(async (req) => {
                 created_by_user_id: effectiveUser.id,
                 processed: false,
                 created_at: now,
+                detalle: newStatus === 'PRUEBAS'
+                  ? JSON.stringify({ qa_cycle_id: updatePayload.qa_cycle_id })
+                  : undefined,
               });
             } catch (eventError) {
               const reconciledEvents = await base44.asServiceRole.entities.OTEvent.filter({
@@ -1243,6 +1836,33 @@ Deno.serve(async (req) => {
         console.warn('[transitionWorkOrderStatus] trazabilidad_fallida:', traceError.message);
       }
 
+      try {
+        await ensureLifecycleAudit(base44, {
+          authorization, user: effectiveUser, ot: updatedOT,
+          previousStatus: currentStatus,
+          newStatus,
+          operationId: auditOperationId,
+          externalCorrelationId,
+          actorUserId: effectiveUser.id,
+          actorRole: authorization.persistedRole,
+          committedAt: now,
+        });
+        await clearLifecycleAuditPending(base44, {
+          organizationId: orgId,
+          workOrderId: ot.id,
+          status: newStatus,
+          operationId: auditOperationId,
+        });
+      } catch (error) {
+        await recordLifecycleAuditFailure(base44, {
+          organizationId: orgId,
+          workOrderId: ot.id,
+          status: newStatus,
+          operationId: auditOperationId,
+          error,
+        });
+        return Response.json({ error: 'La transicion existe pero su auditoria requerida esta pendiente', code: 'LIFECYCLE_AUDIT_PENDING', retryable: true }, { status: 500 });
+      }
       console.log(`[transitionWorkOrderStatus] OK — OT: ${orden_trabajo_id}, ${currentStatus} → ${newStatus}, usuario: ${effectiveUser.email}, rol: ${effectiveRole}`);
       return Response.json({
         success: true,
@@ -1255,7 +1875,7 @@ Deno.serve(async (req) => {
         updated_at: now,
         updated_by: effectiveUser.email,
         updated_by_role: effectiveRole,
-        orden_trabajo: updatedOT,
+        orden_trabajo: projectWorkOrderMutationResult(updatedOT),
       });
     } finally {
       try {
@@ -1264,8 +1884,18 @@ Deno.serve(async (req) => {
         console.error(`[transitionWorkOrderStatus] No se pudo liberar el lock — OT: ${orden_trabajo_id}: ${releaseError.message}`);
       }
     }
+    };
+    if (newStatus === 'CANCELADA') return executeTransitionWriter();
+    return await ExecuteSovereignCommand({
+      decision: staffPolicyDecision,
+      sovereignWriter: 'transitionWorkOrderStatus',
+      execute: executeTransitionWriter,
+    });
 
   } catch (error) {
+    if (error instanceof SovereignCommandError) {
+      return Response.json({ error: error.message, code: error.code }, { status: error.status });
+    }
     console.error('[transitionWorkOrderStatus] Error:', error.message);
     console.error(`[DIAG:transition] *** CATCH — error.stack:`, error.stack);
     return Response.json({ error: error.message }, { status: 500 });

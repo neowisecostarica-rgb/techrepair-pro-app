@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 /*
 =====================================
@@ -10,7 +12,7 @@ Responsabilidad:
   - Validar venta existe y es válida (pagada, org correcta)
   - Crear OTEvent tipo SALE_COMPLETED (solo si hay referencia_ot_id)
   - Aplicar desbloqueos operacionales autoritativos
-  - Disparar transiciones de lifecycle vía transitionWorkOrderStatus cuando corresponda
+  - Disparar transiciones de lifecycle no terminales cuando corresponda
   - Ser idempotente: no duplicar OTEvent ni repetir efectos confirmados
 
 NO hace:
@@ -30,7 +32,7 @@ Desbloqueos implementados:
     APROBADA → EN_REPARACION
 
   CASO 3 — saldo_final:
-    FINALIZADA → ENTREGADA
+    Registra/habilita el pago. La entrega fisica pertenece a deliverWorkOrder.
 
   CASO 4 — venta_producto:
     Solo trazabilidad, NO mueve lifecycle
@@ -42,7 +44,7 @@ Desbloqueos implementados:
 const DESBLOQUEO_MAP = {
   revision_diagnostico: {}, // Desbloquea la OT; no mueve lifecycle
   reparacion:           { COTIZADA: 'APROBADA', APROBADA: 'EN_REPARACION' },
-  saldo_final:          { FINALIZADA: 'ENTREGADA' },
+  saldo_final:          {},
   venta_producto:       {}, // No mueve lifecycle
 };
 
@@ -97,10 +99,11 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  const orgId = user.organization_id || user.impersonating_org_id || user.data?.impersonating_org_id;
-  if (!orgId) {
-    return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
-  }
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'],
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+  const orgId = authorization.organizationId;
 
   // ── 2. Parse body ─────────────────────────────────────────────────────────────
   let body;
@@ -126,6 +129,10 @@ Deno.serve(async (req) => {
   }
 
   const venta = ventas[0];
+  const branchAuthorization = authorizeRecordBranch(authorization, venta.branch_id);
+  if (!branchAuthorization.ok) {
+    return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
+  }
 
   // Solo procesar ventas pagadas — seguridad crítica
   if (venta.estado !== 'pagada') {
@@ -300,12 +307,8 @@ Deno.serve(async (req) => {
     }
 
   } else if (tipo_concepto === 'saldo_final') {
-    // CASO 3: pago de saldo final → habilitar entrega
-    if (estadoActual === 'FINALIZADA') {
-      estadoDestino = 'ENTREGADA';
-    } else {
-      skipReason = `saldo_final: estado "${estadoActual}" no es FINALIZADA — no se puede mover a ENTREGADA`;
-    }
+    // El pago habilita comercialmente. Nunca constituye evidencia de entrega fisica.
+    skipReason = 'saldo_final: pago registrado; la entrega requiere deliverWorkOrder';
 
   } else {
     // CASO 4: venta_producto, otro — no mover lifecycle

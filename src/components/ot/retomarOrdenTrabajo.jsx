@@ -1,5 +1,4 @@
 import { base44 } from '@/api/base44Client';
-import { cambiarEstadoAtencionOT } from './transicionarEstadoOT';
 
 /**
  * P0.4 - HELPER ATÓMICO PARA RETOMAR ORDEN DE TRABAJO
@@ -23,26 +22,13 @@ export async function retomarOrdenTrabajo({
   tecnicoId, 
   tecnicoEmail 
 }) {
-  // 1. Cambiar estado de atención a ACTIVO
-  await cambiarEstadoAtencionOT({
-    ordenTrabajoId,
-    nuevoEstadoAtencion: 'ACTIVO',
-    observaciones: 'Trabajo retomado',
-    effectiveOrgId: organizationId,
-    userId: tecnicoId,
-    userEmail: tecnicoEmail
-  });
-
-  // 2. Crear ActividadTecnica
-  const actividad = await base44.entities.ActividadTecnica.create({
-    organization_id: organizationId,
-    orden_trabajo_id: ordenTrabajoId,
-    tecnico_id: tecnicoId,
-    tecnico_email: tecnicoEmail,
+  const response = await base44.functions.invoke('technicalActivityCommand', {
+    action: 'RESUME',
+    work_order_id: ordenTrabajoId,
     tipo_actividad: 'diagnostico',
-    estado: 'en_progreso',
-    started_at: new Date().toISOString()
+    subtipo: 'Trabajo retomado',
+    correlation_id: crypto.randomUUID(),
   });
-
-  return actividad;
+  if (response?.data?.error) throw new Error(response.data.error);
+  return response.data.segment;
 }

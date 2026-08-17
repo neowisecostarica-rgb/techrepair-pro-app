@@ -1,220 +1,99 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
+import { projectInventoryAdmin } from '../_shared/dataProjections.ts';
 
-/**
- * updateInventoryItem — Owner único para actualización de productos de inventario
- * ORT-PILOTO — Ownership Base Catálogo Inventario
- *
- * Responsabilidades:
- *  1. Auth + organization_id válido
- *  2. Cargar item actual y validar ownership
- *  3. Validar categoria_id si cambia
- *  4. Aplicar validaciones de permite_stock y es_vendible
- *  5. Validar unicidad de codigo_barras y sku (excluyendo el propio item)
- *  6. Recalcular garantia_proveedor_vence si fecha/meses cambian
- *  7. Detectar cambios críticos y crear InventarioHistorial por cada uno
- *  8. Actualizar Inventario via asServiceRole
- *  9. Retornar item actualizado
- *
- * CAMPOS CRÍTICOS CON HISTORIAL: cantidad_disponible, costo_unitario, precio_venta,
- *                                  ubicacion, estado, categoria_id
- *
- * NO hace: ajuste de stock (→ adjustInventoryStock), ventas (→ createSale),
- *          reservas OT, importaciones masivas
- */
+const SOVEREIGN_FIELDS = new Set([
+  'organization_id', 'branch_id', 'cantidad_disponible', 'cantidad_reservada',
+  'fecha_ultimo_movimiento', 'last_sale_id', 'last_sale_operation_key',
+  'last_inventory_operation_key', 'last_inventory_movement_key',
+]);
+const EDITABLE_FIELDS = new Set([
+  'nombre', 'descripcion', 'categoria_id', 'tipo_item', 'marca', 'modelo',
+  'codigo_barras', 'sku', 'ubicacion', 'costo_unitario', 'precio_venta',
+  'punto_reorden', 'proveedor', 'fecha_compra', 'documento_compra',
+  'garantia_proveedor_meses', 'estado', 'co2_evitado', 'valor_recuperado',
+  'notas_reciclaje', 'numero_serie', 'compatibilidades',
+]);
 
-const CAMPOS_CRITICOS = [
-  'cantidad_disponible',
-  'costo_unitario',
-  'precio_venta',
-  'ubicacion',
-  'estado',
-  'categoria_id',
-];
-
-Deno.serve(async (req) => {
-  if (req.method !== 'POST') {
-    return Response.json({ error: 'Método no permitido' }, { status: 405 });
-  }
-
+Deno.serve(async req => {
+  if (req.method !== 'POST') return Response.json({ error: 'Metodo no permitido' }, { status: 405 });
   const base44 = createClientFromRequest(req);
-
-  // 1. AUTH
   const user = await base44.auth.me();
-  if (!user) {
-    return Response.json({ error: 'No autenticado' }, { status: 401 });
-  }
+  if (!user) return Response.json({ error: 'No autenticado' }, { status: 401 });
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'INVENTORY'],
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
 
-  const orgId = user.organization_id || user.impersonating_org_id;
-  if (!orgId) {
-    return Response.json({ error: 'organization_id no resuelto para este usuario' }, { status: 403 });
-  }
-
-  // 2. PARSE BODY
   let body;
-  try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: 'Body inválido' }, { status: 400 });
-  }
-
+  try { body = await req.json(); }
+  catch { return Response.json({ error: 'Body invalido' }, { status: 400 }); }
   const { id, updateData } = body;
-
-  if (!id) {
-    return Response.json({ error: 'id del producto es requerido' }, { status: 400 });
+  if (!id || !updateData || typeof updateData !== 'object' || Array.isArray(updateData)) {
+    return Response.json({ error: 'id y updateData son requeridos' }, { status: 400 });
   }
-
-  if (!updateData) {
-    return Response.json({ error: 'updateData es requerido' }, { status: 400 });
-  }
-
-  // 3. CARGAR ITEM ACTUAL Y VALIDAR OWNERSHIP
-  const invResults = await base44.asServiceRole.entities.Inventario.filter({
-    id,
-    organization_id: orgId,
-  });
-
-  if (!invResults || invResults.length === 0) {
+  const forbidden = Object.keys(updateData).filter(field => SOVEREIGN_FIELDS.has(field));
+  if (forbidden.length > 0) {
     return Response.json({
-      error: 'Producto no encontrado o no pertenece a esta organización',
-    }, { status: 404 });
+      error: `Campos soberanos de inventario no editables: ${forbidden.join(', ')}`,
+      code: 'INVENTORY_SOVEREIGN_FIELD_FORBIDDEN',
+    }, { status: 409 });
+  }
+  const unknown = Object.keys(updateData).filter(field => !EDITABLE_FIELDS.has(field));
+  if (unknown.length > 0) {
+    return Response.json({ error: `Campos no permitidos: ${unknown.join(', ')}`, code: 'INVENTORY_FIELD_NOT_ALLOWED' }, { status: 422 });
   }
 
-  const itemActual = invResults[0];
-
-  // 4. VALIDAR CATEGORÍA si se especifica
-  const categoriaId = updateData.categoria_id || itemActual.categoria_id;
-  const categorias = await base44.asServiceRole.entities.CategoriaInventario.filter({
-    id: categoriaId,
-    organization_id: orgId,
-  });
-
-  if (!categorias || categorias.length === 0) {
-    return Response.json({ error: 'categoria_id inválida o no pertenece a esta organización' }, { status: 400 });
+  const orgId = authorization.organizationId;
+  const [current] = await base44.asServiceRole.entities.Inventario.filter({ id, organization_id: orgId }, 1);
+  if (!current) return Response.json({ error: 'Producto no encontrado' }, { status: 404 });
+  const scope = getCanonicalBranchScope(authorization);
+  if (!scope.ok) return Response.json({ error: scope.error, code: scope.code }, { status: scope.status });
+  if (!scope.organizationWide && current.branch_id !== scope.branchId) {
+    return Response.json({ error: 'Producto fuera de la sucursal autorizada', code: 'INVENTORY_CROSS_BRANCH_DENIED' }, { status: 403 });
   }
 
-  const categoria = categorias[0];
-
-  // 5. VALIDACIONES DE CATEGORÍA
-  const cantidadNueva = updateData.cantidad_disponible !== undefined
-    ? parseFloat(updateData.cantidad_disponible)
-    : itemActual.cantidad_disponible;
-
-  const precioNuevo = updateData.precio_venta !== undefined
-    ? parseFloat(updateData.precio_venta)
-    : itemActual.precio_venta;
-
-  if (!categoria.permite_stock && cantidadNueva > 0) {
-    return Response.json({
-      error: `La categoría "${categoria.nombre}" no permite stock. cantidad_disponible debe ser 0.`,
-    }, { status: 400 });
+  const categoryId = updateData.categoria_id || current.categoria_id;
+  const [category] = await base44.asServiceRole.entities.CategoriaInventario.filter({ id: categoryId, organization_id: orgId }, 1);
+  if (!category) return Response.json({ error: 'categoria_id invalida' }, { status: 400 });
+  if (!category.permite_stock
+    && Number(current.cantidad_disponible || 0) + Number(current.cantidad_reservada || 0) > 0) {
+    return Response.json({ error: 'No se puede asignar una categoria sin stock mientras ON_HAND sea mayor a cero' }, { status: 409 });
+  }
+  if (updateData.nombre !== undefined && !String(updateData.nombre).trim()) {
+    return Response.json({ error: 'nombre no puede quedar vacio' }, { status: 400 });
+  }
+  if (updateData.costo_unitario !== undefined
+    && (String(updateData.costo_unitario).trim() === '' || !Number.isFinite(Number(updateData.costo_unitario)))) {
+    return Response.json({ error: 'costo_unitario debe ser numerico' }, { status: 400 });
+  }
+  const price = Number(updateData.precio_venta ?? current.precio_venta ?? 0);
+  if (!category.es_vendible && price > 0) return Response.json({ error: 'La categoria no es vendible' }, { status: 400 });
+  if (category.es_vendible && (!Number.isFinite(price) || price <= 0)) {
+    return Response.json({ error: 'precio_venta debe ser mayor a 0' }, { status: 400 });
   }
 
-  if (!categoria.es_vendible && precioNuevo > 0) {
-    return Response.json({
-      error: `La categoría "${categoria.nombre}" no es vendible. precio_venta debe ser 0.`,
-    }, { status: 400 });
-  }
-
-  if (categoria.es_vendible && precioNuevo <= 0) {
-    return Response.json({
-      error: `La categoría "${categoria.nombre}" requiere precio_venta mayor a 0.`,
-    }, { status: 400 });
-  }
-
-  // 6. VALIDAR UNICIDAD codigo_barras (si cambia)
-  if (updateData.codigo_barras && updateData.codigo_barras !== itemActual.codigo_barras) {
-    const existentesCodigo = await base44.asServiceRole.entities.Inventario.filter({
-      organization_id: orgId,
-      codigo_barras: updateData.codigo_barras,
-    });
-    const conflicto = existentesCodigo.find(i => i.id !== id);
-    if (conflicto) {
-      return Response.json({
-        error: `codigo_barras "${updateData.codigo_barras}" ya existe: ${conflicto.nombre}`,
-      }, { status: 409 });
+  for (const field of ['codigo_barras', 'sku']) {
+    if (!updateData[field] || updateData[field] === current[field]) continue;
+    const matches = await base44.asServiceRole.entities.Inventario.filter({ organization_id: orgId, [field]: updateData[field] }, '-created_date', 2);
+    if ((matches || []).some(record => record.id !== id)) {
+      return Response.json({ error: `${field} ya existe` }, { status: 409 });
     }
   }
 
-  // 6b. VALIDAR UNICIDAD sku (si cambia)
-  if (updateData.sku && updateData.sku !== itemActual.sku) {
-    const existentesSku = await base44.asServiceRole.entities.Inventario.filter({
-      organization_id: orgId,
-      sku: updateData.sku,
-    });
-    const conflictoSku = existentesSku.find(i => i.id !== id);
-    if (conflictoSku) {
-      return Response.json({
-        error: `sku "${updateData.sku}" ya existe: ${conflictoSku.nombre}`,
-      }, { status: 409 });
+  const payload = Object.fromEntries(Object.entries(updateData).filter(([field]) => EDITABLE_FIELDS.has(field)));
+  payload.precio_venta = category.es_vendible ? price : 0;
+  if (updateData.fecha_compra !== undefined || updateData.garantia_proveedor_meses !== undefined) {
+    const purchaseDate = updateData.fecha_compra ?? current.fecha_compra;
+    const months = Number(updateData.garantia_proveedor_meses ?? current.garantia_proveedor_meses ?? 0);
+    payload.garantia_proveedor_vence = null;
+    if (purchaseDate && months > 0) {
+      const expiration = new Date(purchaseDate);
+      expiration.setMonth(expiration.getMonth() + months);
+      payload.garantia_proveedor_vence = expiration.toISOString().split('T')[0];
     }
   }
-
-  // 7. RECALCULAR garantia_proveedor_vence si cambian fecha_compra o garantia_proveedor_meses
-  const fechaCompra = updateData.fecha_compra !== undefined ? updateData.fecha_compra : itemActual.fecha_compra;
-  const mesesGarantia = updateData.garantia_proveedor_meses !== undefined
-    ? updateData.garantia_proveedor_meses
-    : itemActual.garantia_proveedor_meses;
-
-  let garantiaVence = itemActual.garantia_proveedor_vence || null;
-
-  const cambioGarantia = updateData.fecha_compra !== undefined || updateData.garantia_proveedor_meses !== undefined;
-  if (cambioGarantia) {
-    if (fechaCompra && mesesGarantia > 0) {
-      const fechaBase = new Date(fechaCompra);
-      const fechaVence = new Date(fechaBase);
-      fechaVence.setMonth(fechaVence.getMonth() + parseInt(mesesGarantia));
-      garantiaVence = fechaVence.toISOString().split('T')[0];
-    } else {
-      garantiaVence = null;
-    }
-  }
-
-  // 8. DETECTAR CAMBIOS CRÍTICOS Y CREAR INVENTARIOHISTORIAL
-  const historialPromises = [];
-
-  for (const campo of CAMPOS_CRITICOS) {
-    const valorAnterior = itemActual[campo];
-    const valorNuevo = updateData[campo] !== undefined ? updateData[campo] : valorAnterior;
-
-    // Comparar como string para detectar cambios reales
-    if (String(valorAnterior ?? '') !== String(valorNuevo ?? '')) {
-      historialPromises.push(
-        base44.asServiceRole.entities.InventarioHistorial.create({
-          organization_id: orgId,
-          inventario_id: id,
-          campo,
-          valor_anterior: String(valorAnterior ?? ''),
-          valor_nuevo: String(valorNuevo ?? ''),
-          modificado_por: user.id,
-          motivo: `Actualización manual — campo: ${campo}`,
-        }).catch(err => {
-          console.warn(`[updateInventoryItem] InventarioHistorial falló para campo ${campo}:`, err.message);
-        })
-      );
-    }
-  }
-
-  // Ejecutar historial de forma paralela (non-blocking si falla)
-  if (historialPromises.length > 0) {
-    await Promise.all(historialPromises);
-  }
-
-  // 9. CONSTRUIR PAYLOAD FINAL
-  const payloadUpdate = {
-    ...updateData,
-    garantia_proveedor_vence: garantiaVence,
-    // Respetar reglas de categoría
-    cantidad_disponible: categoria.permite_stock ? cantidadNueva : 0,
-    precio_venta: categoria.es_vendible ? precioNuevo : 0,
-  };
-
-  // 10. ACTUALIZAR INVENTARIO
-  const itemActualizado = await base44.asServiceRole.entities.Inventario.update(id, payloadUpdate);
-
-  // 11. RETORNAR
-  return Response.json({
-    success: true,
-    data: itemActualizado,
-    cambios_registrados: historialPromises.length,
-  }, { status: 200 });
+  const updated = await base44.asServiceRole.entities.Inventario.update(id, payload);
+  return Response.json({ success: true, data: projectInventoryAdmin(updated) }, { status: 200 });
 });

@@ -17,7 +17,7 @@
     },
     "branch_id": {
       "type": "string",
-      "description": "ID de la sucursal asignada (obligatorio para BRANCH_ADMIN, TECHNICIAN, SALES, INVENTORY, SUPPORT)"
+      "description": "ID de la sucursal asignada (obligatorio para roles SINGLE_BRANCH; ORG_ADMIN debe permanecer organization-wide)"
     },
     "role": {
       "type": "string",
@@ -27,6 +27,7 @@
         "TECHNICIAN",
         "SALES",
         "INVENTORY",
+        "CUSTOMER_SERVICE",
         "SUPPORT"
       ],
       "description": "Rol oficial del usuario en la organizaci\u00f3n"
@@ -63,11 +64,21 @@
     "timezone": {
       "type": "string",
       "description": "Zona horaria (opcional)"
-    }
+    },
+    "role_migrated_from": { "type": "string", "rls": { "write": false } },
+    "role_migration_operation_key": { "type": "string", "rls": { "write": false } },
+    "role_migrated_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "role_migrated_by": { "type": "string", "rls": { "write": false } }
   },
   "required": [
     "user_email",
     "role",
     "organization_id"
-  ]
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
 }

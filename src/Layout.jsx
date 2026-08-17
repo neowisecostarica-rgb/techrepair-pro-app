@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
 import { useAuthContext } from './components/contexts/AuthContext';
@@ -15,17 +14,18 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarMenu from '@/components/layout/SidebarMenu';
+import { endIdentityImpersonation, getIdentityOrganization } from '@/api/identity';
 
 function LayoutContent({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth, identityStatus, multiOrgAccounts, selectOrganization } = useAuthContext();
+  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth, identityStatus, multiOrgAccounts, selectOrganization, capabilities, authorizationReady } = useAuthContext();
 
   // Query organization (MUST be before any conditional returns)
   const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({
     queryKey: ['org-status', effectiveOrgId],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.filter({ id: effectiveOrgId });
-      return orgs[0];
+      const result = await getIdentityOrganization(effectiveOrgId);
+      return result.organization;
     },
     enabled: !!effectiveOrgId && effectiveRole !== 'SUPER_ADMIN',
     staleTime: 60000,
@@ -70,20 +70,7 @@ function LayoutContent({ children, currentPageName }) {
   };
 
   const handleEndImpersonation = async () => {
-    await base44.auth.updateMe({
-      impersonating_org_id: null,
-      impersonating_started_at: null
-    });
-
-    // Registrar fin en auditoría (non-blocking)
-    base44.entities.SuperAdminAudit.create({
-      super_admin_id: user.id,
-      super_admin_email: user.email,
-      action: 'impersonate_end',
-      target_organization_id: effectiveOrgId,
-    }).catch(err => {
-      console.warn('Auditoría impersonate_end falló (non-blocking):', err);
-    });
+    await endIdentityImpersonation();
 
     window.location.href = createPageUrl('Saas');
   };
@@ -202,6 +189,7 @@ function LayoutContent({ children, currentPageName }) {
             <nav className="flex-1 overflow-y-auto p-4">
               <SidebarMenu
                 effectiveRole="SUPER_ADMIN"
+                capabilities={[]}
                 currentPageName={currentPageName}
                 sidebarOpen={true}
                 sectionsOpen={{}}
@@ -279,6 +267,38 @@ function LayoutContent({ children, currentPageName }) {
       window.location.href = createPageUrl('Onboarding');
     }
     return null;
+  }
+
+  // Fail closed when the backend authorization projection is temporarily unavailable.
+  // This is a UX gate only; backend command policies remain the authority.
+  if (!authorizationReady && !isProtectedPage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-amber-50 to-blue-50">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Permisos no disponibles</h2>
+          <p className="text-slate-600 mb-6">
+            No pudimos confirmar tus permisos actuales. Ninguna operación fue habilitada; vuelve a intentarlo.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              type="button"
+              onClick={reloadAuth}
+              className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+            >
+              Reintentar
+            </button>
+            <button
+              type="button"
+              onClick={() => base44.auth.logout()}
+              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // 3. UserAccount exists but incomplete setup → send to Onboarding
@@ -403,6 +423,7 @@ function LayoutContent({ children, currentPageName }) {
           <nav className="flex-1 overflow-y-auto p-4">
             <SidebarMenu
               effectiveRole={effectiveRole}
+              capabilities={capabilities}
               currentPageName={currentPageName}
               sidebarOpen={sidebarOpen}
               sectionsOpen={sectionsOpen}

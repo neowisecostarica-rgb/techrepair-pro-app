@@ -12,6 +12,15 @@ export async function validarSolapamiento({
   horaFin,
   citaIdExcluir = null, // Para excluir la cita actual al editar
 }) {
+  const minutosInicio = horaAMinutos(horaInicio);
+  const minutosFin = horaAMinutos(horaFin);
+  if (!horaInicio || !horaFin || minutosFin <= minutosInicio) {
+    return {
+      conflicto: true,
+      mensaje: 'La hora de fin debe ser posterior a la hora de inicio',
+    };
+  }
+
   // Obtener todas las citas del técnico en esa fecha
   const citas = await base44.entities.Cita.filter({
     organization_id: organizationId,
@@ -27,9 +36,6 @@ export async function validarSolapamiento({
   );
 
   // Convertir a minutos para comparar
-  const minutosInicio = horaAMinutos(horaInicio);
-  const minutosFin = horaAMinutos(horaFin);
-
   // Verificar solapamientos
   for (const cita of citasActivas) {
     const citaInicio = horaAMinutos(cita.hora_inicio);

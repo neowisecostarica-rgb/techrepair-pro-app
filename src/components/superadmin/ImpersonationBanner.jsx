@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, LogOut } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 
 export default function ImpersonationBanner({ organizationName, onEndImpersonation }) {
   return (

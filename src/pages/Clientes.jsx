@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,12 +17,12 @@ import EquiposCliente from '@/components/clientes/EquiposCliente';
 import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
 import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
-import MensajesMotivacionVentas from '../components/ventas/MensajesMotivacionVentas';
 import AtencionRequerida from '@/components/clientes/AtencionRequerida';
+import { customer360QueryKeys, getCustomer360 } from '@/api/customer360';
 
 export default function Clientes() {
   return (
-    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN']}>
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'CUSTOMER_SERVICE']}>
       <ClientesContent />
     </PageGuard>
   );
@@ -34,14 +34,8 @@ function ClientesContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
-  const [mensajeMotivacion, setMensajeMotivacion] = useState(null);
   const queryClient = useQueryClient();
-  const { user, effectiveOrgId } = useAuthContext();
-
-  const mostrarMensajeReconocimiento = (contexto) => {
-    setMensajeMotivacion({ tipo: 'reconocimiento', contexto });
-    setTimeout(() => setMensajeMotivacion(null), 8000);
-  };
+  const { user, userAccount, effectiveOrgId } = useAuthContext();
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes', effectiveOrgId],
@@ -50,6 +44,18 @@ function ClientesContent() {
       return base44.entities.Cliente.filter({ organization_id: effectiveOrgId });
     },
     enabled: !!effectiveOrgId,
+  });
+
+  const {
+    data: customer360,
+    isLoading: customer360Loading,
+    isError: customer360Error,
+    error: customer360Failure,
+  } = useQuery({
+    queryKey: customer360QueryKeys.detail(selectedCliente?.id),
+    queryFn: () => getCustomer360(selectedCliente.id),
+    enabled: Boolean(showDetalleModal && selectedCliente?.id && user),
+    staleTime: 30_000,
   });
 
 
@@ -67,10 +73,6 @@ function ClientesContent() {
       <MensajesMotivacionVentas tipo="diaria" />
 
       {/* Mensajes contextuales */}
-      {mensajeMotivacion && (
-        <MensajesMotivacionVentas tipo={mensajeMotivacion.tipo} contexto={mensajeMotivacion.contexto} />
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -196,11 +198,20 @@ function ClientesContent() {
           <DialogHeader>
             <DialogTitle>Perfil del Cliente</DialogTitle>
           </DialogHeader>
-          {selectedCliente && user && (
+          {customer360Loading && (
+            <div className="py-8 text-center text-sm text-slate-500">Cargando expediente del cliente...</div>
+          )}
+          {customer360Error && (
+            <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+              {customer360Failure?.message || 'No se pudo cargar el expediente del cliente.'}
+            </div>
+          )}
+          {selectedCliente && user && !customer360Loading && !customer360Error && customer360 && (
             <Tabs defaultValue="seguimiento" className="w-full">
               {/* ── Customer 360 Header ── */}
               <ClientePerfilHeader
-                cliente={selectedCliente}
+                cliente={customer360.cliente || selectedCliente}
+                ordenes={customer360.ordenes}
                 onEditarCliente={() => {
                   setShowDetalleModal(false);
                   setEditingCliente(selectedCliente);
@@ -208,11 +219,18 @@ function ClientesContent() {
                 }}
               />
 
-              <AtencionRequerida clienteId={selectedCliente.id} />
+              <AtencionRequerida
+                ordenes={customer360.ordenes}
+                cotizaciones={customer360.cotizaciones}
+              />
 
-              <ResumenEjecutivo clienteId={selectedCliente.id} />
+              <ResumenEjecutivo
+                ots={customer360.ordenes}
+                ventas={customer360.ventas}
+                cotizaciones={customer360.cotizaciones}
+              />
 
-              <EquiposCliente clienteId={selectedCliente.id} />
+              <EquiposCliente equipos={customer360.equipos} />
 
               <TabsList className="grid w-full grid-cols-3 mt-4">
                 <TabsTrigger value="seguimiento">
@@ -230,7 +248,12 @@ function ClientesContent() {
               </TabsList>
 
               <TabsContent value="seguimiento" className="space-y-4">
-                <SeguimientoCliente clienteId={selectedCliente.id} />
+                <SeguimientoCliente
+                  ordenes={customer360.ordenes}
+                  ventas={customer360.ventas}
+                  cotizaciones={customer360.cotizaciones}
+                  mensajes={customer360.mensajes}
+                />
               </TabsContent>
 
               <TabsContent value="cotizaciones">
@@ -238,6 +261,7 @@ function ClientesContent() {
                   clienteId={selectedCliente.id}
                   ordenTrabajoId={null}
                   user={user}
+                  userAccount={userAccount}
                 />
               </TabsContent>
 
@@ -245,7 +269,8 @@ function ClientesContent() {
                 <ComunicacionCliente
                   clienteId={selectedCliente.id}
                   ordenTrabajoId={null}
-                  user={user}
+                  cliente={customer360.cliente || selectedCliente}
+                  mensajes={customer360.mensajes}
                 />
               </TabsContent>
             </Tabs>

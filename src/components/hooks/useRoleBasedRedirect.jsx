@@ -28,10 +28,9 @@ export function useRoleBasedRedirect(userAccount, currentPageName) {
       'ORG_ADMIN': 'Dashboard',
       'SALES': 'Clientes',
       'TECHNICIAN': 'MiDia',
+      'INVENTORY': 'Inventario',
+      'CUSTOMER_SERVICE': 'Clientes',
       'BRANCH_ADMIN': 'Dashboard',
-      'AUDITOR': 'Dashboard',
-      'CFO': 'Dashboard',
-      'CEO': 'Dashboard'
     };
 
     const targetLanding = landingByRole[userAccount.role];

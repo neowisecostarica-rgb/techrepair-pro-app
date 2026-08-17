@@ -64,54 +64,5 @@
     "user_id",
     "user_email"
   ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "read": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    }
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

@@ -14,6 +14,35 @@
       "type": "string",
       "description": "ID del t\u00e9cnico que realiza la prueba"
     },
+    "author_user_id": {
+      "type": "string",
+      "description": "Autor autenticado que registro la evidencia"
+    },
+    "author_role": {
+      "type": "string",
+      "enum": ["ORG_ADMIN", "BRANCH_ADMIN", "TECHNICIAN"],
+      "description": "Rol autenticado del autor al registrar la evidencia"
+    },
+    "effective_technician_user_id": { "type": "string", "rls": { "write": false } },
+    "assignment_snapshot": { "type": "object", "rls": { "write": false } },
+    "technical_activity_segment_id": { "type": "string", "rls": { "write": false } },
+    "correlation_id": { "type": "string", "rls": { "write": false } },
+    "qa_cycle_id": {
+      "type": "string",
+      "description": "Identificador del ciclo vigente de PRUEBAS"
+    },
+    "qa_cycle_started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "recorded_via_backend": {
+      "type": "boolean",
+      "description": "Marca emitida exclusivamente por recordTechnicalTest"
+    },
     "tipo_prueba": {
       "type": "string",
       "enum": [
@@ -54,57 +83,14 @@
     "organization_id",
     "orden_trabajo_id",
     "tecnico_id",
+    "author_user_id",
+    "author_role",
+    "qa_cycle_id",
+    "qa_cycle_started_at",
+    "recorded_at",
+    "recorded_via_backend",
     "tipo_prueba",
     "resultado"
   ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "read": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "data.organization_id": "{{user.data.impersonating_org_id}}"
-        },
-        {
-          "user_condition": {
-            "data.is_super_admin": "true"
-          }
-        }
-      ]
-    }
-  }
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
 }

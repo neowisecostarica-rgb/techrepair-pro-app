@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { getIdentityOrganization, listIdentityAccounts } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,10 +72,8 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
     queryKey: ['tecnico-contexto', ordenTrabajo?.tecnico_asignado_id],
     queryFn: async () => {
       if (!ordenTrabajo.tecnico_asignado_id) return null;
-      const accounts = await base44.entities.UserAccount.filter({ 
-        user_id: ordenTrabajo.tecnico_asignado_id 
-      });
-      return accounts[0];
+      const { accounts } = await listIdentityAccounts(effectiveOrgId);
+      return accounts.find(account => account.user_id === ordenTrabajo.tecnico_asignado_id);
     },
     enabled: !!ordenTrabajo?.tecnico_asignado_id,
   });
@@ -91,8 +90,8 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
   const { data: organization } = useQuery({
     queryKey: ['org-contexto-garantia', effectiveOrgId],
     queryFn: async () => {
-      const orgs = await base44.entities.Organization.list();
-      return orgs.find(o => o.id === effectiveOrgId);
+      const result = await getIdentityOrganization(effectiveOrgId);
+      return result.organization;
     },
     enabled: !!effectiveOrgId,
   });

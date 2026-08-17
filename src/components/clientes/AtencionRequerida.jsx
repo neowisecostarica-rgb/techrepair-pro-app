@@ -1,21 +1,7 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
-export default function AtencionRequerida({ clienteId }) {
-  const { data: ordenes = [] } = useQuery({
-    queryKey: ['ordenes-cliente', clienteId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-  });
-
-  const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones-cliente', clienteId],
-    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteId }),
-    enabled: !!clienteId,
-  });
-
+export default function AtencionRequerida({ ordenes = [], cotizaciones = [] }) {
   // Derivar alertas desde estados existentes
   const alertas = [];
 

@@ -29,9 +29,8 @@ export default function Home() {
       'BRANCH_ADMIN': 'Dashboard',
       'SALES': 'Clientes',
       'TECHNICIAN': 'MiDia',
-      'AUDITOR': 'Dashboard',
-      'CFO': 'Dashboard',
-      'CEO': 'Dashboard'
+      'INVENTORY': 'Inventario',
+      'CUSTOMER_SERVICE': 'Clientes',
     };
 
     const target = landingByRole[effectiveRole] || 'Dashboard';

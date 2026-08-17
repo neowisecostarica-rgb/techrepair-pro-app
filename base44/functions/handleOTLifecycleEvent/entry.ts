@@ -8,6 +8,8 @@
 // have been archived and must NOT be reactivated.
 // ============================================================
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 
 const EVENT_CONFIG = {
   OT_CREATED: {
@@ -179,11 +181,27 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Missing record or record.id" }, { status: 400 });
     }
 
-    const orgId = user.organization_id || user.impersonating_org_id;
-    if (record.organization_id && orgId && record.organization_id !== orgId) {
-      console.error(`[handleOTLifecycleEvent] Forbidden — OT org: ${record.organization_id}, user org: ${orgId}`);
-      return Response.json({ error: "Forbidden" }, { status: 403 });
+    const canonicalRecords = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: record.id }, '-created_date', 1);
+    const canonicalRecord = canonicalRecords?.[0];
+    if (!canonicalRecord) return Response.json({ error: 'OT no encontrada' }, { status: 404 });
+
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      organizationHint: canonicalRecord.organization_id,
+      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
+    });
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+    if (authorization.pilotMode) {
+      return Response.json({ error: 'Los handlers automatizados estan deshabilitados durante el piloto controlado', code: 'CONTROLLED_PILOT_AUTOMATION_MUTATION_DISABLED' }, { status: 409 });
     }
+    const orgId = authorization.organizationId;
+    const branchAuthorization = authorizeRecordBranch(authorization, canonicalRecord.branch_id);
+    if (!branchAuthorization.ok) {
+      return Response.json(
+        { error: branchAuthorization.error, code: branchAuthorization.code },
+        { status: branchAuthorization.status },
+      );
+    }
+    record = canonicalRecord;
 
     if (!_trigger || !EVENT_CONFIG[_trigger]) {
       console.warn(`[handleOTLifecycleEvent] Trigger inválido o no reconocido: "${_trigger}" — OT: ${record.id}`);

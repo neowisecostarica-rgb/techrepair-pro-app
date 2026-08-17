@@ -1,0 +1,36 @@
+{
+  "name": "BranchLifecycleOperation",
+  "type": "object",
+  "description": "Durable idempotency and recovery record for the sovereign Branch lifecycle command.",
+  "properties": {
+    "organization_id": { "type": "string" },
+    "branch_id": { "type": "string" },
+    "operation_key": { "type": "string" },
+    "request_fingerprint": { "type": "string", "rls": { "read": false, "write": false } },
+    "action": {
+      "type": "string",
+      "enum": ["CREATE", "UPDATE_DETAILS", "DEACTIVATE", "REACTIVATE"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PENDING", "COMMITTED"],
+      "default": "PENDING"
+    },
+    "actor_user_id": { "type": "string", "rls": { "write": false } },
+    "actor_role": { "type": "string", "rls": { "write": false } },
+    "started_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "committed_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "result_snapshot": { "type": "object", "rls": { "write": false } }
+  },
+  "required": [
+    "organization_id",
+    "operation_key",
+    "request_fingerprint",
+    "action",
+    "status",
+    "actor_user_id",
+    "actor_role",
+    "started_at"
+  ],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

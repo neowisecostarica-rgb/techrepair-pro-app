@@ -14,6 +14,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { listIdentityAccounts } from '@/api/identity';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,7 +29,7 @@ import PageGuard from '@/components/guards/PageGuard';
 
 export default function ExpedienteOT() {
   return (
-    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'AUDITOR']}>
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'CUSTOMER_SERVICE']}>
       <ExpedienteOTContent />
     </PageGuard>
   );
@@ -76,10 +77,9 @@ function ExpedienteOTContent() {
 
   const { data: tecnico } = useQuery({
     queryKey: ['expediente-tecnico', ot?.tecnico_asignado_id],
-    queryFn: () => base44.entities.UserAccount.filter({
-      user_id: ot.tecnico_asignado_id,
-      organization_id: effectiveOrgId,
-    }).then(r => r[0]),
+    queryFn: () => listIdentityAccounts(effectiveOrgId).then(({ accounts }) =>
+      accounts.find(account => account.user_id === ot.tecnico_asignado_id)
+    ),
     enabled: !!ot?.tecnico_asignado_id,
     staleTime: 5 * 60 * 1000,
   });

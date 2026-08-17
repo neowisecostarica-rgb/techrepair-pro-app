@@ -22,7 +22,7 @@ import { customer360QueryKeys, getCustomer360 } from '@/api/customer360';
 
 export default function Clientes() {
   return (
-    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'SUPPORT']}>
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'CUSTOMER_SERVICE']}>
       <ClientesContent />
     </PageGuard>
   );

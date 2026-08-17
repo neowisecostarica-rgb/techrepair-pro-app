@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
+import { projectInventoryAdmin } from '../_shared/dataProjections.ts';
 
 const SOVEREIGN_FIELDS = new Set([
   'organization_id', 'branch_id', 'cantidad_disponible', 'cantidad_reservada',
@@ -94,5 +95,5 @@ Deno.serve(async req => {
     }
   }
   const updated = await base44.asServiceRole.entities.Inventario.update(id, payload);
-  return Response.json({ success: true, data: updated }, { status: 200 });
+  return Response.json({ success: true, data: projectInventoryAdmin(updated) }, { status: 200 });
 });

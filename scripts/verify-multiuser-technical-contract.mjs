@@ -46,7 +46,8 @@ const [init, activity, assignment, qa, qaEvidence, transition, miDia, activeUi, 
 {
   assert.match(assignment, /ASSUME_TECHNICAL_CUSTODY/);
   assert.match(assignment, /allowAdminSelf/);
-  assert.match(assignment, /caller\.effectiveRole === 'SALES'/);
+  assert.match(assignment, /policyId = initialPath \? 'CP-ASG-001' : 'CP-ASG-002'/);
+  assert.match(assignment, /initialPath \|\| \['ORG_ADMIN', 'BRANCH_ADMIN'\]\.includes\(caller\.effectiveRole\)/);
   assert.match(assignment, /REASSIGNMENT_ROLE_NOT_AUTHORIZED/);
   pass('explicit admin self-assume exists and SALES is limited to initial assignment');
 }
@@ -78,4 +79,3 @@ const [init, activity, assignment, qa, qaEvidence, transition, miDia, activeUi, 
 }
 
 console.log(`\nMulti-user technical custody and QA: ${passed} groups PASS`);
-

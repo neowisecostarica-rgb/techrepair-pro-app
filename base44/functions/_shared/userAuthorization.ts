@@ -15,14 +15,18 @@ export function isCanonicalSuperAdmin(user) {
 
 export function sanitizeUserAccount(account) {
   if (!account) return null;
+  const role = normalizeTenantRole(account.role);
   return {
     id: account.id,
     user_id: account.user_id || null,
     user_email: account.user_email,
     organization_id: account.organization_id,
     branch_id: account.branch_id || null,
-    role: normalizeTenantRole(account.role),
+    role,
     persisted_role: account.role,
+    capabilities: getRoleCapabilities(role),
+    authorization_scope: getRoleScope(role),
+    authorization_preset_version: AUTHORIZATION_PRESET_VERSION,
     status: account.status,
     active: account.status === 'active',
     invited_at: account.invited_at || null,

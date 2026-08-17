@@ -5,6 +5,7 @@ import {
 } from '../_shared/userAuthorization.ts';
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
+import { projectLead, projectOperationalReadResult } from '../_shared/dataProjections.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
           user_email: account.user_email,
         }));
 
-      return Response.json({ leads: leads || [], salesUsers });
+      return Response.json({ leads: (leads || []).map(projectLead), salesUsers });
     }
 
     if (action === 'create') {
@@ -89,7 +90,7 @@ Deno.serve(async (req) => {
         notes: clean(input.notes, 4000) || undefined,
         status: 'new',
       });
-      return Response.json({ lead }, { status: 201 });
+      return Response.json({ lead: projectLead(lead) }, { status: 201 });
     }
 
     const leadId = clean(body.lead_id, 120);
@@ -140,7 +141,7 @@ Deno.serve(async (req) => {
         notes: input.notes === undefined ? lead.notes : (clean(input.notes, 4000) || null),
         lost_reason: nextStatus === 'lost' ? (clean(input.lost_reason, 2000) || null) : null,
       });
-      return Response.json({ lead: updated });
+      return Response.json({ lead: projectLead(updated) });
     }
 
     if (action === 'convert') {
@@ -149,7 +150,11 @@ Deno.serve(async (req) => {
           id: lead.converted_to_cliente_id,
           organization_id: organizationId,
         });
-        return Response.json({ lead, cliente: existing?.[0] || null, idempotent: true });
+        return Response.json({
+          lead: projectLead(lead),
+          cliente: existing?.[0] ? projectOperationalReadResult('Cliente', existing[0], authorization) : null,
+          idempotent: true,
+        });
       }
 
       const identificacion = clean(body.identificacion, 120);
@@ -177,14 +182,18 @@ Deno.serve(async (req) => {
           converted_to_cliente_id: cliente.id,
           converted_at: new Date().toISOString(),
         });
-        return Response.json({ lead: updatedLead, cliente });
+        return Response.json({ lead: projectLead(updatedLead), cliente: projectOperationalReadResult('Cliente', cliente, authorization) });
       } catch (updateError) {
         const reconciled = await base44.asServiceRole.entities.Lead.filter({
           id: lead.id,
           organization_id: organizationId,
         });
         if (reconciled?.[0]?.converted_to_cliente_id === cliente.id) {
-          return Response.json({ lead: reconciled[0], cliente, reconciled: true });
+          return Response.json({
+            lead: projectLead(reconciled[0]),
+            cliente: projectOperationalReadResult('Cliente', cliente, authorization),
+            reconciled: true,
+          });
         }
         await base44.asServiceRole.entities.Cliente.delete(cliente.id).catch(() => {});
         throw updateError;

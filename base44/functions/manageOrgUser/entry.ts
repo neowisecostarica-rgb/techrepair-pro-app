@@ -8,6 +8,7 @@ import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../_shar
 import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectUserAccount } from '../_shared/dataProjections.ts';
 
 const BRANCH_SCOPED_ROLES = new Set(['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE']);
 
@@ -56,6 +57,7 @@ Deno.serve(async (req) => {
     ? body.correlation_id.trim().slice(0, 240)
     : crypto.randomUUID();
   const auditMembership = async (operation, accountId) => {
+    const auditOperationId = crypto.randomUUID();
     if (authorization.isSuperAdmin) {
       await appendSuperAdminAudit(base44, user, {
         action: 'membership_admin',
@@ -74,7 +76,9 @@ Deno.serve(async (req) => {
       resourceId: accountId,
       commandPolicyId: 'CP-USER-001',
       correlationId: membershipCorrelationId,
+      auditOperationId,
       operationKey: membershipCorrelationId,
+      operationSemantics: { operation },
       newState: { operation },
     });
   };
@@ -128,7 +132,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.UserAccount.delete(created.id);
         throw error;
       }
-      return Response.json({ success: true, action: 'created', account: created });
+      return Response.json({ success: true, action: 'created', account: projectUserAccount(created) });
     }
 
     if (existing.length > 1) {
@@ -160,7 +164,7 @@ Deno.serve(async (req) => {
       });
       throw error;
     }
-    return Response.json({ success: true, action: 'reinvited', account: updated });
+    return Response.json({ success: true, action: 'reinvited', account: projectUserAccount(updated) });
   }
 
   if (action === 'updateStatus') {
@@ -210,7 +214,7 @@ Deno.serve(async (req) => {
       });
       throw error;
     }
-    return Response.json({ success: true, account: updated });
+    return Response.json({ success: true, account: projectUserAccount(updated) });
   }
 
   if (action === 'updateAccount') {
@@ -267,7 +271,7 @@ Deno.serve(async (req) => {
       });
       throw error;
     }
-    return Response.json({ success: true, account: updated });
+    return Response.json({ success: true, account: projectUserAccount(updated) });
   }
 
   if (action === 'updateRole') {
@@ -312,7 +316,7 @@ Deno.serve(async (req) => {
       });
       throw error;
     }
-    return Response.json({ success: true, account: updated });
+    return Response.json({ success: true, account: projectUserAccount(updated) });
   }
 
   return Response.json({ error: `Acción desconocida: ${action}` }, { status: 400 });

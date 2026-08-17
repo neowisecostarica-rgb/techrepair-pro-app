@@ -10,6 +10,7 @@ import {
   moneyMatches,
 } from '../_shared/commercialIntegrity.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectSaleMutationResult } from '../_shared/dataProjections.ts';
 
 /*
  * createSale — TRP-MVP-003
@@ -39,6 +40,7 @@ async function ensureSaleAudit(base44, authorization, user, sale, operationKey, 
     resourceId: sale.id,
     commandPolicyId: 'CP-SALE-001',
     correlationId: operationKey,
+    auditOperationId: `sale:${sale.id}`,
     operationKey,
     outcome: idempotent ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
     newState: { estado: sale.estado, total: sale.total, metodo_pago: sale.metodo_pago },
@@ -1051,7 +1053,7 @@ Deno.serve(async req => {
       const recovered = await loadSaleWithItems(base44, orgId, sale.id);
       return Response.json({
         success: true,
-        data: recovered,
+        data: projectSaleMutationResult(recovered),
         idempotent: true,
         recovered: true,
         post_sale_pending: !postSale.completed,
@@ -1100,7 +1102,7 @@ Deno.serve(async req => {
 
       return Response.json({
         success: true,
-        data: committed,
+        data: projectSaleMutationResult(committed),
         idempotent: reservation.recovered,
         recovered: reservation.recovered,
         post_sale_pending: !postSale.completed,
@@ -1113,7 +1115,7 @@ Deno.serve(async req => {
         const committed = await loadSaleWithItems(base44, orgId, current.id);
         return Response.json({
           success: true,
-          data: committed,
+          data: projectSaleMutationResult(committed),
           idempotent: true,
           recovered: true,
           post_sale_pending: !postSale.completed,

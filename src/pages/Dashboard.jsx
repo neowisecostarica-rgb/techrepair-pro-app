@@ -40,7 +40,7 @@ class DashboardErrorBoundary extends React.Component {
 
 export default function Dashboard() {
   return (
-    <PageGuard allowedRoles={['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'AUDITOR', 'CFO', 'CEO']}>
+    <PageGuard allowedRoles={['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN']}>
       <DashboardErrorBoundary>
         <DashboardContent />
       </DashboardErrorBoundary>
@@ -69,6 +69,6 @@ function DashboardContent() {
     return <DashboardTechnician effectiveOrgId={effectiveOrgId} userId={user?.id} />;
   }
 
-  // Default: ORG_ADMIN, BRANCH_ADMIN, AUDITOR, CFO, CEO
+  // Default: ORG_ADMIN, BRANCH_ADMIN
   return <DashboardOrgAdmin effectiveOrgId={effectiveOrgId} />;
 }

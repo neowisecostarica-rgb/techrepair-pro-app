@@ -3,6 +3,7 @@ import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { issuePublicTokenMetadata } from '../_shared/publicTokenContract.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { resolvePublicResourceRelations } from '../_shared/publicResourceRelations.ts';
 
 const TYPES = Object.freeze({
   work_order: { entity: 'OrdenTrabajo', purpose: 'WORK_ORDER_STATUS_READ', capability: 'CUSTOMER_SERVICE_OPERATIONS' },
@@ -29,6 +30,10 @@ Deno.serve(async (req) => {
   const records = await base44.asServiceRole.entities[contract.entity].filter({ id: resourceId, organization_id: authorization.organizationId }, '-created_date', 2);
   if (records?.length !== 1) return fail('Recurso no encontrado', 404, 'PUBLIC_RESOURCE_NOT_FOUND');
   const record = records[0];
+  if (action === 'issue') {
+    const relations = await resolvePublicResourceRelations(base44, { type: body.type, record });
+    if (!relations.ok) return fail('Las relaciones del recurso publico no son validas', 409, relations.code);
+  }
   let branchId = record.branch_id || null;
   if (!branchId && record.orden_trabajo_id) {
     const orders = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: record.orden_trabajo_id, organization_id: authorization.organizationId }, '-created_date', 1);
@@ -45,13 +50,15 @@ Deno.serve(async (req) => {
   const correlationId = typeof body.correlation_id === 'string' && body.correlation_id.trim()
     ? body.correlation_id.trim().slice(0, 240)
     : crypto.randomUUID();
+  const auditOperationId = crypto.randomUUID();
   try {
     await appendAuditEvent(base44, {
       eventType: action === 'revoke' ? 'PUBLIC_TOKEN_REVOKED' : 'PUBLIC_TOKEN_ISSUED', principalClass: authorization.principalClass,
       actorUserId: user.id, actorPrimaryRole: authorization.persistedRole,
       organizationId: authorization.organizationId, branchId,
       resourceType: contract.entity, resourceId: record.id,
-      commandPolicyId: 'CP-PUBLIC-001', correlationId,
+      commandPolicyId: 'CP-PUBLIC-001', correlationId, auditOperationId,
+      operationSemantics: { action },
       metadata: { purpose: contract.purpose, version, expires_at: metadata.public_access_expires_at || null },
     });
   } catch (error) {

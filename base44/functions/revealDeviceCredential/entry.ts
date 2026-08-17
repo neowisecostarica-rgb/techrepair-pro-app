@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { appendDeviceCredentialRevealAudit } from '../_shared/deviceCredentialAudit.ts';
 
 function jsonError(error, status, code) {
   return Response.json({ error, code }, { status });
@@ -33,19 +33,11 @@ Deno.serve(async (req) => {
   const correlationId = typeof body.correlation_id === 'string' && body.correlation_id.trim()
     ? body.correlation_id.trim().slice(0, 240)
     : crypto.randomUUID();
-  await appendAuditEvent(base44, {
-    eventType: 'DEVICE_CREDENTIAL_REVEALED',
-    principalClass: authorization.principalClass,
-    actorUserId: user.id,
-    actorPrimaryRole: authorization.persistedRole,
-    effectiveTechnicianUserId: user.id,
-    organizationId: authorization.organizationId,
-    branchId: workOrder.branch_id,
-    resourceType: 'OrdenTrabajo',
-    resourceId: workOrder.id,
-    commandPolicyId: 'CP-TECH-001',
+  await appendDeviceCredentialRevealAudit(base44, {
+    authorization,
+    user,
+    workOrder,
     correlationId,
-    metadata: { projection: 'DEVICE_CREDENTIAL_REVEAL' },
   });
   return Response.json({
     projection: 'DEVICE_CREDENTIAL_REVEAL',
@@ -54,4 +46,3 @@ Deno.serve(async (req) => {
     contrasena_ingreso: workOrder.contrasena_ingreso || null,
   });
 });
-

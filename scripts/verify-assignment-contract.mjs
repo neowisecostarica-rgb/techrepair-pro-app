@@ -5,6 +5,12 @@ import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base4
 import { getCanonicalBranchScope } from '../base44/functions/_shared/operationalAuthorization.ts';
 import { normalizeTenantRole } from '../base44/functions/_shared/roleCapabilities.ts';
 import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
+import { projectWorkOrderMutationResult } from '../base44/functions/_shared/dataProjections.ts';
+import {
+  evaluateCommandPolicyWithShadow,
+  ExecuteSovereignCommand,
+  SovereignCommandError,
+} from '../base44/functions/_shared/commandExecution.ts';
 
 const backendPath = new URL('../base44/functions/reassignWorkOrderTechnician/entry.ts', import.meta.url);
 const queuePath = new URL('../src/pages/ColaRevision.jsx', import.meta.url);
@@ -153,7 +159,7 @@ function createScenario({
 
 function loadHandler(client) {
   const executable = backendSource
-    .replace(/^import .*?;\s*/gmu, '')
+    .replace(/^import[\s\S]*?;\s*/gmu, '')
     .replace(
       'Deno.serve(async (req) => {',
       'globalThis.__handler = async (req) => {',
@@ -172,6 +178,10 @@ function loadHandler(client) {
     getCanonicalBranchScope,
     normalizeTenantRole,
     appendAuditEvent,
+    projectWorkOrderMutationResult,
+    evaluateCommandPolicyWithShadow,
+    ExecuteSovereignCommand,
+    SovereignCommandError,
   };
   context.globalThis = context;
   vm.runInNewContext(

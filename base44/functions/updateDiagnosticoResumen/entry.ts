@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
+import { projectWorkOrderMutationResult } from '../_shared/dataProjections.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -18,25 +19,29 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'ordenTrabajoId y diagnostico_resumido son requeridos' }, { status: 400 });
     }
 
-    // 2. Obtener OT actual (service role para omitir RLS en lectura)
-    const [ot] = await base44.asServiceRole.entities.OrdenTrabajo.filter({ id: ordenTrabajoId });
+    // Diagnostic truth is authored only by the effective technician. Admin
+    // management authority is never technician authorship authority.
+    const authorization = await resolveAuthorizedContext(base44, user, {
+      allowedRoles: ['TECHNICIAN'],
+    });
+    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+
+    const [ot] = await base44.asServiceRole.entities.OrdenTrabajo.filter({
+      id: ordenTrabajoId,
+      organization_id: authorization.organizationId,
+    });
 
     if (!ot) {
       return Response.json({ error: 'Orden de Trabajo no encontrada' }, { status: 404 });
     }
 
     // 3. VALIDACIÓN MULTI-TENANT (asServiceRole omite RLS — validar manualmente)
-    const authorization = await resolveAuthorizedContext(base44, user, {
-      organizationHint: ot.organization_id,
-      allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'],
-    });
-    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
     const orgId = authorization.organizationId;
     const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
     if (!branchAuthorization.ok) {
       return Response.json({ error: branchAuthorization.error, code: branchAuthorization.code }, { status: branchAuthorization.status });
     }
-    if (authorization.role === 'TECHNICIAN' && ot.tecnico_asignado_id !== user.id) {
+    if (ot.tecnico_asignado_id !== user.id) {
       return Response.json({ error: 'El tecnico solo puede modificar el diagnostico de su OT asignada', code: 'TECHNICIAN_OWNERSHIP_REQUIRED' }, { status: 403 });
     }
 
@@ -69,7 +74,7 @@ Deno.serve(async (req) => {
       estado: ot.estado || 'EN_COLA_REVISION'
     });
 
-    return Response.json({ success: true, data: updatedOT });
+    return Response.json({ success: true, data: projectWorkOrderMutationResult(updatedOT) });
 
   } catch (error) {
     console.error('updateDiagnosticoResumen error:', error);

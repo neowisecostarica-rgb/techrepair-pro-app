@@ -523,6 +523,7 @@ Deno.serve(async (req) => {
       resourceId: workOrder.id,
       commandPolicyId: 'CP-OT-001',
       correlationId,
+      auditOperationId: `work-order-reception:${workOrder.id}`,
       operationKey: correlationId,
       outcome: reconciledExistingArtifact ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
       newState: { estado: workOrder.estado, equipment_id: equipment.id, dmr_id: dmr.id },

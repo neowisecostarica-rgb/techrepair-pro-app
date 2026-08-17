@@ -373,6 +373,58 @@
         "write": false
       }
     },
+    "lifecycle_audit_pending": {
+      "type": "boolean",
+      "default": false,
+      "description": "Marcador durable: la transicion ya fue persistida y su AuditEvent soberano requiere reconciliacion.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_correlation_id": {
+      "type": "string",
+      "description": "Identidad interna backend del AuditEvent requerido por la ultima transicion.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_external_correlation_id": {
+      "type": "string",
+      "description": "Correlacion externa de trazabilidad; nunca es identidad de seguridad.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_previous_status": {
+      "type": "string",
+      "description": "Estado previo inmutable capturado con la mutacion.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_new_status": {
+      "type": "string",
+      "description": "Estado comprometido inmutable capturado con la mutacion.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_command": {
+      "type": "string",
+      "description": "Comando backend que comprometio la mutacion.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_actor_user_id": {
+      "type": "string",
+      "description": "Actor canonico capturado con la mutacion para recuperacion.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_actor_role": {
+      "type": "string",
+      "description": "Rol canonico capturado con la mutacion para recuperacion.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_committed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Instante del commit de lifecycle asociado a la evidencia.",
+      "rls": { "read": false, "write": false }
+    },
+    "lifecycle_audit_error": {
+      "type": "string",
+      "description": "Ultimo error observado al persistir el AuditEvent requerido.",
+      "rls": { "read": false, "write": false }
+    },
     "qa_cycle_id": {
       "type": "string",
       "format": "uuid",

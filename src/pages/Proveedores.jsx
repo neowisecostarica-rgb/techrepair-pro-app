@@ -14,7 +14,7 @@ import { withOrgId } from '@/components/hooks/useOrgData';
 
 export default function Proveedores() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'CFO']}>
+    <PageGuard allowedRoles={['ORG_ADMIN']}>
       <ProveedoresContent />
     </PageGuard>
   );

@@ -57,9 +57,26 @@ const protectedOperationalEntities = new Set([
   'WorkflowGate',
 ]);
 
+const custodyAwareTechnicalEntities = new Set([
+  'BloqueoTecnico',
+  'Diagnostico',
+  'DiagnosticoDocumento',
+  'DiagnosticoEvidencia',
+  'DiagnosticoResultado',
+  'DiagnosticoTecnico',
+  'NotaInterna',
+  'RegistroTiempo',
+]);
+
 async function invokeOperational(payload) {
   const response = await rawBase44.functions.invoke('operationalGateway', payload);
   return response?.data ?? response;
+}
+
+async function invokeTechnicalRecord(payload) {
+  const response = await rawBase44.functions.invoke('technicalRecordCommand', payload);
+  const result = response?.data ?? response;
+  return result?.record ?? result;
 }
 
 function protectedEntity(entityName) {
@@ -104,12 +121,21 @@ function protectedEntity(entityName) {
       return result?.records?.[0] || null;
     },
     create(data) {
+      if (custodyAwareTechnicalEntities.has(entityName)) {
+        return invokeTechnicalRecord({ operation: 'create', entity: entityName, data });
+      }
       return invokeOperational({ operation: 'create', entity: entityName, data });
     },
     update(id, data) {
+      if (custodyAwareTechnicalEntities.has(entityName)) {
+        return invokeTechnicalRecord({ operation: 'update', entity: entityName, id, data });
+      }
       return invokeOperational({ operation: 'update', entity: entityName, id, data });
     },
     delete(id) {
+      if (custodyAwareTechnicalEntities.has(entityName)) {
+        return invokeTechnicalRecord({ operation: 'delete', entity: entityName, id });
+      }
       return invokeOperational({
         operation: 'delete',
         entity: entityName,

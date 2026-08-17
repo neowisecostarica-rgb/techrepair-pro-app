@@ -11,7 +11,7 @@ import { useAuthContext } from '@/components/contexts/AuthContext';
 
 export default function InventarioInvertido() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'CFO', 'CEO']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN']}>
       <InventarioInvertidoContent />
     </PageGuard>
   );

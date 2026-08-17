@@ -50,7 +50,7 @@ const estadoConfig = WORK_ORDER_STATUSES;
 
 export default function OrdenesTrabajo() {
   return (
-    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'AUDITOR']}>
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'CUSTOMER_SERVICE']}>
       <OrdenesTrabajoContent />
     </PageGuard>
   );

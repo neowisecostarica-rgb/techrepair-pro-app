@@ -19,7 +19,7 @@ import { es } from 'date-fns/locale';
 
 export default function Gastos() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'CFO']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN']}>
       <GastosContent />
     </PageGuard>
   );

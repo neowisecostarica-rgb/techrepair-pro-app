@@ -29,7 +29,7 @@ import PageGuard from '@/components/guards/PageGuard';
 
 export default function ExpedienteOT() {
   return (
-    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'AUDITOR']}>
+    <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'CUSTOMER_SERVICE']}>
       <ExpedienteOTContent />
     </PageGuard>
   );

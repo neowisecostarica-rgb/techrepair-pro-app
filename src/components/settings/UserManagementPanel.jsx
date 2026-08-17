@@ -159,7 +159,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
         { value: 'TECHNICIAN', label: 'Técnico' },
         { value: 'SALES', label: 'Ventas' },
         { value: 'INVENTORY', label: 'Inventario' },
-        { value: 'SUPPORT', label: 'Soporte' },
+        { value: 'CUSTOMER_SERVICE', label: 'Servicio al Cliente' },
       ];
     }
     return [];

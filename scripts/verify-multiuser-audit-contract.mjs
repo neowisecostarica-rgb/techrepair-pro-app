@@ -22,9 +22,10 @@ const sources = Object.fromEntries(await Promise.all([
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
 
-test('AuditEvent requires principal, tenant, resource, policy and correlation identity', () => {
-  const event = buildAuditEvent({ eventType: 'TEST', principalClass: 'HUMAN_MEMBER', organizationId: 'org-1', resourceType: 'Test', resourceId: 'r1', commandPolicyId: 'CP-TEST', correlationId: 'c1' });
+test('AuditEvent requires principal, tenant, resource, policy, correlation and backend operation identity', () => {
+  const event = buildAuditEvent({ eventType: 'TEST', principalClass: 'HUMAN_MEMBER', organizationId: 'org-1', resourceType: 'Test', resourceId: 'r1', commandPolicyId: 'CP-TEST', correlationId: 'c1', auditOperationId: 'op-1' });
   assert.equal(event.principal_class, 'HUMAN_MEMBER');
+  assert.equal(event.audit_operation_id, 'op-1');
   assert.throws(() => buildAuditEvent({ eventType: 'TEST' }), /AUDIT_EVENT_FIELD_REQUIRED/);
 });
 
@@ -42,8 +43,12 @@ test('inventory audit correlates exact ledger movement references', () => {
 });
 
 test('delivery and branch lifecycle do not report wrapper success before audit', () => {
-  assert.ok(sources.delivery.indexOf('appendAuditEvent') < sources.delivery.indexOf('return Response.json(result)'));
-  assert.ok(sources.branch.indexOf('appendAuditEvent') < sources.branch.indexOf('return Response.json(result)'));
+  const deliveryAudit = sources.delivery.indexOf('appendAuditEvent');
+  const deliverySuccess = sources.delivery.indexOf('return Response.json({', deliveryAudit);
+  assert.ok(deliveryAudit >= 0 && deliverySuccess > deliveryAudit);
+  const branchAudit = sources.branch.indexOf('appendAuditEvent');
+  const branchSuccess = sources.branch.indexOf('return Response.json({', branchAudit);
+  assert.ok(branchAudit >= 0 && branchSuccess > branchAudit);
 });
 
 test('custody and QA compensate domain state when required audit fails', () => {

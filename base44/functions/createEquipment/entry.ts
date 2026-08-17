@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { resolveAuthorizedBranch } from '../_shared/operationalAuthorization.ts';
+import { projectOperationalReadResult } from '../_shared/dataProjections.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
       fotos: fotos || [],
     });
 
-    return Response.json(equipo);
+    return Response.json(projectOperationalReadResult('Equipo', equipo, authorization));
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

@@ -89,7 +89,7 @@ const estadoCitaConfig = {
 
 export default function Agenda() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'CUSTOMER_SERVICE']}>
       <AgendaContent />
     </PageGuard>
   );
@@ -139,7 +139,7 @@ function AgendaContent() {
       const { accounts } = await listIdentityAccounts(effectiveOrgId);
       return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
-    enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole),
+    enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'].includes(effectiveRole),
   });
 
   const createMutation = useMutation({

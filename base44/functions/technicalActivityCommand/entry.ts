@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectTechnicalActivity } from '../_shared/dataProjections.ts';
 
 const ACTIONS = new Set(['PAUSE', 'RESUME', 'COMPLETE', 'BLOCK']);
 
@@ -81,9 +82,11 @@ Deno.serve(async (req) => {
         actorUserId: user.id, actorPrimaryRole: authorization.persistedRole, effectiveTechnicianUserId: user.id,
         organizationId: authorization.organizationId, branchId: workOrder.branch_id,
         resourceType: 'ActividadTecnica', resourceId: segment.id, commandPolicyId: 'CP-TECH-003', correlationId,
+        auditOperationId: `technical-activity-resume:${segment.id}`,
+        operationSemantics: { action: 'RESUME' },
         custodySnapshot: { work_order_id: workOrder.id, tecnico_asignado_id: workOrder.tecnico_asignado_id },
       });
-      return Response.json({ success: true, segment });
+      return Response.json({ success: true, segment: projectTechnicalActivity(segment) });
     } catch (error) {
       await base44.asServiceRole.entities.ActividadTecnica.delete(segment.id).catch(() => null);
       await base44.asServiceRole.entities.OrdenTrabajo.update(workOrder.id, {
@@ -126,10 +129,12 @@ Deno.serve(async (req) => {
       organizationId: authorization.organizationId, branchId: workOrder.branch_id,
       resourceType: 'ActividadTecnica', resourceId: active.id,
       commandPolicyId: action === 'PAUSE' ? 'CP-TECH-002' : 'CP-TECH-001', correlationId,
+      auditOperationId: `technical-activity:${active.id}:${action.toLowerCase()}`,
+      operationSemantics: { action, from_state: active.estado, to_state: nextSegmentState },
       priorState: { estado: active.estado }, newState: { estado: nextSegmentState },
       custodySnapshot: { work_order_id: workOrder.id, tecnico_asignado_id: workOrder.tecnico_asignado_id },
     });
-    return Response.json({ success: true, segment: { ...active, ...segmentUpdate } });
+    return Response.json({ success: true, segment: projectTechnicalActivity({ ...active, ...segmentUpdate }) });
   } catch (error) {
     await base44.asServiceRole.entities.ActividadTecnica.update(active.id, {
       estado: active.estado,
@@ -148,4 +153,3 @@ Deno.serve(async (req) => {
     throw error;
   }
 });
-

@@ -29,7 +29,7 @@ export function useActividadesTecnicas(ordenTrabajoId) {
         // Todas las actividades de la org
         return base44.entities.ActividadTecnica.filter(baseFilter);
       } else {
-        // SALES, AUDITOR: solo lectura, todas
+        // Otros roles autorizados por la proyección: solo lectura.
         return base44.entities.ActividadTecnica.filter(baseFilter);
       }
     },

@@ -34,6 +34,7 @@ import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { executeInventoryCommand } from '../_shared/inventoryMutationService.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectTechnicalActivity } from '../_shared/dataProjections.ts';
 
 const ESTADO_ACTIVO = 'en_progreso';
 const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
@@ -54,6 +55,7 @@ async function ensureTechnicalStartAudit(base44, { authorization, user, ot, acti
     resourceId: activity.id,
     commandPolicyId: 'CP-TECH-001',
     correlationId,
+    auditOperationId: `technical-activity-start:${activity.id}`,
     custodySnapshot: { work_order_id: ot.id, tecnico_asignado_id: ot.tecnico_asignado_id },
   });
 }
@@ -468,7 +470,7 @@ Deno.serve(async (req) => {
         success: true,
         idempotent: true,
         message: 'Actividad activa existente reutilizada.',
-        actividad: recoveredActivity,
+        actividad: projectTechnicalActivity(recoveredActivity),
         estado_ot: estadoActualOT,
         estado_atencion: ot.estado_atencion || null,
       });
@@ -763,7 +765,7 @@ Deno.serve(async (req) => {
       success: true,
       idempotent: false,
       message: 'Actividad técnica iniciada correctamente.',
-      actividad: nuevaActividad,
+      actividad: projectTechnicalActivity(nuevaActividad),
       estado_ot: 'EN_REVISION',
       estado_atencion: atencionOk ? 'ACTIVO' : (valoresPrevios.estado_atencion),
       advertencia: atencionOk ? null : 'estado_atencion no pudo actualizarse — actividad y OT transicionadas correctamente.',

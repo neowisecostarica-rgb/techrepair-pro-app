@@ -10,6 +10,8 @@ import {
   WORK_ORDER_EDITABLE_FIELDS,
 } from '../_shared/operationalAuthorization.ts';
 import { calculateCommercialTotals } from '../_shared/commercialIntegrity.ts';
+import { resolvePublicResourceRelations } from '../_shared/publicResourceRelations.ts';
+import { projectOperationalMutationResult, projectOperationalReadResult } from '../_shared/dataProjections.ts';
 
 const MAX_QUERY_LIMIT = 500;
 const QUOTE_APPROVAL_FIELDS = new Set([
@@ -20,6 +22,12 @@ const QUOTE_CONVERSION_FIELDS = new Set([
 ]);
 const QUOTE_CONTENT_FIELDS = new Set(['items', 'subtotal', 'descuento_total', 'impuesto', 'total']);
 const MAX_DISCOUNT_WITHOUT_APPROVAL = 20;
+const SOVEREIGN_TECHNICAL_MUTATIONS = new Set([
+  'ActividadTecnica', 'BloqueoTecnico', 'DiagnosticMasterRecord', 'Diagnostico',
+  'DiagnosticoDocumento', 'DiagnosticoEvidencia', 'DiagnosticoResultado',
+  'DiagnosticoTecnico', 'NotaInterna', 'PruebaTecnica', 'RegistroTiempo',
+  'WorkflowGate',
+]);
 
 function fail(error, status = 400, code = 'OPERATIONAL_REQUEST_INVALID') {
   return Response.json({ error, code }, { status });
@@ -313,7 +321,11 @@ async function handleRead(base44, authorization, decision, body) {
     : await entity.filter(filter, body.sort || '-created_date', fetchLimit);
 
   if (authorization.isPlatformGlobal || (decision.branchScope.organizationWide && !requested) || decision.policy.scope === 'organization') {
-    return { ok: true, records: (records || []).slice(0, limit) };
+    return {
+      ok: true,
+      records: (records || []).slice(0, limit)
+        .map(record => projectOperationalReadResult(entityName, record, authorization)),
+    };
   }
 
   const effectiveBranchId = requested || decision.branchScope.branchId;
@@ -330,7 +342,10 @@ async function handleRead(base44, authorization, decision, body) {
     if (recordIsInsideBranchScope(effectiveScope, branchIds)) scoped.push(record);
     if (scoped.length >= limit) break;
   }
-  return { ok: true, records: scoped };
+  return {
+    ok: true,
+    records: scoped.map(record => projectOperationalReadResult(entityName, record, authorization)),
+  };
 }
 
 async function validateMutationContext(base44, authorization, decision, entityName, operation, current, data) {
@@ -379,6 +394,13 @@ async function validateMutationContext(base44, authorization, decision, entityNa
           error: 'Las garantias de OrdenTrabajo solo pueden emitirse mediante deliverWorkOrder',
         };
       }
+      const relations = await resolvePublicResourceRelations(base44, {
+        type: 'warranty',
+        record: { ...data, organization_id: authorization.organizationId },
+      });
+      if (!relations.ok) {
+        return { ok: false, status: 409, code: relations.code, error: 'Las relaciones de la garantia no pertenecen a la organizacion autorizada' };
+      }
       return { ok: true, data };
     }
     if (operation === 'update') {
@@ -410,6 +432,17 @@ async function validateMutationContext(base44, authorization, decision, entityNa
   }
 
   if (entityName === 'Cotizacion' && ['create', 'update'].includes(operation)) {
+    const quoteRelations = await resolvePublicResourceRelations(base44, {
+      type: 'quote',
+      record: {
+        ...(current || {}),
+        ...data,
+        organization_id: authorization.organizationId,
+      },
+    });
+    if (!quoteRelations.ok) {
+      return { ok: false, status: 409, code: quoteRelations.code, error: 'Las relaciones de la cotizacion no pertenecen a la organizacion autorizada' };
+    }
     const keys = Object.keys(data);
     const touchesApproval = keys.some(key => QUOTE_APPROVAL_FIELDS.has(key));
     const touchesConversion = keys.some(key => QUOTE_CONVERSION_FIELDS.has(key));
@@ -617,12 +650,12 @@ async function handleMutation(base44, user, authorization, decision, body) {
       data.delivered_by_role = authorization.role;
     }
     const created = await entity.create(data);
-    return { ok: true, record: created };
+    return { ok: true, record: projectOperationalMutationResult(created, Object.keys(data)) };
   }
 
   if (operation === 'update') {
     const updated = await entity.update(id, data);
-    return { ok: true, record: updated };
+    return { ok: true, record: projectOperationalMutationResult(updated, Object.keys(data)) };
   }
 
   if (operation === 'delete') {
@@ -664,6 +697,13 @@ Deno.serve(async (req) => {
         'Toda mutacion de solicitud tecnica debe ejecutarse mediante technicalRequestCommand.',
         403,
         'TECHNICAL_REQUEST_COMMAND_REQUIRED',
+      );
+    }
+    if (SOVEREIGN_TECHNICAL_MUTATIONS.has(body.entity) && operation !== 'read') {
+      return fail(
+        'La mutacion tecnica debe ejecutarse mediante su writer de custodia dedicado.',
+        403,
+        'TECHNICAL_SOVEREIGN_WRITER_REQUIRED',
       );
     }
     if (body.entity === 'Notificacion' && operation === 'create') {

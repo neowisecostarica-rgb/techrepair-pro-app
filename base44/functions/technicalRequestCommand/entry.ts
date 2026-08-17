@@ -3,6 +3,7 @@ import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { executeInventoryCommand } from '../_shared/inventoryMutationService.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { evaluateCommandPolicyWithShadow, ExecuteSovereignCommand } from '../_shared/commandExecution.ts';
 
 const MODES = new Set(['EXISTING_STOCK', 'NEW_SPEND']);
 const TYPES = new Set(['repuesto', 'suministro', 'herramienta']);
@@ -62,7 +63,13 @@ async function audit(base44, authorization, user, request, eventType, policyId, 
     resourceId: request.id,
     commandPolicyId: policyId,
     correlationId,
+    auditOperationId: `technical-request:${request.id}:${eventType}`,
     operationKey: metadata.inventory_operation_key || null,
+    operationSemantics: {
+      event_type: eventType,
+      from_state: priorState?.estado || null,
+      to_state: newState?.estado || null,
+    },
     priorState,
     newState,
     custodySnapshot: { orden_trabajo_id: request.orden_trabajo_id, requester_user_id: request.requester_user_id || request.tecnico_id },
@@ -278,8 +285,39 @@ Deno.serve(async req => {
       return Response.json({ request: project(current) });
     }
     if (action === 'FULFILL') {
-      const result = await fulfill(base44, authorization, user, request, body);
-      return Response.json({ request: project(result.request), idempotent: result.idempotent });
+      const expectedState = request.fulfillment_mode === 'EXISTING_STOCK' ? 'requested' : 'approved';
+      const preconditionSatisfied = request.estado === expectedState || request.estado === 'fulfilled';
+      const compatibilityAllowed = authorization.capabilities.includes('INVENTORY_OPERATIONS')
+        && preconditionSatisfied;
+      const policyDecision = await evaluateCommandPolicyWithShadow({
+        base44,
+        policyId: 'CP-REQ-003',
+        authorization,
+        relationship: 'INVENTORY_FULFILLER',
+        preconditionSatisfied,
+        preconditionStatus: 409,
+        preconditionCode: 'TECHNICAL_REQUEST_STATE_CONFLICT',
+        compatibilityDecision: {
+          ok: compatibilityAllowed,
+          code: compatibilityAllowed ? 'ALLOW' : 'LEGACY_TECHNICAL_REQUEST_FULFILL_DENY',
+        },
+        audit: {
+          actorUserId: user.id,
+          branchId: request.branch_id,
+          resourceType: 'SolicitudTecnica',
+          resourceId: request.id,
+          correlationId: String(body.operation_key || `request-fulfill-shadow:${request.id}:${user.id}`),
+          operationKey: body.operation_key || null,
+        },
+      });
+      return await ExecuteSovereignCommand({
+        decision: policyDecision,
+        sovereignWriter: 'technicalRequestCommand->inventoryMutationService',
+        execute: async () => {
+          const result = await fulfill(base44, authorization, user, request, body);
+          return Response.json({ request: project(result.request), idempotent: result.idempotent });
+        },
+      });
     }
     return fail('Accion no soportada', 400, 'TECHNICAL_REQUEST_ACTION_INVALID');
   } catch (error) {

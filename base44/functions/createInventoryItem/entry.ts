@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { resolveAuthorizedBranch } from '../_shared/operationalAuthorization.ts';
 import { executeInventoryCommand, InventoryCommandError } from '../_shared/inventoryMutationService.ts';
+import { projectInventoryAdmin } from '../_shared/dataProjections.ts';
 
 function internalCode(organizationId) {
   const org = organizationId.slice(0, 4).toUpperCase();
@@ -142,7 +143,7 @@ Deno.serve(async req => {
         organization_id: orgId, operation_key: initialOperationKey,
       }, '-effective_at', 2).catch(() => []);
       if (current?.last_inventory_operation_key === initialOperationKey && ledger?.length === 1) {
-        return Response.json({ success: true, data: current, recovered: true }, { status: 201 });
+        return Response.json({ success: true, data: projectInventoryAdmin(current), recovered: true }, { status: 201 });
       }
       // Solo se elimina una ficha confirmada en cero y sin movimiento fisico.
       if (current && Number(current.cantidad_disponible || 0) === 0
@@ -155,5 +156,5 @@ Deno.serve(async req => {
     const [reloaded] = await base44.asServiceRole.entities.Inventario.filter({ id: created.id, organization_id: orgId }, 1).catch(() => []);
     finalItem = reloaded || { ...created, cantidad_disponible: initialQuantity, cantidad_reservada: 0 };
   }
-  return Response.json({ success: true, data: finalItem }, { status: 201 });
+  return Response.json({ success: true, data: projectInventoryAdmin(finalItem) }, { status: 201 });
 });

@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectTechnicalTest } from '../_shared/dataProjections.ts';
 
 const VALID_TEST_TYPES = ['funcional', 'stress', 'rendimiento', 'calidad', 'visual'];
 const VALID_RESULTS = ['exitoso', 'fallido', 'parcial'];
@@ -134,6 +135,7 @@ Deno.serve(async (req) => {
         resourceId: test.id,
         commandPolicyId: 'CP-QA-001',
         correlationId: test.correlation_id,
+        auditOperationId: `qa-evidence:${test.id}`,
         custodySnapshot: test.assignment_snapshot,
         metadata: { work_order_id: ot.id, qa_cycle_id: cycleId, resultado },
       });
@@ -141,7 +143,7 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.PruebaTecnica.delete(test.id).catch(() => null);
       throw error;
     }
-    return Response.json({ success: true, data: test });
+    return Response.json({ success: true, data: projectTechnicalTest(test) });
   } finally {
     await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
       id: ot.id,

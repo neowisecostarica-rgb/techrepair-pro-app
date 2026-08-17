@@ -6,6 +6,10 @@ import { resolveAuthorizedContext } from '../base44/functions/_shared/userAuthor
 import { authorizeRecordBranch } from '../base44/functions/_shared/operationalAuthorization.ts';
 import { executeInventoryCommand } from '../base44/functions/_shared/inventoryMutationService.ts';
 import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
+import {
+  evaluateCommandPolicyWithShadow,
+  ExecuteSovereignCommand,
+} from '../base44/functions/_shared/commandExecution.ts';
 
 const source = await readFile(new URL('../base44/functions/technicalRequestCommand/entry.ts', import.meta.url), 'utf8');
 const gatewaySource = await readFile(new URL('../base44/functions/operationalGateway/entry.ts', import.meta.url), 'utf8');
@@ -56,7 +60,7 @@ function handler(client) {
     .replace(/^import[\s\S]*?;\s*/gmu, '')
     .replace('Deno.serve(async req => {', 'globalThis.__handler = async req => {')
     .replace(/\}\);\s*$/u, '};');
-  const context = { __client: client, resolveAuthorizedContext, authorizeRecordBranch, executeInventoryCommand, appendAuditEvent, crypto: webcrypto, TextEncoder, Request, Response, structuredClone, console };
+  const context = { __client: client, resolveAuthorizedContext, authorizeRecordBranch, executeInventoryCommand, appendAuditEvent, evaluateCommandPolicyWithShadow, ExecuteSovereignCommand, crypto: webcrypto, TextEncoder, Request, Response, structuredClone, console };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = () => globalThis.__client;\n${executable}`, context, { filename: 'technicalRequestCommand/entry.ts' });
   return context.__handler;

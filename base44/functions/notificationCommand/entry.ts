@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectNotification } from '../_shared/dataProjections.ts';
 
 const MAP = Object.freeze({
   TRANSITION_DIAGNOSTICADA: { role_target: 'SALES', tipo: 'importante', accion_sugerida: 'Preparar y enviar cotizacion', label: 'Diagnostico completado' },
@@ -36,7 +37,7 @@ Deno.serve(async req => {
     const eventKey = `ot-event:${event.id}:${event.tipo}`;
     const existing = await base44.asServiceRole.entities.Notificacion.filter({ organization_id: authorization.organizationId, event_key: eventKey }, '-created_date', 2);
     if (existing?.length > 1) return fail('Notificacion duplicada', 409, 'NOTIFICATION_AMBIGUOUS');
-    if (existing?.length === 1) return Response.json({ success: true, idempotent: true, notification: existing[0] });
+    if (existing?.length === 1) return Response.json({ success: true, idempotent: true, notification: projectNotification(existing[0]) });
     const notification = await base44.asServiceRole.entities.Notificacion.create({
       organization_id: authorization.organizationId,
       branch_id: ot.branch_id,
@@ -57,7 +58,8 @@ Deno.serve(async req => {
         actorUserId: user.id, actorPrimaryRole: authorization.persistedRole,
         organizationId: authorization.organizationId, branchId: ot.branch_id,
         resourceType: 'Notificacion', resourceId: notification.id,
-        commandPolicyId: 'CP-NOTIF-001', correlationId: eventKey, operationKey: eventKey,
+        commandPolicyId: 'CP-NOTIF-001', correlationId: eventKey,
+        auditOperationId: `workflow-notification:${notification.id}`, operationKey: eventKey,
         newState: { role_target: rule.role_target, tipo: rule.tipo, estado: 'pendiente' },
         metadata: { source_event_id: event.id, work_order_id: ot.id },
       });
@@ -65,7 +67,7 @@ Deno.serve(async req => {
       await base44.asServiceRole.entities.Notificacion.delete(notification.id).catch(() => null);
       throw error;
     }
-    return Response.json({ success: true, idempotent: false, notification });
+    return Response.json({ success: true, idempotent: false, notification: projectNotification(notification) });
   } catch (error) {
     return fail(error.message || 'No se pudo materializar la notificacion', error.status || 500, error.code || 'NOTIFICATION_COMMAND_FAILED');
   }

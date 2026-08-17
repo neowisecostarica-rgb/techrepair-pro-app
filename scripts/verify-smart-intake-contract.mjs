@@ -59,8 +59,33 @@ function createScenario({
     branch_id: 'branch-a',
     diagnostico_resumido: 'Resumen de recepción',
   }];
+  const organizationIds = [...new Set([
+    ...userAccounts.map(account => account.organization_id),
+    ...orders.map(order => order.organization_id),
+    resolvedUser?.impersonating_org_id,
+  ].filter(Boolean))];
+  const branches = [...new Map(userAccounts
+    .filter(account => account.branch_id)
+    .map(account => [account.branch_id, {
+      id: account.branch_id,
+      organization_id: account.organization_id,
+      active: true,
+    }])).values()];
 
   const entities = {
+    Organization: {
+      async filter(query) {
+        return organizationIds
+          .map(id => ({ id, status: 'active' }))
+          .filter(record => matches(record, query))
+          .map(record => structuredClone(record));
+      },
+    },
+    Branch: {
+      async filter(query) {
+        return branches.filter(record => matches(record, query)).map(record => structuredClone(record));
+      },
+    },
     UserAccount: {
       async filter(query) {
         return userAccounts.filter(record => matches(record, query)).map(record => structuredClone(record));
@@ -392,7 +417,7 @@ const tests = [
       const scenario = createScenario({
         user: { id: 'user-a', organization_id: 'org-a' },
         accounts: [{
-          id: 'account-b', user_id: 'user-a', organization_id: 'org-b', role: 'SALES', status: 'active',
+          id: 'account-b', user_id: 'user-a', organization_id: 'org-b', branch_id: 'branch-b', role: 'SALES', status: 'active',
         }],
       });
       const { response, body } = await invoke(scenario);

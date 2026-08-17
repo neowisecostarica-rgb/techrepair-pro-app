@@ -58,7 +58,7 @@ export default function FormularioCita({
       const { accounts } = await listIdentityAccounts(effectiveOrgId);
       return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
-    enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'].includes(effectiveRole),
+    enabled: !!effectiveOrgId && ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'].includes(effectiveRole),
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
@@ -82,7 +82,7 @@ export default function FormularioCita({
     if (effectiveRole === 'TECHNICIAN') {
       return ['bloqueo_personal'];
     }
-    if (effectiveRole === 'SALES') {
+    if (['SALES', 'CUSTOMER_SERVICE'].includes(effectiveRole)) {
       return ['consulta'];
     }
     // ORG_ADMIN y BRANCH_ADMIN pueden crear todos los tipos

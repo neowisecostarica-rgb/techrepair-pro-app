@@ -38,7 +38,8 @@ export const COMMAND_POLICIES = Object.freeze({
   'CP-TECH-001': policy({ endpoint: 'initTechnicalActivity:start', principalClasses: ['HUMAN_MEMBER'], capability: { allOf: ['TECHNICAL_WORK'] }, scope: 'OT_BRANCH', relationship: 'EFFECTIVE_TECHNICIAN', precondition: 'ONE_ACTIVE_WORK_AND_CURRENT_ASSIGNMENT', writer: 'initTechnicalActivity', auditOwner: 'AuditEvent+ActividadTecnica' }),
   'CP-TECH-002': policy({ endpoint: 'technicalActivity:pause', principalClasses: ['HUMAN_MEMBER'], capability: { allOf: ['TECHNICAL_WORK'] }, scope: 'OT_BRANCH', relationship: 'EFFECTIVE_TECHNICIAN', precondition: 'CLOSE_CURRENT_SEGMENT', writer: 'technicalActivityCommand', auditOwner: 'AuditEvent+ActividadTecnica' }),
   'CP-TECH-003': policy({ endpoint: 'technicalActivity:resume', principalClasses: ['HUMAN_MEMBER'], capability: { allOf: ['TECHNICAL_WORK'] }, scope: 'OT_BRANCH', relationship: 'EFFECTIVE_TECHNICIAN', precondition: 'CREATE_NEW_SEGMENT_AND_ONE_ACTIVE_WORK', writer: 'technicalActivityCommand', auditOwner: 'AuditEvent+ActividadTecnica' }),
-  'CP-DIAG-001': policy({ endpoint: 'dmrOrchestrator', principalClasses: ['HUMAN_MEMBER'], capability: { allOf: ['TECHNICAL_WORK'] }, scope: 'OT_BRANCH', relationship: 'EFFECTIVE_TECHNICIAN', precondition: 'ACTIVE_OR_RELEVANT_SEGMENT_AND_ATTRIBUTION', writer: 'dmrOrchestrator', auditOwner: 'AuditEvent+technical-evidence' }),
+  'CP-DIAG-001': policy({ endpoint: 'updateDiagnosticoResumen', principalClasses: ['HUMAN_MEMBER'], capability: { allOf: ['TECHNICAL_WORK'] }, scope: 'OT_BRANCH', relationship: 'EFFECTIVE_TECHNICIAN', precondition: 'CURRENT_CUSTODY_AND_ATTRIBUTION', writer: 'updateDiagnosticoResumen', auditOwner: 'AuditEvent+technical-evidence' }),
+  'CP-DIAG-002': policy({ endpoint: 'technicalRecordCommand', principalClasses: ['HUMAN_MEMBER'], capability: { commandSpecific: true }, scope: 'OT_BRANCH', relationship: 'BRANCH_RESOURCE', precondition: 'TENANT_PARENT_BRANCH_AND_AUTHORSHIP', writer: 'technicalRecordCommand', auditOwner: 'AuditEvent+technical-record' }),
   'CP-QA-001': policy({ endpoint: 'recordTechnicalTest', principalClasses: ['HUMAN_MEMBER'], capability: { allOf: ['TECHNICAL_WORK'] }, scope: 'OT_BRANCH', relationship: 'EFFECTIVE_TECHNICIAN', precondition: 'CURRENT_QA_CYCLE_AND_AUTHORSHIP', writer: 'recordTechnicalTest', auditOwner: 'AuditEvent+PruebaTecnica' }),
   'CP-QUOTE-001': policy({ endpoint: 'operationalGateway:Cotizacion', principalClasses: ['HUMAN_MEMBER'], capability: { allOf: ['QUOTE_OPERATIONS'] }, scope: 'BRANCH', relationship: 'BRANCH_RESOURCE', precondition: 'SERVER_COMMERCIAL_RULES', writer: 'operationalGateway', auditOwner: 'AuditEvent' }),
   'CP-QUOTE-002': policy({ endpoint: 'handlePublicCustomerDecisionV2', principalClasses: ['CUSTOMER_TOKEN'], authorityContract: 'QUOTE_DECISION', capability: null, scope: 'EXACT_TOKEN_RESOURCE', relationship: 'CUSTOMER_TOKEN_RESOURCE', precondition: 'TOKEN_PURPOSE_VERSION_EXPIRY_REVOCATION_AND_WORKFLOW', writer: 'handlePublicCustomerDecisionV2', auditOwner: 'AuditEvent+OTEvent' }),
@@ -84,6 +85,12 @@ function evaluateCapability(expression, capabilities) {
   return false;
 }
 
+function validateCapabilityExpression(expression) {
+  if (!expression || expression.commandSpecific) return false;
+  const capabilities = [...(expression.allOf || []), ...(expression.anyOf || [])];
+  return capabilities.length > 0 && capabilities.every(isKnownCapability);
+}
+
 export function validateCommandPolicyRegistry() {
   const errors = [];
   for (const [id, row] of Object.entries(COMMAND_POLICIES)) {
@@ -97,16 +104,51 @@ export function validateCommandPolicyRegistry() {
   return { ok: errors.length === 0, errors };
 }
 
-export function evaluateCommandPolicy({ policyId, authorization, relationship, authorityContract = null }) {
+export function evaluateCommandPolicy({
+  policyId,
+  authorization,
+  relationship,
+  authorityContract = null,
+  commandCapability = null,
+  commandRelationship = null,
+  scopeSatisfied = true,
+  preconditionSatisfied = true,
+  preconditionStatus = 403,
+  preconditionCode = 'COMMAND_PRECONDITION_DENIED',
+}) {
   const row = COMMAND_POLICIES[policyId];
   if (!row) return { ok: false, status: 403, code: 'COMMAND_POLICY_UNKNOWN' };
   if (!authorization?.ok) return { ok: false, status: authorization?.status || 403, code: 'AUTHORIZATION_CONTEXT_INVALID' };
   if (!row.principalClasses.includes(authorization.principalClass)) return { ok: false, status: 403, code: 'PRINCIPAL_CLASS_DENIED' };
-  if (row.relationship !== relationship) return { ok: false, status: 403, code: 'RESOURCE_RELATIONSHIP_DENIED' };
+  if (scopeSatisfied !== true) return { ok: false, status: 403, code: 'COMMAND_SCOPE_DENIED' };
+  if (preconditionSatisfied !== true) return { ok: false, status: preconditionStatus, code: preconditionCode };
+
+  const commandSpecific = row.capability?.commandSpecific === true;
+  if (!commandSpecific && (commandCapability || commandRelationship)) {
+    return { ok: false, status: 403, code: 'COMMAND_POLICY_OVERRIDE_DENIED' };
+  }
+  if (commandSpecific && !validateCapabilityExpression(commandCapability)) {
+    return { ok: false, status: 403, code: 'COMMAND_CAPABILITY_UNRESOLVED' };
+  }
+  const requiredRelationship = commandSpecific
+    ? commandRelationship
+    : row.relationship;
+  if (!RESOURCE_RELATIONSHIPS.includes(requiredRelationship)) {
+    return { ok: false, status: 403, code: 'COMMAND_RELATIONSHIP_UNRESOLVED' };
+  }
+  if (requiredRelationship !== relationship) return { ok: false, status: 403, code: 'RESOURCE_RELATIONSHIP_DENIED' };
   if (row.authorityContract) {
     if (row.authorityContract !== authorityContract) return { ok: false, status: 403, code: 'AUTHORITY_CONTRACT_DENIED' };
-  } else if (!evaluateCapability(row.capability, authorization.capabilities || [])) {
+  } else if (!evaluateCapability(commandSpecific ? commandCapability : row.capability, authorization.capabilities || [])) {
     return { ok: false, status: 403, code: 'CAPABILITY_DENIED' };
   }
-  return { ok: true, policy: row };
+  return {
+    ok: true,
+    policy: row,
+    effectiveCapability: commandSpecific ? commandCapability : row.capability,
+    effectiveRelationship: requiredRelationship,
+  };
 }
+
+/** Frozen architecture name. */
+export const EvaluateCommandPolicy = evaluateCommandPolicy;

@@ -16,7 +16,10 @@
     "resource_id": { "type": "string" },
     "command_policy_id": { "type": "string" },
     "correlation_id": { "type": "string" },
+    "external_correlation_id": { "type": "string" },
+    "audit_operation_id": { "type": "string" },
     "operation_key": { "type": "string" },
+    "operation_semantics": { "type": "object" },
     "outcome": {
       "type": "string",
       "enum": ["COMMITTED", "DUPLICATE", "DENIED", "FAILED", "RECONCILED"]
@@ -35,9 +38,9 @@
     "resource_id",
     "command_policy_id",
     "correlation_id",
+    "audit_operation_id",
     "outcome",
     "occurred_at"
   ],
   "rls": { "create": false, "read": false, "update": false, "delete": false }
 }
-

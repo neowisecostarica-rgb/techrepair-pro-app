@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { projectOperationalReadResult } from '../_shared/dataProjections.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
       activo: activo ?? true,
     });
 
-    return Response.json(categoria);
+    return Response.json(projectOperationalReadResult('CategoriaInventario', categoria, authorization));
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

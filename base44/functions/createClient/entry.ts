@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { resolveAuthorizedBranch } from '../_shared/operationalAuthorization.ts';
+import { projectOperationalReadResult } from '../_shared/dataProjections.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
     });
 
     console.log('[createClient] Cliente creado exitosamente', { id: cliente.id });
-    return Response.json(cliente);
+    return Response.json(projectOperationalReadResult('Cliente', cliente, authorization));
   } catch (error) {
     console.error('[createClient] ERROR en catch:', error.message, error.stack || '');
     return Response.json({ error: error.message }, { status: 500 });

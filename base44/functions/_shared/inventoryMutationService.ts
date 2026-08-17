@@ -718,6 +718,11 @@ export async function executeInventoryCommand(base44, rawInput, providedLockAdap
   }
   const entities = base44.asServiceRole.entities;
   const auditCommitted = async result => {
+    const movementIds = (result.results || []).map(row => row.movement_id).filter(Boolean).sort();
+    if (movementIds.length !== (result.results || []).length || movementIds.length === 0) {
+      throw new InventoryCommandError('La operacion no produjo identidad durable para auditoria', 'AUDIT_OPERATION_ID_SOURCE_REQUIRED', 500);
+    }
+    const auditOperationId = `inventory-command:${await sha256(movementIds)}`;
     const audit = await appendAuditEvent(base44, {
       eventType: 'INVENTORY_COMMAND_COMMITTED',
       principalClass: input.principalClass || 'HUMAN_MEMBER',
@@ -729,6 +734,7 @@ export async function executeInventoryCommand(base44, rawInput, providedLockAdap
       resourceId: input.operationKey,
       commandPolicyId: 'CP-INV-001',
       correlationId: input.correlationId || input.operationKey,
+      auditOperationId,
       operationKey: input.operationKey,
       outcome: result.idempotent ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
       newState: { movement_count: result.results?.length || 0 },

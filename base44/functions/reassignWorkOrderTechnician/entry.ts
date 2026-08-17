@@ -3,6 +3,12 @@ import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../_shar
 import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 import { normalizeTenantRole } from '../_shared/roleCapabilities.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectWorkOrderMutationResult } from '../_shared/dataProjections.ts';
+import {
+  evaluateCommandPolicyWithShadow,
+  ExecuteSovereignCommand,
+  SovereignCommandError,
+} from '../_shared/commandExecution.ts';
 
 // Assignment is an intake operation owned by administration and sales.
 // Keep this contract aligned with workflowConfig and both assignment UIs.
@@ -44,7 +50,7 @@ async function loadWorkOrder(base44, orgId, workOrderId) {
 }
 
 async function resolveCaller(base44, user) {
-  const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: AUTHORIZED_ROLES });
+  const authorization = await resolveAuthorizedContext(base44, user);
   if (!authorization.ok) return {
     error: authorization.error,
     code: authorization.error?.includes('rol')
@@ -58,6 +64,7 @@ async function resolveCaller(base44, user) {
     effectiveRole: authorization.role,
     account: authorization.account,
     branchScope,
+    authorization,
     isSuperAdmin: authorization.isSuperAdmin,
   };
 }
@@ -211,7 +218,13 @@ async function createRequiredAuditEvent({
       resourceId: ot.id,
       commandPolicyId: operation === 'REASSIGNMENT' ? 'CP-ASG-002' : 'CP-ASG-001',
       correlationId: operationToken,
+      auditOperationId: `work-order-assignment:${event.id}`,
       operationKey: operationToken,
+      operationSemantics: {
+        operation,
+        from_technician_id: previousTechnicianId || null,
+        to_technician_id: destinationTechnician.user_id,
+      },
       priorState: { tecnico_asignado_id: previousTechnicianId },
       newState: { tecnico_asignado_id: destinationTechnician.user_id },
       custodySnapshot: { tecnico_anterior_id: previousTechnicianId, tecnico_nuevo_id: destinationTechnician.user_id },
@@ -227,7 +240,13 @@ async function createRequiredAuditEvent({
         eventType: operation === 'REASSIGNMENT' ? 'WORK_ORDER_TECHNICIAN_REASSIGNED' : 'WORK_ORDER_TECHNICIAN_ASSIGNED',
         principalClass: 'HUMAN_MEMBER', actorUserId: user.id, organizationId: orgId,
         branchId: ot.branch_id, resourceType: 'OrdenTrabajo', resourceId: ot.id,
-        commandPolicyId: operation === 'REASSIGNMENT' ? 'CP-ASG-002' : 'CP-ASG-001', correlationId: operationToken, operationKey: operationToken,
+        commandPolicyId: operation === 'REASSIGNMENT' ? 'CP-ASG-002' : 'CP-ASG-001', correlationId: operationToken,
+        auditOperationId: `work-order-assignment:${recovered.id}`, operationKey: operationToken,
+        operationSemantics: {
+          operation,
+          from_technician_id: previousTechnicianId || null,
+          to_technician_id: destinationTechnician.user_id,
+        },
         outcome: 'IDEMPOTENT_REPLAY', priorState: { tecnico_asignado_id: previousTechnicianId },
         newState: { tecnico_asignado_id: destinationTechnician.user_id },
       });
@@ -317,7 +336,7 @@ async function executeAssignmentOperation({
         tecnico_asignado_id: destinationTechnician.user_id,
         estado_anterior: ot.estado,
         estado_actual: current.estado,
-        updated_ot: current,
+        updated_ot: projectWorkOrderMutationResult(current),
       });
     }
 
@@ -383,7 +402,7 @@ async function executeAssignmentOperation({
     tecnico_asignado_id: destinationTechnician.user_id,
     estado_anterior: ot.estado,
     estado_actual: targetState,
-    updated_ot: updatedOT,
+    updated_ot: projectWorkOrderMutationResult(updatedOT),
   });
 }
 
@@ -403,14 +422,6 @@ Deno.serve(async (req) => {
     if (caller.error) {
       return errorResponse(403, caller.code, caller.error);
     }
-    if (!AUTHORIZED_ROLES.includes(caller.effectiveRole)) {
-      return errorResponse(403, 'ASSIGNMENT_ROLE_NOT_AUTHORIZED',
-        'No autorizado para asignar tecnicos', {
-          required_roles: AUTHORIZED_ROLES,
-          user_role: caller.effectiveRole,
-        });
-    }
-
     const body = await req.json().catch(() => null);
     if (!body) {
       return errorResponse(400, 'INVALID_JSON_BODY', 'Body invalido');
@@ -477,6 +488,28 @@ Deno.serve(async (req) => {
     const previousTechnicianId = ot.tecnico_asignado_id || null;
     const isInitialAssignment = ot.estado === 'EN_COLA_REVISION' && !previousTechnicianId;
     const isInitialAssignmentRecovery = ot.estado === 'EN_COLA_REVISION' && !!previousTechnicianId;
+    const initialPath = isInitialAssignment || isInitialAssignmentRecovery;
+    const policyId = initialPath ? 'CP-ASG-001' : 'CP-ASG-002';
+    const compatibilityAllowed = AUTHORIZED_ROLES.includes(caller.effectiveRole)
+      && (initialPath || caller.effectiveRole !== 'SALES');
+    const policyDecision = await evaluateCommandPolicyWithShadow({
+      base44,
+      policyId,
+      authorization: caller.authorization,
+      relationship: 'SUPERVISOR',
+      preconditionSatisfied: initialPath || ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(caller.effectiveRole),
+      compatibilityDecision: {
+        ok: compatibilityAllowed,
+        code: compatibilityAllowed ? 'ALLOW' : 'LEGACY_ASSIGNMENT_DENY',
+      },
+      audit: {
+        actorUserId: user.id,
+        branchId: ot.branch_id,
+        resourceType: 'OrdenTrabajo',
+        resourceId: ot.id,
+        correlationId: `assignment-shadow:${ot.id}:${tecnico_asignado_id}:${policyId}`,
+      },
+    });
 
     if (isInitialAssignmentRecovery
       && previousTechnicianId !== destinationTechnician.user_id) {
@@ -487,22 +520,21 @@ Deno.serve(async (req) => {
     }
 
     if (isInitialAssignment || isInitialAssignmentRecovery) {
-      return executeAssignmentOperation({
-        base44,
-        user,
-        orgId: caller.orgId,
-        ot,
-        destinationTechnician,
-        reason,
-        operation: isInitialAssignmentRecovery
-          ? 'INITIAL_ASSIGNMENT_RECOVERY'
-          : 'INITIAL_ASSIGNMENT',
+      return await ExecuteSovereignCommand({
+        decision: policyDecision,
+        sovereignWriter: 'reassignWorkOrderTechnician',
+        execute: () => executeAssignmentOperation({
+          base44,
+          user,
+          orgId: caller.orgId,
+          ot,
+          destinationTechnician,
+          reason,
+          operation: isInitialAssignmentRecovery
+            ? 'INITIAL_ASSIGNMENT_RECOVERY'
+            : 'INITIAL_ASSIGNMENT',
+        }),
       });
-    }
-
-    if (caller.effectiveRole === 'SALES') {
-      return errorResponse(403, 'REASSIGNMENT_ROLE_NOT_AUTHORIZED',
-        'SALES solo puede realizar la asignacion inicial antes de iniciar trabajo tecnico');
     }
 
     if (!previousTechnicianId) {
@@ -517,28 +549,44 @@ Deno.serve(async (req) => {
             retryable: true,
           });
       }
-      return Response.json({
-        success: true,
-        idempotent: true,
-        operation: 'REASSIGNMENT',
-        orden_trabajo_id,
-        tecnico_asignado_id: previousTechnicianId,
-        estado_anterior: ot.estado,
-        estado_actual: ot.estado,
-        updated_ot: ot,
+      return await ExecuteSovereignCommand({
+        decision: policyDecision,
+        sovereignWriter: 'reassignWorkOrderTechnician',
+        execute: () => Response.json({
+          success: true,
+          idempotent: true,
+          operation: 'REASSIGNMENT',
+          orden_trabajo_id,
+          tecnico_asignado_id: previousTechnicianId,
+          estado_anterior: ot.estado,
+          estado_actual: ot.estado,
+          updated_ot: projectWorkOrderMutationResult(ot),
+        }),
       });
     }
 
-    return executeAssignmentOperation({
-      base44,
-      user,
-      orgId: caller.orgId,
-      ot,
-      destinationTechnician,
-      reason,
-      operation: 'REASSIGNMENT',
+    return await ExecuteSovereignCommand({
+      decision: policyDecision,
+      sovereignWriter: 'reassignWorkOrderTechnician',
+      execute: () => executeAssignmentOperation({
+        base44,
+        user,
+        orgId: caller.orgId,
+        ot,
+        destinationTechnician,
+        reason,
+        operation: 'REASSIGNMENT',
+      }),
     });
   } catch (error) {
+    if (error instanceof SovereignCommandError) {
+      const code = error.code === 'CAPABILITY_DENIED'
+        ? 'ASSIGNMENT_ROLE_NOT_AUTHORIZED'
+        : error.code === 'COMMAND_PRECONDITION_DENIED'
+          ? 'REASSIGNMENT_ROLE_NOT_AUTHORIZED'
+          : error.code;
+      return errorResponse(error.status, code, error.message);
+    }
     console.error('[reassignWorkOrderTechnician] Error:', error.message);
     return errorResponse(500, 'ASSIGNMENT_INTERNAL_ERROR',
       'No fue posible completar la asignacion del tecnico');

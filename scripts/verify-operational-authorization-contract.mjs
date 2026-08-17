@@ -173,8 +173,9 @@ const authorization = (role, branchId = 'branch-a', organizationId = 'org-a') =>
     read('base44/functions/handleOTLifecycleEvent/entry.ts'),
     read('base44/functions/processOTEvent/entry.ts'),
   ]);
-  assert.match(dmr, /canonical OT/i);
-  assert.match(dmr, /resolveAuthorizedContext/);
+  assert.match(dmr, /DMR_ORCHESTRATOR_RETIRED/);
+  assert.match(dmr, /createWorkOrder/);
+  assert.doesNotMatch(dmr, /DiagnosticMasterRecord\.(?:create|update|delete)/);
   assert.doesNotMatch(dmr, /const \{ otId, orgId, ot, cliente, equipo \} = body/);
   for (const source of [custody, lifecycleHandler, eventConsumer]) {
     assert.match(source, /authorizeRecordBranch/);

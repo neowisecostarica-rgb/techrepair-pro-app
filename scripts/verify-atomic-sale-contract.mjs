@@ -26,6 +26,7 @@ import {
   moneyMatches,
 } from '../base44/functions/_shared/commercialIntegrity.ts';
 import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
+import { projectSaleMutationResult } from '../base44/functions/_shared/dataProjections.ts';
 
 const backendPath = new URL('../base44/functions/createSale/entry.ts', import.meta.url);
 const posPath = new URL('../src/pages/PuntoVenta.jsx', import.meta.url);
@@ -228,6 +229,7 @@ function loadHandler(client) {
     calculateCommercialTotals,
     moneyMatches,
     appendAuditEvent,
+    projectSaleMutationResult,
   };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context, { filename: 'createSale/entry.ts' });

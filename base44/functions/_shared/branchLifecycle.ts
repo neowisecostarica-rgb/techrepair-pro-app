@@ -148,18 +148,19 @@ async function createOrRecoverOperation(base44: any, data: any) {
 }
 
 async function commitOperation(base44: any, operation: any, result: any, committedAt: string) {
+  const committedResult = { ...result, operation_id: operation.id };
   try {
     await base44.asServiceRole.entities.BranchLifecycleOperation.update(operation.id, {
-      branch_id: result.branch?.id || operation.branch_id || null,
+      branch_id: committedResult.branch?.id || operation.branch_id || null,
       status: 'COMMITTED',
       committed_at: committedAt,
-      result_snapshot: result,
+      result_snapshot: committedResult,
     });
   } catch (error) {
     const recovered = await findOperation(base44, operation.organization_id, operation.operation_key);
     if (recovered?.status !== 'COMMITTED') throw error;
   }
-  return result;
+  return committedResult;
 }
 
 function isFreshLock(timestamp: unknown) {
@@ -294,7 +295,7 @@ export async function executeBranchLifecycle(base44: any, context: any, rawInput
         throw new BranchLifecycleError('operation_key ya fue usada con otro payload.', 'BRANCH_FINGERPRINT_CONFLICT', 409);
       }
       if (operation.status === 'COMMITTED') {
-        return { ...operation.result_snapshot, idempotent: true, recovered: true };
+        return { ...operation.result_snapshot, operation_id: operation.id, idempotent: true, recovered: true };
       }
       const recoveredBranch = await findOne(base44.asServiceRole.entities.Branch, {
         organization_id: context.organizationId,

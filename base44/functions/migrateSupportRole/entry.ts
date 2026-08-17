@@ -31,7 +31,9 @@ Deno.serve(async req => {
           actorUserId: user.id, actorPrimaryRole: authorization.persistedRole,
           organizationId: authorization.organizationId, branchId: account.branch_id || null,
           resourceType: 'UserAccount', resourceId: account.id,
-          commandPolicyId: 'CP-USER-001', correlationId: `${operationKey}:${account.id}`, operationKey,
+          commandPolicyId: 'CP-USER-001', correlationId: `${operationKey}:${account.id}`,
+          auditOperationId: `support-role-migration:${account.id}`, operationKey,
+          operationSemantics: { from_role: 'SUPPORT', to_role: 'CUSTOMER_SERVICE' },
           priorState: { role: 'SUPPORT' }, newState: { role: 'CUSTOMER_SERVICE' },
         });
       } catch (error) {

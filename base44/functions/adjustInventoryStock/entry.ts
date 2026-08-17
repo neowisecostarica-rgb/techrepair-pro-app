@@ -52,7 +52,6 @@ Deno.serve(async req => {
       success: true, inventario_id, tipo, delta,
       stock_anterior: movement.available_before,
       stock_nuevo: movement.available_after,
-      operation_key: result.operation_key,
       idempotent: result.idempotent,
     });
   } catch (error) {

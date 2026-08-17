@@ -15,7 +15,7 @@ import { crmQueryKeys, invokeCrm } from '@/api/crm';
 
 export default function CRM() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE']}>
       <CRMContent />
     </PageGuard>
   );

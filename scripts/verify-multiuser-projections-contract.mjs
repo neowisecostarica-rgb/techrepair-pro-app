@@ -76,10 +76,11 @@ const equipment = { id: 'equipment-a', tipo: 'Laptop', marca: 'X', modelo: 'Y', 
 }
 
 {
-  const [listSource, customer360Source, credentialSource, technicalSource] = await Promise.all([
+  const [listSource, customer360Source, credentialSource, credentialAuditSource, technicalSource] = await Promise.all([
     read('base44/functions/listWorkOrders/entry.ts'),
     read('base44/functions/customer360Gateway/entry.ts'),
     read('base44/functions/revealDeviceCredential/entry.ts'),
+    read('base44/functions/_shared/deviceCredentialAudit.ts'),
     read('base44/functions/getWorkOrderTechnicalContext/entry.ts'),
   ]);
   assert.doesNotMatch(listSource, /\.\.\.orden/);
@@ -87,11 +88,13 @@ const equipment = { id: 'equipment-a', tipo: 'Laptop', marca: 'X', modelo: 'Y', 
   assert.match(customer360Source, /CUSTOMER_360_AUTHORIZED/);
   assert.doesNotMatch(customer360Source, /return Response\.json\(\{ cliente, ordenes/);
   assert.match(credentialSource, /EFFECTIVE_TECHNICIAN_REQUIRED/);
-  assert.match(credentialSource, /appendAuditEvent/);
+  assert.match(credentialSource, /appendDeviceCredentialRevealAudit/);
+  assert.match(credentialAuditSource, /appendAuditEvent/);
+  assert.match(credentialAuditSource, /auditOperationId/);
+  assert.match(credentialAuditSource, /DEVICE_CREDENTIAL_REVEALED/);
   assert.match(technicalSource, /WORK_ORDER_TEAM_AWARENESS/);
   assert.match(technicalSource, /WORK_ORDER_ASSIGNED_TECHNICAL/);
-  pass('protected endpoints route through named DTOs and credential reveal is isolated/audited');
+  pass('protected endpoints route through named DTOs and credential reveal delegates to its isolated audited writer');
 }
 
 console.log(`\nMulti-user projections: ${passed} groups PASS`);
-

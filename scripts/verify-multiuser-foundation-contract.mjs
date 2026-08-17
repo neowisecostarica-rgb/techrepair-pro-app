@@ -102,6 +102,7 @@ const pass = (name) => { passed += 1; console.log(`PASS ${name}`); };
     resourceId: 'ot-a',
     commandPolicyId: 'CP-TECH-001',
     correlationId: 'corr-a',
+    auditOperationId: 'technical-activity-start:activity-a',
   });
   assert.equal(event.outcome, 'COMMITTED');
   assert.equal(event.effective_technician_user_id, 'user-a');

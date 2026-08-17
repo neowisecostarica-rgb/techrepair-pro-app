@@ -69,6 +69,12 @@ export function getCanonicalBranchScope(authorization) {
   if (!authorization?.ok) {
     return { ok: false, status: authorization?.status || 403, error: authorization?.error || 'No autorizado' };
   }
+  if (authorization.pilotMode === true) {
+    if (!authorization.pilotBranchId) {
+      return { ok: false, status: 503, code: 'CONTROLLED_PILOT_CONFIGURATION_INVALID', error: 'El piloto no tiene una sucursal canonica valida' };
+    }
+    return { ok: true, organizationWide: false, branchId: authorization.pilotBranchId };
+  }
   if (isOrganizationWideRole(authorization.role)) {
     return { ok: true, organizationWide: true, branchId: null };
   }

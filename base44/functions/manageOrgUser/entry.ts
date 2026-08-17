@@ -52,6 +52,12 @@ Deno.serve(async (req) => {
     allowedRoles: ['ORG_ADMIN'],
   });
   if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+  if (authorization.pilotMode) {
+    return Response.json({
+      error: 'Las membresias estan congeladas durante el piloto controlado',
+      code: 'CONTROLLED_PILOT_MEMBERSHIP_FROZEN',
+    }, { status: 409 });
+  }
   const effectiveOrgId = authorization.organizationId;
   const membershipCorrelationId = typeof body.correlation_id === 'string' && body.correlation_id.trim()
     ? body.correlation_id.trim().slice(0, 240)

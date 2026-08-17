@@ -10,6 +10,7 @@ export function AuthProvider({ children }) {
   const [errorCode, setErrorCode] = useState(null);
   const [multiOrgAccounts, setMultiOrgAccounts] = useState(null);
   const [identityStatus, setIdentityStatus] = useState(null);
+  const [authorization, setAuthorization] = useState(null);
   const hasInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
   const last429Timestamp = useRef(null);
@@ -38,6 +39,7 @@ export function AuthProvider({ children }) {
       setUser(contextUser || null);
       setUserAccount(account || null);
       setIdentityStatus(context.identityStatus || null);
+      setAuthorization(context.authorization || null);
       setMultiOrgAccounts(context.identityStatus === 'MULTI_ORG_REQUIRED'
         ? context.memberships || []
         : null);
@@ -80,6 +82,20 @@ export function AuthProvider({ children }) {
       ? 'ORG_ADMIN'
       : userAccount?.role || null;
   const loading = status === 'idle' || status === 'loading';
+  const capabilities = useMemo(() => (
+    Array.isArray(authorization?.capabilities)
+      ? authorization.capabilities
+      : Array.isArray(userAccount?.capabilities)
+        ? userAccount.capabilities
+        : []
+  ), [authorization, userAccount]);
+  const authorizationReady = effectiveRole === 'SUPER_ADMIN'
+    || Boolean(effectiveRole && (authorization?.preset_version || userAccount?.authorization_preset_version));
+  const controlledPilotMode = authorization?.controlled_pilot_mode === true;
+  const hasCapability = useMemo(
+    () => (capability) => capabilities.includes(capability),
+    [capabilities],
+  );
 
   const value = useMemo(() => ({
     user,
@@ -92,6 +108,12 @@ export function AuthProvider({ children }) {
     errorCode,
     identityStatus,
     multiOrgAccounts,
+    capabilities,
+    authorizationScope: authorization?.scope || userAccount?.authorization_scope || null,
+    authorizationPresetVersion: authorization?.preset_version || userAccount?.authorization_preset_version || null,
+    authorizationReady,
+    controlledPilotMode,
+    hasCapability,
     selectOrganization,
     refreshAuth,
     reloadAuth: refreshAuth,
@@ -106,6 +128,11 @@ export function AuthProvider({ children }) {
     errorCode,
     identityStatus,
     multiOrgAccounts,
+    capabilities,
+    authorization,
+    authorizationReady,
+    controlledPilotMode,
+    hasCapability,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

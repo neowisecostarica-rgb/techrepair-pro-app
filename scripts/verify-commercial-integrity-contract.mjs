@@ -18,6 +18,12 @@ import {
 } from '../base44/functions/_shared/workOrderLifecycleLock.ts';
 import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 import { publicTokenReference, validatePublicTokenRecord } from '../base44/functions/_shared/publicTokenContract.ts';
+import {
+  evaluateCommandPolicyWithShadow,
+  ExecuteSovereignCommand,
+  SovereignCommandError,
+} from '../base44/functions/_shared/commandExecution.ts';
+import { inspectControlledPilotConfiguration } from '../base44/functions/_shared/controlledPilotAuthority.ts';
 const transitionSource = await readFile(
   new URL('../base44/functions/transitionWorkOrderStatus/entry.ts', import.meta.url),
   'utf8',
@@ -52,6 +58,7 @@ function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0, physical
   const issuedAt = new Date().toISOString();
   const expiresAt = new Date(Date.parse(issuedAt) + 7 * 24 * 60 * 60 * 1000).toISOString();
   const collections = {
+    Organization: [{ id: 'org-a', controlled_pilot_mode: false }],
     Branch: [{ id: 'branch-a', organization_id: 'org-a', name: 'Central', active: true }],
     Cotizacion: [{
       id: 'quote-1', organization_id: 'org-a', branch_id: 'branch-a', cliente_id: 'client-1',
@@ -142,15 +149,15 @@ function createScenario({ eventFailures = 0, ambiguousQuoteCommits = 0, physical
   };
 }
 
-function loadHandler(client) {
+function loadHandler(client, authorization = null) {
   const executable = transitionSource
     .replace(/^import[\s\S]*?;\s*/gmu, '')
     .replace('Deno.serve(async (req) => {', 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
     __createClientFromRequest: () => client,
-    resolveAuthorizedContext: async () => ({ ok: false }),
-    authorizeRecordBranch: () => ({ ok: false }),
+    resolveAuthorizedContext: async () => authorization || ({ ok: false }),
+    authorizeRecordBranch: () => authorization ? ({ ok: true }) : ({ ok: false }),
     evaluateCurrentQaEvidence: async () => ({ valid: false }),
     assertPersistedTotalsMatch,
     calculateCommercialTotals,
@@ -166,6 +173,10 @@ function loadHandler(client) {
     appendAuditEvent,
     publicTokenReference,
     validatePublicTokenRecord,
+    evaluateCommandPolicyWithShadow,
+    ExecuteSovereignCommand,
+    SovereignCommandError,
+    inspectControlledPilotConfiguration,
     console,
     crypto: webcrypto,
     Request,
@@ -190,8 +201,83 @@ async function decide(handler, newStatus = 'APROBADA') {
   return { status: response.status, body: await response.json() };
 }
 
+async function decideAsPilotOperator(handler, newStatus = 'APROBADA') {
+  const response = await handler(new Request('https://example.test/transitionWorkOrderStatus', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'RECORD_CUSTOMER_DECISION',
+      orden_trabajo_id: 'ot-1',
+      quote_id: 'quote-1',
+      expected_quote_version: 'v1',
+      newStatus,
+      decision_method: 'VERBAL',
+      decision_channel: 'TELEFONO',
+      correlation_id: 'operator-decision-1',
+    }),
+  }));
+  return { status: response.status, body: await response.json() };
+}
+
 const tests = [];
 function test(name, run) { tests.push({ name, run }); }
+
+test('pilot operator records external customer approval through the same sovereign core with human attribution', async () => {
+  const scenario = createScenario();
+  scenario.collections.Organization[0].controlled_pilot_mode = true;
+  scenario.collections.Organization[0].controlled_pilot_operator_user_id = 'operator-1';
+  scenario.collections.Organization[0].controlled_pilot_branch_id = 'branch-a';
+  const user = { id: 'operator-1', email: 'operator@example.test', role: 'user' };
+  scenario.client.auth.me = async () => structuredClone(user);
+  const authorization = {
+    ok: true,
+    organizationId: 'org-a',
+    role: 'ORG_ADMIN',
+    persistedRole: 'ORG_ADMIN',
+    principalClass: 'HUMAN_MEMBER',
+    capabilities: ['QUOTE_OPERATIONS'],
+    pilotMode: true,
+    pilotBranchId: 'branch-a',
+  };
+  const result = await decideAsPilotOperator(loadHandler(scenario.client, authorization));
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(scenario.collections.Cotizacion[0].estado, 'aprobada');
+  assert.equal(scenario.collections.OrdenTrabajo[0].estado, 'APROBADA');
+  assert.equal(scenario.collections.DiagnosticoDocumento[0].metodo_aprobacion, 'VERBAL');
+  assert.equal(scenario.collections.DiagnosticoDocumento[0].aprobacion_canal, 'TELEFONO');
+  const audit = scenario.collections.AuditEvent.find(event => event.event_type === 'OPERATOR_RECORDED_CUSTOMER_DECISION');
+  assert.equal(audit?.principal_class, 'HUMAN_MEMBER');
+  assert.equal(audit?.actor_user_id, 'operator-1');
+  assert.equal(audit?.metadata?.customer_token_used, false);
+});
+
+test('pilot operator records external customer rejection without customer-token attribution', async () => {
+  const scenario = createScenario();
+  scenario.collections.Organization[0].controlled_pilot_mode = true;
+  scenario.collections.Organization[0].controlled_pilot_operator_user_id = 'operator-1';
+  scenario.collections.Organization[0].controlled_pilot_branch_id = 'branch-a';
+  const user = { id: 'operator-1', email: 'operator@example.test', role: 'user' };
+  scenario.client.auth.me = async () => structuredClone(user);
+  const authorization = {
+    ok: true,
+    organizationId: 'org-a',
+    role: 'ORG_ADMIN',
+    persistedRole: 'ORG_ADMIN',
+    principalClass: 'HUMAN_MEMBER',
+    capabilities: ['QUOTE_OPERATIONS'],
+    pilotMode: true,
+    pilotBranchId: 'branch-a',
+  };
+  const result = await decideAsPilotOperator(loadHandler(scenario.client, authorization), 'CANCELADA');
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(scenario.collections.Cotizacion[0].estado, 'rechazada');
+  assert.equal(scenario.collections.OrdenTrabajo[0].estado, 'CANCELADA');
+  assert.equal(scenario.collections.DiagnosticoDocumento[0].aprobacion_status, 'RECHAZADA');
+  const audit = scenario.collections.AuditEvent.find(event => event.event_type === 'OPERATOR_RECORDED_CUSTOMER_DECISION');
+  assert.equal(audit?.principal_class, 'HUMAN_MEMBER');
+  assert.equal(audit?.actor_user_id, 'operator-1');
+  assert.equal(audit?.metadata?.customer_token_used, false);
+});
 
 test('approval atomically commits quote, immutable snapshot, OT, evidence and one event', async () => {
   const scenario = createScenario();

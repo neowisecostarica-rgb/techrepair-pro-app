@@ -1,3 +1,5 @@
+import { evaluateControlledPilotHumanAccess } from './controlledPilotAuthority.ts';
+
 /** Canonical membership state. Legacy `active` never grants authority. */
 export function isCanonicalActiveUserAccount(account) {
   return account?.status === 'active';
@@ -203,6 +205,10 @@ export async function resolveAuthorizedContext(base44, user, options = {}) {
     if (impersonatedOrgId && !organization) {
       return { ok: false, status: 403, code: 'ORGANIZATION_INACTIVE', error: 'La organizacion no existe o no esta activa' };
     }
+    if (organization) {
+      const pilotAccess = evaluateControlledPilotHumanAccess({ organization, user, account: null, isSuperAdmin: true });
+      if (!pilotAccess.ok) return pilotAccess;
+    }
     return {
       ok: true,
       organizationId: impersonatedOrgId || null,
@@ -260,11 +266,14 @@ export async function resolveAuthorizedContext(base44, user, options = {}) {
   if (!organization) {
     return { ok: false, status: 403, code: 'ORGANIZATION_INACTIVE', error: 'La organizacion no existe o no esta activa' };
   }
+  const pilotAccess = evaluateControlledPilotHumanAccess({ organization, user, account, isSuperAdmin: false });
+  if (!pilotAccess.ok) return pilotAccess;
   const scope = getRoleScope(normalizedRole);
-  const branch = scope === 'SINGLE_BRANCH'
-    ? await loadActiveBranch(base44, account.organization_id, account.branch_id)
+  const effectiveBranchId = pilotAccess.pilotMode ? pilotAccess.branchId : account.branch_id;
+  const branch = scope === 'SINGLE_BRANCH' || pilotAccess.pilotMode
+    ? await loadActiveBranch(base44, account.organization_id, effectiveBranchId)
     : null;
-  if (scope === 'SINGLE_BRANCH' && !branch) {
+  if ((scope === 'SINGLE_BRANCH' || pilotAccess.pilotMode) && !branch) {
     return { ok: false, status: 403, code: 'BRANCH_INACTIVE', error: 'La sucursal canonica no existe o no esta activa' };
   }
 
@@ -284,6 +293,9 @@ export async function resolveAuthorizedContext(base44, user, options = {}) {
     account,
     isSuperAdmin: false,
     isImpersonating: false,
+    pilotMode: pilotAccess.pilotMode === true,
+    pilotOperatorUserId: pilotAccess.operatorUserId || null,
+    pilotBranchId: pilotAccess.branchId || null,
     identity,
   };
 }

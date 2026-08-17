@@ -188,6 +188,9 @@ Deno.serve(async (req) => {
         allowedRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
       });
       if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+      if (authorization.pilotMode) {
+        return Response.json({ error: 'El consumo automatizado de eventos esta deshabilitado durante el piloto controlado', code: 'CONTROLLED_PILOT_AUTOMATION_MUTATION_DISABLED' }, { status: 409 });
+      }
       const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
         id: orden_trabajo_id,
         organization_id,

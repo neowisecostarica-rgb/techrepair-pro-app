@@ -9,6 +9,7 @@ import {
 } from '../_shared/userAuthorization.ts';
 import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { projectSuperAdminAudit } from '../_shared/dataProjections.ts';
 import {
   canonicalOrganizationData,
   canonicalOwnerMembershipData,
@@ -16,6 +17,13 @@ import {
   seedBaselineCategories,
   validateTenantReadiness,
 } from '../_shared/tenantProvisioning.ts';
+import {
+  AUTHORIZATION_PRESET_VERSION,
+  getRoleCapabilities,
+  getRoleScope,
+  normalizeTenantRole,
+} from '../_shared/roleCapabilities.ts';
+import { inspectControlledPilotConfiguration } from '../_shared/controlledPilotAuthority.ts';
 
 const ORG_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE', 'SUPPORT'];
 const ORG_UPDATE_FIELDS = new Set([
@@ -63,6 +71,16 @@ async function loadBackendUser(base44, userId) {
   return users?.[0] || null;
 }
 
+function controlledPilotSnapshot(organization) {
+  return {
+    controlled_pilot_mode: organization?.controlled_pilot_mode === true,
+    controlled_pilot_operator_user_id: organization?.controlled_pilot_operator_user_id || null,
+    controlled_pilot_branch_id: organization?.controlled_pilot_branch_id || null,
+    controlled_pilot_configured_at: organization?.controlled_pilot_configured_at || null,
+    controlled_pilot_configured_by_user_id: organization?.controlled_pilot_configured_by_user_id || null,
+  };
+}
+
 async function buildContext(base44, user) {
   let identity = await resolveIdentitySnapshot(base44, user);
   if (!identity.ok) return identity;
@@ -98,6 +116,10 @@ async function buildContext(base44, user) {
       ];
   const organizations = await loadOrganizations(base44, organizationIds);
   const organizationById = new Map(organizations.map(org => [org.id, sanitizeOrganization(org)]));
+  const authorizationRole = identity.isSuperAdmin
+    ? (identity.user.impersonating_org_id ? 'ORG_ADMIN' : 'SUPER_ADMIN')
+    : normalizeTenantRole(identity.activeAccount?.role);
+  const activeOrganization = organizations.find(org => org.id === identity.user.organization_id) || null;
 
   return {
     ok: true,
@@ -109,6 +131,13 @@ async function buildContext(base44, user) {
       organization: organizationById.get(account.organization_id) || null,
     })),
     organizations: organizations.map(sanitizeOrganization),
+    authorization: {
+      role: authorizationRole,
+      capabilities: authorizationRole === 'SUPER_ADMIN' ? [] : getRoleCapabilities(authorizationRole),
+      scope: authorizationRole === 'SUPER_ADMIN' ? 'PLATFORM' : getRoleScope(authorizationRole),
+      preset_version: AUTHORIZATION_PRESET_VERSION,
+      controlled_pilot_mode: inspectControlledPilotConfiguration(activeOrganization).enabled,
+    },
     identityStatus: identity.isSuperAdmin
       ? null
       : identity.activeMemberships.length > 1 && !identity.activeAccount
@@ -145,6 +174,7 @@ async function finalizeProvisioning(base44, { organization, branch, account, act
     resourceId: organization.id,
     commandPolicyId: 'CP-PROV-001',
     correlationId,
+    auditOperationId: `tenant-provisioning:${organization.id}`,
     operationKey: correlationId,
     newState: { provisioning_status: 'READY', owner_account_id: account.id, primary_branch_id: branch.id },
     metadata: { preset_version: structural.preset_version, custom_grants_enabled: false, checks: structural.checks },
@@ -202,6 +232,10 @@ Deno.serve(async (req) => {
         !invitationId || candidate.id === invitationId
       );
       if (!invitation) return jsonError('Invitacion no encontrada', 404, 'INVITATION_NOT_FOUND');
+      const [invitationOrganization] = await base44.asServiceRole.entities.Organization.filter({ id: invitation.organization_id }, 1);
+      if (inspectControlledPilotConfiguration(invitationOrganization).enabled) {
+        return jsonError('Las membresias estan congeladas durante el piloto controlado', 409, 'CONTROLLED_PILOT_MEMBERSHIP_FROZEN');
+      }
 
       const updated = await base44.asServiceRole.entities.UserAccount.update(invitation.id, {
         user_id: user.id,
@@ -272,12 +306,85 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (action === 'configureControlledPilot') {
+      if (!isCanonicalSuperAdmin(user)) return jsonError('Superadmin requerido', 403, 'SUPERADMIN_REQUIRED');
+      const internalUser = await loadBackendUser(base44, user.id);
+      if (getUserDataField(internalUser || user, 'impersonating_org_id')) {
+        return jsonError('Finaliza la impersonacion antes de configurar el piloto', 409, 'CONTROLLED_PILOT_IMPERSONATION_ACTIVE');
+      }
+
+      const organizationId = clean(body.organization_id, 160);
+      const enabled = body.enabled === true;
+      const [organization] = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, 1);
+      if (!organization) return jsonError('Organizacion no encontrada', 404, 'ORGANIZATION_NOT_FOUND');
+      const before = controlledPilotSnapshot(organization);
+      let changes;
+
+      if (enabled) {
+        if (organization.status !== 'active') return jsonError('La organizacion debe estar activa', 409, 'CONTROLLED_PILOT_ORGANIZATION_INACTIVE');
+        const operatorUserId = clean(body.operator_user_id, 160);
+        const branchId = clean(body.branch_id, 160);
+        if (!operatorUserId || !branchId) return jsonError('operator_user_id y branch_id son requeridos', 400, 'CONTROLLED_PILOT_CONFIGURATION_INVALID');
+        const [accounts, branches] = await Promise.all([
+          base44.asServiceRole.entities.UserAccount.filter({ organization_id: organizationId }, '-created_date', 500),
+          base44.asServiceRole.entities.Branch.filter({ id: branchId, organization_id: organizationId, active: true }, '-created_date', 2),
+        ]);
+        const activeAccounts = (accounts || []).filter(account => account.status === 'active');
+        const operatorAccount = activeAccounts.find(account => account.user_id === operatorUserId);
+        if (activeAccounts.length !== 1 || !operatorAccount || operatorAccount.role !== 'ORG_ADMIN') {
+          return jsonError('El piloto requiere exactamente una membresia activa ORG_ADMIN para el operador designado', 409, 'CONTROLLED_PILOT_SINGLE_OPERATOR_REQUIRED');
+        }
+        if (branches?.length !== 1) return jsonError('La sucursal canonica no existe o no esta activa', 409, 'CONTROLLED_PILOT_BRANCH_INVALID');
+        const now = new Date().toISOString();
+        changes = {
+          controlled_pilot_mode: true,
+          controlled_pilot_operator_user_id: operatorUserId,
+          controlled_pilot_branch_id: branchId,
+          controlled_pilot_configured_at: now,
+          controlled_pilot_configured_by_user_id: user.id,
+        };
+      } else {
+        changes = {
+          controlled_pilot_mode: false,
+          controlled_pilot_operator_user_id: null,
+          controlled_pilot_branch_id: null,
+          controlled_pilot_configured_at: new Date().toISOString(),
+          controlled_pilot_configured_by_user_id: user.id,
+        };
+      }
+
+      const updated = await base44.asServiceRole.entities.Organization.update(organization.id, changes);
+      try {
+        await appendSuperAdminAudit(base44, user, {
+          action: 'update_org',
+          organizationId: organization.id,
+          organizationName: organization.name,
+          correlationId: body.correlation_id,
+          metadata: {
+            operation: enabled ? 'CONTROLLED_PILOT_ENABLED' : 'CONTROLLED_PILOT_DISABLED',
+            operator_user_id: changes.controlled_pilot_operator_user_id,
+            branch_id: changes.controlled_pilot_branch_id,
+          },
+        });
+      } catch (error) {
+        await base44.asServiceRole.entities.Organization.update(organization.id, before).catch(() => null);
+        throw error;
+      }
+      return Response.json({
+        success: true,
+        controlled_pilot: inspectControlledPilotConfiguration(updated),
+      });
+    }
+
     if (action === 'startImpersonation') {
       if (!isCanonicalSuperAdmin(user)) return jsonError('Superadmin requerido', 403, 'SUPERADMIN_REQUIRED');
       const organizationId = clean(body.organization_id, 160);
       const [organization] = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, 1);
       if (!organization) return jsonError('Organizacion no encontrada', 404);
       if (organization.status !== 'active') return jsonError('No se puede impersonar una organizacion suspendida', 409);
+      if (inspectControlledPilotConfiguration(organization).enabled) {
+        return jsonError('La impersonacion esta deshabilitada durante el piloto controlado', 409, 'CONTROLLED_PILOT_IMPERSONATION_DISABLED');
+      }
 
       const internalUser = await loadBackendUser(base44, user.id);
       const previousOrganizationId = getUserDataField(internalUser || user, 'organization_id');
@@ -386,7 +493,7 @@ Deno.serve(async (req) => {
       return Response.json({
         organizations: (organizations || []).map(sanitizeOrganization),
         accounts: (accounts || []).map(sanitizeUserAccount),
-        auditLogs: auditLogs || [],
+        auditLogs: (auditLogs || []).map(projectSuperAdminAudit),
       });
     }
 
@@ -395,6 +502,9 @@ Deno.serve(async (req) => {
       const organizationId = clean(body.organization_id, 160);
       const [organization] = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, 1);
       if (!organization) return jsonError('Organizacion no encontrada', 404);
+      if (inspectControlledPilotConfiguration(organization).enabled) {
+        return jsonError('El superadmin no puede mutar una organizacion en piloto controlado', 409, 'CONTROLLED_PILOT_ADMIN_MUTATION_DISABLED');
+      }
       const updates = pick(body.changes, ADMIN_ORG_UPDATE_FIELDS);
       if (Object.keys(updates).length === 0) return jsonError('No hay cambios permitidos', 400);
       const updated = await base44.asServiceRole.entities.Organization.update(organization.id, updates);

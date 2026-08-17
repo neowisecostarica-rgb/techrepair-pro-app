@@ -11,6 +11,9 @@ Deno.serve(async req => {
   const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: ['ORG_ADMIN'] });
   if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
   const apply = body.apply === true;
+  if (apply && authorization.pilotMode) {
+    return Response.json({ error: 'Las membresias estan congeladas durante el piloto controlado', code: 'CONTROLLED_PILOT_MEMBERSHIP_FROZEN' }, { status: 409 });
+  }
   const operationKey = typeof body.operation_key === 'string' && body.operation_key.trim() ? body.operation_key.trim().slice(0, 240) : null;
   if (apply && !operationKey) return Response.json({ error: 'operation_key requerido para apply', code: 'ROLE_MIGRATION_OPERATION_KEY_REQUIRED' }, { status: 400 });
   const accounts = await base44.asServiceRole.entities.UserAccount.filter({ organization_id: authorization.organizationId, role: 'SUPPORT' }, '-created_date', 500);

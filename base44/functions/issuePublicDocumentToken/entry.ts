@@ -26,6 +26,9 @@ Deno.serve(async (req) => {
   if (!contract || !resourceId) return fail('Solicitud de enlace invalida', 400, 'PUBLIC_TOKEN_REQUEST_INVALID');
   const authorization = await resolveAuthorizedContext(base44, user);
   if (!authorization.ok) return fail(authorization.error, authorization.status, authorization.code);
+  if (authorization.pilotMode && body.type === 'quote' && action === 'issue') {
+    return fail('La decision publica de cotizaciones esta deshabilitada durante el piloto controlado', 409, 'CONTROLLED_PILOT_PUBLIC_DECISION_DISABLED');
+  }
   if (!authorization.capabilities.includes(contract.capability)) return fail('No autorizado para emitir este enlace', 403, 'CAPABILITY_DENIED');
   const records = await base44.asServiceRole.entities[contract.entity].filter({ id: resourceId, organization_id: authorization.organizationId }, '-created_date', 2);
   if (records?.length !== 1) return fail('Recurso no encontrado', 404, 'PUBLIC_RESOURCE_NOT_FOUND');

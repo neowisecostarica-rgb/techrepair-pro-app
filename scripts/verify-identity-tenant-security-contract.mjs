@@ -11,6 +11,7 @@ import {
   sanitizeUserAccount,
 } from '../base44/functions/_shared/userAuthorization.ts';
 import { appendSuperAdminAudit } from '../base44/functions/_shared/superAdminAudit.ts';
+import { inspectControlledPilotConfiguration } from '../base44/functions/_shared/controlledPilotAuthority.ts';
 
 const root = new URL('../', import.meta.url);
 const rootPath = decodeURIComponent(root.pathname).replace(/^\/(?:[A-Za-z]:)/u, match => match.slice(1));
@@ -149,6 +150,7 @@ pass('built-in admin role is the only sovereign authority');
     resolveIdentitySnapshot,
     sanitizeOrganization,
     sanitizeUserAccount,
+    inspectControlledPilotConfiguration,
   };
   context.globalThis = context;
   vm.runInNewContext(`const createClientFromRequest = globalThis.__createClientFromRequest;\n${executable}`, context);

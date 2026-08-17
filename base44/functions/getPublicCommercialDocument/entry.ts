@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { validatePublicTokenRecord } from '../_shared/publicTokenContract.ts';
+import { resolvePublicResourceRelations } from '../_shared/publicResourceRelations.ts';
+import { inspectControlledPilotConfiguration } from '../_shared/controlledPilotAuthority.ts';
 
 const PUBLIC_TYPES = ['work_order', 'quote', 'warranty', 'receipt'];
 
@@ -50,7 +52,15 @@ function publicQuote(quote) {
     orden_trabajo_id: quote.orden_trabajo_id,
     vendedor_nombre: quote.vendedor_nombre,
     version: quote.version,
-    items: quote.items,
+    items: Array.isArray(quote.items) ? quote.items.map(item => ({
+      tipo: item.tipo,
+      referencia_id: item.referencia_id,
+      descripcion: item.descripcion,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio_unitario,
+      descuento_porcentaje: item.descuento_porcentaje,
+      subtotal: item.subtotal,
+    })) : [],
     subtotal: quote.subtotal,
     descuento_total: quote.descuento_total,
     impuesto: quote.impuesto,
@@ -124,6 +134,28 @@ function requireToken(record, token, purpose, version = 'v1') {
   if (!validation.ok) throw new Error(validation.code);
 }
 
+function publicSaleItem(item) {
+  return {
+    id: item.id,
+    tipo: item.tipo,
+    referencia_id: item.referencia_id,
+    descripcion: item.descripcion,
+    cantidad: item.cantidad,
+    precio_unitario: item.precio_unitario,
+    subtotal: item.subtotal,
+  };
+}
+
+function publicEvidence(evidence) {
+  return {
+    id: evidence.id,
+    tipo: evidence.tipo,
+    url: evidence.url,
+    contenido_texto: evidence.contenido_texto,
+    descripcion: evidence.descripcion,
+  };
+}
+
 async function one(base44, entity, query, sort = '-created_date') {
   const records = await base44.asServiceRole.entities[entity].filter(query, sort, 2);
   return records?.[0] || null;
@@ -147,10 +179,9 @@ Deno.serve(async (req) => {
       try { requireToken(cotizacion, token, 'QUOTE_DECISION', cotizacion.version || 'v1'); }
       catch { return fail('Cotizacion no encontrada', 404); }
 
-      const [cliente, organization] = await Promise.all([
-        one(base44, 'Cliente', { id: cotizacion.cliente_id }, 'created_date'),
-        one(base44, 'Organization', { id: cotizacion.organization_id }, 'created_date'),
-      ]);
+      const relations = await resolvePublicResourceRelations(base44, { type, record: cotizacion });
+      if (!relations.ok) return fail('Cotizacion no encontrada', 404);
+      const { client: cliente, organization } = relations;
 
       return Response.json({
         success: true,
@@ -158,6 +189,7 @@ Deno.serve(async (req) => {
           cotizacion: publicQuote(cotizacion),
           cliente: publicClient(cliente),
           organization: publicOrganization(organization),
+          customer_decision_enabled: !inspectControlledPilotConfiguration(organization).enabled,
         },
       });
     }
@@ -168,10 +200,9 @@ Deno.serve(async (req) => {
       try { requireToken(garantia, token, 'WARRANTY_READ'); }
       catch { return fail('Garantia no encontrada', 404); }
 
-      const [cliente, organization] = await Promise.all([
-        one(base44, 'Cliente', { id: garantia.cliente_id }, 'created_date'),
-        one(base44, 'Organization', { id: garantia.organization_id }, 'created_date'),
-      ]);
+      const relations = await resolvePublicResourceRelations(base44, { type, record: garantia });
+      if (!relations.ok) return fail('Garantia no encontrada', 404);
+      const { client: cliente, organization } = relations;
 
       return Response.json({
         success: true,
@@ -189,22 +220,18 @@ Deno.serve(async (req) => {
       try { requireToken(venta, token, 'RECEIPT_READ'); }
       catch { return fail('Comprobante no encontrado', 404); }
 
-      const [items, cliente, organization, ordenTrabajo] = await Promise.all([
+      const relations = await resolvePublicResourceRelations(base44, { type, record: venta });
+      if (!relations.ok) return fail('Comprobante no encontrado', 404);
+      const [items] = await Promise.all([
         base44.asServiceRole.entities.VentaItem.filter({
           organization_id: venta.organization_id,
           venta_id: venta.id,
         }, 'created_date', 100),
-        venta.cliente_id
-          ? one(base44, 'Cliente', { id: venta.cliente_id }, 'created_date')
-          : null,
-        one(base44, 'Organization', { id: venta.organization_id }, 'created_date'),
-        venta.referencia_ot_id
-          ? one(base44, 'OrdenTrabajo', {
-              id: venta.referencia_ot_id,
-              organization_id: venta.organization_id,
-            }, 'created_date')
-          : null,
       ]);
+      if ((items || []).some(item => item.organization_id !== venta.organization_id || item.venta_id !== venta.id)) {
+        return fail('Comprobante no encontrado', 404);
+      }
+      const { client: cliente, organization, workOrder: ordenTrabajo } = relations;
 
       let garantia = null;
       if (venta.referencia_ot_id) {
@@ -221,12 +248,21 @@ Deno.serve(async (req) => {
           origen_id: venta.id,
         });
       }
+      if (garantia) {
+        const warrantyRelations = await resolvePublicResourceRelations(base44, { type: 'warranty', record: garantia });
+        const expectedOriginId = garantia.origen_tipo === 'OT' ? venta.referencia_ot_id : venta.id;
+        if (!warrantyRelations.ok
+          || warrantyRelations.client?.id !== cliente?.id
+          || warrantyRelations.origin?.id !== expectedOriginId) {
+          return fail('Comprobante no encontrado', 404);
+        }
+      }
 
       return Response.json({
         success: true,
         data: {
           venta: publicSale(venta),
-          items,
+          items: (items || []).map(publicSaleItem),
           cliente: publicClient(cliente),
           organization: publicOrganization(organization),
           ordenTrabajo: ordenTrabajo ? {
@@ -243,10 +279,9 @@ Deno.serve(async (req) => {
     try { requireToken(orden, token, 'WORK_ORDER_STATUS_READ'); }
     catch { return fail('Orden no encontrada', 404); }
 
-    const [cliente, equipo, organization, diagnosticos, cotizaciones] = await Promise.all([
-      one(base44, 'Cliente', { id: orden.cliente_id }, 'created_date'),
-      one(base44, 'Equipo', { id: orden.equipo_id }, 'created_date'),
-      one(base44, 'Organization', { id: orden.organization_id }, 'created_date'),
+    const relations = await resolvePublicResourceRelations(base44, { type, record: orden });
+    if (!relations.ok) return fail('Orden no encontrada', 404);
+    const [diagnosticos, cotizaciones] = await Promise.all([
       base44.asServiceRole.entities.DiagnosticoTecnico.filter({
         organization_id: orden.organization_id,
         orden_trabajo_id: orden.id,
@@ -256,20 +291,36 @@ Deno.serve(async (req) => {
         orden_trabajo_id: orden.id,
       }, '-created_date', 5),
     ]);
+    const { client: cliente, equipment: equipo, organization } = relations;
 
     const diagnosticoTecnico = diagnosticos?.[0] || null;
     const cotizacion = cotizaciones?.[0] || null;
+    if (cotizacion) {
+      const quoteRelations = await resolvePublicResourceRelations(base44, { type: 'quote', record: cotizacion });
+      if (!quoteRelations.ok
+        || quoteRelations.workOrder?.id !== orden.id
+        || quoteRelations.client?.id !== cliente.id) {
+        return fail('Orden no encontrada', 404);
+      }
+    }
     let evidencias = [];
     if (diagnosticoTecnico) {
       evidencias = await base44.asServiceRole.entities.DiagnosticoEvidencia.filter({
         organization_id: orden.organization_id,
         diagnostico_id: diagnosticoTecnico.id,
       }, '-created_date', 50);
+      if (evidencias.some(evidence => (
+        evidence.organization_id !== orden.organization_id
+        || evidence.diagnostico_id !== diagnosticoTecnico.id
+      ))) return fail('Orden no encontrada', 404);
     }
 
-    await base44.asServiceRole.entities.OrdenTrabajo.update(orden.id, {
-      public_last_viewed_at: new Date().toISOString(),
-    });
+    // Public reads remain strictly non-mutating in controlled pilot mode.
+    if (!inspectControlledPilotConfiguration(organization).enabled) {
+      await base44.asServiceRole.entities.OrdenTrabajo.update(orden.id, {
+        public_last_viewed_at: new Date().toISOString(),
+      });
+    }
 
     const diagnostico = diagnosticoTecnico ? {
       id: diagnosticoTecnico.id,
@@ -292,7 +343,7 @@ Deno.serve(async (req) => {
         equipo: publicEquipment(equipo),
         organization: publicOrganization(organization),
         diagnostico,
-        evidencias,
+        evidencias: evidencias.map(publicEvidence),
         cotizacion: publicQuote(cotizacion),
       },
     });

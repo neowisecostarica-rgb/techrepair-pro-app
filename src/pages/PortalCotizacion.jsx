@@ -82,6 +82,7 @@ export default function PortalCotizacion() {
   const cotizacion = portalData?.cotizacion;
   const cliente = portalData?.cliente;
   const organization = portalData?.organization;
+  const customerDecisionEnabled = portalData?.customer_decision_enabled !== false;
 
   const decisionMutation = useMutation({
     mutationFn: async ({ newStatus, rejectionReason = '' }) => {
@@ -385,7 +386,7 @@ export default function PortalCotizacion() {
           </CardContent>
         </Card>
 
-        {cotizacion.estado === 'enviada' && (
+        {cotizacion.estado === 'enviada' && customerDecisionEnabled && (
           <Card className="border-2 border-blue-200 shadow-xl">
             <CardContent className="p-6">
               <h2 className="text-lg font-bold text-slate-900 mb-2">Decisión del cliente</h2>
@@ -424,6 +425,15 @@ export default function PortalCotizacion() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {cotizacion.estado === 'enviada' && !customerDecisionEnabled && (
+          <Alert className="border-blue-200 bg-blue-50">
+            <AlertCircle className="w-5 h-5 text-blue-600" />
+            <AlertDescription className="text-blue-900">
+              Comuníquese con el taller para aprobar o rechazar esta cotización. La decisión será registrada por el operador autorizado.
+            </AlertDescription>
+          </Alert>
         )}
 
         {cotizacion.estado === 'aprobada' && (

@@ -116,7 +116,12 @@
     "custom_grants_enabled": { "type": "boolean", "default": false, "rls": { "write": false } },
     "provisioning_status": { "type": "string", "enum": ["PENDING", "READY"], "rls": { "write": false } },
     "provisioning_correlation_id": { "type": "string", "rls": { "write": false } },
-    "provisioned_at": { "type": "string", "format": "date-time", "rls": { "write": false } }
+    "provisioned_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "controlled_pilot_mode": { "type": "boolean", "default": false, "rls": { "write": false } },
+    "controlled_pilot_operator_user_id": { "type": "string", "rls": { "write": false } },
+    "controlled_pilot_branch_id": { "type": "string", "rls": { "write": false } },
+    "controlled_pilot_configured_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "controlled_pilot_configured_by_user_id": { "type": "string", "rls": { "write": false } }
   },
   "required": [
     "name",

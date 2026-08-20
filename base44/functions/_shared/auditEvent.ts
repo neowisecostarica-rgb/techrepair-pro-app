@@ -1,4 +1,6 @@
 const MAX_TEXT = 240;
+const CLAIM_WAIT_ATTEMPTS = 20;
+const CLAIM_WAIT_MS = 25;
 
 function clean(value, max = MAX_TEXT) {
   return typeof value === 'string' && value.trim()
@@ -36,9 +38,27 @@ function immutableIdentity(event) {
 
 function assertCompatible(existing, candidate) {
   if (JSON.stringify(immutableIdentity(existing)) === JSON.stringify(immutableIdentity(candidate))) return;
-  const error = new Error('AUDIT_OPERATION_ID_COLLISION');
-  error.code = 'AUDIT_OPERATION_ID_COLLISION';
-  throw error;
+  throw auditError('AUDIT_OPERATION_ID_COLLISION');
+}
+
+function auditError(code) {
+  const error = new Error(code);
+  error.code = code;
+  return error;
+}
+
+function wait(milliseconds) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
+async function sha256(value) {
+  const encoded = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', encoded);
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function claimIdentityHash(event) {
+  return sha256(JSON.stringify(immutableIdentity(event)));
 }
 
 async function findExisting(base44, event) {
@@ -48,15 +68,112 @@ async function findExisting(base44, event) {
   }, '-created_date', 2);
   if (existing?.length > 1) {
     for (const record of existing) assertCompatible(record, event);
-    const error = new Error('AUDIT_OPERATION_ID_AMBIGUOUS');
-    error.code = 'AUDIT_OPERATION_ID_AMBIGUOUS';
-    throw error;
+    throw auditError('AUDIT_OPERATION_ID_AMBIGUOUS');
   }
   if (existing?.length === 1) {
     assertCompatible(existing[0], event);
     return existing[0];
   }
   return null;
+}
+
+async function loadOrganization(base44, organizationId) {
+  const organizations = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, '-created_date', 2);
+  if (organizations?.length !== 1) throw auditError('AUDIT_CLAIM_ORGANIZATION_INVALID');
+  return organizations[0];
+}
+
+async function acquireAuditClaim(base44, event, identityHash) {
+  const token = crypto.randomUUID();
+  for (let attempt = 0; attempt < CLAIM_WAIT_ATTEMPTS; attempt += 1) {
+    const existing = await findExisting(base44, event);
+    if (existing) return { existing };
+
+    const organization = await loadOrganization(base44, event.organization_id);
+    if (organization.audit_claim_token) {
+      if (organization.audit_claim_operation_id === event.audit_operation_id
+        && organization.audit_claim_identity_hash !== identityHash) {
+        throw auditError('AUDIT_OPERATION_ID_COLLISION');
+      }
+      await wait(CLAIM_WAIT_MS);
+      continue;
+    }
+
+    const claim = {
+      audit_claim_token: token,
+      audit_claim_operation_id: event.audit_operation_id,
+      audit_claim_identity_hash: identityHash,
+      audit_claimed_at: new Date().toISOString(),
+    };
+    try {
+      const result = await base44.asServiceRole.entities.Organization.updateMany({
+        id: event.organization_id,
+        $or: [
+          { audit_claim_token: { $exists: false } },
+          { audit_claim_token: null },
+        ],
+      }, { $set: claim });
+      if (result?.updated === 1) return { token };
+    } catch (error) {
+      const reconciled = await loadOrganization(base44, event.organization_id);
+      if (reconciled.audit_claim_token === token
+        && reconciled.audit_claim_operation_id === event.audit_operation_id
+        && reconciled.audit_claim_identity_hash === identityHash) {
+        return { token, reconciled: true };
+      }
+      throw error;
+    }
+    await wait(CLAIM_WAIT_MS);
+  }
+  throw auditError('AUDIT_CLAIM_RECOVERY_REQUIRED');
+}
+
+async function releaseAuditClaim(base44, event, identityHash, token) {
+  try {
+    const result = await base44.asServiceRole.entities.Organization.updateMany({
+      id: event.organization_id,
+      audit_claim_token: token,
+      audit_claim_operation_id: event.audit_operation_id,
+      audit_claim_identity_hash: identityHash,
+    }, {
+      $unset: {
+        audit_claim_token: '',
+        audit_claim_operation_id: '',
+        audit_claim_identity_hash: '',
+        audit_claimed_at: '',
+      },
+    });
+    if (result?.updated === 1) return true;
+  } catch (error) {
+    const reconciled = await loadOrganization(base44, event.organization_id);
+    if (reconciled.audit_claim_token !== token) return true;
+    throw error;
+  }
+  const reconciled = await loadOrganization(base44, event.organization_id);
+  return reconciled.audit_claim_token !== token;
+}
+
+async function clearCompletedClaim(base44, event, identityHash) {
+  const organization = await loadOrganization(base44, event.organization_id);
+  if (!organization.audit_claim_token) return;
+  if (organization.audit_claim_operation_id !== event.audit_operation_id) return;
+  if (organization.audit_claim_identity_hash !== identityHash) {
+    throw auditError('AUDIT_CLAIM_IDENTITY_MISMATCH');
+  }
+  const released = await releaseAuditClaim(base44, event, identityHash, organization.audit_claim_token);
+  if (!released) throw auditError('AUDIT_CLAIM_RECOVERY_REQUIRED');
+}
+
+async function confirmAuditVisible(base44, event, createdId) {
+  for (let attempt = 0; attempt < CLAIM_WAIT_ATTEMPTS; attempt += 1) {
+    const visible = await findExisting(base44, event);
+    if (visible) {
+      if (createdId && visible.id !== createdId) throw auditError('AUDIT_OPERATION_ID_AMBIGUOUS');
+      return visible;
+    }
+    await wait(CLAIM_WAIT_MS);
+  }
+  throw auditError('AUDIT_EVENT_VISIBILITY_UNCONFIRMED');
 }
 
 export function buildAuditEvent(input) {
@@ -91,13 +208,48 @@ export function buildAuditEvent(input) {
 
 export async function appendAuditEvent(base44, input) {
   const event = buildAuditEvent(input);
+  const identityHash = await claimIdentityHash(event);
   const existing = await findExisting(base44, event);
-  if (existing) return { event: existing, duplicate: true };
+  if (existing) {
+    await clearCompletedClaim(base44, event, identityHash);
+    return { event: existing, duplicate: true };
+  }
+
+  const claim = await acquireAuditClaim(base44, event, identityHash);
+  if (claim.existing) {
+    await clearCompletedClaim(base44, event, identityHash);
+    return { event: claim.existing, duplicate: true };
+  }
+
+  let retainClaim = false;
   try {
-    return { event: await base44.asServiceRole.entities.AuditEvent.create(event), duplicate: false };
-  } catch (error) {
-    const reconciled = await findExisting(base44, event);
-    if (reconciled) return { event: reconciled, duplicate: true, reconciled: true };
-    throw error;
+    const afterClaim = await findExisting(base44, event);
+    if (afterClaim) return { event: afterClaim, duplicate: true };
+
+    let created;
+    try {
+      created = await base44.asServiceRole.entities.AuditEvent.create(event);
+    } catch (error) {
+      const reconciled = await findExisting(base44, event);
+      if (reconciled) return { event: reconciled, duplicate: true, reconciled: true };
+      throw error;
+    }
+
+    try {
+      const visible = await confirmAuditVisible(base44, event, created.id);
+      return { event: visible, duplicate: false };
+    } catch (error) {
+      retainClaim = true;
+      throw error;
+    }
+  } finally {
+    if (!retainClaim) {
+      try {
+        const released = await releaseAuditClaim(base44, event, identityHash, claim.token);
+        if (!released) console.error('[auditEvent] audit claim release requires reconciliation');
+      } catch (error) {
+        console.error('[auditEvent] audit claim release requires reconciliation', error?.message || error);
+      }
+    }
   }
 }

@@ -287,10 +287,30 @@ test('dmrAuditor projects protected platform audit rows', async () => {
 
 test('audit operation identity separates external tracing from mutation evidence', async () => {
   const events = [];
+  const organization = { id: 'org-a' };
+  const organizationMatches = query => Object.entries(query).every(([key, value]) => {
+    if (key === '$or') return value.some(candidate => organizationMatches(candidate));
+    if (value && typeof value === 'object' && '$exists' in value) {
+      return (organization[key] !== undefined) === value.$exists;
+    }
+    return organization[key] === value;
+  });
   const base44 = {
     asServiceRole: { entities: { AuditEvent: {
       async filter(query) { return clone(events.filter(event => matches(event, query))); },
-      async create(event) { events.push(clone(event)); return clone(event); },
+      async create(event) {
+        const record = { id: `audit-${events.length + 1}`, ...clone(event) };
+        events.push(record);
+        return clone(record);
+      },
+    }, Organization: {
+      async filter(query) { return organizationMatches(query) ? [clone(organization)] : []; },
+      async updateMany(query, mutation) {
+        if (!organizationMatches(query)) return { updated: 0 };
+        Object.assign(organization, clone(mutation.$set || {}));
+        for (const key of Object.keys(mutation.$unset || {})) delete organization[key];
+        return { updated: 1 };
+      },
     } } },
   };
   const common = {
@@ -351,6 +371,14 @@ test('transitionWorkOrderStatus handler recovers the original lifecycle evidence
     }),
   };
   const auditEvents = [];
+  const auditOrganization = { id: 'org-a' };
+  const auditOrganizationMatches = query => Object.entries(query).every(([key, value]) => {
+    if (key === '$or') return value.some(candidate => auditOrganizationMatches(candidate));
+    if (value && typeof value === 'object' && '$exists' in value) {
+      return (auditOrganization[key] !== undefined) === value.$exists;
+    }
+    return auditOrganization[key] === value;
+  });
   const entities = {
     OrdenTrabajo: {
       async filter(query) { return matches(workOrder, query) ? [clone(workOrder)] : []; },
@@ -362,7 +390,20 @@ test('transitionWorkOrderStatus handler recovers the original lifecycle evidence
     },
     AuditEvent: {
       async filter(query) { return clone(auditEvents.filter(event => matches(event, query))); },
-      async create(event) { auditEvents.push(clone(event)); return clone(event); },
+      async create(event) {
+        const record = { id: `audit-${auditEvents.length + 1}`, ...clone(event) };
+        auditEvents.push(record);
+        return clone(record);
+      },
+    },
+    Organization: {
+      async filter(query) { return auditOrganizationMatches(query) ? [clone(auditOrganization)] : []; },
+      async updateMany(query, update) {
+        if (!auditOrganizationMatches(query)) return { updated: 0 };
+        Object.assign(auditOrganization, clone(update.$set || {}));
+        for (const key of Object.keys(update.$unset || {})) delete auditOrganization[key];
+        return { updated: 1 };
+      },
     },
   };
   const authorization = {

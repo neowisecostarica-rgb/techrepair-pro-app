@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import ts from 'typescript';
-import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
+import { appendAuditEvent, buildAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 import { appendDeviceCredentialRevealAudit } from '../base44/functions/_shared/deviceCredentialAudit.ts';
 
 function matches(record, query) {
@@ -23,7 +23,7 @@ function applyMutation(record, mutation) {
 }
 
 function memoryBase44(options = {}) {
-  const records = [];
+  const records = structuredClone(options.records || []);
   const organization = {
     id: 'org-1',
     ...(options.orphanClaim ? {
@@ -37,6 +37,12 @@ function memoryBase44(options = {}) {
   let ambiguousClaimPending = options.ambiguousClaim === true;
   let ambiguousCreatePending = options.ambiguousCreate === true;
   let ambiguousReleasePending = options.ambiguousRelease === true;
+  let uncertainCreatePending = options.uncertainCreate === true;
+  let ownedClaimReads = 0;
+  let signalCreateStarted;
+  let releaseHeldCreate;
+  const createStarted = new Promise(resolve => { signalCreateStarted = resolve; });
+  const heldCreateReleased = new Promise(resolve => { releaseHeldCreate = resolve; });
   const auditEntity = {
     async filter(query) {
       return records
@@ -49,8 +55,17 @@ function memoryBase44(options = {}) {
       metrics.activeCreates += 1;
       metrics.maxActiveCreates = Math.max(metrics.maxActiveCreates, metrics.activeCreates);
       if (options.createDelayMs) await new Promise(resolve => setTimeout(resolve, options.createDelayMs));
+      if (uncertainCreatePending) {
+        uncertainCreatePending = false;
+        metrics.activeCreates -= 1;
+        throw new Error('simulated uncertain AuditEvent.create response');
+      }
       const record = { ...structuredClone(event), id: `audit-${records.length + 1}` };
       records.push(record);
+      if (options.holdCreate) {
+        signalCreateStarted();
+        await heldCreateReleased;
+      }
       metrics.activeCreates -= 1;
       if (ambiguousCreatePending) {
         ambiguousCreatePending = false;
@@ -61,10 +76,22 @@ function memoryBase44(options = {}) {
   };
   const organizationEntity = {
     async filter(query) {
+      if (options.loseOwnershipBeforeCreate && organization.audit_claim_token) {
+        ownedClaimReads += 1;
+        if (ownedClaimReads === 2) {
+          organization.audit_claim_token = 'foreign-token';
+          organization.audit_claim_operation_id = 'foreign-operation';
+          organization.audit_claim_identity_hash = 'foreign-hash';
+        }
+      }
       return matches(organization, query) ? [structuredClone(organization)] : [];
     },
     async updateMany(query, mutation) {
       if (!matches(organization, query)) return { updated: 0 };
+      if (options.falsePositiveClaimUpdate && mutation.$set?.audit_claim_token) {
+        metrics.claimUpdates += 1;
+        return { updated: 1 };
+      }
       applyMutation(organization, mutation);
       metrics.claimUpdates += 1;
       if (ambiguousClaimPending && mutation.$set?.audit_claim_token) {
@@ -82,6 +109,8 @@ function memoryBase44(options = {}) {
     records,
     organization,
     metrics,
+    createStarted,
+    releaseCreate: () => releaseHeldCreate(),
     base44: { asServiceRole: { entities: { AuditEvent: auditEntity, Organization: organizationEntity } } },
   };
 }
@@ -296,6 +325,75 @@ test('N — an orphan claim fails closed without expiry, takeover or AuditEvent 
   assert.equal(store.metrics.createCalls, 0);
   assert.equal(store.records.length, 0);
   assert.equal(store.organization.audit_claim_token, 'orphan-token');
+});
+
+test('O — a successful update count is not ownership without persisted claim verification', async () => {
+  const store = memoryBase44({ falsePositiveClaimUpdate: true });
+  await assert.rejects(
+    appendAuditEvent(store.base44, input()),
+    error => error?.code === 'AUDIT_CLAIM_RECOVERY_REQUIRED',
+  );
+  assert.equal(store.metrics.createCalls, 0);
+  assert.equal(store.records.length, 0);
+  assert.equal(store.organization.audit_claim_token, undefined);
+});
+
+test('P — ownership lost after acquisition fails closed immediately before create', async () => {
+  const store = memoryBase44({ loseOwnershipBeforeCreate: true });
+  await assert.rejects(
+    appendAuditEvent(store.base44, input()),
+    error => error?.code === 'AUDIT_CLAIM_RECOVERY_REQUIRED',
+  );
+  assert.equal(store.metrics.createCalls, 0);
+  assert.equal(store.records.length, 0);
+  assert.equal(store.organization.audit_claim_token, 'foreign-token');
+});
+
+test('Q — uncertain create failure retains the owned claim and prevents an unsafe retry', async () => {
+  const store = memoryBase44({ uncertainCreate: true });
+  await assert.rejects(
+    appendAuditEvent(store.base44, input()),
+    /simulated uncertain AuditEvent\.create response/,
+  );
+  assert.equal(store.metrics.createCalls, 1);
+  assert.equal(store.records.length, 0);
+  assert.ok(store.organization.audit_claim_token);
+  assert.equal(store.organization.audit_claim_operation_id, 'backend-operation-1');
+});
+
+test('R — a compatible non-owner replay cannot release the active writer claim', async () => {
+  const store = memoryBase44({ holdCreate: true });
+  const ownerResult = appendAuditEvent(store.base44, input());
+  await store.createStarted;
+  const ownerToken = store.organization.audit_claim_token;
+  let replay;
+  try {
+    replay = await appendAuditEvent(store.base44, input());
+    assert.equal(replay.duplicate, true);
+    assert.equal(store.organization.audit_claim_token, ownerToken);
+  } finally {
+    store.releaseCreate();
+  }
+  const owner = await ownerResult;
+  assert.equal(owner.duplicate, false);
+  assert.equal(store.organization.audit_claim_token, undefined);
+});
+
+test('S — multiple compatible existing events fail closed as ambiguous', async () => {
+  const canonical = buildAuditEvent(input());
+  const store = memoryBase44({
+    records: [
+      { ...structuredClone(canonical), id: 'audit-existing-1' },
+      { ...structuredClone(canonical), id: 'audit-existing-2' },
+    ],
+  });
+  await assert.rejects(
+    appendAuditEvent(store.base44, input()),
+    error => error?.code === 'AUDIT_OPERATION_ID_AMBIGUOUS',
+  );
+  assert.equal(store.metrics.createCalls, 0);
+  assert.equal(store.records.length, 2);
+  assert.equal(store.organization.audit_claim_token, undefined);
 });
 
 test('missing backend operation identity fails closed', async () => {

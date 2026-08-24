@@ -14,8 +14,8 @@ For a given `(organization_id, audit_operation_id)` the code now guarantees at m
 1. Build the canonical event and hash only its immutable operation identity.
 2. Reconcile an already-visible `AuditEvent` before claiming.
 3. Acquire `Organization.audit_claim_token` with `Organization.updateMany` only while that field is missing or null.
-4. Reconcile an ambiguous claim response by reading back the random backend token, operation ID and identity hash.
-5. After ownership, re-check for an existing event and call `AuditEvent.create` only if none exists.
+4. Read back the random backend token, operation ID and identity hash after every reported or ambiguous claim acquisition.
+5. After re-checking for an existing event, verify the persisted ownership tuple again immediately before `AuditEvent.create`.
 6. Confirm the created event is visible and compatible before conditionally releasing the exact claim token.
 7. Reconcile ambiguous create and release responses without issuing a second create.
 
@@ -26,6 +26,7 @@ The claim has no expiry and no automatic takeover. This is intentional: a time-b
 - A live compatible contender waits briefly for the canonical event, then returns it as a duplicate.
 - A contender with incompatible immutable semantics receives `AUDIT_OPERATION_ID_COLLISION`.
 - A busy or orphaned claim that does not produce an event receives `AUDIT_CLAIM_RECOVERY_REQUIRED`; no event is created and the claim is not stolen.
+- If `AuditEvent.create` throws and persistence cannot be proven, the owned claim is retained for manual recovery.
 - If create succeeds but visibility cannot be confirmed, the claim is retained with `AUDIT_EVENT_VISIBILITY_UNCONFIRMED`.
 - More than one matching audit row remains `AUDIT_OPERATION_ID_AMBIGUOUS`.
 
@@ -51,7 +52,7 @@ All deny client read/write through field RLS. The existing entity-level RLS rema
 
 ## Verification
 
-- AUD operation identity and atomic-claim contract: **15/15 PASS**.
+- AUD operation identity and atomic-claim contract: **20/20 PASS**.
 - Multi-user audit coverage: **7/7 PASS**.
 - Security Round 2: **13/13 PASS**.
 - Assignment: **22/22 PASS**.
@@ -65,7 +66,7 @@ All deny client read/write through field RLS. The existing entity-level RLS rema
 - Multi-user technical requests: **6/6 PASS**.
 - Multi-user foundation: **11/11 PASS**.
 - Security blocker remediation: **9/9 PASS**.
-- Aggregate exercised groups/tests: **254 PASS**.
+- Aggregate exercised groups/tests: **259 PASS**.
 - ESLint: **PASS**.
 - Production Vite build: **PASS**. The first sandboxed attempt was blocked from reading an esbuild support path; the approved unrestricted retry completed and refreshed `dist`.
 - `git diff --check`: **PASS** (line-ending notices only).

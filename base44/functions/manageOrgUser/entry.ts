@@ -9,6 +9,7 @@ import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
 import { projectUserAccount } from '../_shared/dataProjections.ts';
+import { observeUserSeatLimit } from '../_shared/planEntitlements.ts';
 
 const BRANCH_SCOPED_ROLES = new Set(['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE']);
 
@@ -138,6 +139,15 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.UserAccount.delete(created.id);
         throw error;
       }
+      await observeUserSeatLimit(base44, {
+        organizationId: effectiveOrgId,
+        resourceId: created.id,
+        action: 'invite_created',
+        correlationId: membershipCorrelationId,
+        commandPolicyId: 'CP-USER-001',
+        authorization,
+        actor: user,
+      });
       return Response.json({ success: true, action: 'created', account: projectUserAccount(created) });
     }
 

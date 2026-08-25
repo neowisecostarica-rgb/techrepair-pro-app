@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "name": "Aud01bCasProbe",
+  "title": "AUD-01B CAS Certification Probe",
+  "description": "Disposable records used only by the isolated AUD-01B Base44 CAS certification experiment.",
+  "properties": {
+    "marker": { "type": "string", "minLength": 1 },
+    "record_kind": {
+      "type": "string",
+      "enum": ["TARGET", "GATE", "READY_A", "READY_B"]
+    },
+    "caller_label": { "type": "string", "default": "" },
+    "run_id": { "type": "string", "default": "BOOTSTRAP" },
+    "claim_state": { "type": "string", "default": "NA" },
+    "claim_token": { "type": "string", "default": "" },
+    "gate_state": { "type": "string", "default": "IDLE" },
+    "release_at": { "type": "string", "default": "" },
+    "release_epoch_ms": { "type": "integer", "default": 0 },
+    "ready": { "type": "boolean", "default": false },
+    "ready_epoch_ms": { "type": "integer", "default": 0 },
+    "schedule_ack": { "type": "boolean", "default": false },
+    "schedule_ack_epoch_ms": { "type": "integer", "default": 0 }
+  },
+  "required": ["marker", "record_kind"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

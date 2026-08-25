@@ -28,6 +28,8 @@
     "test:multiuser-technical-requests": "node scripts/verify-multiuser-technical-requests-contract.mjs",
     "test:multiuser-audit": "node scripts/verify-multiuser-audit-contract.mjs",
     "test:audit-operation-identity": "node scripts/verify-audit-operation-identity-contract.mjs",
+    "test:audit-staging-probe": "node --test scripts/verify-aud01b-staging-probe-contract.mjs",
+    "probe:audit-staging": "node scripts/run-aud01b-staging-probe.mjs",
     "test:multiuser-automation": "node scripts/verify-multiuser-automation-notification-contract.mjs",
     "test:multiuser-provisioning": "node scripts/verify-multiuser-provisioning-contract.mjs",
     "test:multiuser-navigation": "node scripts/verify-multiuser-navigation-contract.mjs",
@@ -35,6 +37,7 @@
     "test:security-blockers": "node scripts/verify-security-blocker-remediation-contract.mjs",
     "test:security-round2": "node scripts/verify-security-round2-contract.mjs",
     "test:controlled-pilot": "node scripts/verify-controlled-pilot-operator-contract.mjs",
+    "test:plan-entitlements": "node --test scripts/verify-plan-entitlements-observation-contract.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },

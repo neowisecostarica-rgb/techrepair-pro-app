@@ -77,11 +77,17 @@ Registra un `AuditEvent` solamente cuando una acción supera los límites propue
 atrapa cualquier fallo de lectura o auditoría para no modificar el resultado del
 comando de negocio.
 
-- `manageOrgUser` observa una nueva invitación que consumirá un asiento.
+- `manageOrgUser` observa toda transición que agrega consumo de asiento: nueva
+  invitación, reinvitación desde suspensión, activación y edición integral que
+  reactive una cuenta. `invited` y `active` consumen asiento; `suspended` no.
 - `manageBranchLifecycle` observa una creación o reactivación que deje a la
   organización sobre el límite de sucursales.
 - No existe código `PLAN_LIMIT_REACHED`, ningún rechazo nuevo ni modificación
   automática de usuarios, sucursales o planes.
+
+Checkpoint 2026-08-26: la prueba de observación ahora ejecuta comportamiento real
+para límites y transiciones, además de verificar los puntos de integración. Pasa
+5/5 casos locales.
 
 La activación del código requiere revisión, commit y una autorización separada de
 despliegue. No debe desplegarse mientras AUD-01B siga sin certificación runtime.

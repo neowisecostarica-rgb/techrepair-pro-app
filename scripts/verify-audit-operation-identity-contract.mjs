@@ -240,7 +240,7 @@ test('G — every live appendAuditEvent call supplies auditOperationId', async (
     }
     visit(ast);
   }
-  assert.equal(callers.length, 23, 'review the migration matrix when the live caller inventory changes');
+  assert.equal(callers.length, 24, 'review the migration matrix when the live caller inventory changes');
   const shared = await readFile(path.join(root, '_shared', 'auditEvent.ts'), 'utf8');
   assert.doesNotMatch(shared, /deriveAuditOperationId/);
   assert.match(shared, /claimIdentityHash/);

@@ -9,7 +9,7 @@ import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
 import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
 import { projectUserAccount } from '../_shared/dataProjections.ts';
-import { observeUserSeatLimit } from '../_shared/planEntitlements.ts';
+import { addsUserSeat, observeUserSeatLimit } from '../_shared/planEntitlements.ts';
 
 const BRANCH_SCOPED_ROLES = new Set(['BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE']);
 
@@ -89,6 +89,18 @@ Deno.serve(async (req) => {
       newState: { operation },
     });
   };
+  const observeAddedSeat = async (previousAccount, nextAccount, action) => {
+    if (!addsUserSeat(previousAccount?.status, nextAccount?.status)) return;
+    await observeUserSeatLimit(base44, {
+      organizationId: effectiveOrgId,
+      resourceId: nextAccount.id,
+      action,
+      correlationId: membershipCorrelationId,
+      commandPolicyId: 'CP-USER-001',
+      authorization,
+      actor: user,
+    });
+  };
   const allowedRoles = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE'];
 
   if (action === 'invite') {
@@ -139,15 +151,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.UserAccount.delete(created.id);
         throw error;
       }
-      await observeUserSeatLimit(base44, {
-        organizationId: effectiveOrgId,
-        resourceId: created.id,
-        action: 'invite_created',
-        correlationId: membershipCorrelationId,
-        commandPolicyId: 'CP-USER-001',
-        authorization,
-        actor: user,
-      });
+      await observeAddedSeat(null, created, 'invite_created');
       return Response.json({ success: true, action: 'created', account: projectUserAccount(created) });
     }
 
@@ -180,6 +184,7 @@ Deno.serve(async (req) => {
       });
       throw error;
     }
+    await observeAddedSeat(account, updated, 'invite_reissued');
     return Response.json({ success: true, action: 'reinvited', account: projectUserAccount(updated) });
   }
 
@@ -230,6 +235,7 @@ Deno.serve(async (req) => {
       });
       throw error;
     }
+    await observeAddedSeat(target[0], updated, 'status_updated');
     return Response.json({ success: true, account: projectUserAccount(updated) });
   }
 
@@ -287,6 +293,7 @@ Deno.serve(async (req) => {
       });
       throw error;
     }
+    await observeAddedSeat(target[0], updated, 'account_updated');
     return Response.json({ success: true, account: projectUserAccount(updated) });
   }
 

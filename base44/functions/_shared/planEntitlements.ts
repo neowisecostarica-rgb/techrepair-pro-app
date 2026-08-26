@@ -7,6 +7,14 @@ export const PLAN_ENTITLEMENTS = Object.freeze({
   premium: Object.freeze({ maxBranches: null, maxUsers: null }),
 });
 
+export function consumesUserSeat(status: unknown) {
+  return status === 'active' || status === 'invited';
+}
+
+export function addsUserSeat(previousStatus: unknown, nextStatus: unknown) {
+  return !consumesUserSeat(previousStatus) && consumesUserSeat(nextStatus);
+}
+
 async function organizationAndLimits(base44: any, organizationId: string) {
   const organizations = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, '-created_date', 2);
   if (organizations?.length !== 1) return null;
@@ -45,7 +53,7 @@ export async function observeUserSeatLimit(base44: any, input: any) {
     const entitlement = await organizationAndLimits(base44, input.organizationId);
     if (!entitlement || entitlement.limits.maxUsers === null) return null;
     const accounts = await base44.asServiceRole.entities.UserAccount.filter({ organization_id: input.organizationId }, '-created_date', 1001);
-    const currentUsage = (accounts || []).filter(account => account.status === 'active' || account.status === 'invited').length;
+    const currentUsage = (accounts || []).filter(account => consumesUserSeat(account.status)).length;
     const usage = currentUsage + (input.includePending === true ? 1 : 0);
     if (usage <= entitlement.limits.maxUsers) return { ...entitlement, usage, exceeded: false };
     await auditObservation(base44, { ...input, resourceType: 'UserAccount', plan: entitlement.plan, usage, limit: entitlement.limits.maxUsers });

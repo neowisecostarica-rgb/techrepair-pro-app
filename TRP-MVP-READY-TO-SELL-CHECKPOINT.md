@@ -18,18 +18,15 @@ OT y evidencia correlacionada.
 
 ## Estado real de GitHub y rama
 
-- Rama local: `codex/trp-aud-01b-blocker-fixes` en `07b0b9d`, más cambios locales
-  de este checkpoint sin commit.
-- La rama contiene tres commits que no están en `origin/main`: `1eb93a4`,
-  `97e3a37` y `07b0b9d`.
-- `origin/main` está en `807fa5a` y contiene dos commits posteriores a la base de
-  la rama: actualización de paquetes Base44 y plantillas de autenticación.
-- Divergencia observada: rama 3 commits ahead / 2 commits behind; el único solape
-  directo detectado es `package.json`.
-- La rama no está publicada como ref remota ni aparece en las refs de PR
-  disponibles. El último PR de estabilización relevante integrado en `main` es
-  PR #10; los bloques comerciales/recepción anteriores llegaron por PR #9 y #8.
-- `gh` no puede consultar o crear PR porque el token local de GitHub es inválido.
+- Rama integrada: `codex/trp-aud-01b-blocker-fixes` en `c2acbe5`, que incorpora
+  `origin/main` (`807fa5a`) y conserva los commits AUD-01B/monetización.
+- El único solape previsto era `package.json`; Git resolvió la integración sin
+  conflicto y el árbol integrado pasó build y regresiones.
+- La rama está publicada y tiene el PR borrador #11. El último PR de
+  estabilización relevante integrado en `main` es PR #10; los bloques
+  comerciales/recepción anteriores llegaron por PR #9 y #8.
+- GitHub está reautenticado y la rama rastrea
+  `origin/codex/trp-aud-01b-blocker-fixes`.
 - La CLI local de Base44 no está instalada en este checkout. No se ejecutó deploy,
   publish, sync ni escritura remota.
 - `CEOs/` continúa preexistente, sin tracking y sin cambios de este trabajo.
@@ -110,8 +107,8 @@ el pipeline canónico volvió a 12/12 PASS sin cambiar código productivo.
 ## Distancia real
 
 - **Listo para demo guiada:** sí, sujeto al entorno existente.
-- **Listo para PR candidato:** falta integrar los dos commits nuevos de `main` y
-  repetir build/regresión.
+- **Listo para PR candidato:** sí; PR #11 está abierto como borrador y la rama
+  integrada pasó build/regresión.
 - **Listo para piloto pagado productivo:** no; faltan AUD-01B runtime, PR/merge,
   publish autorizado y E2E autenticado.
 - **Listo para venta autoservicio o escala multi-cliente:** no; eso es post-MVP.

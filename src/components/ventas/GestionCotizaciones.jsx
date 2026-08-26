@@ -570,8 +570,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                       {cot.estado === 'aprobada' && cot.estado_conversion === 'SIN_CONVERTIR' && (
                         <button
                           onClick={() => handleConvertirEnFactura(cot)}
-                          disabled={convertirEnFacturaMutation.isPending}
-                          className="text-[10px] text-emerald-600 hover:text-emerald-800 underline disabled:opacity-50">
+                          className="text-[10px] text-emerald-600 hover:text-emerald-800 underline">
                           Convertir
                         </button>
                       )}

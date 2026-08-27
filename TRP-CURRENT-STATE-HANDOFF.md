@@ -159,3 +159,7 @@ ESLint PASS y `git diff --check` PASS (solo avisos LF/CRLF ya conocidos).
   y reconciliación de solo lectura; cualquier staging, sincronización o Publish
   exige autorización explícita separada, y el runtime probe AUD-01B sigue
   bloqueado por una vía de autenticación aprobada.
+- Cierre de preparación: los cambios TRP se confirmaron como `3c12ae1`,
+  `origin/main` (`af1699d`) se integró localmente en `1c55d8c` sin conflictos y
+  ambos commits fueron enviados a la rama candidata. GitHub confirma que el PR
+  borrador #11 está abierto, con `1c55d8c` como head y `af1699d` como base.

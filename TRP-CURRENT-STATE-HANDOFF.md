@@ -163,3 +163,23 @@ ESLint PASS y `git diff --check` PASS (solo avisos LF/CRLF ya conocidos).
   `origin/main` (`af1699d`) se integró localmente en `1c55d8c` sin conflictos y
   ambos commits fueron enviados a la rama candidata. GitHub confirma que el PR
   borrador #11 está abierto, con `1c55d8c` como head y `af1699d` como base.
+
+## Checkpoint 2026-08-27 — incidente runtime de producción confirmado
+
+- La aplicación principal **TechRepair Pro** (App ID `695d708948469128f473d080`)
+  muestra en Vista Previa: “Error de Autenticación — No se pudo cargar la
+  información de tu sesión”. No se trata como un problema de contraseña ni como
+  motivo para relajar RLS, roles o comportamiento fail-closed.
+- Inventario runtime de solo lectura, con sesión Base44 autenticada: producción
+  tiene **31** funciones; el código aprobado contiene **51**. Las 20 ausentes
+  incluyen `identityGateway`, `operationalGateway`, `customer360Gateway`,
+  `crmGateway`, `deliverWorkOrder`, `manageBranchLifecycle` y
+  `validateTenantReadiness`.
+- Causa raíz operativa: el frontend publicado invoca `identityGateway` para
+  resolver sesión e identidad, pero esa función no existe en el runtime de
+  producción. El MVP no puede recuperarse solo con cambios de navegador,
+  credenciales o configuración local.
+- Decisión: preparar GO/NO-GO y staging; **no ejecutar Publish todavía**. Un
+  Publish controlado solo podrá realizarse tras una confirmación final explícita
+  del usuario, con la rama aprobada, inventario reconciliado, smoke tests y un
+  plan de detención/rollback verificable.

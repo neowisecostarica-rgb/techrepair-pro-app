@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Building2, Plus, Search, ShieldAlert, AlertCircle } from 'lucide-react';
 import PlatformActivityMetrics from '@/components/superadmin/PlatformActivityMetrics';
+import PilotReadinessPanel from '@/components/superadmin/PilotReadinessPanel';
 import ImpersonationBanner from '../components/superadmin/ImpersonationBanner';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
@@ -548,6 +549,10 @@ function SaasContent() {
       {/* Global Sales Metrics (Super Admin) */}
       {!authIsImpersonating && (
         <PlatformActivityMetrics organizations={organizations} />
+      )}
+
+      {!authIsImpersonating && (
+        <PilotReadinessPanel organizations={organizations} accounts={allUserAccounts} branches={allBranches} />
       )}
 
       {/* System Health */}

@@ -18,6 +18,7 @@ import GestionCotizaciones from '../components/ventas/GestionCotizaciones';
 import ComunicacionCliente from '../components/ventas/ComunicacionCliente';
 import SeguimientoCliente from '../components/ventas/SeguimientoCliente';
 import AtencionRequerida from '@/components/clientes/AtencionRequerida';
+import MensajesMotivacionVentas from '@/components/ventas/MensajesMotivacionVentas';
 import { customer360QueryKeys, getCustomer360 } from '@/api/customer360';
 
 export default function Clientes() {

@@ -72,12 +72,23 @@ Documentos locales creados:
 - `TRP-FIRST-PAID-PILOT-KIT.md`: propuesta comercial y runbook de onboarding.
 - `TRP-PLAN-ENTITLEMENTS-TECHNICAL-DESIGN.md`: diseño seguro de enforcement
   futuro, todavía no implementado.
+- `TRP-MVP-MONETIZATION-TOMORROW.md`: orden de trabajo comercial y técnico para
+  retomar el MVP y el primer piloto.
 
-Propuesta pendiente de confirmación comercial:
+Catálogo de referencia pendiente de automatización:
 
 - Basic: 1 sucursal, 3 usuarios.
-- Pro: 3 sucursales, 10 usuarios; piloto recomendado a ₡39.900/mes.
+- Pro: 3 sucursales, 10 usuarios; catálogo de referencia ₡39.900/mes.
 - Premium: límites por contrato.
+
+### Oferta fundadora registrada
+
+- ₡39.900 por implementación, configuración y primer mes.
+- ₡19.900/mes desde el segundo mes.
+- Exclusiva para los primeros 10 talleres activados.
+- El precio se conserva mientras la suscripción permanezca activa y al día.
+- Incluye onboarding y configuración estándar; migraciones grandes,
+  personalizaciones, soporte presencial y trabajo adicional se cotizan aparte.
 
 El siguiente avance de monetización, sin riesgo, es confirmar esos límites y
 después implementar controles backend inicialmente en modo observación, no en modo
@@ -107,3 +118,44 @@ ESLint PASS y `git diff --check` PASS (solo avisos LF/CRLF ya conocidos).
 - No cambiar RLS, autenticación ni secretos sin autorización específica.
 - No hacer commit, push o merge de los cambios locales sin autorización.
 - Conservar `CEOs/` intacto: es preexistente y no rastreado.
+
+## Checkpoint 2026-08-26 — avance READY TO SELL
+
+- Estado contrastado con GitHub: `origin/main` avanzó a `807fa5a`; la rama actual
+  está 3 commits ahead y 2 behind, con solape directo en `package.json`.
+- La rama candidata todavía no tiene ref remota/PR. La autenticación local de
+  GitHub está vencida y la CLI local de Base44 no está instalada.
+- Se corrigió la observación de asientos para cubrir reinvitación y reactivación,
+  no solo la invitación nueva. Continúa en modo observación, sin enforcement.
+- `test:plan-entitlements`: 5/5 PASS. El inventario AUD de callers fue actualizado
+  a 24 y `test:audit-operation-identity`: 20/20 PASS.
+- Regresiones enfocadas de recepción, asignación, comercial, inventario, venta,
+  entrega, sucursales, provisioning, técnico, piloto controlado y seguridad: PASS.
+- El mock obsoleto del policy pipeline fue alineado con el claim CAS persistido;
+  `test:multiuser-policy-pipeline`: 12/12 PASS sin cambio productivo.
+- Clasificación y ruta mínima actualizadas en
+  `TRP-MVP-READY-TO-SELL-CHECKPOINT.md`.
+- No se ejecutó commit, push, merge, deploy, publish, schema apply ni escritura
+  remota. AUD-01B runtime y el E2E autenticado continúan bloqueando venta productiva.
+
+## Checkpoint 2026-08-27 — preparación de PR y recuperación controlada
+
+- GitHub fue consultado por `git fetch`: `origin/main` avanzó a `af1699d` y la
+  rama candidata publicada permanece en `46fe272`. Antes de integrar, la rama
+  está **6 commits ahead y 2 commits behind** de `origin/main`.
+- Los dos commits nuevos de `main` incorporan el plan/runbooks/matriz pre-publish,
+  actualizan `@base44/vite-plugin` a `^1.0.32` y contienen la misma corrección de
+  cotizaciones y clientes que estaba presente localmente. El merge-tree no
+  reportó conflicto semántico en esos archivos.
+- Validación local de los cambios candidatos: comercial 12/12, venta atómica
+  28/28, entitlements 5/5, identidad de auditoría 20/20, policy pipeline 12/12,
+  lifecycle de sucursales 43/43 y provisioning 6/6 PASS; ESLint específico no
+  tiene errores y `vite build` PASS. Permanecen dos advertencias preexistentes de
+  variables sin uso en `Saas.jsx`.
+- GitHub CLI sigue con token inválido, por lo que el estado de PR no se pudo
+  consultar ni mutar por `gh`; el remoto Git sí fue verificado. No se ejecutó
+  push, merge remoto, deploy, publish, schema apply ni escritura en Base44.
+- Gate Base44: **NO PUBLISH**. La recuperación continúa únicamente con inventario
+  y reconciliación de solo lectura; cualquier staging, sincronización o Publish
+  exige autorización explícita separada, y el runtime probe AUD-01B sigue
+  bloqueado por una vía de autenticación aprobada.

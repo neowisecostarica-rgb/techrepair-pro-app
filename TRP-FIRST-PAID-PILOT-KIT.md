@@ -1,6 +1,6 @@
 # TRP — First Paid Pilot Kit
 
-Status: **draft for commercial approval — no offer is binding until approved by the product owner**
+Status: **oferta fundadora aprobada para los primeros 10 talleres; no implica compromiso de SLA empresarial**
 Reference plan: `TRP-MONETIZATION-PILOT-PLAN.md`
 
 ## A. Customer-facing pilot offer
@@ -19,7 +19,7 @@ TechRepair Pro helps a repair workshop manage the complete operating flow in one
 | Item | Proposal |
 |---|---|
 | Plan | Pro |
-| Price | ₡39,900 per month |
+| Price | ₡39,900 for implementation, setup and the first month; then ₡19,900/month |
 | Initial term | 30 days |
 | Included onboarding | One setup and training session of 60–90 minutes |
 | Included support | Weekly check-in during the pilot and priority operational support |

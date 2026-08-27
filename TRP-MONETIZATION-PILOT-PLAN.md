@@ -48,7 +48,9 @@ Independent repair workshop in Costa Rica that has:
 ### Pilot offer
 
 - Plan: **Pro**.
-- Price: **₡39,900 per month** (the existing catalog price).
+- Founder price: **₡39,900** for implementation, setup and the first month;
+  **₡19,900/month** thereafter while the subscription stays active and current.
+- Availability: first 10 activated workshops only.
 - Pilot term: 30 days, with hands-on onboarding and weekly check-ins.
 - Collection: SINPE Móvil or bank transfer; issue the agreed commercial receipt/invoice outside TRP until billing is implemented.
 - Activation: Super Admin assigns `pro` manually only after payment is confirmed.
@@ -58,7 +60,7 @@ This is a business proposal, not a tax, accounting, or legal determination. Conf
 
 ## 5. Proposed plan matrix
 
-The public catalog currently presents Basic at ₡19,900, Pro at ₡39,900, and Premium at ₡79,900 per month. The following is the proposed operating contract for a future entitlement implementation; it must be approved before it becomes code.
+The public catalog currently presents Basic at ₡19,900, Pro at ₡39,900, and Premium at ₡79,900 per month. The founder offer is a limited commercial exception for the first 10 workshops, not an automated billing rule. The following is the proposed operating contract for a future entitlement implementation; it must be approved before it becomes code.
 
 | Area | Basic — ₡19,900 | Pro — ₡39,900 | Premium — ₡79,900 |
 |---|---:|---:|---:|

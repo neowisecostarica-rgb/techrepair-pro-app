@@ -1,0 +1,4 @@
+{
+  "name": "identityGateway",
+  "entry": "entry.ts"
+}

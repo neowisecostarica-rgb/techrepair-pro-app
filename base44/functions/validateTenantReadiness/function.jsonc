@@ -1,0 +1,4 @@
+{
+  "name": "validateTenantReadiness",
+  "entry": "entry.ts"
+}

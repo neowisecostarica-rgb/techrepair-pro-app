@@ -1,0 +1,4 @@
+{
+  "name": "auditDeliveryLegacyData",
+  "entry": "entry.ts"
+}

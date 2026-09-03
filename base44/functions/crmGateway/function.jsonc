@@ -1,0 +1,4 @@
+{
+  "name": "crmGateway",
+  "entry": "entry.ts"
+}

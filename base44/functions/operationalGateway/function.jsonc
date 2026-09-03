@@ -1,0 +1,4 @@
+{
+  "name": "operationalGateway",
+  "entry": "entry.ts"
+}

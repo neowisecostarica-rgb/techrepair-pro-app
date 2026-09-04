@@ -121,7 +121,11 @@
     "controlled_pilot_operator_user_id": { "type": "string", "rls": { "write": false } },
     "controlled_pilot_branch_id": { "type": "string", "rls": { "write": false } },
     "controlled_pilot_configured_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
-    "controlled_pilot_configured_by_user_id": { "type": "string", "rls": { "write": false } }
+    "controlled_pilot_configured_by_user_id": { "type": "string", "rls": { "write": false } },
+    "audit_claim_token": { "type": "string", "rls": { "read": false, "write": false } },
+    "audit_claim_operation_id": { "type": "string", "rls": { "read": false, "write": false } },
+    "audit_claim_identity_hash": { "type": "string", "rls": { "read": false, "write": false } },
+    "audit_claimed_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } }
   },
   "required": [
     "name",

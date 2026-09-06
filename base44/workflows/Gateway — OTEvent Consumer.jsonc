@@ -1,0 +1,37 @@
+{
+  "name": "Gateway \u2014 OTEvent Consumer",
+  "description": "Bloque 0B.2B \u2014 Consume todos los OTEvent creados y los despacha al worker centralizado processOTEvent. Solo dispara sobre eventos con organization_id (post-0B.2A). No dispara sobre eventos ya processed.",
+  "trigger": {
+    "condition": "${ ((.trigger.data.organization_id != null) and (.trigger.data.processed != true)) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "OTEvent"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "gateway_otevent_consumer",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processOTEvent",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "processOTEvent"
+  }
+}

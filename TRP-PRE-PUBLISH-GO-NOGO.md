@@ -1,7 +1,9 @@
 # TRP Pre-Publish GO/NO-GO Checklist + Runtime Inventory
 
-> **Estado:** Template — se completa durante la ejecución del plan.
+> **Estado:** NO-GO / recuperación de runtime en curso — actualizado 2026-09-07.
 > **Criterio GO global:** 85/85 smoke tests PASS + todos los checklist items ✅ + aprobación explícita.
+>
+> **Incidente runtime 2026-09-07:** los 20 `function.jsonc` correspondientes exactamente a las 20 funciones históricamente ausentes ya existen y están versionados en Git. `identityGateway` fue probado como deploy unitario mediante CLI; la operación agotó el tiempo de espera y la consulta posterior de funciones remotas también expiró. Preview continúa mostrando `Error de Autenticación`. No se desplegaron deliberadamente las otras 19 funciones y no se hizo Publish.
 
 ---
 
@@ -9,7 +11,7 @@
 
 ### 1.1 Funciones NO desplegadas en producción (20) — críticas
 
-> Hallazgo base: creadas el/after Aug 10, 2026. Ausentes del registro runtime de producción.
+> Hallazgo histórico: creadas el/after Aug 10, 2026 y ausentes del registro runtime observado. Estado fuente actual 2026-09-07: las 20 poseen `function.jsonc` válido y versionado. El estado remoto actual no se puede certificar todavía porque `functions list` expira; NO asumir que siguen ausentes ni que fueron registradas.
 
 | # | Función | Creada | Estado prod | Estado staging | Smoke test |
 |---|---------|--------|------------|----------------|-----------|
@@ -100,7 +102,27 @@
 | `deliveryAtomicity.ts` | deliverWorkOrder | ⬜ |
 | `deviceCredentialAudit.ts` | revealDeviceCredential | ⬜ |
 
-### 1.4 Historial de Publish (completar desde dashboard)
+### 1.4 Historial de Publish / recuperación runtime
+
+**Evidencia 2026-09-07**
+- App verificada: TechRepair Pro / TRP Legacy — `695d708948469128f473d080`.
+- Fuente actual: 51 directorios de función con `entry.ts`.
+- Manifests actuales: 20 `function.jsonc`, correspondientes a las 20 funciones históricamente ausentes.
+- Los manifests fueron incorporados en Git el 2026-09-03 en commits `b4f9ae1`, `e6f9ae6`, `ec4ea23` (`External agent changes`).
+- `identityGateway/function.jsonc`: `name=identityGateway`, `entry=entry.ts`.
+- `identityGateway/entry.ts` expone `Deno.serve` y sus imports `_shared` requeridos están presentes en fuente.
+- Build/lint/validaciones PRE-DEPLOY ejecutadas sin error bloqueante antes del intento unitario.
+- Intento autorizado: `base44 functions deploy identityGateway` solamente.
+- Resultado: timeout del comando; posterior `base44 functions list` también timeout.
+- Preview posterior: sigue mostrando `Error de Autenticación`.
+- STOP aplicado: no repetir deploy, no desplegar las otras 19, no Publish hasta obtener evidencia del estado del job/registro remoto.
+
+**Comparación con respaldo histórico aportado por Gustavo (2026-09-07)**
+- El ZIP histórico no contiene `base44/functions/` ni `identityGateway`.
+- La versión histórica autenticaba directamente con SDK/Base44; la arquitectura actual inicia contexto mediante `identityGateway`.
+- Conclusión operacional: el ZIP se conserva como baseline histórico; NO restaurarlo sobre TRP actual porque eliminaría la arquitectura multi-tenant/gateways/endurecimiento posterior.
+
+### 1.5 Historial de Publish (completar desde dashboard)
 | Campo | Valor |
 |-------|-------|
 | Fecha último Publish exitoso | ⬜ (confirmar entre jun 15 – Aug 10) |
@@ -170,7 +192,7 @@
 
 ### Decisión final
 - [ ] **GO** — Solicitar autorización de Publish a producción
-- [ ] **NO-GO** — Documentar bloqueadores y reintentar tras corrección
+- [x] **NO-GO TEMPORAL** — Bloqueador de plataforma/runtime: el deploy unitario de `identityGateway` y la consulta remota expiran; Preview continúa bloqueado. Escalar al soporte Base44 antes de desplegar las otras 19 funciones.
 
 **Firmado:** _______________ **Fecha:** _______________
 

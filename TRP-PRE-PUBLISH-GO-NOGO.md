@@ -3,6 +3,13 @@
 > **Estado:** Template — se completa durante la ejecución del plan.
 > **Criterio GO global:** 85/85 smoke tests PASS + todos los checklist items ✅ + aprobación explícita.
 
+> **Evidencia runtime 2026-08-27:** inventario de solo lectura contra la app
+> principal `695d708948469128f473d080` confirmó 31 funciones desplegadas. El
+> repositorio aprobado contiene 51; las 20 ausencias de la sección 1.1 son
+> reales y explican el error de autenticación del frontend por ausencia de
+> `identityGateway`. Este hallazgo es **NO-GO** para publicar de inmediato; no
+> se han hecho cambios remotos.
+
 ---
 
 ## Sección 1 — Inventario runtime de funciones

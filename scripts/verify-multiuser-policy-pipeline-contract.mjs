@@ -19,24 +19,41 @@ const test = (name, run) => groups.push({ name, run });
 
 function auditRuntime({ failCreate = false } = {}) {
   const events = [];
+  const organization = { id: 'org-a' };
+  const matchesOrganization = query => {
+    if (query.id !== organization.id) return false;
+    if (query.$or) {
+      const claimAvailable = !Object.hasOwn(organization, 'audit_claim_token')
+        || organization.audit_claim_token === null;
+      if (!claimAvailable) return false;
+    }
+    for (const field of ['audit_claim_token', 'audit_claim_operation_id', 'audit_claim_identity_hash']) {
+      if (Object.hasOwn(query, field) && query[field] !== organization[field]) return false;
+    }
+    return true;
+  };
   return {
     events,
     base44: {
       asServiceRole: {
         entities: {
           AuditEvent: {
-            filter: async query => events.filter(event => (
-              event.organization_id === query.organization_id
-              && event.correlation_id === query.correlation_id
-              && event.event_type === query.event_type
-              && event.resource_type === query.resource_type
-              && event.resource_id === query.resource_id
-            )),
+            filter: async query => events.filter(event => Object.entries(query)
+              .every(([field, value]) => event[field] === value)),
             create: async event => {
               if (failCreate) throw new Error('simulated shadow audit failure');
               const created = { id: `audit-${events.length + 1}`, ...event };
               events.push(created);
               return created;
+            },
+          },
+          Organization: {
+            filter: async query => query.id === organization.id ? [{ ...organization }] : [],
+            updateMany: async (query, update) => {
+              if (!matchesOrganization(query)) return { updated: 0 };
+              Object.assign(organization, update.$set || {});
+              for (const field of Object.keys(update.$unset || {})) delete organization[field];
+              return { updated: 1 };
             },
           },
         },

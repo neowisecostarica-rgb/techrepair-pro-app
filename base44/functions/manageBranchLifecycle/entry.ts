@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
 import { BranchLifecycleError, executeBranchLifecycle } from '../_shared/branchLifecycle.ts';
 import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { observeBranchLimit } from '../_shared/planEntitlements.ts';
 import { projectOperationalReadResult } from '../_shared/dataProjections.ts';
 import {
   evaluateCommandPolicyWithShadow,
@@ -70,6 +71,17 @@ Deno.serve(async req => {
           outcome: result.idempotent ? 'IDEMPOTENT_REPLAY' : 'COMMITTED',
           newState: { action: result.action, active: result.branch?.active },
         });
+        if (!result.idempotent && result.branch?.active === true && ['CREATE', 'REACTIVATE'].includes(result.action)) {
+          await observeBranchLimit(base44, {
+            organizationId: authorization.organizationId,
+            resourceId: result.branch.id,
+            action: result.action,
+            correlationId: body.operation_key,
+            commandPolicyId: 'CP-BR-001',
+            authorization,
+            actor: user,
+          });
+        }
         return Response.json({
           success: result.success === true,
           action: result.action,

@@ -6,24 +6,24 @@ import {
   resolveIdentitySnapshot,
   sanitizeOrganization,
   sanitizeUserAccount,
-} from '../_shared/userAuthorization.ts';
-import { appendSuperAdminAudit } from '../_shared/superAdminAudit.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
-import { projectSuperAdminAudit } from '../_shared/dataProjections.ts';
+} from './_shared/userAuthorization.ts';
+import { appendSuperAdminAudit } from './_shared/superAdminAudit.ts';
+import { appendAuditEvent } from './_shared/auditEvent.ts';
+import { projectSuperAdminAudit } from './_shared/dataProjections.ts';
 import {
   canonicalOrganizationData,
   canonicalOwnerMembershipData,
   canonicalPrimaryBranchData,
   seedBaselineCategories,
   validateTenantReadiness,
-} from '../_shared/tenantProvisioning.ts';
+} from './_shared/tenantProvisioning.ts';
 import {
   AUTHORIZATION_PRESET_VERSION,
   getRoleCapabilities,
   getRoleScope,
   normalizeTenantRole,
-} from '../_shared/roleCapabilities.ts';
-import { inspectControlledPilotConfiguration } from '../_shared/controlledPilotAuthority.ts';
+} from './_shared/roleCapabilities.ts';
+import { inspectControlledPilotConfiguration } from './_shared/controlledPilotAuthority.ts';
 
 const ORG_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE', 'SUPPORT'];
 const ORG_UPDATE_FIELDS = new Set([

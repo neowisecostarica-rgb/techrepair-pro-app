@@ -192,14 +192,22 @@ async function finalizeProvisioning(base44, { organization, branch, account, act
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return jsonError('Metodo no permitido', 405, 'METHOD_NOT_ALLOWED');
 
+  let diagnosticStage = 'REQUEST_INIT';
   try {
+    diagnosticStage = 'CLIENT_CREATE';
     const base44 = createClientFromRequest(req);
+
+    diagnosticStage = 'AUTH_ME';
     const user = await base44.auth.me();
     if (!user) return jsonError('No autenticado', 401, 'AUTH_REQUIRED');
+
+    diagnosticStage = 'REQUEST_BODY';
     const body = await req.json().catch(() => ({}));
     const action = body.action || 'context';
+    diagnosticStage = 'ACTION_DISPATCH';
 
     if (action === 'context') {
+      diagnosticStage = 'CONTEXT_BUILD';
       const context = await buildContext(base44, user);
       if (!context.ok) return jsonError(context.error, context.status);
       return Response.json(context);
@@ -586,7 +594,12 @@ Deno.serve(async (req) => {
 
     return jsonError(`Accion de identidad desconocida: ${action}`, 400);
   } catch (error) {
-    console.error('[identityGateway]', error?.code || error?.message || error);
-    return jsonError('No se pudo completar la operacion de identidad', 500, error?.code);
+    const diagnosticCode = error?.code || `IDENTITY_GATEWAY_${diagnosticStage}_FAILED`;
+    console.error('[identityGateway]', {
+      stage: diagnosticStage,
+      code: diagnosticCode,
+      message: error?.message || String(error),
+    });
+    return jsonError('No se pudo completar la operacion de identidad', 500, diagnosticCode);
   }
 });

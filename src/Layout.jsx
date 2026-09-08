@@ -121,6 +121,30 @@ function LayoutContent({ children, currentPageName }) {
     );
   }
 
+  // Sesión Base44 válida, pero el gateway de identidad no respondió.
+  // Mantener fail-closed: no habilitar navegación ni autorización de tenant.
+  if (status === 'error' && errorCode === 'IDENTITY_GATEWAY_UNAVAILABLE') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+          <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Sesión válida · Servicio de identidad no disponible</h2>
+          <p className="text-slate-600 mb-6">
+            Base44 reconoce tu sesión, pero TRP no pudo cargar la autorización del usuario. El acceso permanece bloqueado de forma segura.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={reloadAuth} className="bg-emerald-600 hover:bg-emerald-700">
+              Reintentar
+            </Button>
+            <Button onClick={() => base44.auth.logout()} variant="outline">
+              Cerrar Sesión
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Otros errores de auth
   if (status === 'error') {
     return (

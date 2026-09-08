@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { getIdentityContext, switchIdentityOrganization } from '@/api/identity';
+import { base44 } from '@/api/base44Client';
 
 const AuthContext = createContext(null);
 
@@ -47,11 +48,36 @@ export function AuthProvider({ children }) {
       setStatus('ready');
     } catch (error) {
       console.error('AuthContext: identity gateway failed', error);
-      if (error?.response?.status === 429 || error?.status === 429) {
+      const gatewayStatus = error?.response?.status || error?.status || null;
+      if (gatewayStatus === 429) {
         setErrorCode(429);
         last429Timestamp.current = Date.now();
+        setStatus('error');
+      } else {
+        // A gateway/runtime failure is not proof that the Base44 session is invalid.
+        // Probe authentication only. Never derive tenant authorization client-side
+        // or unlock protected pages without identityGateway authorization.
+        try {
+          const sessionUser = await base44.auth.me();
+          if (sessionUser?.id) {
+            console.warn('AuthContext: Base44 session valid; identityGateway unavailable');
+            setUser(sessionUser);
+            setUserAccount(null);
+            setAuthorization(null);
+            setIdentityStatus('IDENTITY_GATEWAY_UNAVAILABLE');
+            setMultiOrgAccounts(null);
+            setErrorCode('IDENTITY_GATEWAY_UNAVAILABLE');
+            setStatus('error');
+          } else {
+            setErrorCode(gatewayStatus || 'AUTH_REQUIRED');
+            setStatus('error');
+          }
+        } catch (sessionError) {
+          console.error('AuthContext: Base44 session probe failed', sessionError);
+          setErrorCode(sessionError?.response?.status || sessionError?.status || gatewayStatus || 'AUTH_REQUIRED');
+          setStatus('error');
+        }
       }
-      setStatus('error');
     } finally {
       isLoadingRef.current = false;
     }

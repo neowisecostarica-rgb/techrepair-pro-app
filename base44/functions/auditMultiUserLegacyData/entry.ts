@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { normalizeTenantRole } from '../_shared/roleCapabilities.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { normalizeTenantRole } from './_shared/roleCapabilities.ts';
 
 const MAX_ROWS = 5000;
 

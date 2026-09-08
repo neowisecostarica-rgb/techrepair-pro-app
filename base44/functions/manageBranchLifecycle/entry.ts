@@ -1,13 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { BranchLifecycleError, executeBranchLifecycle } from '../_shared/branchLifecycle.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
-import { projectOperationalReadResult } from '../_shared/dataProjections.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { BranchLifecycleError, executeBranchLifecycle } from './_shared/branchLifecycle.ts';
+import { appendAuditEvent } from './_shared/auditEvent.ts';
+import { projectOperationalReadResult } from './_shared/dataProjections.ts';
 import {
   evaluateCommandPolicyWithShadow,
   ExecuteSovereignCommand,
   SovereignCommandError,
-} from '../_shared/commandExecution.ts';
+} from './_shared/commandExecution.ts';
 
 Deno.serve(async req => {
   if (req.method !== 'POST') {

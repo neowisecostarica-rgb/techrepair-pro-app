@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext, resolveIdentitySnapshot } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext, resolveIdentitySnapshot } from './_shared/userAuthorization.ts';
 import {
   authorizeOperationalAction,
   pickAllowedFields,
@@ -8,10 +8,10 @@ import {
   sanitizeOperationalMutation,
   validateRequestedBranch,
   WORK_ORDER_EDITABLE_FIELDS,
-} from '../_shared/operationalAuthorization.ts';
-import { calculateCommercialTotals } from '../_shared/commercialIntegrity.ts';
-import { resolvePublicResourceRelations } from '../_shared/publicResourceRelations.ts';
-import { projectOperationalMutationResult, projectOperationalReadResult } from '../_shared/dataProjections.ts';
+} from './_shared/operationalAuthorization.ts';
+import { calculateCommercialTotals } from './_shared/commercialIntegrity.ts';
+import { resolvePublicResourceRelations } from './_shared/publicResourceRelations.ts';
+import { projectOperationalMutationResult, projectOperationalReadResult } from './_shared/dataProjections.ts';
 
 const MAX_QUERY_LIMIT = 500;
 const QUOTE_APPROVAL_FIELDS = new Set([

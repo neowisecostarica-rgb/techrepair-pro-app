@@ -1,9 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
-import { issuePublicTokenMetadata } from '../_shared/publicTokenContract.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
-import { resolvePublicResourceRelations } from '../_shared/publicResourceRelations.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from './_shared/operationalAuthorization.ts';
+import { issuePublicTokenMetadata } from './_shared/publicTokenContract.ts';
+import { appendAuditEvent } from './_shared/auditEvent.ts';
+import { resolvePublicResourceRelations } from './_shared/publicResourceRelations.ts';
 
 const TYPES = Object.freeze({
   work_order: { entity: 'OrdenTrabajo', purpose: 'WORK_ORDER_STATUS_READ', capability: 'CUSTOMER_SERVICE_OPERATIONS' },

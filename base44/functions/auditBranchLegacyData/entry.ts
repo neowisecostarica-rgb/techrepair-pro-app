@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { normalizeBranchName } from '../_shared/branchProtection.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { normalizeBranchName } from './_shared/branchProtection.ts';
 
 const PAGE_SIZE = 250;
 const MAX_RECORDS = 5000;

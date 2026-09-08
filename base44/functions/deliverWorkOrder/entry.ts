@@ -1,14 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
-import { DeliveryCommandError, executeDeliveryCommand } from '../_shared/deliveryAtomicity.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from './_shared/operationalAuthorization.ts';
+import { DeliveryCommandError, executeDeliveryCommand } from './_shared/deliveryAtomicity.ts';
+import { appendAuditEvent } from './_shared/auditEvent.ts';
 import {
   projectDeliveryLogMutationResult,
   projectWarrantyMutationResult,
   projectWorkOrderMutationResult,
-} from '../_shared/dataProjections.ts';
-import { evaluateCommandPolicyWithShadow, ExecuteSovereignCommand } from '../_shared/commandExecution.ts';
+} from './_shared/dataProjections.ts';
+import { evaluateCommandPolicyWithShadow, ExecuteSovereignCommand } from './_shared/commandExecution.ts';
 
 const DELIVERY_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 

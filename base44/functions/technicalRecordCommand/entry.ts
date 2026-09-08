@@ -1,13 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
-import { pickProjection } from '../_shared/dataProjections.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from './_shared/operationalAuthorization.ts';
+import { appendAuditEvent } from './_shared/auditEvent.ts';
+import { pickProjection } from './_shared/dataProjections.ts';
 import {
   evaluateCommandPolicyWithShadow,
   ExecuteSovereignCommand,
   SovereignCommandError,
-} from '../_shared/commandExecution.ts';
+} from './_shared/commandExecution.ts';
 
 const RECORD_POLICIES = Object.freeze({
   Diagnostico: {

@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
-import { projectTechnicalActivity } from '../_shared/dataProjections.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { authorizeRecordBranch } from './_shared/operationalAuthorization.ts';
+import { appendAuditEvent } from './_shared/auditEvent.ts';
+import { projectTechnicalActivity } from './_shared/dataProjections.ts';
 
 const ACTIONS = new Set(['PAUSE', 'RESUME', 'COMPLETE', 'BLOCK']);
 

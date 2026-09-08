@@ -1,10 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
 import {
   DeliveryCommandError,
   determineWarrantyApplicability,
   evaluateCommercialDeliveryGate,
-} from '../_shared/deliveryAtomicity.ts';
+} from './_shared/deliveryAtomicity.ts';
 
 const PAGE_SIZE = 250;
 const MAX_RECORDS = 5000;

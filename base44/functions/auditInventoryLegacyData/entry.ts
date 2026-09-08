@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
 
 const LIMIT = 500;
 const SAMPLE_LIMIT = 50;

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
-import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from './_shared/operationalAuthorization.ts';
+import { assertActiveBranch, BranchProtectionError } from './_shared/branchProtection.ts';
 import {
   projectCustomerMessage,
   projectCustomerQuote,
@@ -9,7 +9,7 @@ import {
   projectCustomerServiceEquipment,
   projectCustomerServiceWorkOrder,
   projectReceptionCustomer,
-} from '../_shared/dataProjections.ts';
+} from './_shared/dataProjections.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'];
 const MESSAGE_TYPES = ['estado_ot', 'cotizacion', 'seguimiento', 'general', 'recordatorio'];

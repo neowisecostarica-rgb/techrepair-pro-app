@@ -2,10 +2,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import {
   isCanonicalActiveUserAccount,
   resolveAuthorizedContext,
-} from '../_shared/userAuthorization.ts';
-import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
-import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
-import { projectLead, projectOperationalReadResult } from '../_shared/dataProjections.ts';
+} from './_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from './_shared/operationalAuthorization.ts';
+import { assertActiveBranch, BranchProtectionError } from './_shared/branchProtection.ts';
+import { projectLead, projectOperationalReadResult } from './_shared/dataProjections.ts';
 
 const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'];
 const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];

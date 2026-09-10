@@ -33,8 +33,10 @@ function dateKey(value) {
   return d.toISOString().split('T')[0];
 }
 
-export default function DashboardOrgAdmin({ effectiveOrgId }) {
+export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branchId = null }) {
   const hoy = new Date();
+  const isBranchAdmin = effectiveRole === 'BRANCH_ADMIN';
+  const canonicalBranchId = isBranchAdmin ? branchId : null;
 
   const startDateObj = startOfMonth(hoy);
   const endDateObj = endOfMonth(hoy);
@@ -51,7 +53,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     staleTime: 300_000,
   });
 
-  const canLoadOrgData = !!effectiveOrgId && !!currentUser;
+  const canLoadOrgData = !!effectiveOrgId && !!currentUser && (!isBranchAdmin || !!canonicalBranchId);
 
   const {
     data: financialData,
@@ -61,6 +63,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     queryFn: async () => {
       const res = await base44.functions.invoke('getFinancialMetrics', {
         organization_id: effectiveOrgId,
+        ...(canonicalBranchId ? { branch_id: canonicalBranchId } : {}),
         start_date: startDate,
         end_date: endDate,
       });
@@ -75,15 +78,25 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
     data: ordenes = [],
     isLoading: loadingOrdenes,
   } = useQuery({
-    queryKey: ['ordenes-dashboard', effectiveOrgId],
+    queryKey: ['ordenes-dashboard', effectiveOrgId, canonicalBranchId],
     queryFn: () =>
       base44.entities.OrdenTrabajo.filter(
-        { organization_id: effectiveOrgId },
+        {
+          organization_id: effectiveOrgId,
+          ...(canonicalBranchId ? { branch_id: canonicalBranchId } : {}),
+        },
         '-created_date',
         500
       ),
     enabled: canLoadOrgData,
     staleTime: 60_000,
+  });
+
+  const { data: branch } = useQuery({
+    queryKey: ['dashboard-branch', effectiveOrgId, canonicalBranchId],
+    queryFn: () => base44.entities.Branch.get(canonicalBranchId),
+    enabled: canLoadOrgData && isBranchAdmin && !!canonicalBranchId,
+    staleTime: 300_000,
   });
 
   const { data: organization } = useQuery({
@@ -94,17 +107,20 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
   });
 
   const { data: userAccounts = [] } = useQuery({
-    queryKey: ['userAccounts', effectiveOrgId],
+    queryKey: ['userAccounts', effectiveOrgId, canonicalBranchId],
     queryFn: () => listIdentityAccounts(effectiveOrgId).then(result => result.accounts),
     enabled: canLoadOrgData,
     staleTime: 300_000,
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes-count', effectiveOrgId],
+    queryKey: ['clientes-count', effectiveOrgId, canonicalBranchId],
     queryFn: () =>
       base44.entities.Cliente.filter(
-        { organization_id: effectiveOrgId },
+        {
+          organization_id: effectiveOrgId,
+          ...(canonicalBranchId ? { branch_id: canonicalBranchId } : {}),
+        },
         '-created_date',
         500
       ),
@@ -213,11 +229,17 @@ export default function DashboardOrgAdmin({ effectiveOrgId }) {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Dashboard Ejecutivo</h1>
-        <p className="text-slate-500">Vista general de operaciones (mes actual)</p>
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">
+          {isBranchAdmin ? 'Dashboard de Sucursal' : 'Dashboard Ejecutivo'}
+        </h1>
+        <p className="text-slate-500">
+          {isBranchAdmin
+            ? `Vista operativa limitada a ${branch?.name || branch?.nombre || 'tu sucursal'} (mes actual)`
+            : 'Vista general de la organización (mes actual)'}
+        </p>
       </div>
 
-      {setupStatus.isSetupIncomplete && (
+      {!isBranchAdmin && setupStatus.isSetupIncomplete && (
         <QuickStartCard
           hasBasicInfo={setupStatus.hasBasicInfo}
           hasCollaborators={setupStatus.hasCollaborators}

@@ -237,7 +237,7 @@ pass('sovereign authority requires native admin plus the explicit platform marke
   const records = [];
   const client = { asServiceRole: { entities: { SuperAdminAudit: { create: async record => (records.push(record), record) } } } };
   await assert.rejects(() => appendSuperAdminAudit(client, { id: 'user-1', role: 'user' }, { action: 'view_logs' }));
-  await appendSuperAdminAudit(client, { id: 'admin-1', email: 'admin@example.com', role: 'admin' }, {
+  await appendSuperAdminAudit(client, { id: 'admin-1', email: 'admin@example.com', role: 'admin', is_super_admin: true }, {
     action: 'view_logs', correlationId: 'corr-audit', metadata: { scope: 'qa' },
   });
   assert.equal(records[0].super_admin_id, 'admin-1');

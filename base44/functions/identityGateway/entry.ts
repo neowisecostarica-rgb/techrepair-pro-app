@@ -90,9 +90,15 @@ async function buildContext(base44, user) {
       await persistUserIdentity(base44, user.id, { is_super_admin: true });
     }
   } else if (
-    identity.activeMemberships.length === 1 &&
-    identity.user.organization_id !== identity.activeMemberships[0].organization_id
+    identity.activeMemberships.length === 1 && (
+      identity.user.organization_id !== identity.activeMemberships[0].organization_id ||
+      getUserDataField(user, 'is_super_admin') === true ||
+      getUserDataField(user, 'impersonating_org_id') ||
+      getUserDataField(user, 'impersonating_started_at')
+    )
   ) {
+    // Canonical tenant membership wins over stale platform/impersonation flags.
+    // Repair those flags even when organization_id was already correct.
     await persistUserIdentity(base44, user.id, {
       organization_id: identity.activeMemberships[0].organization_id,
       impersonating_org_id: null,

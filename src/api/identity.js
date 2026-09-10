@@ -7,12 +7,34 @@ export const identityQueryKeys = {
   adminOverview: ['identity', 'admin-overview'],
 };
 
-export async function invokeIdentity(action, payload = {}) {
-  const response = await base44.functions.invoke('identityGateway', { action, ...payload });
-  return response?.data ?? response;
+const IDENTITY_TRANSIENT_STATUSES = new Set([0, 408, 425, 429, 500, 502, 503, 504]);
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function identityErrorStatus(error) {
+  return error?.response?.status || error?.status || 0;
 }
 
-export const getIdentityContext = () => invokeIdentity('context');
+export async function invokeIdentity(action, payload = {}, options = {}) {
+  const attempts = options.retryTransient === true ? 3 : 1;
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await base44.functions.invoke('identityGateway', { action, ...payload });
+      return response?.data ?? response;
+    } catch (error) {
+      lastError = error;
+      const status = identityErrorStatus(error);
+      if (attempt >= attempts || !IDENTITY_TRANSIENT_STATUSES.has(status)) throw error;
+      // Context is read-only from the caller's perspective and safe to retry.
+      // Short bounded backoff absorbs transient preview/runtime cold-start failures
+      // without weakening fail-closed authorization.
+      await sleep(250 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+export const getIdentityContext = () => invokeIdentity('context', {}, { retryTransient: true });
 export const switchIdentityOrganization = (organizationId) =>
   invokeIdentity('switchOrganization', { organization_id: organizationId });
 export const acceptIdentityInvitation = (invitationId) =>

@@ -132,6 +132,10 @@ test('G — every live appendAuditEvent call supplies auditOperationId', async (
   const files = await listTypeScriptFiles(root);
   const callers = [];
   for (const file of files) {
+    const relativeFile = path.relative(root, file).replaceAll('\\', '/');
+    // Registered functions contain bundled _shared copies. Audit the canonical
+    // root shared source plus function entrypoints, not duplicate bundle copies.
+    if (/^[^/]+\/_shared\//.test(relativeFile)) continue;
     const source = await readFile(file, 'utf8');
     const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     function visit(node) {

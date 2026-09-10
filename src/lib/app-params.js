@@ -35,13 +35,30 @@ const getAppParamValue = (paramName, { defaultValue = undefined, removeFromUrl =
 }
 
 const getAppParams = () => {
+	const canonicalAppId = import.meta.env.VITE_BASE44_APP_ID;
+	const incomingParams = isNode ? new URLSearchParams() : new URLSearchParams(window.location.search);
+	const requestedAppId = incomingParams.get('app_id');
+
+	// This build belongs to one Base44 app. Never let a link from another TRP
+	// clone replace its runtime identity or persist that clone's bearer token.
+	if (requestedAppId && canonicalAppId && requestedAppId !== canonicalAppId) {
+		storage.removeItem('base44_access_token');
+		storage.removeItem('token');
+		incomingParams.delete('app_id');
+		incomingParams.delete('access_token');
+		const cleanUrl = `${window.location.pathname}${incomingParams.toString() ? `?${incomingParams.toString()}` : ''}${window.location.hash}`;
+		window.history.replaceState({}, document.title, cleanUrl);
+	}
+
 	if (getAppParamValue("clear_access_token") === 'true') {
 		storage.removeItem('base44_access_token');
 		storage.removeItem('token');
 	}
 	return {
-		appId: getAppParamValue("app_id", { defaultValue: import.meta.env.VITE_BASE44_APP_ID }),
-		token: getAppParamValue("access_token", { removeFromUrl: true }),
+		appId: canonicalAppId,
+		token: requestedAppId && canonicalAppId && requestedAppId !== canonicalAppId
+			? null
+			: getAppParamValue("access_token", { removeFromUrl: true }),
 		fromUrl: getAppParamValue("from_url", { defaultValue: window.location.href }),
 		functionsVersion: getAppParamValue("functions_version", { defaultValue: import.meta.env.VITE_BASE44_FUNCTIONS_VERSION }),
 		appBaseUrl: getAppParamValue("app_base_url", { defaultValue: import.meta.env.VITE_BASE44_APP_BASE_URL }),

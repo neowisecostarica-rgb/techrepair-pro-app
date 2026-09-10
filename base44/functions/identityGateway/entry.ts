@@ -82,24 +82,30 @@ function controlledPilotSnapshot(organization) {
 }
 
 async function buildContext(base44, user) {
-  let identity = await resolveIdentitySnapshot(base44, user);
+  // Base44 editor impersonation can switch the effective session user before
+  // the request projection has fully settled. Re-read the authoritative User
+  // record once at context-build time so membership resolution and profile
+  // repair operate on one coherent identity snapshot.
+  const backendUser = await loadBackendUser(base44, user.id);
+  const authoritativeUser = backendUser || user;
+  let identity = await resolveIdentitySnapshot(base44, authoritativeUser);
   if (!identity.ok) return identity;
 
   if (identity.isSuperAdmin) {
-    if (getUserDataField(user, 'is_super_admin') !== true) {
-      await persistUserIdentity(base44, user.id, { is_super_admin: true });
+    if (getUserDataField(authoritativeUser, 'is_super_admin') !== true) {
+      await persistUserIdentity(base44, authoritativeUser.id, { is_super_admin: true });
     }
   } else if (
     identity.activeMemberships.length === 1 && (
       identity.user.organization_id !== identity.activeMemberships[0].organization_id ||
-      getUserDataField(user, 'is_super_admin') === true ||
-      getUserDataField(user, 'impersonating_org_id') ||
-      getUserDataField(user, 'impersonating_started_at')
+      getUserDataField(authoritativeUser, 'is_super_admin') === true ||
+      getUserDataField(authoritativeUser, 'impersonating_org_id') ||
+      getUserDataField(authoritativeUser, 'impersonating_started_at')
     )
   ) {
     // Canonical tenant membership wins over stale platform/impersonation flags.
     // Repair those flags even when organization_id was already correct.
-    await persistUserIdentity(base44, user.id, {
+    await persistUserIdentity(base44, authoritativeUser.id, {
       organization_id: identity.activeMemberships[0].organization_id,
       impersonating_org_id: null,
       impersonating_started_at: null,
@@ -107,9 +113,20 @@ async function buildContext(base44, user) {
       is_super_admin: false,
     });
     const refreshedUser = {
-      ...user,
+      ...authoritativeUser,
       organization_id: identity.activeMemberships[0].organization_id,
-      data: { ...(user.data || {}), organization_id: identity.activeMemberships[0].organization_id },
+      is_super_admin: false,
+      impersonating_org_id: null,
+      impersonating_started_at: null,
+      impersonation_previous_organization_id: null,
+      data: {
+        ...(authoritativeUser.data || {}),
+        organization_id: identity.activeMemberships[0].organization_id,
+        is_super_admin: false,
+        impersonating_org_id: null,
+        impersonating_started_at: null,
+        impersonation_previous_organization_id: null,
+      },
     };
     identity = await resolveIdentitySnapshot(base44, refreshedUser);
   }

@@ -49,7 +49,7 @@ export default function Dashboard() {
 }
 
 function DashboardContent() {
-  const { effectiveRole, effectiveOrgId, user, status } = useAuthContext();
+  const { effectiveRole, effectiveOrgId, user, userAccount, status } = useAuthContext();
 
   // Wait for auth to be ready
   if (status !== 'ready') {
@@ -69,6 +69,13 @@ function DashboardContent() {
     return <DashboardTechnician effectiveOrgId={effectiveOrgId} userId={user?.id} />;
   }
 
-  // Default: ORG_ADMIN, BRANCH_ADMIN
-  return <DashboardOrgAdmin effectiveOrgId={effectiveOrgId} />;
+  // ORG_ADMIN sees the whole organization; BRANCH_ADMIN uses the same visual
+  // shell but every dashboard query is explicitly scoped to the canonical branch.
+  return (
+    <DashboardOrgAdmin
+      effectiveOrgId={effectiveOrgId}
+      effectiveRole={effectiveRole}
+      branchId={effectiveRole === 'BRANCH_ADMIN' ? userAccount?.branch_id || null : null}
+    />
+  );
 }

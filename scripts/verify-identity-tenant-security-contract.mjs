@@ -9,9 +9,9 @@ import {
   resolveIdentitySnapshot,
   sanitizeOrganization,
   sanitizeUserAccount,
-} from '../base44/functions/_shared/userAuthorization.ts';
-import { appendSuperAdminAudit } from '../base44/functions/_shared/superAdminAudit.ts';
-import { inspectControlledPilotConfiguration } from '../base44/functions/_shared/controlledPilotAuthority.ts';
+} from '../base44/functions/identityGateway/_shared/userAuthorization.ts';
+import { appendSuperAdminAudit } from '../base44/functions/identityGateway/_shared/superAdminAudit.ts';
+import { inspectControlledPilotConfiguration } from '../base44/functions/identityGateway/_shared/controlledPilotAuthority.ts';
 
 const root = new URL('../', import.meta.url);
 const rootPath = decodeURIComponent(root.pathname).replace(/^\/(?:[A-Za-z]:)/u, match => match.slice(1));
@@ -55,8 +55,9 @@ async function walk(directory) {
 }
 
 assert.equal(isCanonicalSuperAdmin({ role: 'user', is_super_admin: true }), false);
-assert.equal(isCanonicalSuperAdmin({ role: 'admin', is_super_admin: false }), true);
-pass('built-in admin role is the only sovereign authority');
+assert.equal(isCanonicalSuperAdmin({ role: 'admin', is_super_admin: false }), false);
+assert.equal(isCanonicalSuperAdmin({ role: 'admin', is_super_admin: true }), true);
+pass('sovereign authority requires native admin plus the explicit platform marker');
 
 {
   const accounts = [{
@@ -220,7 +221,7 @@ pass('built-in admin role is the only sovereign authority');
     const normalized = relative(rootPath, path).replaceAll('\\', '/');
     if (/SuperAdminAudit\.create/.test(source)) creators.push(relative(rootPath, path).replaceAll('\\', '/'));
     assert.doesNotMatch(source, /SuperAdminAudit\.(?:update|updateMany|delete)/, relative(rootPath, path));
-    if (!['base44/functions/_shared/userAuthorization.ts', 'base44/functions/identityGateway/entry.ts'].includes(normalized)) {
+    if (!normalized.endsWith('/_shared/userAuthorization.ts') && normalized !== 'base44/functions/_shared/userAuthorization.ts' && normalized !== 'base44/functions/identityGateway/entry.ts') {
       assert.doesNotMatch(
         source,
         /(?:user|runtimeUser|callerUser)\??\.(?:is_super_admin|impersonating_org_id|organization_id)|data\?\.is_super_admin/,
@@ -228,7 +229,10 @@ pass('built-in admin role is the only sovereign authority');
       );
     }
   }
-  assert.deepEqual(creators, ['base44/functions/_shared/superAdminAudit.ts']);
+  assert.deepEqual(creators.sort(), [
+    'base44/functions/_shared/superAdminAudit.ts',
+    'base44/functions/identityGateway/_shared/superAdminAudit.ts',
+  ]);
 
   const records = [];
   const client = { asServiceRole: { entities: { SuperAdminAudit: { create: async record => (records.push(record), record) } } } };

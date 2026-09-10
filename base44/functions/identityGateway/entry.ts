@@ -472,9 +472,20 @@ Deno.serve(async (req) => {
       if (!authorization.ok) return jsonError(authorization.error, authorization.status);
 
       if (action === 'listAccounts') {
-        const accounts = await base44.asServiceRole.entities.UserAccount.filter({
-          organization_id: authorization.organizationId,
-        }, '-created_date', 500);
+        const accountFilter = authorization.role === 'BRANCH_ADMIN'
+          ? {
+              organization_id: authorization.organizationId,
+              branch_id: authorization.account?.branch_id,
+            }
+          : { organization_id: authorization.organizationId };
+        if (authorization.role === 'BRANCH_ADMIN' && !accountFilter.branch_id) {
+          return jsonError('La membresia BRANCH_ADMIN no tiene una sucursal canonica asignada', 403);
+        }
+        const accounts = await base44.asServiceRole.entities.UserAccount.filter(
+          accountFilter,
+          '-created_date',
+          500,
+        );
         return Response.json({ accounts: (accounts || []).map(sanitizeUserAccount) });
       }
 

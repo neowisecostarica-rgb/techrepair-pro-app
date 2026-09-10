@@ -10,9 +10,13 @@ export function getUserDataField(user, field) {
   return user?.data?.[field] ?? user?.[field] ?? null;
 }
 
-/** The built-in platform role is the only sovereign super-admin authority. */
+/**
+ * Sovereign platform authority requires both the built-in Base44 admin role and
+ * the explicit platform marker. Tenant owners may carry the native admin role
+ * for legacy SDK compatibility and must never be promoted by that alone.
+ */
 export function isCanonicalSuperAdmin(user) {
-  return user?.role === 'admin';
+  return user?.role === 'admin' && getUserDataField(user, 'is_super_admin') === true;
 }
 
 export function sanitizeUserAccount(account) {
@@ -132,13 +136,15 @@ async function loadCanonicalMemberships(base44, user) {
 export async function resolveIdentitySnapshot(base44, user) {
   if (!user?.id) return { ok: false, status: 401, error: 'No autenticado' };
 
-  const isSuperAdmin = isCanonicalSuperAdmin(user);
-  const memberships = isSuperAdmin ? [] : await loadCanonicalMemberships(base44, user);
+  // Resolve canonical tenant membership before sovereign authority. A real
+  // active tenant membership wins over a stale/legacy super-admin marker.
+  const memberships = await loadCanonicalMemberships(base44, user);
   const activeMemberships = memberships.filter(account =>
     account.user_id === user.id &&
     account.organization_id &&
     isCanonicalActiveUserAccount(account)
   );
+  const isSuperAdmin = isCanonicalSuperAdmin(user) && activeMemberships.length === 0;
   const pendingInvitations = memberships.filter(account =>
     account.user_email === user.email &&
     account.organization_id &&

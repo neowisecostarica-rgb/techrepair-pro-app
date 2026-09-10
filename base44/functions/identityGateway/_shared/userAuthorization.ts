@@ -10,9 +10,13 @@ export function getUserDataField(user, field) {
   return user?.data?.[field] ?? user?.[field] ?? null;
 }
 
-/** The built-in platform role is the only sovereign super-admin authority. */
+/**
+ * Sovereign platform-admin authority requires BOTH the built-in Base44 admin role
+ * and the explicit platform marker. This prevents a tenant owner/collaborator
+ * whose native Base44 role is `admin` from being promoted to SUPER_ADMIN.
+ */
 export function isCanonicalSuperAdmin(user) {
-  return user?.role === 'admin';
+  return user?.role === 'admin' && getUserDataField(user, 'is_super_admin') === true;
 }
 
 export function sanitizeUserAccount(account) {

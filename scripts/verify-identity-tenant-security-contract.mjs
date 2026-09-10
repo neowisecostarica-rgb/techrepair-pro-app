@@ -85,7 +85,7 @@ pass('sovereign authority requires native admin plus the explicit platform marke
 }
 
 {
-  const users = [{ id: 'admin-1', email: 'admin@example.com', role: 'admin' }];
+  const users = [{ id: 'admin-1', email: 'admin@example.com', role: 'admin', is_super_admin: true }];
   const organizations = [
     { id: 'org-a', name: 'Tenant A', status: 'active', country: 'CR', currency: 'CRC', plan: 'basic' },
     { id: 'org-b', name: 'Tenant B', status: 'active', country: 'CR', currency: 'CRC', plan: 'basic' },

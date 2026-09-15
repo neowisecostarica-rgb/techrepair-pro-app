@@ -20,6 +20,7 @@ const [
   authContext,
   canonicalAuthorization,
   qaEvidence,
+  approveQuote,
 ] = await Promise.all([
   read('src/App.jsx'),
   read('src/pages/PortalCliente.jsx'),
@@ -36,6 +37,7 @@ const [
   read('src/components/contexts/AuthContext.jsx'),
   read('base44/functions/_shared/userAuthorization.ts'),
   read('base44/functions/_shared/qaEvidence.ts'),
+  read('base44/functions/approveCotizacion/entry.ts'),
 ]);
 
 const pass = (name, check) => {
@@ -81,9 +83,11 @@ pass('all generated quote links target the registered PortalCotizacion route',
   && quoteManagement.includes("issuePublicLink('quote'")
   && (await readFile(new URL('../src/api/publicLinks.js', import.meta.url), 'utf8')).includes("quote: 'PortalCotizacion'"));
 
-pass('sending an OT quote advances DIAGNOSTICADA to COTIZADA through the lifecycle helper',
-  quotePage.includes("transicionarEstadoOT(ot.id, 'COTIZADA'")
-  && quoteManagement.includes("transicionarEstadoOT(ordenTrabajoId, 'COTIZADA'"));
+pass('sending an OT quote advances DIAGNOSTICADA to COTIZADA through the backend lifecycle owner',
+  quotePage.includes("functions.invoke('approveCotizacion'")
+  && quoteManagement.includes("functions.invoke('approveCotizacion'")
+  && approveQuote.includes("functions.invoke('transitionWorkOrderStatus'")
+  && approveQuote.includes("newStatus: 'COTIZADA'"));
 
 pass('POS no longer skips repair and QA states after payment',
   !pos.includes("transicionarEstadoOT(ventaData.referencia_ot_id, 'FINALIZADA'"));

@@ -10,14 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Building2, Plus, Search, ShieldAlert, AlertCircle } from 'lucide-react';
 import PlatformActivityMetrics from '@/components/superadmin/PlatformActivityMetrics';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import {
   adminCreateIdentityOrganization,
   adminUpdateIdentityOrganization,
   getIdentityAdminOverview,
-  getIdentityOrganization,
 } from '@/api/identity';
 
 // P1: PLAN CATALOG (Frontend-only, precios en monedas soportadas)

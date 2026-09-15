@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
   const hasInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
   const last429Timestamp = useRef(null);
+  const lastSessionUserIdRef = useRef(null);
 
   const loadAuthData = async () => {
     if (isLoadingRef.current) return;
@@ -26,6 +27,7 @@ export function AuthProvider({ children }) {
     try {
       const context = await getIdentityContext();
       const contextUser = context.user;
+      lastSessionUserIdRef.current = contextUser?.id || null;
       const account = contextUser?.is_super_admin && contextUser?.impersonating_org_id
         ? {
             user_id: contextUser.id,
@@ -87,6 +89,45 @@ export function AuthProvider({ children }) {
     if (hasInitializedRef.current) return;
     hasInitializedRef.current = true;
     loadAuthData();
+  }, []);
+
+  // Base44 puede cambiar el usuario efectivo mediante su impersonación nativa sin
+  // desmontar esta SPA. Al recuperar foco/visibilidad comparamos la sesión real
+  // con la identidad que TRP tiene cargada y reconstruimos autoridad si cambió.
+  useEffect(() => {
+    let disposed = false;
+
+    const reconcileNativeSession = async () => {
+      if (disposed || isLoadingRef.current) return;
+      try {
+        const sessionUser = await base44.auth.me();
+        const sessionUserId = sessionUser?.id || null;
+        if (sessionUserId !== lastSessionUserIdRef.current) {
+          lastSessionUserIdRef.current = sessionUserId;
+          isLoadingRef.current = false;
+          last429Timestamp.current = null;
+          await loadAuthData();
+        }
+      } catch (error) {
+        // loadAuthData conserva la distinción entre sesión Base44 e identidad TRP.
+        if (!disposed && lastSessionUserIdRef.current !== null) {
+          lastSessionUserIdRef.current = null;
+          isLoadingRef.current = false;
+          await loadAuthData();
+        }
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') reconcileNativeSession();
+    };
+    window.addEventListener('focus', reconcileNativeSession);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      disposed = true;
+      window.removeEventListener('focus', reconcileNativeSession);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, []);
 
   const refreshAuth = async () => {

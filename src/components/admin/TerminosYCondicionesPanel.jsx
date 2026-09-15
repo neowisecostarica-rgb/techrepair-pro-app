@@ -28,19 +28,15 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Crear primero la nueva versión
-      const nueva = await base44.entities.TerminosYCondiciones.create(data);
-      
-      // Si se va a activar esta versión, desactivar las demás DESPUÉS
-      // (asi si falla, worst case es 2 activas, no 0 activas)
-      if (data.activo) {
-        const terminosActivos = terminos.filter(t => t.activo && t.id !== nueva.id);
-        for (const t of terminosActivos) {
-          await base44.entities.TerminosYCondiciones.update(t.id, { activo: false });
-        }
+      const response = await base44.functions.invoke('manageTerms', {
+        action: 'CREATE_VERSION',
+        texto: data.texto,
+        activar: data.activo,
+      });
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'No se pudo crear la versión de términos');
       }
-      
-      return nueva;
+      return response.data.termino;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terminos'] });
@@ -51,16 +47,14 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
 
   const activarMutation = useMutation({
     mutationFn: async (terminoId) => {
-      // Activar el seleccionado PRIMERO
-      await base44.entities.TerminosYCondiciones.update(terminoId, { activo: true });
-      
-      // Desactivar los demás DESPUÉS (asi si falla, worst case es 2 activas, no 0)
-      const terminosActivos = terminos.filter(t => t.activo && t.id !== terminoId);
-      for (const t of terminosActivos) {
-        await base44.entities.TerminosYCondiciones.update(t.id, { activo: false });
+      const response = await base44.functions.invoke('manageTerms', {
+        action: 'ACTIVATE',
+        termino_id: terminoId,
+      });
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'No se pudo activar la versión de términos');
       }
-      
-      return terminoId;
+      return response.data.termino;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terminos'] });
@@ -73,26 +67,8 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
       return;
     }
 
-    // Generar versión incremental
-    const versionesExistentes = terminos.map(t => {
-      const match = t.version.match(/v(\d+)\.(\d+)/);
-      if (match) {
-        return parseFloat(`${match[1]}.${match[2]}`);
-      }
-      return 0;
-    });
-
-    const maxVersion = versionesExistentes.length > 0 
-      ? Math.max(...versionesExistentes) 
-      : 0;
-    
-    const nuevaVersion = Math.floor(maxVersion) === maxVersion 
-      ? `v${maxVersion + 1}.0` 
-      : `v${Math.floor(maxVersion)}.${Math.floor((maxVersion % 1) * 10) + 1}`;
-
+    // La versión se asigna en backend para evitar colisiones entre dos administradores.
     createMutation.mutate({
-      organization_id: organizationId,
-      version: nuevaVersion,
       texto: textoNuevo.trim(),
       activo: activarVersion,
     });

@@ -401,6 +401,19 @@ async function validateMutationContext(base44, authorization, decision, entityNa
       if (!relations.ok) {
         return { ok: false, status: 409, code: relations.code, error: 'Las relaciones de la garantia no pertenecen a la organizacion autorizada' };
       }
+      const existingWarranty = await findOne(base44.asServiceRole.entities.Garantia, {
+        organization_id: authorization.organizationId,
+        origen_tipo: 'VENTA',
+        origen_id: data.origen_id,
+      });
+      if (existingWarranty) {
+        return {
+          ok: false,
+          status: 409,
+          code: 'WARRANTY_ALREADY_EXISTS',
+          error: 'La venta ya tiene una garantia emitida',
+        };
+      }
       return { ok: true, data };
     }
     if (operation === 'update') {

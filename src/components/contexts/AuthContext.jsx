@@ -128,10 +128,18 @@ export function AuthProvider({ children }) {
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') reconcileNativeSession();
     };
+    // El SDK no expone un evento de cambio de auth. Base44 puede cambiar la
+    // identidad efectiva desde su UI mientras esta pestaña sigue visible, así que
+    // hacemos una reconciliación conservadora y de baja frecuencia solo en foreground.
+    const reconciliationInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') reconcileNativeSession();
+    }, 15000);
+
     window.addEventListener('focus', reconcileNativeSession);
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       disposed = true;
+      window.clearInterval(reconciliationInterval);
       window.removeEventListener('focus', reconcileNativeSession);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };

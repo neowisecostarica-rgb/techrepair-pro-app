@@ -45,9 +45,16 @@ export default function AprobacionesPanel({ userAccount }) {
 
   // Aprobar cotización
   const aprobarCotizacionMutation = useMutation({
-    mutationFn: (cotizacionId) => base44.entities.Cotizacion.update(cotizacionId, {
-      aprobacion_interna_status: 'APROBADA',
-    }),
+    mutationFn: async (cotizacionId) => {
+      const response = await base44.functions.invoke('approveCotizacion', {
+        cotizacion_id: cotizacionId,
+        action: 'APPROVE_INTERNAL',
+      });
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'El servidor no confirmó la aprobación');
+      }
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-aprobacion'] });
     },
@@ -55,10 +62,17 @@ export default function AprobacionesPanel({ userAccount }) {
 
   // Rechazar cotización
   const rechazarCotizacionMutation = useMutation({
-    mutationFn: ({ id, motivo }) => base44.entities.Cotizacion.update(id, {
-      aprobacion_interna_status: 'RECHAZADA',
-      aprobacion_interna_motivo: motivo,
-    }),
+    mutationFn: async ({ id, motivo }) => {
+      const response = await base44.functions.invoke('approveCotizacion', {
+        cotizacion_id: id,
+        action: 'REJECT_INTERNAL',
+        motivo,
+      });
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.error || 'El servidor no confirmó el rechazo');
+      }
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-aprobacion'] });
       setShowRechazoModal(false);

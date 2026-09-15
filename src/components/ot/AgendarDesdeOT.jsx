@@ -8,7 +8,6 @@ import { Calendar, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { listIdentityAccounts } from '@/api/identity';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { validarSolapamiento } from '@/components/calendario/validarSolapamiento';
 
 /**
  * P0.4 TENANT ZERO: Componente para agendar desde OT
@@ -41,24 +40,9 @@ export default function AgendarDesdeOT({ ordenTrabajo, effectiveOrgId, onSuccess
       const horaFin = formData.get('hora_fin');
       const tipo = formData.get('tipo');
 
-      // Validar solapamiento
-      const validacion = await validarSolapamiento({
-        tecnicoId,
-        organizationId: effectiveOrgId,
-        fecha,
-        horaInicio,
-        horaFin,
-      });
-
-      if (validacion.conflicto) {
-        alert(validacion.mensaje);
-        setCreando(false);
-        return;
-      }
-
-      // Crear cita
-      await base44.entities.Cita.create({
-        organization_id: effectiveOrgId,
+      // Crear mediante el comando soberano. El backend vuelve a validar el
+      // solapamiento justo antes de persistir para evitar doble booking por carrera.
+      const response = await base44.functions.invoke('createAppointment', {
         orden_trabajo_id: ordenTrabajo.id,
         cliente_id: ordenTrabajo.cliente_id,
         tipo,
@@ -70,6 +54,9 @@ export default function AgendarDesdeOT({ ordenTrabajo, effectiveOrgId, onSuccess
         motivo: `${tipo === 'diagnostico' ? 'Diagnóstico' : 'Reparación'} - OT ${ordenTrabajo.id.slice(-6)}`,
         estado: 'programada',
       });
+      if (response?.data?.error) {
+        throw new Error(response.data.error);
+      }
 
       queryClient.invalidateQueries({ queryKey: ['citas'] });
       

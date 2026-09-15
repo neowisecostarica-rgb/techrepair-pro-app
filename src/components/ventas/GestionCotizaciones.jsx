@@ -19,7 +19,6 @@ import { format } from 'date-fns';
 import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
 import { issuePublicLink } from '@/api/publicLinks';
 

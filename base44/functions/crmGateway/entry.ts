@@ -176,6 +176,26 @@ Deno.serve(async (req) => {
         notas: `Convertido desde Lead. ${clean(lead.notes, 3500)}`.trim(),
       });
 
+      // P1-05: Post-create reconciliation for race condition
+      const postCreateCheck = await base44.asServiceRole.entities.Cliente.filter({
+        organization_id: organizationId,
+        identificacion,
+      });
+      if (postCreateCheck.length > 1) {
+        const sorted = postCreateCheck.sort((a, b) =>
+          new Date(a.created_date) - new Date(b.created_date)
+        );
+        const original = sorted[0];
+        if (original.id !== cliente.id) {
+          await base44.asServiceRole.entities.Cliente.delete(cliente.id).catch(() => {});
+          return Response.json({
+            lead: projectLead(lead),
+            cliente: projectOperationalReadResult('Cliente', original, authorization),
+            reconciled: true,
+          });
+        }
+      }
+
       try {
         const updatedLead = await base44.asServiceRole.entities.Lead.update(lead.id, {
           status: 'won',

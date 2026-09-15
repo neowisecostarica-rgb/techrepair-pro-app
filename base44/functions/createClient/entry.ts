@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { resolveAuthorizedBranch } from '../_shared/operationalAuthorization.ts';
-import { projectOperationalReadResult } from '../_shared/dataProjections.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { resolveAuthorizedBranch } from './_shared/operationalAuthorization.ts';
+import { projectOperationalReadResult } from './_shared/dataProjections.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -62,6 +62,25 @@ Deno.serve(async (req) => {
       direccion: direccion?.trim() || undefined,
       notas: notas?.trim() || undefined,
     });
+
+    // P1-05: Post-create reconciliation for race condition
+    // Two concurrent requests can both pass the pre-create check and both create.
+    // After create, re-query; if duplicates exist, keep the earliest and delete ours.
+    const postCreateCheck = await base44.asServiceRole.entities.Cliente.filter({
+      organization_id: orgId,
+      identificacion: identificacionNormalizada,
+    });
+    if (postCreateCheck.length > 1) {
+      const sorted = postCreateCheck.sort((a, b) =>
+        new Date(a.created_date) - new Date(b.created_date)
+      );
+      const original = sorted[0];
+      if (original.id !== cliente.id) {
+        await base44.asServiceRole.entities.Cliente.delete(cliente.id).catch(() => {});
+        console.log('[createClient] Race condition detected; deleted duplicate', { id: cliente.id, original: original.id });
+        return Response.json(projectOperationalReadResult('Cliente', original, authorization));
+      }
+    }
 
     console.log('[createClient] Cliente creado exitosamente', { id: cliente.id });
     return Response.json(projectOperationalReadResult('Cliente', cliente, authorization));

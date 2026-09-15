@@ -28,15 +28,19 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Si se va a activar esta versión, desactivar todas las demás
+      // Crear primero la nueva versión
+      const nueva = await base44.entities.TerminosYCondiciones.create(data);
+      
+      // Si se va a activar esta versión, desactivar las demás DESPUÉS
+      // (asi si falla, worst case es 2 activas, no 0 activas)
       if (data.activo) {
-        const terminosActivos = terminos.filter(t => t.activo);
+        const terminosActivos = terminos.filter(t => t.activo && t.id !== nueva.id);
         for (const t of terminosActivos) {
           await base44.entities.TerminosYCondiciones.update(t.id, { activo: false });
         }
       }
       
-      return base44.entities.TerminosYCondiciones.create(data);
+      return nueva;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terminos'] });
@@ -47,14 +51,16 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
 
   const activarMutation = useMutation({
     mutationFn: async (terminoId) => {
-      // Desactivar todos
-      const terminosActivos = terminos.filter(t => t.activo);
+      // Activar el seleccionado PRIMERO
+      await base44.entities.TerminosYCondiciones.update(terminoId, { activo: true });
+      
+      // Desactivar los demás DESPUÉS (asi si falla, worst case es 2 activas, no 0)
+      const terminosActivos = terminos.filter(t => t.activo && t.id !== terminoId);
       for (const t of terminosActivos) {
         await base44.entities.TerminosYCondiciones.update(t.id, { activo: false });
       }
       
-      // Activar el seleccionado
-      return base44.entities.TerminosYCondiciones.update(terminoId, { activo: true });
+      return terminoId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terminos'] });

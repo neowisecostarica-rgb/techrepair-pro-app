@@ -144,28 +144,13 @@ function AgendaContent() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // P0.1 TENANT ZERO: Inyectar organization_id
-      const dataWithOrg = {
+      // P1-06: Validación atómica backend (overlap check + create en una operación)
+      return await base44.functions.invoke('createAppointment', {
+        action: 'create',
         ...data,
-        organization_id: effectiveOrgId,
         created_by_user_id: user?.id,
         created_by_role: effectiveRole,
-      };
-
-      // P0.2: Validar solapamiento
-      const validacion = await validarSolapamiento({
-        tecnicoId: data.tecnico_asignado_id,
-        organizationId: effectiveOrgId,
-        fecha: data.fecha,
-        horaInicio: data.hora_inicio,
-        horaFin: data.hora_fin,
       });
-
-      if (validacion.conflicto) {
-        throw new Error(validacion.mensaje);
-      }
-
-      return await base44.entities.Cita.create(dataWithOrg);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['citas'] });
@@ -180,21 +165,12 @@ function AgendaContent() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      // P0.2: Validar solapamiento (excluyendo la cita actual)
-      const validacion = await validarSolapamiento({
-        tecnicoId: data.tecnico_asignado_id,
-        organizationId: effectiveOrgId,
-        fecha: data.fecha,
-        horaInicio: data.hora_inicio,
-        horaFin: data.hora_fin,
-        citaIdExcluir: id,
+      // P1-06: Validación atómica backend (overlap check + update en una operación)
+      return await base44.functions.invoke('createAppointment', {
+        action: 'update',
+        cita_id: id,
+        ...data,
       });
-
-      if (validacion.conflicto) {
-        throw new Error(validacion.mensaje);
-      }
-
-      return await base44.entities.Cita.update(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['citas'] });

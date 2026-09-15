@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { cotizacion_id, canal_envio = 'link' } = body;
+    const { cotizacion_id, canal_envio = 'link', action = 'SEND', motivo = null } = body;
 
     if (!cotizacion_id) {
       return Response.json({ error: 'cotizacion_id es obligatorio' }, { status: 400 });
@@ -32,6 +32,41 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Cotización no encontrada' }, { status: 404 });
     }
     const cotizacion = cotizaciones[0];
+
+    // Internal discount approval is a separate sovereign decision from sending.
+    // Only ORG_ADMIN may approve/reject; the quote must still be a draft requiring approval.
+    if (['APPROVE_INTERNAL', 'REJECT_INTERNAL'].includes(action)) {
+      if (authorization.role !== 'ORG_ADMIN') {
+        return Response.json({ error: 'Solo ORG_ADMIN puede decidir la aprobación interna' }, { status: 403 });
+      }
+      if (cotizacion.estado !== 'borrador' || !cotizacion.requiere_aprobacion) {
+        return Response.json({ error: 'La cotización no requiere una decisión interna pendiente' }, { status: 409 });
+      }
+      if (action === 'REJECT_INTERNAL' && !String(motivo || '').trim()) {
+        return Response.json({ error: 'El motivo de rechazo es obligatorio' }, { status: 400 });
+      }
+
+      const now = new Date().toISOString();
+      const approvalData = action === 'APPROVE_INTERNAL'
+        ? {
+            aprobacion_interna_status: 'APROBADA',
+            aprobacion_interna_motivo: null,
+            aprobada_por: user.id,
+            aprobada_at: now,
+          }
+        : {
+            aprobacion_interna_status: 'RECHAZADA',
+            aprobacion_interna_motivo: String(motivo).trim(),
+            aprobada_por: null,
+            aprobada_at: null,
+          };
+      const updatedApproval = await base44.asServiceRole.entities.Cotizacion.update(cotizacion_id, approvalData);
+      return Response.json({ success: true, cotizacion: updatedApproval, action });
+    }
+
+    if (action !== 'SEND') {
+      return Response.json({ error: 'Acción de cotización no soportada' }, { status: 400 });
+    }
 
     // Validate current state — only borrador can be sent
     if (cotizacion.estado !== 'borrador') {

@@ -472,21 +472,18 @@ function VentasCotizacionesContent() {
                     <>
                       <Button
                         onClick={async () => {
-                          const envio = {
-                            canal: 'link',
-                            fecha: new Date().toISOString(),
-                            enviado_por: user.id,
-                            enviado_por_nombre: user.full_name || user.email
-                          };
-                          await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
-                            ultimo_envio: envio,
-                            historial_envios: [...(cotizacionSeleccionada.historial_envios || []), envio]
+                          const response = await base44.functions.invoke('approveCotizacion', {
+                            cotizacion_id: cotizacionSeleccionada.id,
+                            canal_envio: 'link',
                           });
+                          if (!response?.data?.success) {
+                            throw new Error(response?.data?.error || 'El servidor no confirmó el reenvío de la cotización');
+                          }
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
                           const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
                           alert('✅ Link copiado. Reenvío registrado.');
-                          setCotizacionSeleccionada({ ...cotizacionSeleccionada, ultimo_envio: envio });
+                          setCotizacionSeleccionada(response.data.cotizacion || response.data.data || cotizacionSeleccionada);
                         }}
                         className="bg-blue-600 hover:bg-blue-700"
                       >

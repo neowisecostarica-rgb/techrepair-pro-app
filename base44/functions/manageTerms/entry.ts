@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.48';
-import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from './_shared_userAuthorization.ts';
 
 Deno.serve(async (req) => {
   try {

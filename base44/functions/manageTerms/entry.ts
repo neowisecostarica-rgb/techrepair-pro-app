@@ -1,27 +1,39 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.48';
-import { resolveAuthorizedContext } from './_shared_userAuthorization.ts';
+
+function unwrap(result) {
+  return result?.data ?? result;
+}
+
+async function gateway(base44, payload) {
+  const result = unwrap(await base44.functions.invoke('operationalGateway', payload));
+  if (result?.error) throw new Error(result.error);
+  return result;
+}
 
 Deno.serve(async (req) => {
   try {
+    if (req.method !== 'POST') return Response.json({ error: 'Metodo no permitido' }, { status: 405 });
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const authorization = await resolveAuthorizedContext(base44, user, { allowedRoles: ['ORG_ADMIN'] });
-    if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
-
     const body = await req.json();
     const { action, termino_id = null, texto = null, activar = true } = body;
-    const orgId = authorization.organizationId;
 
-    const allTerms = await base44.asServiceRole.entities.TerminosYCondiciones.filter({ organization_id: orgId });
+    // operationalGateway remains the canonical authorization boundary. Its policy
+    // permits TerminosYCondiciones mutations only to ORG_ADMIN and scopes them to
+    // the active organization/impersonation.
+    const readResult = await gateway(base44, {
+      entity: 'TerminosYCondiciones',
+      operation: 'read',
+      method: 'filter',
+      filter: {},
+      limit: 500,
+    });
+    const allTerms = readResult?.records || [];
 
     if (action === 'CREATE_VERSION') {
       const cleanText = String(texto || '').trim();
-      if (!cleanText) return Response.json({ error: 'El texto de términos es obligatorio' }, { status: 400 });
+      if (!cleanText) return Response.json({ error: 'El texto de terminos es obligatorio' }, { status: 400 });
 
-      // Version is allocated on the server to avoid two clients creating the same next version.
-      const numericVersions = (allTerms || []).map((t) => {
+      const numericVersions = allTerms.map((t) => {
         const match = String(t.version || '').match(/^v(\d+)\.(\d+)$/);
         return match ? [Number(match[1]), Number(match[2])] : [0, 0];
       });
@@ -29,37 +41,33 @@ Deno.serve(async (req) => {
       const [major, minor] = numericVersions[0] || [0, 0];
       const version = major === 0 ? 'v1.0' : `v${major}.${minor + 1}`;
 
-      const created = await base44.asServiceRole.entities.TerminosYCondiciones.create({
-        organization_id: orgId,
-        version,
-        texto: cleanText,
-        activo: false,
+      const created = await gateway(base44, {
+        entity: 'TerminosYCondiciones',
+        operation: 'create',
+        data: { version, texto: cleanText, activo: false },
       });
 
       if (activar) {
-        for (const t of (allTerms || []).filter((item) => item.activo)) {
-          await base44.asServiceRole.entities.TerminosYCondiciones.update(t.id, { activo: false });
+        for (const t of allTerms.filter((item) => item.activo)) {
+          await gateway(base44, { entity: 'TerminosYCondiciones', operation: 'update', id: t.id, data: { activo: false } });
         }
-        await base44.asServiceRole.entities.TerminosYCondiciones.update(created.id, { activo: true });
-        created.activo = true;
+        const updated = await gateway(base44, { entity: 'TerminosYCondiciones', operation: 'update', id: created.id, data: { activo: true } });
+        return Response.json({ success: true, termino: updated });
       }
       return Response.json({ success: true, termino: created });
     }
 
     if (action === 'ACTIVATE') {
-      const selected = (allTerms || []).find((t) => t.id === termino_id);
-      if (!selected) return Response.json({ error: 'Versión de términos no encontrada' }, { status: 404 });
-
-      // Deactivate first and activate selected last: if an intermediate write fails,
-      // reception fails closed instead of accepting an ambiguous legal version.
-      for (const t of (allTerms || []).filter((item) => item.activo && item.id !== termino_id)) {
-        await base44.asServiceRole.entities.TerminosYCondiciones.update(t.id, { activo: false });
+      const selected = allTerms.find((t) => t.id === termino_id);
+      if (!selected) return Response.json({ error: 'Version de terminos no encontrada' }, { status: 404 });
+      for (const t of allTerms.filter((item) => item.activo && item.id !== termino_id)) {
+        await gateway(base44, { entity: 'TerminosYCondiciones', operation: 'update', id: t.id, data: { activo: false } });
       }
-      const updated = await base44.asServiceRole.entities.TerminosYCondiciones.update(termino_id, { activo: true });
+      const updated = await gateway(base44, { entity: 'TerminosYCondiciones', operation: 'update', id: termino_id, data: { activo: true } });
       return Response.json({ success: true, termino: updated });
     }
 
-    return Response.json({ error: 'Acción no soportada' }, { status: 400 });
+    return Response.json({ error: 'Accion no soportada' }, { status: 400 });
   } catch (error) {
     console.error('[manageTerms]', error?.message || error);
     return Response.json({ error: error?.message || 'Error interno' }, { status: 500 });

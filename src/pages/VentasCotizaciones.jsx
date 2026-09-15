@@ -444,19 +444,20 @@ function VentasCotizacionesContent() {
                             alert('Esta cotización requiere aprobación por el descuento aplicado.');
                             return;
                           }
-                          const ot = getOT(cotizacionSeleccionada.orden_trabajo_id);
-                          if (ot?.estado === 'DIAGNOSTICADA') {
-                            await transicionarEstadoOT(ot.id, 'COTIZADA', {
-                              motivo: `Cotización ${cotizacionSeleccionada.id} enviada al cliente`,
-                            });
-                          }
-                          const updatedQuote = await base44.entities.Cotizacion.update(cotizacionSeleccionada.id, {
-                            estado: 'enviada',
-                            ultimo_envio: { canal: 'link' },
+                          const response = await base44.functions.invoke('approveCotizacion', {
+                            cotizacion_id: cotizacionSeleccionada.id,
+                            canal_envio: 'link',
                           });
+                          if (!response?.data?.success) {
+                            throw new Error(response?.data?.error || 'El servidor no confirmó el envío de la cotización');
+                          }
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
                           queryClient.invalidateQueries({ queryKey: ['ordenes'] });
-                          const link = await emitirEnlaceCotizacion(updatedQuote.id);
+                          const updatedQuote = response.data.cotizacion || response.data.data || {
+                            ...cotizacionSeleccionada,
+                            estado: 'enviada',
+                          };
+                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
                           alert('✅ Cotización enviada. Link copiado al portapapeles.');
                           setCotizacionSeleccionada(updatedQuote);

@@ -16,11 +16,16 @@ export function useRoleBasedRedirect(userAccount, currentPageName) {
     if (!userAccount || hasRedirected.current) return;
 
     // Revisar si ya hicimos el redirect en esta sesión
+    const redirectIdentity = `${userAccount.user_id || userAccount.user_email || 'unknown'}:${userAccount.organization_id || 'no-org'}:${userAccount.role || 'no-role'}`;
     const redirectDone = sessionStorage.getItem('role_redirect_done');
-    if (redirectDone === 'true') {
+    if (redirectDone === redirectIdentity) {
       hasRedirected.current = true;
       return;
     }
+
+    // Native Base44 impersonation can replace the effective user without a new
+    // browser session. A redirect marker belonging to another identity is stale.
+    hasRedirected.current = false;
 
     // Definir landing page por rol (fuente de verdad)
     const landingByRole = {
@@ -38,12 +43,12 @@ export function useRoleBasedRedirect(userAccount, currentPageName) {
     // Si no estamos en la landing correcta, redirigir
     if (targetLanding && currentPageName !== targetLanding) {
       hasRedirected.current = true;
-      sessionStorage.setItem('role_redirect_done', 'true');
+      sessionStorage.setItem('role_redirect_done', redirectIdentity);
       window.location.href = createPageUrl(targetLanding);
     } else {
       // Ya estamos en la página correcta, marcar como completado
       hasRedirected.current = true;
-      sessionStorage.setItem('role_redirect_done', 'true');
+      sessionStorage.setItem('role_redirect_done', redirectIdentity);
     }
   }, [userAccount, currentPageName]);
 }

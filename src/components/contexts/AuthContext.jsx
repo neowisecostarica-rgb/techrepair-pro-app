@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { getIdentityContext, switchIdentityOrganization } from '@/api/identity';
 import { base44 } from '@/api/base44Client';
+import { queryClientInstance } from '@/lib/query-client';
 
 const AuthContext = createContext(null);
 
@@ -103,6 +104,10 @@ export function AuthProvider({ children }) {
         const sessionUser = await base44.auth.me();
         const sessionUserId = sessionUser?.id || null;
         if (sessionUserId !== lastSessionUserIdRef.current) {
+          // A native Base44 identity switch must never inherit cached tenant data
+          // from the previous effective user. Clear before rebuilding authority.
+          queryClientInstance.clear();
+          sessionStorage.removeItem('role_redirect_done');
           lastSessionUserIdRef.current = sessionUserId;
           isLoadingRef.current = false;
           last429Timestamp.current = null;
@@ -111,6 +116,8 @@ export function AuthProvider({ children }) {
       } catch (error) {
         // loadAuthData conserva la distinción entre sesión Base44 e identidad TRP.
         if (!disposed && lastSessionUserIdRef.current !== null) {
+          queryClientInstance.clear();
+          sessionStorage.removeItem('role_redirect_done');
           lastSessionUserIdRef.current = null;
           isLoadingRef.current = false;
           await loadAuthData();

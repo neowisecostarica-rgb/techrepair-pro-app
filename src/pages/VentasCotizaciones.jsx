@@ -18,7 +18,6 @@ import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
-import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function VentasCotizaciones() {
   return (

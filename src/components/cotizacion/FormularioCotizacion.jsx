@@ -163,8 +163,11 @@ export default function FormularioCotizacion({
     const impuesto = subtotal * 0.13;
     const total = subtotal + impuesto;
 
-    const descuentoPromedio = subtotal > 0 ? (descuentoTotal / subtotal) * 100 : 0;
-    const requiereAprobacion = descuentoPromedio > DESCUENTO_MAXIMO_SIN_APROBACION;
+    // La UI replica la regla canónica del operationalGateway: basta con que
+    // cualquier línea exceda el umbral para requerir aprobación interna.
+    const requiereAprobacion = items.some(
+      item => (parseFloat(item.descuento_porcentaje) || 0) > DESCUENTO_MAXIMO_SIN_APROBACION
+    );
 
     return { subtotal, descuentoTotal, impuesto, total, requiereAprobacion };
   };

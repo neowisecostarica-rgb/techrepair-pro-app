@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Building2, Plus, Search, ShieldAlert, AlertCircle } from 'lucide-react';
 import PlatformActivityMetrics from '@/components/superadmin/PlatformActivityMetrics';
-import ImpersonationBanner from '../components/superadmin/ImpersonationBanner';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import PageGuard from '../components/guards/PageGuard';
@@ -17,10 +16,8 @@ import { useAuthContext } from '../components/contexts/AuthContext';
 import {
   adminCreateIdentityOrganization,
   adminUpdateIdentityOrganization,
-  endIdentityImpersonation,
   getIdentityAdminOverview,
   getIdentityOrganization,
-  startIdentityImpersonation,
 } from '@/api/identity';
 
 // P1: PLAN CATALOG (Frontend-only, precios en monedas soportadas)
@@ -138,14 +135,11 @@ function SaasContent() {
   const [showModal, setShowModal] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showChangePlanModal, setShowChangePlanModal] = useState(false);
-  const [showImpersonateModal, setShowImpersonateModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [suspendReason, setSuspendReason] = useState('');
   const [newPlan, setNewPlan] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);
-  const [isImpersonating, setIsImpersonating] = useState(false);
-  const [impersonatedOrg, setImpersonatedOrg] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
   const [justCreatedOrgId, setJustCreatedOrgId] = useState(null);
@@ -161,18 +155,13 @@ function SaasContent() {
   // P0: Guard de idempotencia inmutable
   const isCreatingRef = useRef(false);
 
-  const { user: authUser, isImpersonating: authIsImpersonating, effectiveOrgId } = useAuthContext();
+  const { user: authUser, isImpersonating: authIsImpersonating } = useAuthContext();
 
   useEffect(() => {
     if (authUser) {
       setUser(authUser);
-      setIsImpersonating(authIsImpersonating);
-      
-      if (authIsImpersonating && effectiveOrgId) {
-        getIdentityOrganization(effectiveOrgId).then(result => setImpersonatedOrg(result.organization));
-      }
     }
-  }, [authUser, authIsImpersonating, effectiveOrgId]);
+  }, [authUser]);
 
   const { data: adminOverview = {} } = useQuery({
     queryKey: ['identity', 'admin-overview'],
@@ -214,36 +203,6 @@ function SaasContent() {
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
     },
   });
-
-  const handleImpersonate = async (organization) => {
-    if (!user) return;
-
-    try {
-      await startIdentityImpersonation(organization.id);
-
-      setIsImpersonating(true);
-      setImpersonatedOrg(organization);
-      setShowImpersonateModal(false);
-
-      // Redirigir al Dashboard de la organización
-      window.location.href = createPageUrl('Dashboard');
-    } catch (error) {
-      console.error('Error impersonando:', error);
-      alert('Error al iniciar impersonación');
-    }
-  };
-
-  const handleEndImpersonation = async () => {
-    if (!user || !impersonatedOrg) return;
-
-    await endIdentityImpersonation();
-
-    setIsImpersonating(false);
-    setImpersonatedOrg(null);
-
-    // Volver a SaaS panel
-    window.location.reload();
-  };
 
   const handleSuspendOrg = async () => {
     if (!selectedOrg || !suspendReason.trim()) {
@@ -438,14 +397,7 @@ function SaasContent() {
 
   return (
     <>
-      {isImpersonating && impersonatedOrg && (
-        <ImpersonationBanner 
-          organizationName={impersonatedOrg.name}
-          onEndImpersonation={handleEndImpersonation}
-        />
-      )}
-      
-      <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 p-8 ${isImpersonating ? 'pt-24' : ''}`}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -772,17 +724,6 @@ function SaasContent() {
                                 Reactivate
                               </Button>
                             )}
-                            <Button
-                              size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-xs"
-                              onClick={() => {
-                                setSelectedOrg(org);
-                                setShowImpersonateModal(true);
-                              }}
-                              disabled={isImpersonating}
-                            >
-                              Impersonate
-                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -896,52 +837,6 @@ function SaasContent() {
                 className="bg-indigo-600 hover:bg-indigo-700"
               >
                 Change Plan
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal Impersonate */}
-      <Dialog open={showImpersonateModal} onOpenChange={setShowImpersonateModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-blue-600">Impersonate Tenant</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Important:</strong> You are about to access this tenant as ORG_ADMIN. All your actions will be audited and logged.
-              </p>
-            </div>
-            {selectedOrg && (
-              <div className="p-3 bg-slate-50 rounded-lg">
-                <p className="text-sm text-slate-600">Target Organization:</p>
-                <p className="font-semibold text-slate-900">{selectedOrg.name}</p>
-              </div>
-            )}
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-800">
-                • Impersonation will expire automatically after 2 hours<br/>
-                • A red banner will be visible at all times<br/>
-                • Audit log will record start and end of impersonation
-              </p>
-            </div>
-            <div className="flex gap-3 justify-end pt-2">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowImpersonateModal(false);
-                  setSelectedOrg(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => handleImpersonate(selectedOrg)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Start Impersonation
               </Button>
             </div>
           </div>

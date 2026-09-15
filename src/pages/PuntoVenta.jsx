@@ -102,10 +102,9 @@ function PuntoVentaContent() {
             // Revertir cotización y eliminar venta
             (async () => {
               try {
-                await base44.entities.Cotizacion.update(cotizacionOrigen.id, {
-                  estado_conversion: 'SIN_CONVERTIR',
-                  venta_id: null
-                });
+                // La reversión de una conversión borrador debe pasar por la autoridad backend.
+                // Venta.delete está gobernado por operationalGateway y solo admite estados
+                // borrador/procesando/inconsistente; createSale es quien materializa la conversión.
                 await base44.entities.Venta.delete(preloadedVenta.id);
                 alert('Conversión cancelada. Redirigiendo...');
                 window.history.back();

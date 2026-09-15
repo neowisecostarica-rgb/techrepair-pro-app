@@ -22,7 +22,9 @@ export default function VentasGarantias() {
 }
 
 function VentasGarantiasContent() {
-  const { effectiveOrgId } = useAuthContext();
+  const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
+  const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
+  const branchFilter = !isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {};
   const [busqueda, setBusqueda] = useState('');
   const [garantiaSeleccionada, setGarantiaSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('ACTIVA');
@@ -33,29 +35,30 @@ function VentasGarantiasContent() {
   const filtroPorVencer = urlParams.get('porVencer') === 'true';
 
   const { data: garantias = [], isLoading } = useQuery({
-    queryKey: ['garantias-ventas', effectiveOrgId],
+    queryKey: ['garantias-ventas', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Garantia.filter({
-      organization_id: effectiveOrgId
+      organization_id: effectiveOrgId,
+      ...branchFilter
     }),
     select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
     enabled: !!effectiveOrgId
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes-gar', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }),
+    queryKey: ['clientes-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId, ...branchFilter }),
     enabled: !!effectiveOrgId
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
-    queryKey: ['ot-gar', effectiveOrgId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
+    queryKey: ['ot-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
+    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId, ...branchFilter }),
     enabled: !!effectiveOrgId
   });
 
   const { data: ventas = [] } = useQuery({
-    queryKey: ['ventas-gar', effectiveOrgId],
-    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId }),
+    queryKey: ['ventas-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
+    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId, ...branchFilter }),
     enabled: !!effectiveOrgId
   });
 

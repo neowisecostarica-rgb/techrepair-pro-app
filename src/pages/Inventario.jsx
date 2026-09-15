@@ -49,10 +49,12 @@ function InventarioContent() {
     }
   }, [effectiveOrgId]);
 
+  const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
   const { data: items = [] } = useQuery({
-    queryKey: ['inventario', userAccount?.organization_id],
+    queryKey: ['inventario', userAccount?.organization_id, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Inventario.filter({
-      organization_id: userAccount.organization_id
+      organization_id: userAccount.organization_id,
+      ...(!isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {})
     }),
     enabled: !!userAccount?.organization_id,
   });

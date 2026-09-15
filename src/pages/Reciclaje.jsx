@@ -38,12 +38,15 @@ function ReciclajeContent() {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const queryClient = useQueryClient();
-  const { effectiveOrgId } = useAuthContext();
+  const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
+  const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
+  const branchFilter = !isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {};
 
   const { data: registros = [] } = useQuery({
-    queryKey: ['reciclaje', effectiveOrgId],
+    queryKey: ['reciclaje', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Reciclaje.filter({
-      organization_id: effectiveOrgId
+      organization_id: effectiveOrgId,
+      ...branchFilter
     }),
     select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
     enabled: !!effectiveOrgId,

@@ -23,7 +23,9 @@ export default function VentasHistorial() {
 }
 
 function VentasHistorialContent() {
-  const { effectiveOrgId, userAccount } = useAuthContext();
+  const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
+  const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
+  const branchFilter = !isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {};
   const [busqueda, setBusqueda] = useState('');
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
@@ -36,10 +38,11 @@ function VentasHistorialContent() {
   const [fechaHasta, setFechaHasta] = useState(new Date().toISOString().split('T')[0]);
 
   const { data: ventas = [], isLoading } = useQuery({
-    queryKey: ['ventas-historial', effectiveOrgId, fechaDesde, fechaHasta],
+    queryKey: ['ventas-historial', effectiveOrgId, fechaDesde, fechaHasta, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: async () => {
       const allVentas = await base44.entities.Venta.filter({
-        organization_id: effectiveOrgId
+        organization_id: effectiveOrgId,
+        ...branchFilter
       });
       
       // Filtrar por fecha
@@ -56,14 +59,14 @@ function VentasHistorialContent() {
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes-hist', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }),
+    queryKey: ['clientes-hist', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId, ...branchFilter }),
     enabled: !!effectiveOrgId
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
-    queryKey: ['ot-hist', effectiveOrgId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
+    queryKey: ['ot-hist', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
+    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId, ...branchFilter }),
     enabled: !!effectiveOrgId
   });
 

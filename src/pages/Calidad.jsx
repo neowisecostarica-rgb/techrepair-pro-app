@@ -43,12 +43,15 @@ function CalidadContent() {
   const [editingNC, setEditingNC] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const queryClient = useQueryClient();
-  const { effectiveOrgId } = useAuthContext();
+  const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
+  const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
+  const branchFilter = !isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {};
 
   const { data: noConformidades = [] } = useQuery({
-    queryKey: ['no-conformidades', effectiveOrgId],
+    queryKey: ['no-conformidades', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.NoConformidad.filter({
-      organization_id: effectiveOrgId
+      organization_id: effectiveOrgId,
+      ...branchFilter
     }),
     select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
     enabled: !!effectiveOrgId,

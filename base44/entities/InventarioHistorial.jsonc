@@ -4,76 +4,225 @@
   "properties": {
     "organization_id": {
       "type": "string",
-      "description": "ID de la organizaci\u00f3n (tenant)"
+      "description": "ID de la organizaci\u00f3n (tenant)",
+      "rls": {
+        "write": false
+      }
     },
-    "branch_id": { "type": "string" },
+    "branch_id": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
     "inventario_id": {
       "type": "string",
-      "description": "ID del producto de inventario"
+      "description": "ID del producto de inventario",
+      "rls": {
+        "write": false
+      }
     },
-    "inventory_id": { "type": "string", "rls": { "write": false } },
-    "movement_key": { "type": "string", "rls": { "write": false } },
+    "inventory_id": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "movement_key": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
     "movement_type": {
       "type": "string",
-      "enum": ["INITIAL_BALANCE", "RESERVE", "RELEASE", "CONSUME", "RETURN", "SALE", "ADJUST_IN", "ADJUST_OUT", "REVERSAL"],
-      "rls": { "write": false }
+      "enum": [
+        "INITIAL_BALANCE",
+        "RESERVE",
+        "RELEASE",
+        "CONSUME",
+        "RETURN",
+        "SALE",
+        "ADJUST_IN",
+        "ADJUST_OUT",
+        "REVERSAL"
+      ],
+      "rls": {
+        "write": false
+      }
     },
-    "quantity": { "type": "number", "rls": { "write": false } },
-    "quantity_delta": { "type": "number", "rls": { "write": false } },
-    "available_delta": { "type": "number", "rls": { "write": false } },
-    "reserved_delta": { "type": "number", "rls": { "write": false } },
-    "available_before": { "type": "number", "rls": { "write": false } },
-    "available_after": { "type": "number", "rls": { "write": false } },
-    "reserved_before": { "type": "number", "rls": { "write": false } },
-    "reserved_after": { "type": "number", "rls": { "write": false } },
-    "reference_type": { "type": "string", "rls": { "write": false } },
-    "reference_id": { "type": "string", "rls": { "write": false } },
-    "work_order_id": { "type": "string", "rls": { "write": false } },
-    "quote_id": { "type": "string", "rls": { "write": false } },
-    "reservation_id": { "type": "string", "rls": { "write": false } },
-    "operation_key": { "type": "string", "rls": { "write": false } },
-    "fingerprint": { "type": "string", "rls": { "read": false, "write": false } },
-    "reversal_of": { "type": "string", "rls": { "write": false } },
-    "actor_user_id": { "type": "string", "rls": { "write": false } },
-    "effective_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "quantity": {
+      "type": "number",
+      "rls": {
+        "write": false
+      }
+    },
+    "quantity_delta": {
+      "type": "number",
+      "rls": {
+        "write": false
+      }
+    },
+    "available_delta": {
+      "type": "number",
+      "rls": {
+        "write": false
+      }
+    },
+    "reserved_delta": {
+      "type": "number",
+      "rls": {
+        "write": false
+      }
+    },
+    "available_before": {
+      "type": "number",
+      "rls": {
+        "write": false
+      }
+    },
+    "available_after": {
+      "type": "number",
+      "rls": {
+        "write": false
+      }
+    },
+    "reserved_before": {
+      "type": "number",
+      "rls": {
+        "write": false
+      }
+    },
+    "reserved_after": {
+      "type": "number",
+      "rls": {
+        "write": false
+      }
+    },
+    "reference_type": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "reference_id": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "work_order_id": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "quote_id": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "reservation_id": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "operation_key": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "fingerprint": {
+      "type": "string",
+      "rls": {
+        "read": false,
+        "write": false
+      }
+    },
+    "reversal_of": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "actor_user_id": {
+      "type": "string",
+      "rls": {
+        "write": false
+      }
+    },
+    "effective_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": {
+        "write": false
+      }
+    },
     "campo": {
       "type": "string",
-      "description": "Campo modificado (costo_unitario, precio_venta, cantidad_disponible, ubicacion, estado, categoria_id)"
+      "description": "Campo modificado (costo_unitario, precio_venta, cantidad_disponible, ubicacion, estado, categoria_id)",
+      "rls": {
+        "write": false
+      }
     },
     "valor_anterior": {
       "type": "string",
-      "description": "Valor anterior del campo"
+      "description": "Valor anterior del campo",
+      "rls": {
+        "write": false
+      }
     },
     "valor_nuevo": {
       "type": "string",
-      "description": "Nuevo valor del campo"
+      "description": "Nuevo valor del campo",
+      "rls": {
+        "write": false
+      }
     },
     "modificado_por": {
       "type": "string",
-      "description": "ID del usuario que realiz\u00f3 el cambio"
+      "description": "ID del usuario que realiz\u00f3 el cambio",
+      "rls": {
+        "write": false
+      }
     },
     "motivo": {
       "type": "string",
-      "description": "Motivo del cambio (opcional)"
+      "description": "Motivo del cambio (opcional)",
+      "rls": {
+        "write": false
+      }
     },
     "sale_id": {
       "type": "string",
-      "description": "Venta que origino el movimiento, si aplica."
+      "description": "Venta que origino el movimiento, si aplica.",
+      "rls": {
+        "write": false
+      }
     },
     "sale_operation_key": {
       "type": "string",
       "description": "Identidad comercial del movimiento para recuperacion idempotente.",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      }
     },
     "stock_operation_id": {
       "type": "string",
       "description": "Operacion CAS de stock que origino el movimiento.",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      }
     },
     "stock_operation_key": {
       "type": "string",
       "description": "Identidad de concurrencia del ajuste manual.",
-      "rls": { "write": false }
+      "rls": {
+        "write": false
+      }
     }
   },
   "required": [
@@ -83,5 +232,10 @@
     "valor_nuevo",
     "modificado_por"
   ],
-  "rls": { "create": false, "read": false, "update": false, "delete": false }
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
 }

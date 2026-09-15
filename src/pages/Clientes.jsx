@@ -36,13 +36,17 @@ function ClientesContent() {
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const queryClient = useQueryClient();
-  const { user, userAccount, effectiveOrgId } = useAuthContext();
+  const { user, userAccount, effectiveOrgId, effectiveRole } = useAuthContext();
+  const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes', effectiveOrgId],
+    queryKey: ['clientes', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      return base44.entities.Cliente.filter({ organization_id: effectiveOrgId });
+      return base44.entities.Cliente.filter({
+        organization_id: effectiveOrgId,
+        ...(!isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {})
+      });
     },
     enabled: !!effectiveOrgId,
   });

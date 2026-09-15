@@ -227,8 +227,11 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     const impuesto = subtotal * 0.13; // 13% IVA
     const total = subtotal + impuesto;
 
-    const descuentoPromedio = subtotal > 0 ? (descuentoTotal / subtotal) * 100 : 0;
-    const requiereAprobacion = descuentoPromedio > DESCUENTO_MAXIMO_SIN_APROBACION;
+    // Mantener la indicación visual alineada con la autoridad backend:
+    // cualquier línea por encima del umbral exige aprobación.
+    const requiereAprobacion = items.some(
+      item => (parseFloat(item.descuento_porcentaje) || 0) > DESCUENTO_MAXIMO_SIN_APROBACION
+    );
 
     return { subtotal, descuentoTotal, impuesto, total, requiereAprobacion };
   };

@@ -13,7 +13,8 @@ import { Plus, Trash2, Search, Package, AlertCircle, UserPlus } from 'lucide-rea
 import { withOrgId } from '@/components/hooks/useOrgData';
 import CrearClienteRapido from './CrearClienteRapido';
 
-const DESCUENTO_MAXIMO_SIN_APROBACION = 15;
+// Debe coincidir con la política canónica del operationalGateway.
+const DESCUENTO_MAXIMO_SIN_APROBACION = 20;
 
 export default function FormularioCotizacion({ 
   clienteId, 

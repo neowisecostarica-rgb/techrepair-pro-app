@@ -14,7 +14,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '@/components/contexts/AuthContext';
-import { validarSolapamiento } from '@/components/calendario/validarSolapamiento';
 import { createPageUrl } from '../utils';
 import PageGuard from '@/components/guards/PageGuard';
 

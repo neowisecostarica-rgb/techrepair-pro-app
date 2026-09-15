@@ -138,8 +138,8 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
     .sort((a, b) => new Date(a.valida_hasta) - new Date(b.valida_hasta))
     .slice(0, 5);
 
-  const ventasSinCobrar = ventas.filter(v => 
-    v.estado_pago !== 'pagada' && v.estado_pago !== 'anulada'
+  const ventasSinCobrar = ventas.filter(v =>
+    v.estado !== 'pagada' && v.estado !== 'anulada'
   ).slice(0, 5);
 
   // Garantías por vencer (≤15 días)
@@ -443,8 +443,8 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
                         {format(new Date(venta.created_date), 'HH:mm')}
                       </p>
                     </div>
-                    <Badge variant={venta.estado_pago === 'pagada' ? 'default' : 'outline'}>
-                      {venta.estado_pago}
+                    <Badge variant={venta.estado === 'pagada' ? 'default' : 'outline'}>
+                      {venta.estado}
                     </Badge>
                   </div>
                 </Link>

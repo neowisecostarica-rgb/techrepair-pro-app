@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { getCanonicalBranchScope, validateRequestedBranch } from '../_shared/operationalAuthorization.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { getCanonicalBranchScope, validateRequestedBranch } from './_shared/operationalAuthorization.ts';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -28,8 +28,13 @@ Deno.serve(async (req) => {
   const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const defaultEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-  const periodStart = body.period_start || defaultStart;
-  const periodEnd = body.period_end || defaultEnd;
+  // Accept both naming conventions: frontend sends start_date/end_date,
+  // legacy callers may send period_start/period_end.
+  const periodStart = body.period_start || body.start_date || defaultStart;
+  const periodEnd = body.period_end || body.end_date || defaultEnd;
+
+  // Adjust date-only end strings to include the full day
+  const adjustedEnd = periodEnd.length === 10 ? periodEnd + 'T23:59:59.999Z' : periodEnd;
 
   const orgId = authorization.organizationId;
 
@@ -47,7 +52,7 @@ Deno.serve(async (req) => {
 
   const ventasEnPeriodo = ventas.filter(v => {
     const fecha = v.created_date || v.fecha_venta;
-    return fecha >= periodStart && fecha <= periodEnd;
+    return fecha >= periodStart && fecha <= adjustedEnd;
   });
 
   const totalSales = ventasEnPeriodo.length;
@@ -119,13 +124,30 @@ Deno.serve(async (req) => {
 
   const clientesNuevos = clientes.filter(c => {
     const fecha = c.created_date;
-    return fecha >= periodStart && fecha <= periodEnd;
+    return fecha >= periodStart && fecha <= adjustedEnd;
   });
 
   const totalClientesNuevos = clientesNuevos.length;
   const cac = totalClientesNuevos > 0 ? marketingSpend / totalClientesNuevos : 0;
 
+  // gross_margin as a percentage of revenue (0-100)
+  const grossMarginPct = totalRevenue > 0
+    ? Math.round((totalMargin / totalRevenue) * 10000) / 100
+    : 0;
+
   return Response.json({
+    // Nested structure consumed by Finanzas.jsx and DashboardOrgAdmin.jsx
+    sales: {
+      total_revenue: Math.round(totalRevenue * 100) / 100,
+      gross_margin: grossMarginPct,
+      total_sales_count: totalSales,
+    },
+    marketing: {
+      cac: Math.round(cac * 100) / 100,
+      marketing_spend: marketingSpend,
+      total_new_clients: totalClientesNuevos,
+    },
+    // Flat fields retained for backward compatibility
     total_sales: totalSales,
     total_revenue: Math.round(totalRevenue * 100) / 100,
     avg_margin: Math.round(avgMargin * 100) / 100,

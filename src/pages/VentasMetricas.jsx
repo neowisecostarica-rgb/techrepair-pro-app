@@ -69,9 +69,9 @@ function VentasMetricasContent() {
 
       const allVentas = await base44.entities.Venta.filter(query);
 
-      // Filtrar por fecha
+      // Filtrar por fecha — solo contar ventas pagadas como "cobradas"
       return allVentas.filter(v => {
-        if (v.estado === 'anulada') return false;
+        if (v.estado !== 'pagada') return false;
         const ventaFecha = new Date(v.created_date);
         const desde = new Date(fechaDesde);
         const hasta = new Date(fechaHasta);
@@ -142,11 +142,11 @@ function VentasMetricasContent() {
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6'];
 
-  // Ratio cotizaciones
-  const cotizacionesEnviadas = cotizaciones.filter(c => ['enviada', 'aprobada'].includes(c.estado)).length;
+  // Ratio cotizaciones — incluir rechazadas en el denominador del embudo
+  const cotizacionesEnviadas = cotizaciones.filter(c => ['enviada', 'aprobada', 'rechazada'].includes(c.estado)).length;
   const cotizacionesAprobadas = cotizaciones.filter(c => c.estado === 'aprobada').length;
-  const ratioCotizaciones = cotizacionesEnviadas > 0 
-    ? ((cotizacionesAprobadas / cotizacionesEnviadas) * 100).toFixed(0) 
+  const ratioCotizaciones = cotizacionesEnviadas > 0
+    ? ((cotizacionesAprobadas / cotizacionesEnviadas) * 100).toFixed(0)
     : 0;
 
   if (isLoading) {

@@ -97,7 +97,7 @@ function ExpedienteOTContent() {
   // ── Carga de cotizaciones ─────────────────────────────────────────────────
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['expediente-cotizaciones', id],
-    queryFn: () => base44.entities.Cotizacion.filter({ referencia_ot_id: id }),
+    queryFn: () => base44.entities.Cotizacion.filter({ orden_trabajo_id: id }),
     enabled: !!id,
     staleTime: 60 * 1000,
   });

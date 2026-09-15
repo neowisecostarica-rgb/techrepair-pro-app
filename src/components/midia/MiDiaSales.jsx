@@ -81,7 +81,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
     return fechaVenta.getTime() === hoy.getTime();
   });
 
-  const ventasPropias = ventasHoy.filter(v => v.created_by === user?.email);
+  const ventasPropias = ventasHoy.filter(v => v.created_by_user_id === user?.id);
   const citasPropias = citas.filter(c => c.tecnico_asignado_id === user?.id);
 
   const leadsSeguimiento = leads.filter(l => 
@@ -214,8 +214,8 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
                       {format(new Date(venta.created_date), 'HH:mm')}
                     </p>
                   </div>
-                  <Badge variant={venta.estado_pago === 'pagada' ? 'default' : 'outline'}>
-                    {venta.estado_pago}
+                  <Badge variant={venta.estado === 'pagada' ? 'default' : 'outline'}>
+                    {venta.estado}
                   </Badge>
                 </div>
               ))}

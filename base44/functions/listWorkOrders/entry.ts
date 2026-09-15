@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
-import { projectWorkOrderList, projectWorkOrderTeamAwareness } from '../_shared/dataProjections.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from './_shared/operationalAuthorization.ts';
+import { projectWorkOrderList, projectWorkOrderTeamAwareness } from './_shared/dataProjections.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
       ...(!branchScope.organizationWide ? { branch_id: branchScope.branchId } : {}),
     };
     const [ordenes, clientes, equipos] = await Promise.all([
-      base44.asServiceRole.entities.OrdenTrabajo.filter(workOrderFilter, '-created_date', 100),
+      base44.asServiceRole.entities.OrdenTrabajo.filter(workOrderFilter, '-created_date', 500),
       base44.asServiceRole.entities.Cliente.filter({ organization_id: orgId }),
       base44.asServiceRole.entities.Equipo.filter({ organization_id: orgId }),
     ]);

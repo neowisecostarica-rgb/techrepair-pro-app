@@ -153,9 +153,9 @@ function OperacionContent() {
   const hace48h = new Date(ahora.getTime() - (48 * 60 * 60 * 1000));
   
   const otsDemoradas = ordenesTrabajo.filter(ot => {
-    if (!['EN_REVISION', 'EN_REPARACION', 'DIAGNOSTICADA'].includes(ot.estado)) return false;
-    const updatedDate = new Date(ot.updated_date);
-    if (updatedDate >= hace48h) return false;
+    if (!['EN_REVISION', 'EN_REPARACION', 'DIAGNOSTICADA', 'APROBADA', 'PRUEBAS'].includes(ot.estado)) return false;
+    const activityDate = new Date(ot.ultima_actividad_at || ot.updated_date);
+    if (activityDate >= hace48h) return false;
     if (ot.estado_atencion === 'PAUSADO') return false;
     return true;
   });
@@ -179,7 +179,7 @@ function OperacionContent() {
 
   // Distribución por estado
   const estadosCount = {};
-  const estadosOrden = ['EN_COLA_REVISION', 'ASIGNADA', 'EN_REVISION', 'DIAGNOSTICADA', 'COTIZADA', 'EN_REPARACION', 'FINALIZADA', 'ENTREGADA'];
+  const estadosOrden = ['EN_COLA_REVISION', 'ASIGNADA', 'EN_REVISION', 'DIAGNOSTICADA', 'COTIZADA', 'APROBADA', 'EN_REPARACION', 'PRUEBAS', 'FINALIZADA', 'ENTREGADA'];
   estadosOrden.forEach(estado => {
     estadosCount[estado] = ordenesTrabajo.filter(ot => ot.estado === estado).length;
   });
@@ -194,8 +194,8 @@ function OperacionContent() {
   // Top 10 OTs demoradas
   const otsDemoradasDetalle = otsDemoradas
     .map(ot => {
-      const updatedDate = new Date(ot.updated_date);
-      const diasDemora = Math.floor((ahora - updatedDate) / (1000 * 60 * 60 * 24));
+      const activityDate = new Date(ot.ultima_actividad_at || ot.updated_date);
+      const diasDemora = Math.floor((ahora - activityDate) / (1000 * 60 * 60 * 24));
       const cliente = clientes.find(c => c.id === ot.cliente_id);
       const tecnico = tecnicos.find(t => t.user_id === ot.tecnico_asignado_id);
       const sucursal = sucursales.find(s => s.id === ot.branch_id);

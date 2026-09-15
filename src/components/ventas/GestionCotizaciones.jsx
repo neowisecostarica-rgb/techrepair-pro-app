@@ -274,24 +274,15 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       return;
     }
 
-    if (cotizacion.requiere_aprobacion && !cotizacion.aprobada_por) {
-      alert('Esta cotización requiere aprobación por el descuento aplicado.');
-      return;
-    }
-
     try {
-      if (ordenTrabajoId) {
-        const ots = await base44.entities.OrdenTrabajo.filter({ id: ordenTrabajoId });
-        if (ots[0]?.estado === 'DIAGNOSTICADA') {
-          await transicionarEstadoOT(ordenTrabajoId, 'COTIZADA', {
-            motivo: `Cotización ${cotizacion.id} enviada al cliente`,
-          });
-        }
-      }
-      await base44.entities.Cotizacion.update(cotizacion.id, {
-        estado: 'enviada',
-        ultimo_envio: { canal: 'link' },
+      const response = await base44.functions.invoke('approveCotizacion', {
+        cotizacion_id: cotizacion.id,
+        canal_envio: 'link',
       });
+      if (response.data?.error) {
+        alert(`No se pudo enviar la cotización: ${response.data.error}`);
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });

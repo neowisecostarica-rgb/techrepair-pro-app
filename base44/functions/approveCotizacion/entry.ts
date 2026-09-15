@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.48';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
 
 // P0-04: Atomic cotizacion send — consolidates OT transition + cotizacion update
 // into a single sovereign command. Replaces fragmented frontend two-call flow.

@@ -25,12 +25,12 @@ export default function Home() {
     // Redirigir según effectiveRole
     const landingByRole = {
       'SUPER_ADMIN': 'Saas',
-      'ORG_ADMIN': 'Dashboard',
-      'BRANCH_ADMIN': 'Dashboard',
-      'SALES': 'Clientes',
+      'ORG_ADMIN': 'MiDia',
+      'BRANCH_ADMIN': 'MiDia',
+      'SALES': 'VentasCotizaciones',
       'TECHNICIAN': 'MiDia',
       'INVENTORY': 'Inventario',
-      'CUSTOMER_SERVICE': 'Clientes',
+      'CUSTOMER_SERVICE': 'OrdenesTrabajo',
     };
 
     const target = landingByRole[effectiveRole] || 'Dashboard';

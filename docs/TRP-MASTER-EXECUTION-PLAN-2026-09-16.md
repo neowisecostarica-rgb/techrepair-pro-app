@@ -71,7 +71,7 @@ Incluye:
 Definition of success visual: una captura del producto debe ser reconocible como TRP aun sin contexto externo.
 
 ## MEGABLOQUE C — COMMERCIAL ENGINE
-Estado: ACTIVE — C1 CLOSED / C2 CLOSED / C3 RECONCILED / C4 CLOSED / C5 COMMERCIAL CLOSURE NEXT
+Estado: CLOSED — C1/C2/C3/C4/C5 COMPLETE / WEBSITE HANDOFF READY
 
 Incluye:
 - Aplicar Brand Positioning definitivo.
@@ -107,8 +107,18 @@ Reconciliado contra `docs/TRP-CONTEXT-RECOVERY-2026-09-15.md`:
 - Payment provider/webhooks/invoicing/automatic scheduler diferidos hasta selección e integración real; no se simulan.
 - SOT: `docs/TRP-C4-BILLING-LICENSING-SOT-2026-09-16.md`.
 
+### C5 — COMMERCIAL CLOSURE CLOSED
+- Oferta vendible definida: Core / Business / Enterprise.
+- Pricing piloto: USD 69/690, USD 129/1290, Enterprise custom.
+- Unidad contractual: organización/tenant.
+- Onboarding/implementación separados del SaaS cuando el alcance es material.
+- Launch motion: demo/contacto/piloto asistido; no free trial público inventado.
+- Límites de claims Reliability y Enterprise cerrados para evitar roadmap fiction.
+- Website handoff canónico: `docs/TRP-C5-COMMERCIAL-CLOSURE-2026-09-16.md`.
+- MEGABLOQUE C CLOSED. Pricing continúa validándose con evidencia del piloto, sin bloquear D.
+
 ## MEGABLOQUE D — WEBSITE / SALES EXPERIENCE
-Estado: PENDIENTE
+Estado: NEXT — ENABLED BY C COMMERCIAL CLOSURE
 
 Construir después de A+B+C.
 

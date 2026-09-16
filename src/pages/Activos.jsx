@@ -58,7 +58,7 @@ function ActivosContent() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Technology Asset Operations</p>
-          <h1 className="text-4xl font-bold text-slate-900">Activos</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Activos</h1>
           <p className="text-slate-500 mt-1">Identidad, responsable e historial operativo de cada equipo.</p>
         </div>
         <Button onClick={() => navigate('/OrdenesTrabajo?activation=first_work_order')}>
@@ -66,7 +66,7 @@ function ActivosContent() {
         </Button>
       </div>
 
-      <Card className="border-0 shadow-md">
+      <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-4">
           <div className="relative max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -88,7 +88,7 @@ function ActivosContent() {
                     <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0"><Laptop className="w-5 h-5" /></div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-bold text-slate-900">{[equipo.marca, equipo.modelo].filter(Boolean).join(' ') || equipo.tipo || 'Activo'}</h3>
+                        <h3 className="font-semibold text-slate-950">{[equipo.marca, equipo.modelo].filter(Boolean).join(' ') || equipo.tipo || 'Activo'}</h3>
                         <Badge variant="outline" className="capitalize">{equipo.tipo || 'equipo'}</Badge>
                       </div>
                       <p className="text-xs font-mono text-slate-500 mt-1">{equipo.serie ? `Serie ${equipo.serie}` : `ID ${equipo.id}`}</p>

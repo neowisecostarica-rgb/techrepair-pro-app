@@ -55,7 +55,7 @@ export default function ExpedienteHeader({ ot, cliente, equipo, tecnico, revisio
   const isEsperando = ot.estado_atencion === 'ESPERANDO';
 
   return (
-    <div className="sticky top-0 z-30 bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-4 shadow-xl text-white">
+    <div className="sticky top-0 z-30 bg-[#0b1220] rounded-xl p-4 shadow-sm ring-1 ring-inset ring-white/10 text-white">
       
       {/* Alerta de atención pausada */}
       {(isPausado || isEsperando) && (
@@ -75,11 +75,11 @@ export default function ExpedienteHeader({ ot, cliente, equipo, tecnico, revisio
 
         {/* ── Bloque izquierdo: ID + estado ─────────────────────────────────── */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-teal-400/10 ring-1 ring-inset ring-teal-300/20 text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
             OT
           </div>
           <div className="min-w-0">
-            <p className="text-lg font-mono font-bold text-emerald-400 leading-none">{ot.codigo_ot}</p>
+            <p className="text-lg font-mono font-bold text-teal-300 leading-none">{ot.codigo_ot}</p>
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
               <Badge className={`${estadoConf.color} border-0 text-xs`}>{estadoConf.label}</Badge>
               <Badge className={`${prioConf.color} border-0 text-xs`}>{prioConf.label}</Badge>
@@ -98,7 +98,7 @@ export default function ExpedienteHeader({ ot, cliente, equipo, tecnico, revisio
               <p className="text-[10px] text-slate-400 uppercase tracking-wide">Cliente</p>
               <p className="text-sm font-semibold text-white leading-tight">{cliente?.nombre_completo || '—'}</p>
               {cliente?.telefono && (
-                <a href={`tel:${cliente.telefono}`} className="text-xs text-emerald-400 flex items-center gap-1 hover:text-emerald-300 mt-0.5">
+                <a href={`tel:${cliente.telefono}`} className="text-xs text-teal-300 flex items-center gap-1 hover:text-teal-200 mt-0.5">
                   <Phone className="w-3 h-3" />{cliente.telefono}
                 </a>
               )}

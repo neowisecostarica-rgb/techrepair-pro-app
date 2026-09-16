@@ -455,7 +455,7 @@ function OrdenesTrabajoContent() {
       {/* Loading spinner */}
       {isLoadingOrdenes && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mr-3" />
+          <Loader2 className="w-8 h-8 animate-spin text-teal-700 mr-3" />
           <span className="text-slate-500">Cargando órdenes...</span>
         </div>
       )}
@@ -577,7 +577,7 @@ function OrdenesTrabajoContent() {
       <TabsContent value="pendiente-cliente">
         {isLoadingOrdenes && (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mr-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-teal-700 mr-3" />
             <span className="text-slate-500">Cargando órdenes...</span>
           </div>
         )}

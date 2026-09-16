@@ -18,7 +18,7 @@ export default function QuickStartCard({
   const steps = [
     {
       label: 'Recibe tu primer equipo',
-      description: 'Crea tu primera orden y empieza a darle seguimiento al servicio',
+      description: 'Registra una recepción y abre el primer expediente operativo de TRP',
       completed: hasOrders,
       icon: FileText,
       action: () => navigate(`${createPageUrl('OrdenesTrabajo')}?activation=first_work_order`),
@@ -56,10 +56,10 @@ export default function QuickStartCard({
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-slate-900">
-                👋 Empieza con tu primer servicio
+                Activa TRP con tu primer trabajo
               </CardTitle>
               <p className="text-sm text-slate-600 mt-1">
-                No necesitas configurar todo antes de trabajar. Recibe un equipo y completa el resto después.
+                Registra una recepción y TRP abrirá su expediente. Configura el resto cuando ya estés operando.
               </p>
             </div>
           </div>

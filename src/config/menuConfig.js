@@ -13,8 +13,6 @@ import {
   Users,
   ShoppingCart,
   Calendar,
-  Recycle,
-  AlertCircle,
   Settings,
   FileText,
   Sun,
@@ -92,32 +90,11 @@ export const MENU_ITEMS = [
     anyCapabilities: ['RECEPTION_OPERATIONS', 'TECHNICAL_WORK'],
   },
   {
-    label: 'Cola de Revisión',
-    path: 'ColaRevision',
-    icon: FileText,
-    category: 'TALLER',
-    anyCapabilities: ['TECHNICAL_ASSIGNMENT'],
-  },
-  {
     label: 'Agenda',
     path: 'Agenda',
     icon: Calendar,
     category: 'TALLER',
     anyCapabilities: ['AGENDA_OPERATIONS', 'TECHNICAL_WORK'],
-  },
-  {
-    label: 'Reciclaje',
-    path: 'Reciclaje',
-    icon: Recycle,
-    category: 'TALLER',
-    anyCapabilities: ['TECHNICAL_SUPERVISION'],
-  },
-  {
-    label: 'No Conformidades',
-    path: 'Calidad',
-    icon: AlertCircle,
-    category: 'TALLER',
-    anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
 
   // ── VENTAS ──────────────────────────────────────────────────────────────────
@@ -125,13 +102,6 @@ export const MENU_ITEMS = [
     label: 'Caja y Cobros',
     path: 'PuntoVenta',
     icon: ShoppingCart,
-    category: 'VENTAS',
-    anyCapabilities: ['SALE_OPERATIONS'],
-  },
-  {
-    label: 'Historial de Ventas',
-    path: 'VentasHistorial',
-    icon: FileText,
     category: 'VENTAS',
     anyCapabilities: ['SALE_OPERATIONS'],
   },
@@ -157,13 +127,6 @@ export const MENU_ITEMS = [
     icon: Users,
     category: 'CLIENTES',
     anyCapabilities: ['CUSTOMER_SERVICE_OPERATIONS'],
-  },
-  {
-    label: 'Leads',
-    path: 'CRM',
-    icon: Users,
-    category: 'CLIENTES',
-    anyCapabilities: ['CRM_OPERATIONS'],
   },
 
   // ── INVENTARIO ──────────────────────────────────────────────────────────────

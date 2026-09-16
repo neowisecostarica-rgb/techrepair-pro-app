@@ -16,6 +16,7 @@ import {
   adminCreateIdentityOrganization,
   adminUpdateIdentityOrganization,
   adminSetIdentityEntitlement,
+  adminActivateIdentityLicense,
   getIdentityAdminOverview,
 } from '@/api/identity';
 
@@ -128,6 +129,7 @@ function SaasContent() {
   const [newPlan, setNewPlan] = useState('');
   const [newPackage, setNewPackage] = useState('core');
   const [newBillingInterval, setNewBillingInterval] = useState('monthly');
+  const [newBillingStatus, setNewBillingStatus] = useState('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -248,7 +250,7 @@ function SaasContent() {
     try {
       await adminSetIdentityEntitlement(selectedOrg.id, {
         package_id: newPackage,
-        billing_status: 'active',
+        billing_status: newBillingStatus,
         billing_interval: newBillingInterval,
         source: 'admin',
       });
@@ -256,10 +258,22 @@ function SaasContent() {
       setShowChangePlanModal(false);
       setNewPackage('core');
       setNewBillingInterval('monthly');
+      setNewBillingStatus('active');
       setSelectedOrg(null);
     } catch (error) {
       console.error('Error cambiando entitlement:', error);
       alert('Error al cambiar paquete comercial');
+    }
+  };
+
+  const handleActivateLicense = async (organization) => {
+    if (!confirm(`¿Activar la licencia TRP de "${organization.name}"?`)) return;
+    try {
+      await adminActivateIdentityLicense(organization.id, 'admin');
+      queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
+    } catch (error) {
+      console.error('Error activando licencia:', error);
+      alert(error?.message || 'Error al activar licencia');
     }
   };
 
@@ -638,7 +652,7 @@ function SaasContent() {
             >
               <option value="all">All Packages</option>
               <option value="core">Core</option>
-              <option value="advanced">Advanced</option>
+              <option value="advanced">Business</option>
               <option value="enterprise">Enterprise</option>
             </select>
           </div>
@@ -659,7 +673,8 @@ function SaasContent() {
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Name</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Package</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Commercial</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Access</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Licencia</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Acceso operativo</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Created</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Users</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Branches</th>
@@ -678,6 +693,8 @@ function SaasContent() {
                     const entitlementSource = entitlement?.source || 'legacy_fallback';
                     const billingStatus = entitlement?.billing_status || 'active';
                     const billingInterval = entitlement?.billing_interval || 'monthly';
+                    const licenseStatus = entitlement?.license_status || (entitlementSource === 'legacy_compatibility' ? 'active' : 'pending');
+                    const renewalAt = entitlement?.renewal_at || entitlement?.current_period_end || null;
                     const partner = partners.find(p => p.id === org.partner_id);
 
                     return (
@@ -707,6 +724,12 @@ function SaasContent() {
                           <p className="text-xs text-slate-500 mt-1">{billingInterval}</p>
                         </td>
                         <td className="p-3">
+                          <Badge className={licenseStatus === 'active' ? 'bg-teal-50 text-teal-800 border border-teal-200' : licenseStatus === 'pending' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
+                            {licenseStatus}
+                          </Badge>
+                          <p className="text-xs text-slate-500 mt-1">{renewalAt ? `Renueva ${new Date(renewalAt).toLocaleDateString('es-ES')}` : 'Renovación administrada'}</p>
+                        </td>
+                        <td className="p-3">
                           <Badge className={org.status === 'active'
                             ? 'bg-teal-50 text-teal-800 border border-teal-200'
                             : 'bg-red-50 text-red-700 border border-red-200'}>
@@ -727,6 +750,7 @@ function SaasContent() {
                                 setSelectedOrg(org);
                                 setNewPackage(entitlementsByOrg[org.id]?.package_id || 'core');
                                 setNewBillingInterval(entitlementsByOrg[org.id]?.billing_interval || 'monthly');
+                                setNewBillingStatus(entitlementsByOrg[org.id]?.billing_status || 'active');
                                 setShowChangePlanModal(true);
                               }}
                               disabled={authIsImpersonating}
@@ -734,6 +758,11 @@ function SaasContent() {
                             >
                               Commercial Package
                             </Button>
+                            {licenseStatus !== 'active' && entitlementSource === 'explicit_policy' && (
+                              <Button size="sm" variant="outline" onClick={() => handleActivateLicense(org)} disabled={authIsImpersonating} className="text-xs border-teal-300 text-teal-700 hover:bg-teal-50">
+                                Activar licencia
+                              </Button>
+                            )}
                             {org.status === 'active' ? (
                               <Button
                                 size="sm"
@@ -896,7 +925,7 @@ function SaasContent() {
                 className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md"
               >
                 <option value="core">Core</option>
-                <option value="advanced">Advanced</option>
+                <option value="advanced">Business</option>
                 <option value="enterprise">Enterprise</option>
               </select>
             </div>
@@ -907,6 +936,13 @@ function SaasContent() {
                 <option value="annual">Anual</option>
                 <option value="contract">Contrato</option>
               </select>
+            </div>
+            <div>
+              <Label htmlFor="billing-status">Estado de billing</Label>
+              <select id="billing-status" value={newBillingStatus} onChange={(e) => setNewBillingStatus(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md">
+                <option value="trial">Trial</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspendido</option><option value="cancelled">Cancelado</option>
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Este estado comercial no cambia automáticamente el acceso operativo de la organización.</p>
             </div>
             <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-900">
               Esta acción modifica la autoridad comercial de TRP. El plan legacy se conserva únicamente para compatibilidad y no se modifica aquí.

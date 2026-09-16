@@ -71,7 +71,7 @@ Incluye:
 Definition of success visual: una captura del producto debe ser reconocible como TRP aun sin contexto externo.
 
 ## MEGABLOQUE C — COMMERCIAL ENGINE
-Estado: ACTIVE — C1 CLOSED / C2 CLOSED / C3 RECONCILED / C4 NEXT
+Estado: ACTIVE — C1 CLOSED / C2 CLOSED / C3 RECONCILED / C4 ACTIVE — BILLING + LICENSE CONSOLE
 
 Incluye:
 - Aplicar Brand Positioning definitivo.

@@ -451,7 +451,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
               ))}
               <Link to={createPageUrl('PuntoVenta')}>
                 <Button variant="outline" className="w-full mt-2">
-                  Ir a Punto de Venta
+                  Ir a Caja y Cobros
                 </Button>
               </Link>
             </div>

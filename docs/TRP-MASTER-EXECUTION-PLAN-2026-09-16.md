@@ -71,7 +71,7 @@ Incluye:
 Definition of success visual: una captura del producto debe ser reconocible como TRP aun sin contexto externo.
 
 ## MEGABLOQUE C — COMMERCIAL ENGINE
-Estado: ACTIVE — C1 CLOSED / C2 CLOSED / C3 RECONCILED / C4 ACTIVE — BILLING + LICENSE CONSOLE
+Estado: ACTIVE — C1 CLOSED / C2 CLOSED / C3 RECONCILED / C4 CLOSED / C5 COMMERCIAL CLOSURE NEXT
 
 Incluye:
 - Aplicar Brand Positioning definitivo.
@@ -96,6 +96,16 @@ Reconciliado contra `docs/TRP-CONTEXT-RECOVERY-2026-09-15.md`:
 - No imponer caps artificiales a órdenes/clientes/activos para forzar upgrade.
 - Escala inicial por usuarios/sedes se mantiene como hipótesis configurable, no límite hardcoded, hasta validación de piloto.
 - Gate cerrado. C4 Billing/Licensing queda habilitado como siguiente bloque.
+
+### C4 — BILLING + LICENSING CLOSED
+- Billing, entitlement, license y Organization.status separados.
+- Ciclos de billing/licencia explícitos y auditables.
+- Activación administrada para piloto.
+- Renovación/período/grace/cancel-at-period-end modelados.
+- `past_due` no suspende automáticamente la operación.
+- Platform Console expone paquete, billing, licencia, renovación y activación.
+- Payment provider/webhooks/invoicing/automatic scheduler diferidos hasta selección e integración real; no se simulan.
+- SOT: `docs/TRP-C4-BILLING-LICENSING-SOT-2026-09-16.md`.
 
 ## MEGABLOQUE D — WEBSITE / SALES EXPERIENCE
 Estado: PENDIENTE

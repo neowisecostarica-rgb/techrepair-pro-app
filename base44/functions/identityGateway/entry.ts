@@ -601,6 +601,33 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, policy, entitlement: await resolveEffectiveEntitlement(base44, organization) });
     }
 
+    if (action === 'adminSetCommercialLifecycle') {
+      if (!isCanonicalSuperAdmin(user)) return jsonError('Superadmin requerido', 403, 'SUPERADMIN_REQUIRED');
+      const organizationId = clean(body.organization_id, 160);
+      const [organization] = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, 1);
+      if (!organization) return jsonError('Organizacion no encontrada', 404, 'ORGANIZATION_NOT_FOUND');
+      if (inspectControlledPilotConfiguration(organization).enabled) return jsonError('El superadmin no puede mutar una organizacion en piloto controlado', 409, 'CONTROLLED_PILOT_ADMIN_MUTATION_DISABLED');
+      const policies = await base44.asServiceRole.entities.EntitlementPolicy.filter({ organization_id: organizationId }, '-created_date', 20);
+      const active = (policies || []).find(policy => !policy.effective_until) || policies?.[0] || null;
+      if (!active) return jsonError('Primero configure el paquete comercial', 409, 'ENTITLEMENT_REQUIRED');
+      const billingStatus = ['trial','active','past_due','suspended','cancelled'].includes(body.billing_status) ? body.billing_status : active.billing_status;
+      const licenseStatus = ['pending','active','grace','suspended','revoked','expired'].includes(body.license_status) ? body.license_status : active.license_status;
+      const updates = {
+        billing_status: billingStatus,
+        license_status: licenseStatus,
+        current_period_start: body.current_period_start || active.current_period_start || null,
+        current_period_end: body.current_period_end || active.current_period_end || null,
+        renewal_at: body.renewal_at || active.renewal_at || null,
+        grace_until: body.grace_until || active.grace_until || null,
+        cancel_at_period_end: body.cancel_at_period_end === true,
+        policy_version: '2026-09-c4',
+        last_billing_event_at: new Date().toISOString(),
+      };
+      const policy = await base44.asServiceRole.entities.EntitlementPolicy.update(active.id, updates);
+      await appendSuperAdminAudit(base44, user, { action: 'update_org', organizationId: organization.id, organizationName: organization.name, correlationId: body.correlation_id, metadata: { operation: 'COMMERCIAL_LIFECYCLE_SET', billing_status: billingStatus, license_status: licenseStatus, cancel_at_period_end: updates.cancel_at_period_end } });
+      return Response.json({ success: true, policy, entitlement: await resolveEffectiveEntitlement(base44, organization) });
+    }
+
     if (action === 'adminActivateLicense') {
       if (!isCanonicalSuperAdmin(user)) return jsonError('Superadmin requerido', 403, 'SUPERADMIN_REQUIRED');
       const organizationId = clean(body.organization_id, 160);

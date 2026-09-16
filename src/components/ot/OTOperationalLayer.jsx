@@ -71,7 +71,7 @@ const NEXT_ACTION_MAP = {
     icon: AlertCircle,
     iconColor: 'text-amber-500',
     title: 'Técnico asignado — en espera de revisión',
-    description: 'El técnico debe iniciar la revisión desde "Mi Día". Si el pago aún no se ha procesado, el Diagnóstico Técnico estará bloqueado.',
+    description: 'El técnico debe iniciar la revisión desde "Hoy". Si el pago aún no se ha procesado, el Diagnóstico Técnico estará bloqueado.',
   },
   EN_REVISION: {
     color: 'bg-purple-50 border-purple-200 text-purple-900',

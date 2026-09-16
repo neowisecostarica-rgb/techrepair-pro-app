@@ -958,7 +958,7 @@ function PuntoVentaContent() {
             </CardContent>
           </Card>
 
-          <Card className="border border-slate-200 shadow-sm bg-gradient-to-br from-slate-50 to-emerald-50">
+          <Card className="border border-slate-200 shadow-sm bg-white">
             <CardHeader className="border-b border-slate-200">
               <CardTitle className="text-lg font-semibold">Resumen de Pago</CardTitle>
             </CardHeader>

@@ -87,12 +87,12 @@ export default function PageGuard({ allowedRoles = [], requiredAnyCapabilities =
     // Redirigir a landing page según rol efectivo
     const landingByRole = {
       'SUPER_ADMIN': 'Saas',
-      'ORG_ADMIN': 'Dashboard',
-      'SALES': 'Clientes',
+      'ORG_ADMIN': 'MiDia',
+      'SALES': 'VentasCotizaciones',
       'TECHNICIAN': 'MiDia',
       'INVENTORY': 'Inventario',
-      'CUSTOMER_SERVICE': 'Clientes',
-      'BRANCH_ADMIN': 'Dashboard',
+      'CUSTOMER_SERVICE': 'OrdenesTrabajo',
+      'BRANCH_ADMIN': 'MiDia',
     };
 
     const targetLanding = landingByRole[effectiveRole];

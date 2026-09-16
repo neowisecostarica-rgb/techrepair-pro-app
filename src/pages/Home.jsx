@@ -27,7 +27,7 @@ export default function Home() {
       'SUPER_ADMIN': 'Saas',
       'ORG_ADMIN': 'MiDia',
       'BRANCH_ADMIN': 'MiDia',
-      'SALES': 'VentasCotizaciones',
+      'SALES': 'MiDia',
       'TECHNICIAN': 'MiDia',
       'INVENTORY': 'Inventario',
       'CUSTOMER_SERVICE': 'OrdenesTrabajo',

@@ -254,8 +254,8 @@ function OperacionContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Operación — Dashboard Operativo</h1>
-          <p className="text-slate-600">Observabilidad operativa en tiempo real (solo lectura)</p>
+          <h1 className="text-3xl font-bold text-slate-900">Operación</h1>
+          <p className="text-slate-600">Supervisa carga, demoras y estado del taller en un solo lugar.</p>
         </div>
         <Badge className={isBranchAdmin ? 'bg-blue-100 text-blue-700 border-0' : 'bg-emerald-100 text-emerald-700 border-0'}>
           {isBranchAdmin ? 'Tu Sucursal' : 'Vista Completa'}

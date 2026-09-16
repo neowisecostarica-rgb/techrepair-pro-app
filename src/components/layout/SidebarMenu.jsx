@@ -37,17 +37,17 @@ export default function SidebarMenu({ effectiveRole, capabilities = [], currentP
         const isOpen = category === null || sectionsOpen[category] !== false;
 
         return (
-          <div key={category ?? '__home__'} className={needsSeparator ? 'pt-4 mt-4 border-t border-slate-200' : ''}>
+          <div key={category ?? '__home__'} className={needsSeparator ? 'pt-4 mt-4 border-t border-slate-800' : ''}>
             {/* Encabezado de sección colapsable */}
             {sidebarOpen && category && (
               <button
                 onClick={() => toggleSection(category)}
-                className="w-full px-3 mb-2 flex items-center gap-2 hover:bg-slate-50 rounded-lg py-1 transition-colors"
+                className="w-full px-3 mb-2 flex items-center gap-2 hover:bg-white/5 rounded-lg py-1 transition-colors"
               >
                 {isOpen
-                  ? <ChevronDown className="w-4 h-4 text-slate-400" />
-                  : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  ? <ChevronDown className="w-4 h-4 text-slate-500" />
+                  : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">
                   {category}
                 </p>
               </button>
@@ -64,11 +64,11 @@ export default function SidebarMenu({ effectiveRole, capabilities = [], currentP
                   title={sidebarOpen && item.tooltip ? item.tooltip : undefined}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                     isActive
-                      ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-lg shadow-emerald-500/30'
-                      : 'text-slate-600 hover:bg-slate-100'
+                      ? 'bg-teal-400/10 text-teal-200 ring-1 ring-inset ring-teal-400/20'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-500'}`} />
+                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-teal-300' : 'text-slate-500 group-hover:text-teal-300'}`} />
                   {sidebarOpen && (
                     <>
                       <span className="flex-1 font-medium truncate">{item.label}</span>

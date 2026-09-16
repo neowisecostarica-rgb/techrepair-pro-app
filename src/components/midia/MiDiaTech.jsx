@@ -261,7 +261,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
         return;
       } else {
         const confirmar = window.confirm(
-          '🔒 El diagnóstico debe cobrarse antes de iniciar.\n\n¿Deseas ir al Caja y Cobros para cobrar ahora?'
+          '🔒 El diagnóstico debe cobrarse antes de iniciar.\n\n¿Deseas ir a Caja y Cobros para cobrar ahora?'
         );
         if (confirmar) {
           window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;
@@ -310,7 +310,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             alert(`⏸️ ${response?.data?.descripcion_bloqueo || 'Diagnóstico bloqueado'}\n\nContacta a administración o ventas para procesar el pago.`);
           } else {
             const confirmar = window.confirm(
-              `🔒 ${response?.data?.descripcion_bloqueo || 'Diagnóstico bloqueado'}\n\n¿Deseas ir al Caja y Cobros para procesar el pago?`
+              `🔒 ${response?.data?.descripcion_bloqueo || 'Diagnóstico bloqueado'}\n\n¿Deseas ir a Caja y Cobros para procesar el pago?`
             );
             if (confirmar) {
               window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;

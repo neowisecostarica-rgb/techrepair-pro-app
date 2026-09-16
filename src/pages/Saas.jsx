@@ -518,8 +518,8 @@ function SaasContent() {
       </div>
 
       {/* Global Sales Metrics (Super Admin) */}
-      {!authIsImpersonating && (
-        {consoleSection === 'overview' && <PlatformActivityMetrics organizations={organizations} />}
+      {!authIsImpersonating && consoleSection === 'overview' && (
+        <PlatformActivityMetrics organizations={organizations} />
       )}
 
       <div id="health" className="scroll-mt-6" />

@@ -20,6 +20,7 @@ import {
   Sun,
   TrendingUp,
   ShieldAlert,
+  Activity,
 } from 'lucide-react';
 
 export const MENU_ITEMS = [
@@ -41,46 +42,45 @@ export const MENU_ITEMS = [
 
   // ── VISIÓN DEL NEGOCIO ──────────────────────────────────────────────────────
   {
-    label: 'Resumen del Negocio',
+    label: 'Negocio',
     path: 'Dashboard',
     icon: LayoutDashboard,
-    category: 'VISIÓN DEL NEGOCIO',
+    category: 'NEGOCIO',
     anyCapabilities: ['FINANCIAL_READ'],
-    tooltip: 'Antes: Dashboard',
   },
   {
-    label: 'Estado Financiero',
+    label: 'Finanzas',
     path: 'Finanzas',
     icon: LayoutDashboard,
-    category: 'VISIÓN DEL NEGOCIO',
+    category: 'NEGOCIO',
     anyCapabilities: ['FINANCIAL_READ'],
   },
   {
     label: 'Ventas y Ganancias',
     path: 'VentasMetricas',
     icon: LayoutDashboard,
-    category: 'VISIÓN DEL NEGOCIO',
+    category: 'NEGOCIO',
     anyCapabilities: ['FINANCIAL_READ'],
   },
   {
     label: 'Rendimiento del Equipo',
     path: 'ProductividadTecnicos',
     icon: Users,
-    category: 'VISIÓN DEL NEGOCIO',
+    category: 'NEGOCIO',
     anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
   {
     label: 'Análisis de Operaciones',
     path: 'AnalisisTrabajo',
     icon: FileText,
-    category: 'VISIÓN DEL NEGOCIO',
+    category: 'NEGOCIO',
     anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
   {
-    label: 'Supervisión en Vivo',
+    label: 'Operación',
     path: 'Operacion',
-    icon: Wrench,
-    category: 'VISIÓN DEL NEGOCIO',
+    icon: Activity,
+    category: 'NEGOCIO',
     anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
   // ── TALLER ──────────────────────────────────────────────────────────────────
@@ -127,7 +127,6 @@ export const MENU_ITEMS = [
     icon: ShoppingCart,
     category: 'VENTAS',
     anyCapabilities: ['SALE_OPERATIONS'],
-    tooltip: 'Antes: Punto de Venta',
   },
   {
     label: 'Historial de Ventas',
@@ -160,12 +159,11 @@ export const MENU_ITEMS = [
     anyCapabilities: ['CUSTOMER_SERVICE_OPERATIONS'],
   },
   {
-    label: 'Gestión de Leads',
+    label: 'Leads',
     path: 'CRM',
     icon: Users,
     category: 'CLIENTES',
     anyCapabilities: ['CRM_OPERATIONS'],
-    tooltip: 'Antes: CRM',
   },
 
   // ── INVENTARIO ──────────────────────────────────────────────────────────────

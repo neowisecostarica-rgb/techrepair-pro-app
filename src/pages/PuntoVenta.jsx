@@ -626,7 +626,7 @@ function PuntoVentaContent() {
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">
           Caja y Cobros
         </h1>
         <p className="text-slate-600 mb-4">
@@ -686,7 +686,7 @@ function PuntoVentaContent() {
         {/* Panel Izquierdo - Búsqueda */}
         <div className="lg:col-span-2 space-y-6">
           {!ventaId && (
-            <Card className="border-0 shadow-lg">
+            <Card className="border border-slate-200 shadow-sm">
               <CardHeader className="border-b border-slate-100">
                 <CardTitle className="text-lg font-semibold">Buscar Productos y Servicios</CardTitle>
               </CardHeader>
@@ -772,7 +772,7 @@ function PuntoVentaContent() {
           )}
 
           {/* Carrito */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border border-slate-200 shadow-sm">
             <CardHeader className="border-b border-slate-100">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" />
@@ -849,7 +849,7 @@ function PuntoVentaContent() {
 
         {/* Panel Derecho - Resumen */}
         <div className="space-y-6">
-          <Card className="border-0 shadow-lg">
+          <Card className="border border-slate-200 shadow-sm">
             <CardHeader className="border-b border-slate-100">
               <CardTitle className="text-lg font-semibold">Detalles de Venta</CardTitle>
             </CardHeader>
@@ -958,7 +958,7 @@ function PuntoVentaContent() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-emerald-50">
+          <Card className="border border-slate-200 shadow-sm bg-gradient-to-br from-slate-50 to-emerald-50">
             <CardHeader className="border-b border-slate-200">
               <CardTitle className="text-lg font-semibold">Resumen de Pago</CardTitle>
             </CardHeader>
@@ -989,7 +989,7 @@ function PuntoVentaContent() {
                   createVentaMutation.isPending || 
                   validacionesPendientes.length > 0
                 }
-                className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all h-14 text-lg disabled:opacity-50"
+                className="w-full h-11 disabled:opacity-50"
               >
                 <DollarSign className="w-5 h-5 mr-2" />
                 {createVentaMutation.isPending ? 'Procesando...' : ventaId ? 'Confirmar Cobro' : 'Registrar Venta'}
@@ -1094,7 +1094,7 @@ function PuntoVentaContent() {
             <p className="text-slate-700">
               Estás a punto de <strong>REGISTRAR UNA VENTA</strong> por un total de:
             </p>
-            <p className="text-4xl font-bold text-emerald-600 text-center py-4">
+            <p className="text-3xl font-semibold tracking-tight text-teal-700 text-center py-4">
               ₡{(totales.total || 0).toLocaleString()}
             </p>
             <Alert className="bg-amber-50 border-amber-200">

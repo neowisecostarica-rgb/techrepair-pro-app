@@ -182,14 +182,14 @@ function VentasCotizacionesContent() {
             setCotizacionEditar(null);
             setShowNuevaCotizacion(true);
           }}
-          className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+          className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5 mr-2" />
           Nueva Cotización
         </Button>
       </div>
 
-      <Card className="border-0 shadow-xl">
+      <Card className="border border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100">
           <CardTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />

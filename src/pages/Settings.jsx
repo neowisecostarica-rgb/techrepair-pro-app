@@ -126,7 +126,7 @@ function SettingsContent() {
   if (!effectiveOrgId) {
     return (
       <div className="max-w-2xl mx-auto mt-12">
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <Building2 className="w-16 h-16 mx-auto mb-6 text-slate-400" />
             <h2 className="text-2xl font-bold text-slate-900 mb-3">No se encontró tu empresa</h2>
@@ -153,7 +153,7 @@ function SettingsContent() {
   if (!organization) {
     return (
       <div className="max-w-2xl mx-auto mt-12">
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <AlertCircle className="w-16 h-16 mx-auto mb-6 text-red-400" />
             <h2 className="text-2xl font-bold text-slate-900 mb-3">Error al cargar configuración</h2>
@@ -179,7 +179,7 @@ function SettingsContent() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Configuración</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Configuración</h1>
         <p className="text-slate-500">Gestión de empresa, sucursales y usuarios</p>
       </div>
 
@@ -213,7 +213,7 @@ function SettingsContent() {
 
         {/* Tab Empresa */}
         <TabsContent value="empresa">
-          <Card className="border-0 shadow-lg">
+          <Card className="border border-slate-200 shadow-sm">
             <CardHeader className="border-b border-slate-100">
               <CardTitle>Datos de la Empresa</CardTitle>
             </CardHeader>
@@ -256,7 +256,7 @@ function SettingsContent() {
 
         {/* Tab Sucursales */}
         <TabsContent value="sucursales">
-          <Card className="border-0 shadow-lg">
+          <Card className="border border-slate-200 shadow-sm">
             <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between">
               <CardTitle>Sucursales</CardTitle>
               <Button onClick={() => setShowBranchModal(true)} size="sm">

@@ -81,7 +81,7 @@ function LayoutContent({ children, currentPageName }) {
   // Wait for auth to be ready before making any routing decisions
   if (status === 'loading' || status === 'idle') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Cargando plataforma...</p>
@@ -97,8 +97,8 @@ function LayoutContent({ children, currentPageName }) {
   // Error 429: Mostrar pantalla de cooldown sin loops
   if (status === 'error' && errorCode === 429) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
-        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
+        <div className="text-center max-w-md p-8 bg-white rounded-xl border border-slate-200 shadow-sm">
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Servicio Temporalmente Saturado</h2>
           <p className="text-slate-600 mb-6">
@@ -127,8 +127,8 @@ function LayoutContent({ children, currentPageName }) {
   // Mantener fail-closed: no habilitar navegación ni autorización de tenant.
   if (status === 'error' && errorCode === 'IDENTITY_GATEWAY_UNAVAILABLE') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
-        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
+        <div className="text-center max-w-md p-8 bg-white rounded-xl border border-slate-200 shadow-sm">
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Sesión válida · Servicio de identidad no disponible</h2>
           <p className="text-slate-600 mb-6">
@@ -150,8 +150,8 @@ function LayoutContent({ children, currentPageName }) {
   // Otros errores de auth
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
-        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
+        <div className="text-center max-w-md p-8 bg-white rounded-xl border border-slate-200 shadow-sm">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Error de Autenticación</h2>
           <p className="text-slate-600 mb-6">
@@ -244,10 +244,10 @@ function LayoutContent({ children, currentPageName }) {
   // 2a. MULTI_ORG_REQUIRED → forzar selector antes de continuar (sin fallback automático)
   if (identityStatus === 'MULTI_ORG_REQUIRED' && multiOrgAccounts && !isProtectedPage) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 max-w-md w-full">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-[#0b1220] rounded-xl flex items-center justify-center">
               <Wrench className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -290,8 +290,8 @@ function LayoutContent({ children, currentPageName }) {
   // This is a UX gate only; backend command policies remain the authority.
   if (!authorizationReady && !isProtectedPage) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-amber-50 to-blue-50">
-        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
+        <div className="text-center max-w-md p-8 bg-white rounded-xl border border-slate-200 shadow-sm">
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Permisos no disponibles</h2>
           <p className="text-slate-600 mb-6">
@@ -336,7 +336,7 @@ function LayoutContent({ children, currentPageName }) {
   // Esperar a que cargue org antes de decidir
   if (effectiveOrgId && effectiveRole !== 'SUPER_ADMIN' && isLoadingOrg) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Verificando estado de tu cuenta...</p>
@@ -348,8 +348,8 @@ function LayoutContent({ children, currentPageName }) {
   // Error al cargar Organization → Fallback (RIESGO 1)
   if (effectiveOrgId && isErrorOrg && effectiveRole !== 'SUPER_ADMIN') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-red-50 to-orange-50">
-        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-xl">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
+        <div className="text-center max-w-md p-8 bg-white rounded-xl border border-slate-200 shadow-sm">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Error al Cargar Cuenta</h2>
           <p className="text-slate-600 mb-6">

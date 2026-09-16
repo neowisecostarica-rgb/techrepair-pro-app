@@ -159,7 +159,7 @@ function VentasGarantiasContent() {
         </div>
       </div>
 
-      <Card className="border-0 shadow-xl">
+      <Card className="border border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100">
           <CardTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5" />

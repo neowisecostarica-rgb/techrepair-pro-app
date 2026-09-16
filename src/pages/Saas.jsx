@@ -381,7 +381,7 @@ function SaasContent() {
 
   if (!user.is_super_admin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-orange-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <ShieldAlert className="w-8 h-8 text-red-600" />
@@ -395,12 +395,12 @@ function SaasContent() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 p-8">
+      <div className="min-h-screen bg-[#f6f8fb] p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">Platform Administration</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Platform Administration</h1>
             <p className="text-slate-600">Multi-tenant SaaS Management & System Health</p>
             {user && (
               <div className="flex items-center gap-2 mt-3">
@@ -432,7 +432,7 @@ function SaasContent() {
 
       {/* Platform Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-50 to-blue-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="w-5 h-5 text-blue-600" />
@@ -444,7 +444,7 @@ function SaasContent() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-red-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
@@ -456,7 +456,7 @@ function SaasContent() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-50 to-purple-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <ShieldAlert className="w-5 h-5 text-purple-600" />
@@ -470,7 +470,7 @@ function SaasContent() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-green-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <ShieldAlert className="w-5 h-5 text-green-600" />
@@ -481,7 +481,7 @@ function SaasContent() {
           </CardContent>
         </Card>
 
-        <Card className={`border-0 shadow-xl ${totalHealthIssues > 0 ? 'bg-gradient-to-br from-amber-50 to-amber-100' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
+        <Card className={`border border-slate-200 shadow-sm ${totalHealthIssues > 0 ? 'bg-amber-50' : 'bg-white'}`}>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className={`w-5 h-5 ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-slate-600'}`} />
@@ -502,7 +502,7 @@ function SaasContent() {
 
       {/* System Health */}
       {totalHealthIssues > 0 && (
-        <Card className="border-0 shadow-xl border-l-4 border-l-amber-500">
+        <Card className="border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-600" />
@@ -542,7 +542,7 @@ function SaasContent() {
 
       {/* Audit Log */}
       {auditLogs.length > 0 && (
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Platform Audit Log (Last 10 Actions)</CardTitle>
           </CardHeader>
@@ -583,7 +583,7 @@ function SaasContent() {
       )}
 
       {/* Filters & Search */}
-      <Card className="border-0 shadow-xl">
+      <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
@@ -619,7 +619,7 @@ function SaasContent() {
       </Card>
 
       {/* Tenant Management Table */}
-      <Card className="border-0 shadow-xl">
+      <Card className="border border-slate-200 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Tenant Management ({filteredOrgs.length} organizations)</CardTitle>
         </CardHeader>

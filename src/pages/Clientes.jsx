@@ -81,12 +81,12 @@ function ClientesContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Clientes</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Clientes</h1>
           <p className="text-slate-500">Expedientes de clientes y contexto operativo</p>
         </div>
         <Button
           onClick={() => { setEditingCliente(null); setShowModal(true); }}
-          className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+          className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5 mr-2" />
           Nuevo Cliente
@@ -94,7 +94,7 @@ function ClientesContent() {
       </div>
 
       {/* Búsqueda */}
-      <Card className="border-0 shadow-lg">
+      <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -113,7 +113,7 @@ function ClientesContent() {
         {clientesFiltrados.map((cliente) => (
           <Card
             key={cliente.id}
-            className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer group"
+            className="border-0 shadow-md hover:shadow-md transition-all cursor-pointer group"
             onClick={() => {
               setSelectedCliente(cliente);
               setShowDetalleModal(true);
@@ -121,7 +121,7 @@ function ClientesContent() {
           >
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0">
+                <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0">
                   {cliente.nombre_completo?.charAt(0) || 'C'}
                 </div>
                 <div className="flex items-center gap-2">

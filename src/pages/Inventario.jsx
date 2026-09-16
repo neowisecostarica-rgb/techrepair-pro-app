@@ -210,7 +210,7 @@ function InventarioContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Inventario</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Inventario</h1>
           <p className="text-slate-500">Control de repuestos y productos</p>
         </div>
         <div className="flex gap-3">
@@ -223,7 +223,7 @@ function InventarioContent() {
               
               <Button
                 onClick={() => { setEditingItem(null); setShowModal(true); }}
-                className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+                className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Nuevo Item
@@ -245,7 +245,7 @@ function InventarioContent() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-lg">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -257,7 +257,7 @@ function InventarioContent() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -269,7 +269,7 @@ function InventarioContent() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -283,7 +283,7 @@ function InventarioContent() {
       </div>
 
       {/* Filtros */}
-      <Card className="border-0 shadow-lg">
+      <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -314,7 +314,7 @@ function InventarioContent() {
       </Card>
 
       {/* Tabla de Inventario */}
-      <Card className="border-0 shadow-lg">
+      <Card className="border border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100">
           <CardTitle className="text-lg font-semibold">Items en Stock</CardTitle>
         </CardHeader>
@@ -858,7 +858,7 @@ function InventarioContent() {
               </Button>
               <Button 
                 type="submit" 
-                className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                className="bg-teal-700 hover:bg-teal-800"
                 disabled={!selectedCategoriaId}
               >
                 {editingItem ? 'Actualizar' : 'Crear'} Item

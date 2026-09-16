@@ -55,9 +55,9 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   const [transicionEnCurso, setTransicionEnCurso] = useState(false);
   const [estadosPago, setEstadosPago] = useState({});
 
-  // SOT v1: Mi Día es bandeja de ejecución técnica pura.
+  // SOT v1: Hoy es la bandeja de ejecución técnica pura.
   // Estados válidos: ASIGNADA, EN_REVISION, EN_REPARACION, PRUEBAS.
-  // DIAGNOSTICADA, APROBADA, FINALIZADA, ENTREGADA, CANCELADA → fuera de Mi Día.
+  // DIAGNOSTICADA, APROBADA, FINALIZADA, ENTREGADA, CANCELADA → fuera de Hoy.
   const { data: ordenes = [] } = useQuery({
     queryKey: ['mis-ordenes', user?.id, effectiveOrgId],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
@@ -390,8 +390,8 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             <Wrench className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">Mi Día</h1>
-            <p className="text-slate-600">Gestión de trabajos asignados</p>
+            <h1 className="text-4xl font-bold text-slate-900">Hoy</h1>
+            <p className="text-slate-600">Tu trabajo activo, lo siguiente y lo que está bloqueado.</p>
           </div>
         </div>
       </div>

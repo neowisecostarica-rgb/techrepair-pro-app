@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/toaster"
 import ExpedienteOT from './pages/ExpedienteOT';
+import ActivoDetalle from './pages/ActivoDetalle';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
@@ -69,6 +70,15 @@ const AuthenticatedApp = () => {
         element={
           <LayoutWrapper currentPageName="ExpedienteOT">
             <ExpedienteOT />
+          </LayoutWrapper>
+        }
+      />
+      {/* ── Expediente del activo — historial longitudinal ── */}
+      <Route
+        path="/activo/:id"
+        element={
+          <LayoutWrapper currentPageName="Activos">
+            <ActivoDetalle />
           </LayoutWrapper>
         }
       />

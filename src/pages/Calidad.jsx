@@ -90,6 +90,7 @@ function CalidadContent() {
       causa_raiz: formData.get('causa_raiz'),
       accion_correctiva: formData.get('accion_correctiva'),
       fecha_limite: formData.get('fecha_limite'),
+      orden_trabajo_id: formData.get('orden_trabajo_id') || undefined,
       reportado_por: formData.get('reportado_por'),
     };
 
@@ -356,6 +357,12 @@ function CalidadContent() {
                   </div>
                 </>
               )}
+
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="orden_trabajo_id">Orden de Trabajo relacionada</Label>
+                <Input id="orden_trabajo_id" name="orden_trabajo_id" defaultValue={editingNC?.orden_trabajo_id} placeholder="ID de la OT (opcional)" />
+                <p className="text-xs text-slate-500">Vincula esta no conformidad con la historia operacional de la OT.</p>
+              </div>
 
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="reportado_por">Reportado Por</Label>

@@ -26,7 +26,7 @@ export function useTecnicoMetrics({ days = 30 }) {
     fechaCorte.setDate(fechaCorte.getDate() - days);
 
     const actividadesFiltradas = actividadesRaw.filter(a => 
-      new Date(a.created_date) >= fechaCorte
+      new Date(a.started_at || a.created_date) >= fechaCorte
     );
 
     // Agrupar por técnico

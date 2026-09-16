@@ -13,7 +13,7 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
 
   // Query 1: Actividades
   const { data: actividadesRaw = [], isLoading: loadingActividades } = useQuery({
-    queryKey: ['actividades_metrics', effectiveOrgId],
+    queryKey: ['actividades_metrics', effectiveOrgId, branchId],
     queryFn: () => base44.entities.ActividadTecnica.filter({
       organization_id: effectiveOrgId,
       soft_deleted: false
@@ -24,7 +24,7 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
 
   // Query 2: OTs
   const { data: ordenesRaw = [], isLoading: loadingOrdenes } = useQuery({
-    queryKey: ['ordenes_metrics', effectiveOrgId],
+    queryKey: ['ordenes_metrics', effectiveOrgId, branchId],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
       organization_id: effectiveOrgId
     }),
@@ -34,7 +34,7 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
 
   // Query 3: Inventario
   const { data: inventarioRaw = [], isLoading: loadingInventario } = useQuery({
-    queryKey: ['inventario_metrics', effectiveOrgId],
+    queryKey: ['inventario_metrics', effectiveOrgId, branchId],
     queryFn: () => base44.entities.Inventario.filter({
       organization_id: effectiveOrgId
     }),
@@ -42,15 +42,23 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
     staleTime: 30 * 60 * 1000 // 30 min
   });
 
+  // Query 4: ledger canónico de inventario (consumos reales)
+  const { data: inventarioHistorialRaw = [], isLoading: loadingHistorial } = useQuery({
+    queryKey: ['inventario_historial_metrics', effectiveOrgId, branchId],
+    queryFn: () => base44.entities.InventarioHistorial.filter({ organization_id: effectiveOrgId, movement_type: 'CONSUME', ...(branchId ? { branch_id: branchId } : {}) }, '-effective_at', 500),
+    enabled: !!effectiveOrgId && effectiveRole === 'ORG_ADMIN',
+    staleTime: 5 * 60 * 1000
+  });
+
   // Filtrar por fecha client-side
   const { actividadesFiltradas, ordenesFiltradas } = useMemo(() => {
     const fechaCorte = new Date();
     fechaCorte.setDate(fechaCorte.getDate() - days);
 
-    let actsFiltradas = actividadesRaw.filter(a => 
-      new Date(a.created_date) >= fechaCorte
+    let actsFiltradas = actividadesRaw.filter(a =>
+      new Date(a.started_at || a.created_date) >= fechaCorte
     );
-    let ordsFiltradas = ordenesRaw.filter(o => 
+    let ordsFiltradas = ordenesRaw.filter(o =>
       new Date(o.created_date) >= fechaCorte
     );
 
@@ -89,9 +97,9 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
     const tipos = ['diagnostico', 'reparacion', 'instalacion', 'prueba', 'limpieza', 'entrega', 'otro'];
     const tiempoPromedioPorTipo = {};
     tipos.forEach(tipo => {
-      const acts = actividadesFiltradas.filter(a => 
-        a.tipo_actividad === tipo && 
-        a.estado === 'finalizada' && 
+      const acts = actividadesFiltradas.filter(a =>
+        a.tipo_actividad === tipo &&
+        a.estado === 'finalizada' &&
         a.duracion_minutos != null
       );
       tiempoPromedioPorTipo[tipo] = avg(acts.map(a => a.duracion_minutos));
@@ -110,8 +118,8 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
       ? actividadesFiltradas.filter(a => a.resultado === 'reproceso').length / actividadesFiltradas.length
       : 0;
 
-    const otsAntiguas = ordenesRaw.filter(o => 
-      diasDesde(o.created_date) > 7 && 
+    const otsAntiguas = ordenesFiltradas.filter(o =>
+      diasDesde(o.created_date) > 7 &&
       !['CERRADA', 'FINALIZADA', 'ENTREGADA', 'CANCELADA'].includes(o.estado)
     ).length;
 
@@ -119,13 +127,17 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
     const tecnicosActivos = countUnique(actividadesFiltradas.map(a => a.tecnico_id));
 
     // Inventario operativo
-    const repuestosUsados = actividadesFiltradas
-      .filter(a => a.inventario_id)
-      .reduce((acc, a) => {
-        acc[a.inventario_id] = (acc[a.inventario_id] || 0) + 1;
-        return acc;
-      }, {});
-    
+    const fechaCorte = new Date();
+    fechaCorte.setDate(fechaCorte.getDate() - days);
+    const consumosFiltrados = inventarioHistorialRaw.filter(m =>
+      new Date(m.effective_at || m.created_date) >= fechaCorte && (!branchId || m.branch_id === branchId)
+    );
+    const repuestosUsados = consumosFiltrados.reduce((acc, m) => {
+      const inventoryId = m.inventory_id || m.inventario_id;
+      if (inventoryId) acc[inventoryId] = (acc[inventoryId] || 0) + Math.abs(Number(m.quantity || m.quantity_delta || 0));
+      return acc;
+    }, {});
+
     const repuestosMasUsadosTop10 = Object.entries(repuestosUsados)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
@@ -157,12 +169,12 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
       repuestosMasUsadosTop10,
       repuestosAsociadosABloqueosTop10
     };
-  }, [actividadesFiltradas, ordenesFiltradas, ordenesRaw]);
+  }, [actividadesFiltradas, ordenesFiltradas, inventarioHistorialRaw, days, branchId]);
 
   return {
     metrics,
-    raw: { actividadesFiltradas, ordenesFiltradas, inventarioRaw },
-    isLoading: loadingActividades || loadingOrdenes || loadingInventario,
+    raw: { actividadesFiltradas, ordenesFiltradas, inventarioRaw, inventarioHistorialRaw },
+    isLoading: loadingActividades || loadingOrdenes || loadingInventario || loadingHistorial,
     error: null
   };
 }

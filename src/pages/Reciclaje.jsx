@@ -321,6 +321,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
       peso_kg: pesoNormalizado,
       cantidad_unidades: parseInt(formData.get('cantidad_unidades')) || 0,
       origen: formData.get('origen'),
+      orden_trabajo_id: formData.get('orden_trabajo_id') || undefined,
       accion: formData.get('accion'),
       destino: formData.get('destino'),
       empresa_recicladora: formData.get('empresa_recicladora'),
@@ -448,6 +449,12 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
             defaultValue={editingItem?.destino}
             placeholder="Destino final..."
           />
+        </div>
+
+        <div className="space-y-2 col-span-2">
+          <Label htmlFor="orden_trabajo_id">Orden de Trabajo relacionada</Label>
+          <Input id="orden_trabajo_id" name="orden_trabajo_id" defaultValue={editingItem?.orden_trabajo_id} placeholder="ID de la OT (opcional)" />
+          <p className="text-xs text-slate-500">Si el residuo nace de una reparación, enlázalo a su OT para conservar trazabilidad.</p>
         </div>
 
         <div className="space-y-2 col-span-2">

@@ -79,15 +79,21 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
     isLoading: loadingOrdenes,
   } = useQuery({
     queryKey: ['ordenes-dashboard', effectiveOrgId, canonicalBranchId],
-    queryFn: () =>
-      base44.entities.OrdenTrabajo.filter(
-        {
-          organization_id: effectiveOrgId,
-          ...(canonicalBranchId ? { branch_id: canonicalBranchId } : {}),
-        },
-        '-created_date',
-        500
-      ),
+    queryFn: async () => {
+      const rows = [];
+      let cursor = null;
+      do {
+        const res = await base44.functions.invoke('listWorkOrders', {
+          limit: 200,
+          ...(cursor ? { cursor } : {}),
+        });
+        const payload = res.data || {};
+        const page = payload.items || payload.ordenes || [];
+        rows.push(...page.filter(o => !canonicalBranchId || o.branch_id === canonicalBranchId));
+        cursor = payload.has_more ? payload.next_cursor : null;
+      } while (cursor);
+      return rows;
+    },
     enabled: canLoadOrgData,
     staleTime: 60_000,
   });
@@ -222,8 +228,8 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
     return (
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Dashboard Ejecutivo</h1>
-          <p className="text-slate-500">Vista general de operaciones (mes actual)</p>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Negocio</h1>
+          <p className="text-slate-500">Resumen ejecutivo del mes actual</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -241,12 +247,12 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-slate-900 mb-2">
-          {isBranchAdmin ? 'Dashboard de Sucursal' : 'Dashboard Ejecutivo'}
+          {isBranchAdmin ? 'Negocio · Sucursal' : 'Negocio'}
         </h1>
         <p className="text-slate-500">
           {isBranchAdmin
-            ? `Vista operativa limitada a ${branch?.name || branch?.nombre || 'tu sucursal'} (mes actual)`
-            : 'Vista general de la organización (mes actual)'}
+            ? `Resumen limitado a ${branch?.name || branch?.nombre || 'tu sucursal'} (mes actual)`
+            : 'Resumen ejecutivo de la organización (mes actual)'}
         </p>
       </div>
 

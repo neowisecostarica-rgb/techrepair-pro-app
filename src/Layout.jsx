@@ -178,7 +178,7 @@ function LayoutContent({ children, currentPageName }) {
 
   // 1. SUPER_ADMIN (non-impersonating) → must access SaaS panel and admin tools
   if (effectiveRole === 'SUPER_ADMIN' && !isImpersonating) {
-    if (currentPageName !== 'Saas' && currentPageName !== 'AdminReset') {
+    if (currentPageName !== 'Saas' && currentPageName !== 'AdminReset' && currentPageName !== 'WebsiteVisualEditor') {
       if (typeof window !== 'undefined') {
         window.location.href = createPageUrl('Saas');
       }

@@ -7,6 +7,7 @@ import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
+import TRPWebsite from './pages/TRPWebsite';
 import { AuthProvider, useAuthContext } from '@/components/contexts/AuthContext';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -18,12 +19,15 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const PUBLIC_PAGE_NAMES = ['PortalCliente', 'PortalCotizacion', 'PortalComprobante', 'PortalGarantia'];
+const MARKETING_PATHS = ['/trp', '/website'];
 const PUBLIC_ROUTE_ALIASES = { '/cotizacion': 'PortalCotizacion' };
 
 const AuthenticatedApp = () => {
   const { status } = useAuthContext();
   const location = useLocation();
   const normalizedPath = (location.pathname.replace(/\/+$/, '') || '/').toLowerCase();
+  if (MARKETING_PATHS.includes(normalizedPath)) return <Routes><Route path="*" element={<TRPWebsite />} /></Routes>;
+
   const publicPageName = PUBLIC_ROUTE_ALIASES[normalizedPath]
     || PUBLIC_PAGE_NAMES.find(name => normalizedPath === `/${name}`.toLowerCase());
 

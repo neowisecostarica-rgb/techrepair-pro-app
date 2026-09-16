@@ -152,7 +152,7 @@ export default function ConfiguracionNegocio() {
                   name="name"
                   defaultValue={organization?.name}
                   required
-                  placeholder="Ej: TechRepair Costa Rica"
+                  placeholder="Ej: Servicio Técnico Central"
                 />
               </div>
 

@@ -22,7 +22,7 @@ Este documento consolida el plan de ejecución vigente. No crear caminos paralel
 - Web definitiva se construye después de que exista el TRP SaaS Visual System, para usar screenshots/producto reales.
 
 ## MEGABLOQUE A — PRODUCT COMPLETION
-Estado: NEXT / PENDIENTE
+Estado: CLOSED — IMPLEMENTATION COMPLETE / HUMAN E2E DEFERRED TO G
 
 Objetivo: terminar el núcleo operacional antes de pricing/web.
 
@@ -38,7 +38,7 @@ Incluye:
 - Optimizar Time-to-Value.
 
 ## MEGABLOQUE B — TRP SAAS VISUAL SYSTEM
-Estado: PENDIENTE / OBLIGATORIO
+Estado: NEXT / ACTIVE — OBLIGATORIO
 
 Principio: `TRP must look and feel like TRP, not NeoWise Design.`
 
@@ -221,6 +221,30 @@ A Product Completion
 → G Runtime + Human E2E QA
 → H Publish + Controlled Pilot
 
+## CIERRE MEGABLOQUE A — 2026-09-16
+
+Product Completion queda cerrado en implementación. Human E2E permanece deliberadamente diferido al Megabloque G.
+
+Entregado:
+- navegación simplificada y homes por rol;
+- Hoy como superficie accionable para administración, sucursal, técnico y ventas;
+- Operación como supervisión/excepciones;
+- Órdenes como recepción/inbox/búsqueda, sin segundo centro operativo legacy;
+- Expediente OT como SOT operacional canónico del F0–F8;
+- Calidad/Reciclaje contextualizados en la OT y sujetos a autorización;
+- onboarding hacia primera recepción y primer Expediente;
+- Activos + expediente longitudinal del activo;
+- señales de lifecycle explicables sin inventar Reliability Score;
+- permisos de lectura comercial/técnica ajustados en Expediente/Activo;
+- vocabulario core canonizado en superficies activas (Hoy, Caja y Cobros, Expediente);
+- build/lint/diff-check PASS al cierre.
+
+Deuda conscientemente trasladada:
+- identidad visual/branding TechRepair residual en shell/login/estados → Megabloque B;
+- métricas exhaustivas/paginación/runtime real → Megabloque G;
+- pricing/entitlements/billing/licensing → Megabloque C;
+- Employee Lifecycle Enterprise → Megabloque E.
+
 ## PRÓXIMA ACCIÓN
 
-Entrar a MEGABLOQUE A y ejecutar Product Completion en macrogolpes. No volver a Naming. No iniciar pricing/web antes de terminar A+B. No desarrollar ahora Offboarding/Onboarding Enterprise: están preservados como requisitos de E y como oportunidad de validación comercial.
+Entrar a MEGABLOQUE B — TRP SaaS Visual System. Empezar por shell/login/navigation/header y tokens visuales globales; después Command Centers, tablas/formularios/estados y responsive. No volver a Naming. No iniciar pricing/web antes de terminar B.

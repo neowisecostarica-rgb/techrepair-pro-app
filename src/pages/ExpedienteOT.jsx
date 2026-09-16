@@ -41,7 +41,9 @@ function ExpedienteOTContent() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { effectiveOrgId, effectiveRole, user } = useAuthContext();
+  const { effectiveOrgId, effectiveRole } = useAuthContext();
+  const canReadCommercial = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE'].includes(effectiveRole);
+  const canReadQuality = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole);
 
   // Callback para que los subcomponentes (AccionesCustodia) refresquen la OT
   const handleOTUpdated = () => {
@@ -90,7 +92,7 @@ function ExpedienteOTContent() {
   const { data: ventas = [] } = useQuery({
     queryKey: ['expediente-ventas', id],
     queryFn: () => base44.entities.Venta.filter({ referencia_ot_id: id }),
-    enabled: !!id,
+    enabled: !!id && canReadCommercial,
     staleTime: 60 * 1000,
     refetchInterval: 10 * 1000,
     refetchIntervalInBackground: false,
@@ -100,7 +102,7 @@ function ExpedienteOTContent() {
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['expediente-cotizaciones', id],
     queryFn: () => base44.entities.Cotizacion.filter({ orden_trabajo_id: id }),
-    enabled: !!id,
+    enabled: !!id && canReadCommercial,
     staleTime: 60 * 1000,
   });
 
@@ -109,7 +111,7 @@ function ExpedienteOTContent() {
   const { data: noConformidades = [] } = useQuery({
     queryKey: ['expediente-no-conformidades', id],
     queryFn: () => base44.entities.NoConformidad.filter({ orden_trabajo_id: id }),
-    enabled: !!id && ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole),
+    enabled: !!id && canReadQuality,
     staleTime: 60 * 1000,
   });
 
@@ -221,10 +223,10 @@ function ExpedienteOTContent() {
 
       {/* ── Cuerpo principal en tabs ───────────────────────────────────────── */}
       <Tabs defaultValue="timeline" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${canReadCommercial ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="timeline">📋 Bitácora</TabsTrigger>
           <TabsTrigger value="tecnico">🔬 Técnico</TabsTrigger>
-          <TabsTrigger value="comercial">💰 Comercial</TabsTrigger>
+          {canReadCommercial && <TabsTrigger value="comercial">💰 Comercial</TabsTrigger>}
         </TabsList>
 
         {/* ── FASE 4: Timeline ──────────────────────────────────────────────── */}
@@ -249,14 +251,16 @@ function ExpedienteOTContent() {
         </TabsContent>
 
         {/* ── FASE 6: Integración Comercial ─────────────────────────────────── */}
-        <TabsContent value="comercial" className="mt-4">
-          <ExpedienteComercial
-            ot={ot}
-            ventas={ventas}
-            cotizaciones={cotizaciones}
-            effectiveRole={effectiveRole}
-          />
-        </TabsContent>
+        {canReadCommercial && (
+          <TabsContent value="comercial" className="mt-4">
+            <ExpedienteComercial
+              ot={ot}
+              ventas={ventas}
+              cotizaciones={cotizaciones}
+              effectiveRole={effectiveRole}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

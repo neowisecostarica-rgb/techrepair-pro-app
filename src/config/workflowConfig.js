@@ -22,7 +22,7 @@ export const ESTADO_SOT = {
     labelColor: 'text-blue-900',
   },
   ASIGNADA: {
-    accion: 'Técnico debe iniciar revisión desde Mi Día',
+    accion: 'Técnico debe iniciar revisión desde Hoy',
     responsable: 'TECHNICIAN',
     iconName: 'Clock',
     color: 'bg-amber-50 border-amber-200',

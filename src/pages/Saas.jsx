@@ -15,11 +15,12 @@ import { useAuthContext } from '../components/contexts/AuthContext';
 import {
   adminCreateIdentityOrganization,
   adminUpdateIdentityOrganization,
+  adminSetIdentityEntitlement,
   getIdentityAdminOverview,
 } from '@/api/identity';
 
-// P1: PLAN CATALOG (Frontend-only, precios en monedas soportadas)
-const PLAN_CATALOG = [
+// Legacy plan catalog: compatibility/provisioning only. Not TRP commercial pricing authority.
+const LEGACY_PLAN_CATALOG = [
   {
     code: 'basic',
     name: 'Basic',
@@ -136,6 +137,8 @@ function SaasContent() {
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [suspendReason, setSuspendReason] = useState('');
   const [newPlan, setNewPlan] = useState('');
+  const [newPackage, setNewPackage] = useState('core');
+  const [newBillingInterval, setNewBillingInterval] = useState('monthly');
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -169,6 +172,7 @@ function SaasContent() {
   const organizations = adminOverview.organizations || [];
   const allUserAccounts = adminOverview.accounts || [];
   const auditLogs = adminOverview.auditLogs || [];
+  const entitlementsByOrg = adminOverview.entitlements || {};
 
   const { data: allBranches = [] } = useQuery({
     queryKey: ['all-branches'],
@@ -239,24 +243,26 @@ function SaasContent() {
   };
 
   const handleChangePlan = async () => {
-    if (!selectedOrg || !newPlan) {
-      alert('Debes seleccionar un plan');
+    if (!selectedOrg || !newPackage) {
+      alert('Debes seleccionar un paquete comercial');
       return;
     }
-
-    if (!confirm(`¿Cambiar plan de "${selectedOrg.name}" a ${newPlan.toUpperCase()}?`)) {
-      return;
-    }
-
+    if (!confirm(`¿Aplicar paquete ${newPackage.toUpperCase()} a "${selectedOrg.name}"? El plan legacy no se modificará.`)) return;
     try {
-      await adminUpdateIdentityOrganization(selectedOrg.id, { plan: newPlan });
+      await adminSetIdentityEntitlement(selectedOrg.id, {
+        package_id: newPackage,
+        billing_status: 'active',
+        billing_interval: newBillingInterval,
+        source: 'admin',
+      });
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
       setShowChangePlanModal(false);
-      setNewPlan('');
+      setNewPackage('core');
+      setNewBillingInterval('monthly');
       setSelectedOrg(null);
     } catch (error) {
-      console.error('Error cambiando plan:', error);
-      alert('Error al cambiar plan');
+      console.error('Error cambiando entitlement:', error);
+      alert('Error al cambiar paquete comercial');
     }
   };
 
@@ -352,15 +358,16 @@ function SaasContent() {
   const filteredOrgs = organizations.filter(org => {
     const matchesSearch = org.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || org.status === statusFilter;
-    const matchesPlan = planFilter === 'all' || org.plan === planFilter;
+    const effectivePackage = entitlementsByOrg[org.id]?.package_id || 'core';
+    const matchesPlan = planFilter === 'all' || effectivePackage === planFilter;
     return matchesSearch && matchesStatus && matchesPlan;
   });
 
-  // Métricas por plan
+  // Commercial package distribution. Legacy Organization.plan is compatibility only.
   const planDistribution = {
-    basic: organizations.filter(o => o.plan === 'basic').length,
-    pro: organizations.filter(o => o.plan === 'pro').length,
-    premium: organizations.filter(o => o.plan === 'premium').length,
+    core: organizations.filter(o => (entitlementsByOrg[o.id]?.package_id || 'core') === 'core').length,
+    advanced: organizations.filter(o => entitlementsByOrg[o.id]?.package_id === 'advanced').length,
+    enterprise: organizations.filter(o => entitlementsByOrg[o.id]?.package_id === 'enterprise').length,
   };
 
   const totalActiveUsers = allUserAccounts.filter(u => {
@@ -463,9 +470,9 @@ function SaasContent() {
               <p className="text-xs font-semibold text-slate-600">Plan Distribution</p>
             </div>
             <div className="text-xs space-y-1 mt-2">
-              <p className="text-slate-700">Basic: <span className="font-bold">{planDistribution.basic}</span></p>
-              <p className="text-slate-700">Pro: <span className="font-bold">{planDistribution.pro}</span></p>
-              <p className="text-slate-700">Premium: <span className="font-bold">{planDistribution.premium}</span></p>
+              <p className="text-slate-700">Core: <span className="font-bold">{planDistribution.core}</span></p>
+              <p className="text-slate-700">Advanced: <span className="font-bold">{planDistribution.advanced}</span></p>
+              <p className="text-slate-700">Enterprise: <span className="font-bold">{planDistribution.enterprise}</span></p>
             </div>
           </CardContent>
         </Card>
@@ -609,10 +616,10 @@ function SaasContent() {
               onChange={(e) => setPlanFilter(e.target.value)}
               className="px-4 py-2 border border-slate-200 rounded-md"
             >
-              <option value="all">All Plans</option>
-              <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
-              <option value="premium">Premium</option>
+              <option value="all">All Packages</option>
+              <option value="core">Core</option>
+              <option value="advanced">Advanced</option>
+              <option value="enterprise">Enterprise</option>
             </select>
           </div>
         </CardContent>
@@ -630,7 +637,7 @@ function SaasContent() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Name</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Plan</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Package</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Created</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Users</th>
@@ -645,8 +652,9 @@ function SaasContent() {
 
                     // P1: Datos derivados para mejorar display
                     const normalizedCurrency = normalizeCurrency(org.currency);
-                    const planInfo = PLAN_CATALOG.find(p => p.code === org.plan);
-                    const price = planInfo?.prices?.[normalizedCurrency];
+                    const entitlement = entitlementsByOrg[org.id];
+                    const packageName = entitlement?.package_id || 'core';
+                    const entitlementSource = entitlement?.source || 'legacy_fallback';
                     const partner = partners.find(p => p.id === org.partner_id);
 
                     return (
@@ -665,11 +673,9 @@ function SaasContent() {
                         </td>
                         <td className="p-3">
                           <Badge className="bg-indigo-100 text-indigo-700 border-0 uppercase text-xs">
-                            {planInfo?.name || org.plan}
+                            {packageName}
                           </Badge>
-                          {price && (
-                            <p className="text-xs text-slate-500 mt-1">{price} {normalizedCurrency}/mes</p>
-                          )}
+                          <p className="text-xs text-slate-500 mt-1">{entitlementSource === 'legacy_fallback' ? `Legacy ${org.plan || 'basic'} → compatibility` : entitlementSource}</p>
                         </td>
                         <td className="p-3">
                           <Badge className={org.status === 'active' 
@@ -690,13 +696,14 @@ function SaasContent() {
                               variant="outline"
                               onClick={() => {
                                 setSelectedOrg(org);
-                                setNewPlan(org.plan);
+                                setNewPackage(entitlementsByOrg[org.id]?.package_id || 'core');
+                                setNewBillingInterval(entitlementsByOrg[org.id]?.billing_interval || 'monthly');
                                 setShowChangePlanModal(true);
                               }}
                               disabled={authIsImpersonating}
                               className="text-xs"
                             >
-                              Change Plan
+                              Commercial Package
                             </Button>
                             {org.status === 'active' ? (
                               <Button
@@ -796,35 +803,47 @@ function SaasContent() {
       <Dialog open={showChangePlanModal} onOpenChange={setShowChangePlanModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Change Organization Plan</DialogTitle>
+            <DialogTitle className="text-xl font-bold">Change Commercial Package</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             {selectedOrg && (
               <div className="p-3 bg-slate-50 rounded-lg">
                 <p className="text-sm text-slate-600">Organization:</p>
                 <p className="font-semibold text-slate-900">{selectedOrg.name}</p>
-                <p className="text-xs text-slate-600 mt-1">Current Plan: <span className="font-semibold">{selectedOrg.plan.toUpperCase()}</span></p>
+                <p className="text-xs text-slate-600 mt-1">Legacy Plan: <span className="font-semibold">{selectedOrg.plan?.toUpperCase() || 'BASIC'}</span> · Effective package: <span className="font-semibold">{entitlementsByOrg[selectedOrg.id]?.package_id?.toUpperCase() || 'CORE'}</span></p>
               </div>
             )}
             <div>
-              <Label htmlFor="new-plan">New Plan</Label>
+              <Label htmlFor="new-plan">Commercial Package</Label>
               <select
                 id="new-plan"
-                value={newPlan}
-                onChange={(e) => setNewPlan(e.target.value)}
+                value={newPackage}
+                onChange={(e) => { setNewPackage(e.target.value); if (e.target.value === 'enterprise') setNewBillingInterval('contract'); }}
                 className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md"
               >
-                <option value="basic">Basic</option>
-                <option value="pro">Pro</option>
-                <option value="premium">Premium</option>
+                <option value="core">Core</option>
+                <option value="advanced">Advanced</option>
+                <option value="enterprise">Enterprise</option>
               </select>
+            </div>
+            <div>
+              <Label htmlFor="billing-interval">Billing Interval</Label>
+              <select id="billing-interval" value={newBillingInterval} onChange={(e) => setNewBillingInterval(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md">
+                <option value="monthly">Monthly</option>
+                <option value="annual">Annual</option>
+                <option value="contract">Contract</option>
+              </select>
+            </div>
+            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-900">
+              This changes backend commercial entitlement only. Legacy plan and billing provider are not modified.
             </div>
             <div className="flex gap-3 justify-end pt-2">
               <Button 
                 variant="outline" 
                 onClick={() => {
                   setShowChangePlanModal(false);
-                  setNewPlan('');
+                  setNewPackage('core');
+                  setNewBillingInterval('monthly');
                   setSelectedOrg(null);
                 }}
               >
@@ -834,7 +853,7 @@ function SaasContent() {
                 onClick={handleChangePlan}
                 className="bg-indigo-600 hover:bg-indigo-700"
               >
-                Change Plan
+                Apply Package
               </Button>
             </div>
           </div>
@@ -914,26 +933,14 @@ function SaasContent() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-md bg-white"
                 >
                   <option value="">Seleccionar plan</option>
-                  {PLAN_CATALOG.map(plan => (
+                  {LEGACY_PLAN_CATALOG.map(plan => (
                     <option key={plan.code} value={plan.code}>
-                      {plan.name} {plan.recommended ? '⭐ (Recomendado)' : ''}
+                      {plan.name} (legacy provisioning)
                     </option>
                   ))}
                 </select>
                 
-                {/* P1: Preview de plan con precio */}
-                {selectedPlan && selectedCurrency && (() => {
-                  const plan = PLAN_CATALOG.find(p => p.code === selectedPlan);
-                  const price = plan?.prices?.[selectedCurrency];
-                  return (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mt-2">
-                      <p className="text-sm text-blue-800 font-medium">
-                        💰 {plan.name} — {price ? `${price} ${selectedCurrency}/mes` : 'Precio no disponible para esta moneda'}
-                      </p>
-                      <p className="text-xs text-blue-600 mt-1">{plan.description}</p>
-                    </div>
-                  );
-                })()}
+                <p className="text-xs text-slate-500 mt-2">Legacy provisioning code only. Commercial package is assigned from Entitlement Authority after tenant creation.</p>
               </div>
 
               <div className="space-y-2">

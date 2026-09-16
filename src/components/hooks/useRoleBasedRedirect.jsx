@@ -31,7 +31,7 @@ export function useRoleBasedRedirect(userAccount, currentPageName) {
     const landingByRole = {
       'SUPER_ADMIN': 'Saas',
       'ORG_ADMIN': 'MiDia',
-      'SALES': 'VentasCotizaciones',
+      'SALES': 'MiDia',
       'TECHNICIAN': 'MiDia',
       'INVENTORY': 'Inventario',
       'CUSTOMER_SERVICE': 'OrdenesTrabajo',

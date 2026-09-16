@@ -194,9 +194,9 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
       {otsFlujoDiagnostico.length > 0 && (
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-amber-200">
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-200">
             <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <Wrench className="w-5 h-5 text-white" />
+              <Wrench className="w-5 h-5 text-amber-700" />
             </div>
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-slate-950">Diagnósticos por activar</h2>
@@ -207,7 +207,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
             </Badge>
           </div>
 
-          <Card className="border-amber-200">
+          <Card className="border-slate-200 shadow-sm">
             <CardContent className="p-4 space-y-3">
               {otsFlujoDiagnostico.map(ot => {
                 const pendienteCobro = !ot.diagnostico_habilitado;
@@ -218,7 +218,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
                         <p className="font-semibold text-slate-900">{ot.codigo_ot}</p>
                         <Badge className={pendienteCobro
                           ? 'bg-amber-100 text-amber-800 border-0'
-                          : 'bg-emerald-100 text-emerald-800 border-0'
+                          : 'bg-teal-50 text-teal-800 border-0'
                         }>
                           {pendienteCobro ? 'Pendiente de cobro' : 'Lista para iniciar'}
                         </Badge>
@@ -237,7 +237,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
                       </Link>
                     ) : (
                       <Link to={`/expediente/${ot.id}`}>
-                        <Button size="sm" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Button size="sm" className="w-full sm:w-auto">
                           <Play className="w-4 h-4 mr-2" />
                           Abrir e iniciar
                         </Button>

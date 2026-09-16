@@ -507,7 +507,7 @@ function OrdenesTrabajoContent() {
                         OT
                       </div>
                       <div>
-                        <p className="text-xs font-mono text-emerald-600 font-bold mb-1">
+                        <p className="text-xs font-mono text-teal-700 font-bold mb-1">
                           {orden.codigo_ot || 'OT-LEGACY'}
                         </p>
                         <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
@@ -564,8 +564,10 @@ function OrdenesTrabajoContent() {
         {ordenesFiltradas.length === 0 && (
           <Card className="border border-slate-200 shadow-sm">
             <CardContent className="p-12 text-center">
-              <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-              <p className="text-slate-400">No se encontraron órdenes</p>
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4"><FileText className="w-6 h-6 text-slate-400" /></div>
+              <p className="font-semibold text-slate-800">No hay órdenes para esta vista</p>
+              <p className="text-sm text-slate-500 mt-1">Ajusta los filtros o registra una nueva recepción.</p>
+              <Button size="sm" className="mt-5" onClick={() => setShowNuevaOrden(true)}>Nueva OT</Button>
             </CardContent>
           </Card>
         )}
@@ -606,7 +608,7 @@ function OrdenesTrabajoContent() {
                             OT
                           </div>
                           <div>
-                            <p className="text-xs font-mono text-emerald-600 font-bold mb-1">
+                            <p className="text-xs font-mono text-teal-700 font-bold mb-1">
                               {orden.codigo_ot || 'OT-LEGACY'}
                             </p>
                             <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>

@@ -422,7 +422,7 @@ function SaasContent() {
             <Button
               onClick={() => setShowModal(true)}
               className="bg-slate-800 hover:bg-slate-900"
-              disabled={isImpersonating}
+              disabled={authIsImpersonating}
             >
               <Plus className="w-5 h-5 mr-2" />
               Create Organization
@@ -693,7 +693,7 @@ function SaasContent() {
                                 setNewPlan(org.plan);
                                 setShowChangePlanModal(true);
                               }}
-                              disabled={isImpersonating}
+                              disabled={authIsImpersonating}
                               className="text-xs"
                             >
                               Change Plan
@@ -706,7 +706,7 @@ function SaasContent() {
                                   setSelectedOrg(org);
                                   setShowSuspendModal(true);
                                 }}
-                                disabled={isImpersonating}
+                                disabled={authIsImpersonating}
                                 className="text-xs border-red-300 text-red-600 hover:bg-red-50"
                               >
                                 Suspend
@@ -716,7 +716,7 @@ function SaasContent() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleReactivateOrg(org)}
-                                disabled={isImpersonating}
+                                disabled={authIsImpersonating}
                                 className="text-xs border-green-300 text-green-600 hover:bg-green-50"
                               >
                                 Reactivate

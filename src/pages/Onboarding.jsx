@@ -119,8 +119,10 @@ export default function Onboarding() {
       });
       isCreatingOrgRef.current = false;
       setMode('success');
+      // Product SOT: llevar al primer valor, no a configuración exhaustiva.
+      // Cliente y equipo pueden crearse inline desde la recepción de la primera OT.
       setTimeout(() => {
-        window.location.href = createPageUrl('Settings');
+        window.location.href = `${createPageUrl('OrdenesTrabajo')}?activation=first_work_order`;
       }, 1500);
       
     } catch (err) {
@@ -165,7 +167,7 @@ export default function Onboarding() {
           <CardContent className="p-8 text-center">
             <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Todo Listo!</h2>
-            <p className="text-emerald-600 font-medium">Redirigiendo a tu panel...</p>
+            <p className="text-emerald-600 font-medium">Ahora recibe tu primer equipo...</p>
           </CardContent>
         </Card>
       </div>
@@ -211,8 +213,8 @@ export default function Onboarding() {
           <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Building2 className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-3xl font-bold text-slate-900">Crea tu Empresa</CardTitle>
-          <p className="text-slate-500 mt-2">Configura tu organización para comenzar</p>
+          <CardTitle className="text-3xl font-bold text-slate-900">Crea tu negocio</CardTitle>
+          <p className="text-slate-500 mt-2">Solo necesitamos lo esencial. Después podrás recibir tu primer equipo.</p>
         </CardHeader>
         <CardContent className="p-8">
           <form onSubmit={handleCreateCompany} className="space-y-6">
@@ -310,7 +312,7 @@ export default function Onboarding() {
                 </>
               ) : (
                 <>
-                  Crear Empresa
+                  Crear negocio y continuar
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </>
               )}

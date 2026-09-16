@@ -122,19 +122,19 @@ function SaasContent() {
   const [consoleSection, setConsoleSection] = useState(() => typeof window !== 'undefined' ? (window.location.hash.replace('#', '') || 'overview') : 'overview');
   const [user, setUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showSuspenderModal, setShowSuspenderModal] = useState(false);
   const [showChangePlanModal, setShowChangePlanModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState(null);
-  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendReason, setSuspenderReason] = useState('');
   const [newPlan, setNewPlan] = useState('');
-  const [newPackage, setNewPackage] = useState('core');
+  const [newPaquete, setNewPaquete] = useState('core');
   const [newBillingInterval, setNewBillingInterval] = useState('monthly');
   const [newBillingStatus, setNewBillingStatus] = useState('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
-  const [justCreatedOrgId, setJustCreatedOrgId] = useState(null);
+  const [justCreadaOrgId, setJustCreadaOrgId] = useState(null);
 
   // P1: Estado para selects del modal
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -173,7 +173,7 @@ function SaasContent() {
   const auditLogs = adminOverview.auditLogs || [];
   const entitlementsByOrg = adminOverview.entitlements || {};
 
-  const { data: allBranches = [] } = useQuery({
+  const { data: allSucursales = [] } = useQuery({
     queryKey: ['all-branches'],
     queryFn: () => base44.entities.Branch.list(),
     enabled: !authIsImpersonating,
@@ -205,7 +205,7 @@ function SaasContent() {
     },
   });
 
-  const handleSuspendOrg = async () => {
+  const handleSuspenderOrg = async () => {
     if (!selectedOrg || !suspendReason.trim()) {
       alert('Debes proporcionar un motivo de suspensión');
       return;
@@ -217,8 +217,8 @@ function SaasContent() {
         newStatus: 'suspended'
       });
 
-      setShowSuspendModal(false);
-      setSuspendReason('');
+      setShowSuspenderModal(false);
+      setSuspenderReason('');
       setSelectedOrg(null);
     } catch (error) {
       console.error('Error suspendiendo org:', error);
@@ -226,7 +226,7 @@ function SaasContent() {
     }
   };
 
-  const handleReactivateOrg = async (organization) => {
+  const handleReactivarOrg = async (organization) => {
     if (!confirm(`¿Reactivar organización "${organization.name}"?`)) return;
 
     try {
@@ -242,21 +242,21 @@ function SaasContent() {
   };
 
   const handleChangePlan = async () => {
-    if (!selectedOrg || !newPackage) {
+    if (!selectedOrg || !newPaquete) {
       alert('Debes seleccionar un paquete comercial');
       return;
     }
-    if (!confirm(`¿Aplicar paquete ${newPackage.toUpperCase()} a "${selectedOrg.name}"? El plan legacy no se modificará.`)) return;
+    if (!confirm(`¿Aplicar paquete ${newPaquete.toUpperCase()} a "${selectedOrg.name}"? El plan legacy no se modificará.`)) return;
     try {
       await adminSetIdentityEntitlement(selectedOrg.id, {
-        package_id: newPackage,
+        package_id: newPaquete,
         billing_status: newBillingStatus,
         billing_interval: newBillingInterval,
         source: 'admin',
       });
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
       setShowChangePlanModal(false);
-      setNewPackage('core');
+      setNewPaquete('core');
       setNewBillingInterval('monthly');
       setNewBillingStatus('active');
       setSelectedOrg(null);
@@ -279,15 +279,15 @@ function SaasContent() {
 
   const getOrgStats = (orgId) => {
     const users = allUserAccounts.filter(u => u.organization_id === orgId && u.active).length;
-    const branches = allBranches.filter(b => b.organization_id === orgId).length;
+    const branches = allSucursales.filter(b => b.organization_id === orgId).length;
 
     return { users, branches };
   };
 
   // Health Checks (integridad de datos)
   const healthChecks = {
-    orgsWithoutBranches: organizations.filter(org =>
-      org.status === 'active' && !allBranches.some(b => b.organization_id === org.id)
+    orgsWithoutSucursales: organizations.filter(org =>
+      org.status === 'active' && !allSucursales.some(b => b.organization_id === org.id)
     ).length,
     usersWithoutOrg: allUserAccounts.filter(u => !u.organization_id).length,
     otsWithoutCliente: allOrders.filter(ot => !ot.cliente_id).length,
@@ -309,8 +309,8 @@ function SaasContent() {
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
 
       // P0: Highlight del tenant recién creado
-      setJustCreatedOrgId(newOrg.id);
-      setTimeout(() => setJustCreatedOrgId(null), 5000);
+      setJustCreadaOrgId(newOrg.id);
+      setTimeout(() => setJustCreadaOrgId(null), 5000);
 
       // P0: Feedback visual
       alert(`✅ Tenant "${newOrg.name}" creado exitosamente`);
@@ -369,19 +369,19 @@ function SaasContent() {
   const filteredOrgs = organizations.filter(org => {
     const matchesSearch = org.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || org.status === statusFilter;
-    const effectivePackage = entitlementsByOrg[org.id]?.package_id || 'core';
-    const matchesPlan = planFilter === 'all' || effectivePackage === planFilter;
+    const effectivePaquete = entitlementsByOrg[org.id]?.package_id || 'core';
+    const matchesPlan = planFilter === 'all' || effectivePaquete === planFilter;
     return matchesSearch && matchesStatus && matchesPlan;
   });
 
-  // Commercial package distribution. Legacy Organization.plan is compatibility only.
+  // Facturación package distribution. Legacy Organization.plan is compatibility only.
   const planDistribution = {
     core: organizations.filter(o => (entitlementsByOrg[o.id]?.package_id || 'core') === 'core').length,
     advanced: organizations.filter(o => entitlementsByOrg[o.id]?.package_id === 'advanced').length,
     enterprise: organizations.filter(o => entitlementsByOrg[o.id]?.package_id === 'enterprise').length,
   };
 
-  const totalActiveUsers = allUserAccounts.filter(u => {
+  const totalActiveUsuarios = allUserAccounts.filter(u => {
     const org = organizations.find(o => o.id === u.organization_id);
     return u.active && org?.status === 'active';
   }).length;
@@ -443,7 +443,7 @@ function SaasContent() {
               disabled={authIsImpersonating}
             >
               <Plus className="w-5 h-5 mr-2" />
-              Create Organization
+              Crear organización
             </Button>
           </div>
         </div>
@@ -454,7 +454,7 @@ function SaasContent() {
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-2">Platform Console</span>
           {[
             ['organizations', 'Organizaciones'],
-            ['commercial', 'Commercial & Plans'],
+            ['commercial', 'Comercial y planes'],
             ['health', 'Platform Health'],
             ['audit', 'Audit'],
             ['pilot', 'Pilot Control'],
@@ -484,7 +484,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-xs font-semibold text-slate-600">Suspended</p>
+              <p className="text-xs font-semibold text-slate-600">Suspenderidas</p>
             </div>
             <p className="text-3xl font-bold text-slate-900">
               {organizations.filter(o => o.status === 'suspended').length}
@@ -496,7 +496,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <ShieldAlert className="w-5 h-5 text-purple-600" />
-              <p className="text-xs font-semibold text-slate-600">Commercial Packages</p>
+              <p className="text-xs font-semibold text-slate-600">Paquetes comerciales</p>
             </div>
             <div className="text-xs space-y-1 mt-2">
               <p className="text-slate-700">Core: <span className="font-bold">{planDistribution.core}</span></p>
@@ -510,9 +510,9 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <ShieldAlert className="w-5 h-5 text-green-600" />
-              <p className="text-xs font-semibold text-slate-600">Total Users</p>
+              <p className="text-xs font-semibold text-slate-600">Usuarios activos</p>
             </div>
-            <p className="text-3xl font-bold text-slate-900">{totalActiveUsers}</p>
+            <p className="text-3xl font-bold text-slate-900">{totalActiveUsuarios}</p>
             <p className="text-xs text-slate-600 mt-1">In active orgs</p>
           </CardContent>
         </Card>
@@ -548,10 +548,10 @@ function SaasContent() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {healthChecks.orgsWithoutBranches > 0 && (
+              {healthChecks.orgsWithoutSucursales > 0 && (
                 <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                  <span className="text-sm text-slate-700">Organizations without branches</span>
-                  <Badge className="bg-amber-200 text-amber-800 border-0">{healthChecks.orgsWithoutBranches}</Badge>
+                  <span className="text-sm text-slate-700">Organizaciones sin sucursales</span>
+                  <Badge className="bg-amber-200 text-amber-800 border-0">{healthChecks.orgsWithoutSucursales}</Badge>
                 </div>
               )}
               {healthChecks.usersWithoutOrg > 0 && (
@@ -583,7 +583,7 @@ function SaasContent() {
       {showSection('audit') && auditLogs.length > 0 && (
         <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Platform Audit Log (Last 10 Actions)</CardTitle>
+            <CardTitle className="text-lg">Auditoría de plataforma · últimas 10 acciones</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -643,14 +643,14 @@ function SaasContent() {
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
+              <option value="suspended">Suspenderidas</option>
             </select>
             <select
               value={planFilter}
               onChange={(e) => setPlanFilter(e.target.value)}
               className="px-4 py-2 border border-slate-200 rounded-md"
             >
-              <option value="all">All Packages</option>
+              <option value="all">Todos los paquetes</option>
               <option value="core">Core</option>
               <option value="advanced">Business</option>
               <option value="enterprise">Enterprise</option>
@@ -671,20 +671,20 @@ function SaasContent() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Name</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Package</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Commercial</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Paquete</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Facturación</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Licencia</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Acceso operativo</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Created</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Users</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Branches</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Actions</th>
+                    <th className="hidden xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Creada</th>
+                    <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Usuarios</th>
+                    <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Sucursales</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredOrgs.map((org) => {
                     const stats = getOrgStats(org.id);
-                    const isNewlyCreated = justCreatedOrgId === org.id;
+                    const isNewlyCreada = justCreadaOrgId === org.id;
 
                     // P1: Datos derivados para mejorar display
                     const normalizedCurrency = normalizeCurrency(org.currency);
@@ -701,7 +701,7 @@ function SaasContent() {
                       <tr
                         key={org.id}
                         className={`border-t hover:bg-slate-50 transition-all duration-500 ${
-                          isNewlyCreated ? 'bg-green-100 animate-pulse' : ''
+                          isNewlyCreada ? 'bg-green-100 animate-pulse' : ''
                         }`}
                       >
                         <td className="p-3">
@@ -713,9 +713,9 @@ function SaasContent() {
                         </td>
                         <td className="p-3">
                           <Badge className="bg-teal-50 text-teal-800 border border-teal-200 uppercase text-xs">
-                            {packageName}
+                            {packageName === 'advanced' ? 'business' : packageName}
                           </Badge>
-                          <p className="text-xs text-slate-500 mt-1">{entitlementSource === 'legacy_fallback' ? `Legacy ${org.plan || 'basic'} → compatibility` : `Authority: ${entitlementSource}`}</p>
+                          <p className="text-xs text-slate-500 mt-1">{entitlementSource === 'legacy_compatibility' ? 'Compatibilidad legacy' : 'Política comercial TRP'}</p>
                         </td>
                         <td className="p-3">
                           <Badge className={billingStatus === 'active' ? 'bg-teal-50 text-teal-800 border border-teal-200' : billingStatus === 'trial' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
@@ -736,19 +736,19 @@ function SaasContent() {
                             {org.status}
                           </Badge>
                         </td>
-                        <td className="p-3 text-xs text-slate-600">
+                        <td className="hidden xl:table-cell p-3 text-xs text-slate-600">
                           {new Date(org.created_date).toLocaleDateString('es-ES')}
                         </td>
-                        <td className="p-3 text-sm text-slate-700">{stats.users}</td>
-                        <td className="p-3 text-sm text-slate-700">{stats.branches}</td>
+                        <td className="hidden 2xl:table-cell p-3 text-sm text-slate-700">{stats.users}</td>
+                        <td className="hidden 2xl:table-cell p-3 text-sm text-slate-700">{stats.branches}</td>
                         <td className="p-3">
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => {
                                 setSelectedOrg(org);
-                                setNewPackage(entitlementsByOrg[org.id]?.package_id || 'core');
+                                setNewPaquete(entitlementsByOrg[org.id]?.package_id || 'core');
                                 setNewBillingInterval(entitlementsByOrg[org.id]?.billing_interval || 'monthly');
                                 setNewBillingStatus(entitlementsByOrg[org.id]?.billing_status || 'active');
                                 setShowChangePlanModal(true);
@@ -756,7 +756,7 @@ function SaasContent() {
                               disabled={authIsImpersonating}
                               className="text-xs"
                             >
-                              Commercial Package
+                              Facturación Paquete
                             </Button>
                             {licenseStatus !== 'active' && entitlementSource === 'explicit_policy' && (
                               <Button size="sm" variant="outline" onClick={() => handleActivateLicense(org)} disabled={authIsImpersonating} className="text-xs border-teal-300 text-teal-700 hover:bg-teal-50">
@@ -769,22 +769,22 @@ function SaasContent() {
                                 variant="outline"
                                 onClick={() => {
                                   setSelectedOrg(org);
-                                  setShowSuspendModal(true);
+                                  setShowSuspenderModal(true);
                                 }}
                                 disabled={authIsImpersonating}
                                 className="text-xs border-red-300 text-red-600 hover:bg-red-50"
                               >
-                                Suspend
+                                Suspender
                               </Button>
                             ) : (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleReactivateOrg(org)}
+                                onClick={() => handleReactivarOrg(org)}
                                 disabled={authIsImpersonating}
                                 className="text-xs border-green-300 text-green-600 hover:bg-green-50"
                               >
-                                Reactivate
+                                Reactivar
                               </Button>
                             )}
                           </div>
@@ -798,7 +798,7 @@ function SaasContent() {
           ) : (
             <div className="text-center py-12">
               <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500">No organizations found</p>
+              <p className="text-slate-500">No se encontraron organizaciones</p>
             </div>
           )}
         </CardContent>
@@ -820,8 +820,8 @@ function SaasContent() {
       {consoleSection === 'commercial' && (
         <div className="space-y-5">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Commercial & Plans</h2>
-            <p className="text-sm text-slate-600 mt-1">Packaging oficial de TRP. La autoridad contractual por tenant continúa en EntitlementPolicy.</p>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Comercial y planes</h2>
+            <p className="text-sm text-slate-600 mt-1">Oferta comercial de TRP. La configuración contractual de cada organización se administra desde esta consola.</p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {[
@@ -851,31 +851,31 @@ function SaasContent() {
         </div>
       )}
 
-      {/* Modal Suspend Organization */}
-      <Dialog open={showSuspendModal} onOpenChange={setShowSuspendModal}>
+      {/* Modal Suspender Organization */}
+      <Dialog open={showSuspenderModal} onOpenChange={setShowSuspenderModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-red-600">Suspend Organization</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-red-600">Suspender Organization</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-800">
-                <strong>Warning:</strong> Suspending this organization will immediately block access for all users.
+                <strong>Warning:</strong> Suspendering this organization will immediately block access for all users.
               </p>
             </div>
             {selectedOrg && (
               <div className="p-3 bg-slate-50 rounded-lg">
-                <p className="text-sm text-slate-600">Organization:</p>
+                <p className="text-sm text-slate-600">Organización:</p>
                 <p className="font-semibold text-slate-900">{selectedOrg.name}</p>
               </div>
             )}
             <div>
-              <Label htmlFor="suspend-reason">Suspension Reason (required)</Label>
+              <Label htmlFor="suspend-reason">Motivo de suspensión (requerido)</Label>
               <Input
                 id="suspend-reason"
                 value={suspendReason}
-                onChange={(e) => setSuspendReason(e.target.value)}
-                placeholder="e.g., Payment overdue, Terms violation..."
+                onChange={(e) => setSuspenderReason(e.target.value)}
+                placeholder="Ej.: decisión administrativa, incumplimiento contractual..."
                 className="mt-1"
               />
             </div>
@@ -883,26 +883,26 @@ function SaasContent() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setShowSuspendModal(false);
-                  setSuspendReason('');
+                  setShowSuspenderModal(false);
+                  setSuspenderReason('');
                   setSelectedOrg(null);
                 }}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
-                onClick={handleSuspendOrg}
+                onClick={handleSuspenderOrg}
                 className="bg-red-600 hover:bg-red-700"
                 disabled={!suspendReason.trim()}
               >
-                Confirm Suspension
+                Confirmar suspensión
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Modal Commercial Package */}
+      {/* Modal Facturación Paquete */}
       <Dialog open={showChangePlanModal} onOpenChange={setShowChangePlanModal}>
         <DialogContent>
           <DialogHeader>
@@ -911,17 +911,18 @@ function SaasContent() {
           <div className="space-y-4 mt-4">
             {selectedOrg && (
               <div className="p-3 bg-slate-50 rounded-lg">
-                <p className="text-sm text-slate-600">Organization:</p>
+                <p className="text-sm text-slate-600">Organización:</p>
                 <p className="font-semibold text-slate-900">{selectedOrg.name}</p>
-                <p className="text-xs text-slate-600 mt-1">Legacy Plan: <span className="font-semibold">{selectedOrg.plan?.toUpperCase() || 'BASIC'}</span> · Effective package: <span className="font-semibold">{entitlementsByOrg[selectedOrg.id]?.package_id?.toUpperCase() || 'CORE'}</span></p>
+                <p className="text-xs text-slate-600 mt-1">Paquete actual: <span className="font-semibold">{entitlementsByOrg[selectedOrg.id]?.package_id === 'advanced' ? 'BUSINESS' : (entitlementsByOrg[selectedOrg.id]?.package_id?.toUpperCase() || 'CORE')}</span></p>
+                <details className="mt-2 text-xs text-slate-500"><summary className="cursor-pointer hover:text-slate-700">Compatibilidad técnica</summary><p className="mt-1">Plan legacy: {selectedOrg.plan?.toUpperCase() || 'BASIC'} · se conserva únicamente para compatibilidad.</p></details>
               </div>
             )}
             <div>
               <Label htmlFor="new-plan">Paquete TRP</Label>
               <select
                 id="new-plan"
-                value={newPackage}
-                onChange={(e) => { setNewPackage(e.target.value); if (e.target.value === 'enterprise') setNewBillingInterval('contract'); }}
+                value={newPaquete}
+                onChange={(e) => { setNewPaquete(e.target.value); if (e.target.value === 'enterprise') setNewBillingInterval('contract'); }}
                 className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md"
               >
                 <option value="core">Core</option>
@@ -940,24 +941,24 @@ function SaasContent() {
             <div>
               <Label htmlFor="billing-status">Estado de billing</Label>
               <select id="billing-status" value={newBillingStatus} onChange={(e) => setNewBillingStatus(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md">
-                <option value="trial">Trial</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspendido</option><option value="cancelled">Cancelado</option>
+                <option value="trial">Trial</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspenderido</option><option value="cancelled">Cancelarado</option>
               </select>
               <p className="text-xs text-slate-500 mt-1">Este estado comercial no cambia automáticamente el acceso operativo de la organización.</p>
             </div>
             <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-900">
-              Esta acción modifica la autoridad comercial de TRP. El plan legacy se conserva únicamente para compatibilidad y no se modifica aquí.
+              Esta acción actualiza la configuración comercial de TRP. La compatibilidad histórica permanece aislada y no afecta esta decisión.
             </div>
             <div className="flex gap-3 justify-end pt-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowChangePlanModal(false);
-                  setNewPackage('core');
+                  setNewPaquete('core');
                   setNewBillingInterval('monthly');
                   setSelectedOrg(null);
                 }}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 onClick={handleChangePlan}
@@ -970,7 +971,7 @@ function SaasContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Create Organization */}
+      {/* Modal Crear organización */}
       <Dialog open={showModal} onOpenChange={(open) => {
         setShowModal(open);
         if (!open) {
@@ -982,7 +983,7 @@ function SaasContent() {
       }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Create New Organization</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">Crear nueva organización</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -1050,7 +1051,7 @@ function SaasContent() {
                   ))}
                 </select>
 
-                <p className="text-xs text-slate-500 mt-2">Legacy provisioning code only. Commercial package is assigned from Entitlement Authority after tenant creation.</p>
+                <p className="text-xs text-slate-500 mt-2">Legacy provisioning code only. Facturación package is assigned from Entitlement Authority after tenant creation.</p>
               </div>
 
               <div className="space-y-2">
@@ -1086,7 +1087,7 @@ function SaasContent() {
                 }}
                 disabled={creating}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 type="submit"
@@ -1099,7 +1100,7 @@ function SaasContent() {
                     Creando tenant...
                   </>
                 ) : (
-                  'Create Organization'
+                  'Crear organización'
                 )}
               </Button>
             </div>

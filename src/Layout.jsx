@@ -188,15 +188,6 @@ function LayoutContent({ children, currentPageName }) {
     // SUPER_ADMIN in Saas or AdminReset page: Render minimal layout
     return (
       <div className="min-h-screen bg-[#f6f8fb]">
-        <style>{`
-          :root {
-            --primary: 142 71% 45%;
-            --primary-foreground: 0 0% 100%;
-            --secondary: 200 70% 50%;
-            --accent: 142 71% 95%;
-          }
-        `}</style>
-
         {/* Sidebar for SUPER_ADMIN */}
         <aside className="fixed left-0 top-0 h-screen w-64 bg-[#0b1220] border-r border-slate-800 z-40">
           <div className="flex flex-col h-full">

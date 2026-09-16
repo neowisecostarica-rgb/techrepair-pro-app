@@ -386,11 +386,11 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center">
             <Wrench className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">Hoy</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Hoy</h1>
             <p className="text-slate-600">Tu trabajo activo, lo siguiente y lo que está bloqueado.</p>
           </div>
         </div>
@@ -407,10 +407,10 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       {actividadActiva && (
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-purple-200">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Actividad en Curso</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-950">Actividad en Curso</h2>
           </div>
           <ActividadActiva 
             actividad={actividadActiva} 
@@ -422,11 +422,11 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       {/* Sección ACTIVO */}
       <div className="mt-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-red-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center relative">
+          <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center relative">
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
             <Play className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Trabajo Activo</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Trabajo Activo</h2>
           <Badge variant="outline" className="ml-auto border-red-300 text-red-700">1 máximo</Badge>
         </div>
 
@@ -436,7 +436,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold">
+                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center text-white font-bold">
                       <Zap className="w-6 h-6" />
                     </div>
                     <div>
@@ -482,7 +482,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                     <Button
                       onClick={() => handleIniciarRevision(ordenActiva)}
                       disabled={botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] || transicionEnCurso}
-                      className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                      className="bg-teal-700 hover:bg-teal-800"
                     >
                       {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
                         <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
@@ -505,7 +505,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                       {ordenActiva.estado === 'EN_REVISION' && (
                         <Button
                           onClick={() => handleIniciarDiagnostico(ordenActiva)}
-                          className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                          className="bg-teal-700 hover:bg-teal-800"
                         >
                           <Wrench className="w-4 h-4 mr-2" />
                           {tieneDiagnostico(ordenActiva.id) && !diagnosticoListo(ordenActiva.id)
@@ -521,7 +521,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         <Button
                           onClick={() => handleTransicion(ordenActiva, 'PRUEBAS', 'finalizar_reparacion')}
                           disabled={botonesDeshabilitados[`finalizar_reparacion_${ordenActiva.id}`] || transicionEnCurso}
-                          className="bg-gradient-to-r from-blue-500 to-indigo-500"
+                          className="bg-slate-800 hover:bg-slate-900"
                         >
                           {botonesDeshabilitados[`finalizar_reparacion_${ordenActiva.id}`] ? (
                             <><Clock className="w-4 h-4 mr-2 animate-spin" />Finalizando...</>
@@ -536,7 +536,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         <Button
                           onClick={() => handleTransicion(ordenActiva, 'FINALIZADA', 'validar_calidad')}
                           disabled={botonesDeshabilitados[`validar_calidad_${ordenActiva.id}`] || transicionEnCurso}
-                          className="bg-gradient-to-r from-purple-500 to-pink-500"
+                          className="bg-slate-800 hover:bg-slate-900"
                         >
                           {botonesDeshabilitados[`validar_calidad_${ordenActiva.id}`] ? (
                             <><Clock className="w-4 h-4 mr-2 animate-spin" />Validando...</>
@@ -586,10 +586,10 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       {/* Sección POR INICIAR */}
       <div className="mt-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
             <Play className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Por Iniciar</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Por Iniciar</h2>
           <Badge variant="outline" className="ml-auto border-emerald-300 text-emerald-700 font-semibold">
             {ordenesPorIniciar.length}
           </Badge>
@@ -597,12 +597,12 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
         <div className="grid gap-4">
           {ordenesPorIniciar.map((orden) => (
-            <Card key={orden.id} className="border-0 shadow-md hover:shadow-xl transition-all ring-1 ring-emerald-200">
+            <Card key={orden.id} className="border border-slate-200 shadow-sm hover:shadow-md transition-all ring-1 ring-emerald-200">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white font-bold">
+                      <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center text-white font-bold">
                         <Play className="w-6 h-6" />
                       </div>
                       <div>
@@ -643,7 +643,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                       <Button
                         onClick={() => handleIniciarRevision(orden)}
                         disabled={botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso}
-                        className="bg-gradient-to-r from-emerald-500 to-teal-500"
+                        className="bg-teal-700 hover:bg-teal-800"
                       >
                         {botonesDeshabilitados[`iniciar_revision_${orden.id}`] ? (
                           <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
@@ -656,7 +656,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                       <Button
                         onClick={() => handleTransicion(orden, 'PRUEBAS', 'finalizar_reparacion')}
                         disabled={botonesDeshabilitados[`finalizar_reparacion_${orden.id}`] || transicionEnCurso}
-                        className="bg-gradient-to-r from-blue-500 to-indigo-500"
+                        className="bg-slate-800 hover:bg-slate-900"
                       >
                         {botonesDeshabilitados[`finalizar_reparacion_${orden.id}`] ? (
                           <><Clock className="w-4 h-4 mr-2 animate-spin" />Finalizando...</>
@@ -669,7 +669,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                       <Button
                         onClick={() => handleTransicion(orden, 'FINALIZADA', 'validar_calidad')}
                         disabled={botonesDeshabilitados[`validar_calidad_${orden.id}`] || transicionEnCurso}
-                        className="bg-gradient-to-r from-purple-500 to-pink-500"
+                        className="bg-slate-800 hover:bg-slate-900"
                       >
                         {botonesDeshabilitados[`validar_calidad_${orden.id}`] ? (
                           <><Clock className="w-4 h-4 mr-2 animate-spin" />Validando...</>
@@ -694,7 +694,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           ))}
 
           {ordenesPorIniciar.length === 0 && (
-            <Card className="border-0 shadow-md">
+            <Card className="border border-slate-200 shadow-sm">
               <CardContent className="p-8 text-center">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-400" />
                 <p className="text-slate-500">No hay órdenes pendientes de iniciar</p>
@@ -707,10 +707,10 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       {/* Sección PAUSADOS */}
       <div className="mt-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-yellow-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
             <Pause className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Trabajos Pausados</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Trabajos Pausados</h2>
           <Badge variant="outline" className="ml-auto border-yellow-300 text-yellow-700 font-semibold">
             {ordenesPausadas.length}
           </Badge>
@@ -720,7 +720,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           {ordenesPausadas.map((orden, index) => (
             <Card 
               key={orden.id} 
-              className={`border-0 shadow-md hover:shadow-xl transition-all ${
+              className={`border border-slate-200 shadow-sm hover:shadow-md transition-all ${
                 index === 0 ? 'ring-2 ring-yellow-400' : ''
               }`}
             >
@@ -734,7 +734,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                     )}
                     
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold">
+                      <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-white font-bold">
                         <Pause className="w-6 h-6" />
                       </div>
                       <div>
@@ -789,7 +789,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         <Button
                           onClick={() => handleRetomar(orden)}
                           disabled={botonesDeshabilitados[`retomar_${orden.id}`] || transicionEnCurso}
-                          className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                          className="bg-teal-700 hover:bg-teal-800"
                         >
                           {botonesDeshabilitados[`retomar_${orden.id}`] ? (
                             <>
@@ -822,7 +822,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           ))}
 
           {ordenesPausadas.length === 0 && (
-            <Card className="border-0 shadow-md">
+            <Card className="border border-slate-200 shadow-sm">
               <CardContent className="p-8 text-center">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-500" />
                 <p className="text-slate-500">No hay trabajos pausados</p>
@@ -835,10 +835,10 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       {/* Sección ESPERANDO */}
       <div className="mt-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-blue-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <Clock className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">En Espera</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">En Espera</h2>
           <Badge variant="outline" className="ml-auto border-blue-300 text-blue-700 font-semibold">
             {ordenesEsperando.length}
           </Badge>
@@ -846,12 +846,12 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
         <div className="grid gap-4">
           {ordenesEsperando.map((orden) => (
-            <Card key={orden.id} className="border-0 shadow-md opacity-75">
+            <Card key={orden.id} className="border border-slate-200 shadow-sm opacity-75">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center text-white font-bold">
+                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-white font-bold">
                         <AlertCircle className="w-6 h-6" />
                       </div>
                       <div>
@@ -885,7 +885,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           ))}
 
           {ordenesEsperando.length === 0 && (
-            <Card className="border-0 shadow-md">
+            <Card className="border border-slate-200 shadow-sm">
               <CardContent className="p-8 text-center">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-blue-500" />
                 <p className="text-slate-500">No hay trabajos en espera</p>

@@ -180,11 +180,11 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
     <div className="max-w-7xl mx-auto space-y-8">
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center">
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">Hoy</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Hoy</h1>
             <p className="text-slate-600">Lo que requiere atención y acción ahora.</p>
           </div>
         </div>
@@ -195,11 +195,11 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
       {otsFlujoDiagnostico.length > 0 && (
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-amber-200">
-            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
               <Wrench className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">Diagnósticos por activar</h2>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-950">Diagnósticos por activar</h2>
               <p className="text-sm text-slate-500">Cobra la revisión o inicia el trabajo cuando ya esté habilitado.</p>
             </div>
             <Badge variant="outline" className="ml-auto border-amber-300 text-amber-700">
@@ -268,10 +268,10 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-red-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
             <AlertCircle className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Prioridades del Día</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Prioridades del Día</h2>
         </div>
       <Card className="border-2 border-red-200 bg-red-50/30">
         <CardHeader className="pb-3">
@@ -340,10 +340,10 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
             <Wrench className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Taller Hoy</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Taller Hoy</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -418,10 +418,10 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-green-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
             <DollarSign className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Ventas Hoy</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Ventas Hoy</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -464,10 +464,10 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-blue-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <Calendar className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Agenda Hoy</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Agenda Hoy</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">

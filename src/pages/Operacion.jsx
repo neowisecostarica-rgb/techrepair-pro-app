@@ -254,7 +254,7 @@ function OperacionContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Operación</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Operación</h1>
           <p className="text-slate-600">Supervisa, detecta excepciones y entra al expediente para resolver.</p>
         </div>
         <Badge className={isBranchAdmin ? 'bg-blue-100 text-blue-700 border-0' : 'bg-emerald-100 text-emerald-700 border-0'}>
@@ -283,70 +283,70 @@ function OperacionContent() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-50 to-blue-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Wrench className="w-5 h-5 text-blue-600" />
               <p className="text-xs text-slate-600">OTs Activas</p>
             </div>
-            <p className="text-2xl font-bold text-slate-900">{otsActivas.length}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{otsActivas.length}</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-red-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="w-5 h-5 text-red-600" />
               <p className="text-xs text-slate-600">Demoradas (+48h)</p>
             </div>
-            <p className="text-2xl font-bold text-slate-900">{otsDemoradas.length}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{otsDemoradas.length}</p>
             <p className="text-xs text-slate-500 mt-1">Días desde última actividad</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-amber-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
               <p className="text-xs text-slate-600">En Cola Revisión</p>
             </div>
-            <p className="text-2xl font-bold text-slate-900">{otsEnCola}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{otsEnCola}</p>
             {otsEnCola > 10 && (
               <Badge className="bg-red-200 text-red-800 border-0 text-xs mt-1">Alta carga</Badge>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-50 to-purple-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-5 h-5 text-purple-600" />
               <p className="text-xs text-slate-600">Técnicos Activos</p>
             </div>
-            <p className="text-2xl font-bold text-slate-900">{tecnicosConCarga}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{tecnicosConCarga}</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-yellow-50 to-yellow-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-5 h-5 text-yellow-600" />
               <p className="text-xs text-slate-600">Cotizaciones Pendientes</p>
             </div>
-            <p className="text-2xl font-bold text-slate-900">{cotizacionesPendientes}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{cotizacionesPendientes}</p>
             {cotizacionesPendientes > 20 && (
               <Badge className="bg-red-200 text-red-800 border-0 text-xs mt-1">Revisar</Badge>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-xl bg-gradient-to-br from-indigo-50 to-indigo-100">
+        <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="w-5 h-5 text-indigo-600" />
               <p className="text-xs text-slate-600">Garantías por Vencer</p>
             </div>
-            <p className="text-2xl font-bold text-slate-900">{garantiasPorVencer}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{garantiasPorVencer}</p>
             {garantiasPorVencer > 5 && (
               <Badge className="bg-red-200 text-red-800 border-0 text-xs mt-1">Atención</Badge>
             )}
@@ -358,7 +358,7 @@ function OperacionContent() {
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribución por Estado */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-600" />
@@ -385,7 +385,7 @@ function OperacionContent() {
         </Card>
 
         {/* Carga por Técnico */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-600" />
@@ -413,7 +413,7 @@ function OperacionContent() {
       </div>
 
       {/* Tabla OTs Demoradas */}
-      <Card className="border-0 shadow-xl">
+      <Card className="border border-slate-200 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Clock className="w-5 h-5 text-red-600" />

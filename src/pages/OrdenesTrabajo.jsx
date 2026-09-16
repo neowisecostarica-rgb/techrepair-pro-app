@@ -399,7 +399,7 @@ function OrdenesTrabajoContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Órdenes</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-2">Órdenes</h1>
           <p className="text-slate-500">Recibe, encuentra y abre el expediente de cada trabajo.</p>
         </div>
         <div className="flex gap-2">
@@ -420,7 +420,7 @@ function OrdenesTrabajoContent() {
           {effectiveRole !== 'TECHNICIAN' && (
             <Button
               onClick={() => { setEditingOT(null); resetForm(); setShowModal(true); }}
-              className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:shadow-lg transition-all"
+              className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
             >
               <Plus className="w-5 h-5 mr-2" />
               Nueva OT
@@ -461,7 +461,7 @@ function OrdenesTrabajoContent() {
       )}
 
       {/* Filtros */}
-      {!isLoadingOrdenes && <Card className="border-0 shadow-lg">
+      {!isLoadingOrdenes && <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -496,14 +496,14 @@ function OrdenesTrabajoContent() {
           return (
             <Card 
               key={orden.id} 
-              className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer"
+              className="border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer"
               onClick={() => navigate(`/expediente/${orden.id}`)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-xs">
+                      <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white font-bold text-xs">
                         OT
                       </div>
                       <div>
@@ -562,7 +562,7 @@ function OrdenesTrabajoContent() {
         })}
 
         {ordenesFiltradas.length === 0 && (
-          <Card className="border-0 shadow-lg">
+          <Card className="border border-slate-200 shadow-sm">
             <CardContent className="p-12 text-center">
               <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
               <p className="text-slate-400">No se encontraron órdenes</p>
@@ -595,14 +595,14 @@ function OrdenesTrabajoContent() {
               return (
                 <Card
                   key={orden.id}
-                  className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer"
+                  className="border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer"
                   onClick={() => navigate(`/expediente/${orden.id}`)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-xs">
+                          <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white font-bold text-xs">
                             OT
                           </div>
                           <div>
@@ -651,7 +651,7 @@ function OrdenesTrabajoContent() {
             })}
 
             {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length === 0 && (
-              <Card className="border-0 shadow-lg">
+              <Card className="border border-slate-200 shadow-sm">
                 <CardContent className="p-12 text-center">
                   <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-emerald-300" />
                   <p className="text-slate-400">No hay órdenes esperando decisión del cliente</p>
@@ -1012,7 +1012,7 @@ function OrdenesTrabajoContent() {
                               onClick={() => {
                                 window.location.href = createPageUrl('Settings');
                               }}
-                              className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                              className="bg-teal-700 hover:bg-teal-800"
                               size="sm"
                             >
                               Configurar Términos y Condiciones
@@ -1040,7 +1040,7 @@ function OrdenesTrabajoContent() {
               </Button>
               <Button 
                 type="submit" 
-                className="bg-gradient-to-r from-emerald-500 to-blue-500"
+                className="bg-teal-700 hover:bg-teal-800"
                 disabled={guardandoOT || createMutation.isPending || (!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)) || !motivoIngreso))}
               >
                 {(guardandoOT || createMutation.isPending) ? (

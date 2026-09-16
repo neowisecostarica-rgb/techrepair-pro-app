@@ -97,11 +97,11 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
     <div className="max-w-7xl mx-auto space-y-8">
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center">
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">Hoy</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Hoy</h1>
             <p className="text-slate-600">Seguimiento y cierres</p>
           </div>
         </div>
@@ -111,10 +111,10 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-blue-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
             <Phone className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Seguimientos CRM</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Seguimientos CRM</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -151,10 +151,10 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-orange-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
             <FileText className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Cotizaciones Pendientes</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Cotizaciones Pendientes</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -190,10 +190,10 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-emerald-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
             <DollarSign className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Mis Ventas del Día</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Mis Ventas del Día</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -234,10 +234,10 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
 
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-purple-200">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
             <Calendar className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Mi Agenda Hoy</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Mi Agenda Hoy</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">

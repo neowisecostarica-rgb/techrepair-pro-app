@@ -43,4 +43,3 @@ Backend action `adminSetCommercialLifecycle` is the authoritative manual transit
 ## C4 closure
 Implemented: schema authority, effective entitlement projection, explicit activation, lifecycle transitions, auditability, Platform Console visibility/control, provider-ready references and strict separation from Organization.status.
 Deferred intentionally: payment collection, invoicing/tax documents, provider webhooks, automatic renewal scheduler and automatic suspension. Those require a selected provider and commercial/legal requirements; they are not prerequisites to an assisted pilot.
-

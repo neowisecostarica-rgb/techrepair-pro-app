@@ -13,7 +13,7 @@
         "advanced",
         "enterprise"
       ],
-      "description": "Canonical internal commercial package"
+      "description": "Canonical internal commercial package; advanced maps to customer-facing Business"
     },
     "billing_status": {
       "type": "string",
@@ -37,7 +37,7 @@
     },
     "policy_version": {
       "type": "string",
-      "default": "2026-09-c1"
+      "default": "2026-09-c4"
     },
     "capabilities": {
       "type": "array",
@@ -75,6 +75,74 @@
     "notes": {
       "type": "string",
       "description": "Internal commercial/admin note"
+    },
+    "license_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "grace",
+        "suspended",
+        "revoked",
+        "expired"
+      ],
+      "default": "pending",
+      "description": "Commercial access/license lifecycle independent from operational Organization.status"
+    },
+    "license_key_hash": {
+      "type": "string",
+      "description": "Hash/reference only; never store or expose plaintext activation secrets here"
+    },
+    "activated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "activation_method": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "invite",
+        "contract",
+        "migration",
+        "pilot"
+      ],
+      "description": "How commercial access was activated"
+    },
+    "current_period_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "current_period_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "renewal_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "grace_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancel_at_period_end": {
+      "type": "boolean",
+      "default": false
+    },
+    "billing_provider": {
+      "type": "string",
+      "description": "Provider identifier when/if integrated; absent means administratively managed"
+    },
+    "billing_customer_ref": {
+      "type": "string",
+      "description": "External provider customer reference, never frontend authority"
+    },
+    "billing_subscription_ref": {
+      "type": "string",
+      "description": "External provider subscription reference, never frontend authority"
+    },
+    "last_billing_event_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

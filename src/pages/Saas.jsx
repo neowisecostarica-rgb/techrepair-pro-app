@@ -132,15 +132,15 @@ function SaasContent() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
   const [justCreatedOrgId, setJustCreatedOrgId] = useState(null);
-  
+
   // P1: Estado para selects del modal
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('');
-  
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  
+
   // P0: Guard de idempotencia inmutable
   const isCreatingRef = useRef(false);
 
@@ -201,11 +201,11 @@ function SaasContent() {
     }
 
     try {
-      await toggleOrgStatusMutation.mutateAsync({ 
-        orgId: selectedOrg.id, 
-        newStatus: 'suspended' 
+      await toggleOrgStatusMutation.mutateAsync({
+        orgId: selectedOrg.id,
+        newStatus: 'suspended'
       });
-      
+
       setShowSuspendModal(false);
       setSuspendReason('');
       setSelectedOrg(null);
@@ -219,11 +219,11 @@ function SaasContent() {
     if (!confirm(`¿Reactivar organización "${organization.name}"?`)) return;
 
     try {
-      await toggleOrgStatusMutation.mutateAsync({ 
-        orgId: organization.id, 
-        newStatus: 'active' 
+      await toggleOrgStatusMutation.mutateAsync({
+        orgId: organization.id,
+        newStatus: 'active'
       });
-      
+
     } catch (error) {
       console.error('Error reactivando org:', error);
       alert('Error al reactivar organización');
@@ -263,12 +263,12 @@ function SaasContent() {
 
   // Health Checks (integridad de datos)
   const healthChecks = {
-    orgsWithoutBranches: organizations.filter(org => 
+    orgsWithoutBranches: organizations.filter(org =>
       org.status === 'active' && !allBranches.some(b => b.organization_id === org.id)
     ).length,
     usersWithoutOrg: allUserAccounts.filter(u => !u.organization_id).length,
     otsWithoutCliente: allOrders.filter(ot => !ot.cliente_id).length,
-    expiredActiveWarranties: allGarantias.filter(g => 
+    expiredActiveWarranties: allGarantias.filter(g =>
       g.estado === 'ACTIVA' && new Date(g.fecha_fin) < new Date()
     ).length,
   };
@@ -281,24 +281,24 @@ function SaasContent() {
       const newOrg = result.organization;
       // P0: Resetear guard de idempotencia
       isCreatingRef.current = false;
-      
+
       // P0: Auto-refresh de la lista de tenants
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
-      
+
       // P0: Highlight del tenant recién creado
       setJustCreatedOrgId(newOrg.id);
       setTimeout(() => setJustCreatedOrgId(null), 5000);
-      
+
       // P0: Feedback visual
       alert(`✅ Tenant "${newOrg.name}" creado exitosamente`);
-      
+
       setShowModal(false);
       setCreating(false);
     },
     onError: (error) => {
       // P0: Resetear guard de idempotencia
       isCreatingRef.current = false;
-      
+
       console.error('Error creando tenant:', error);
       alert(`❌ Error al crear tenant: ${error.message || 'Error desconocido'}`);
       setCreating(false);
@@ -307,19 +307,19 @@ function SaasContent() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // P0: Guard de idempotencia INMUTABLE - protección REAL contra duplicados
     if (isCreatingRef.current) {
       console.warn('⛔ Guard activo: creación ya en progreso, bloqueando ejecución duplicada');
       return;
     }
-    
+
     // Activar guard ANTES de cualquier otra lógica
     isCreatingRef.current = true;
     setCreating(true);
-    
+
     const formData = new FormData(e.target);
-    
+
     createOrgMutation.mutate({
       organization: {
         name: formData.get('name'),
@@ -333,7 +333,7 @@ function SaasContent() {
       admin_email: formData.get('admin_email'),
     });
   };
-  
+
   // P1: Handler de cambio de país (autoselección de moneda)
   const handleCountryChange = (countryCode) => {
     setSelectedCountry(countryCode);
@@ -557,9 +557,9 @@ function SaasContent() {
                   {auditLogs.map((log) => (
                     <tr key={log.id} className="border-t hover:bg-slate-50">
                       <td className="p-3 text-xs text-slate-600">
-                        {new Date(log.created_date).toLocaleString('es-ES', { 
-                          dateStyle: 'short', 
-                          timeStyle: 'short' 
+                        {new Date(log.created_date).toLocaleString('es-ES', {
+                          dateStyle: 'short',
+                          timeStyle: 'short'
                         })}
                       </td>
                       <td className="p-3 text-xs font-mono text-slate-700">{log.super_admin_email}</td>
@@ -626,7 +626,8 @@ function SaasContent() {
                   <tr>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Name</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Package</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Commercial</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Access</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Created</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Users</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Branches</th>
@@ -643,11 +644,13 @@ function SaasContent() {
                     const entitlement = entitlementsByOrg[org.id];
                     const packageName = entitlement?.package_id || 'core';
                     const entitlementSource = entitlement?.source || 'legacy_fallback';
+                    const billingStatus = entitlement?.billing_status || 'active';
+                    const billingInterval = entitlement?.billing_interval || 'monthly';
                     const partner = partners.find(p => p.id === org.partner_id);
 
                     return (
-                      <tr 
-                        key={org.id} 
+                      <tr
+                        key={org.id}
                         className={`border-t hover:bg-slate-50 transition-all duration-500 ${
                           isNewlyCreated ? 'bg-green-100 animate-pulse' : ''
                         }`}
@@ -660,15 +663,21 @@ function SaasContent() {
                           )}
                         </td>
                         <td className="p-3">
-                          <Badge className="bg-indigo-100 text-indigo-700 border-0 uppercase text-xs">
+                          <Badge className="bg-teal-50 text-teal-800 border border-teal-200 uppercase text-xs">
                             {packageName}
                           </Badge>
-                          <p className="text-xs text-slate-500 mt-1">{entitlementSource === 'legacy_fallback' ? `Legacy ${org.plan || 'basic'} → compatibility` : entitlementSource}</p>
+                          <p className="text-xs text-slate-500 mt-1">{entitlementSource === 'legacy_fallback' ? `Legacy ${org.plan || 'basic'} → compatibility` : `Authority: ${entitlementSource}`}</p>
                         </td>
                         <td className="p-3">
-                          <Badge className={org.status === 'active' 
-                            ? 'bg-green-100 text-green-700 border-0' 
-                            : 'bg-red-100 text-red-700 border-0'}>
+                          <Badge className={billingStatus === 'active' ? 'bg-teal-50 text-teal-800 border border-teal-200' : billingStatus === 'trial' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
+                            {billingStatus}
+                          </Badge>
+                          <p className="text-xs text-slate-500 mt-1">{billingInterval}</p>
+                        </td>
+                        <td className="p-3">
+                          <Badge className={org.status === 'active'
+                            ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                            : 'bg-red-50 text-red-700 border border-red-200'}>
                             {org.status}
                           </Badge>
                         </td>
@@ -765,8 +774,8 @@ function SaasContent() {
               />
             </div>
             <div className="flex gap-3 justify-end pt-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setShowSuspendModal(false);
                   setSuspendReason('');
@@ -775,7 +784,7 @@ function SaasContent() {
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleSuspendOrg}
                 className="bg-red-600 hover:bg-red-700"
                 disabled={!suspendReason.trim()}
@@ -791,7 +800,7 @@ function SaasContent() {
       <Dialog open={showChangePlanModal} onOpenChange={setShowChangePlanModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Change Commercial Package</DialogTitle>
+            <DialogTitle className="text-xl font-bold">Administrar paquete TRP</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             {selectedOrg && (
@@ -802,7 +811,7 @@ function SaasContent() {
               </div>
             )}
             <div>
-              <Label htmlFor="new-plan">Commercial Package</Label>
+              <Label htmlFor="new-plan">Paquete TRP</Label>
               <select
                 id="new-plan"
                 value={newPackage}
@@ -815,19 +824,19 @@ function SaasContent() {
               </select>
             </div>
             <div>
-              <Label htmlFor="billing-interval">Billing Interval</Label>
+              <Label htmlFor="billing-interval">Facturación</Label>
               <select id="billing-interval" value={newBillingInterval} onChange={(e) => setNewBillingInterval(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md">
-                <option value="monthly">Monthly</option>
-                <option value="annual">Annual</option>
-                <option value="contract">Contract</option>
+                <option value="monthly">Mensual</option>
+                <option value="annual">Anual</option>
+                <option value="contract">Contrato</option>
               </select>
             </div>
             <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-900">
-              This changes backend commercial entitlement only. Legacy plan and billing provider are not modified.
+              Esta acción modifica la autoridad comercial de TRP. El plan legacy se conserva únicamente para compatibilidad y no se modifica aquí.
             </div>
             <div className="flex gap-3 justify-end pt-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setShowChangePlanModal(false);
                   setNewPackage('core');
@@ -837,11 +846,11 @@ function SaasContent() {
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleChangePlan}
-                className="bg-indigo-600 hover:bg-indigo-700"
+                className="bg-teal-700 hover:bg-teal-800"
               >
-                Apply Package
+                Aplicar paquete
               </Button>
             </div>
           </div>
@@ -927,7 +936,7 @@ function SaasContent() {
                     </option>
                   ))}
                 </select>
-                
+
                 <p className="text-xs text-slate-500 mt-2">Legacy provisioning code only. Commercial package is assigned from Entitlement Authority after tenant creation.</p>
               </div>
 
@@ -953,22 +962,22 @@ function SaasContent() {
             </div>
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => {
                   setShowModal(false);
                   setSelectedCountry('');
                   setSelectedCurrency('');
                   setSelectedPlan('');
-                }} 
+                }}
                 disabled={creating}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                className="bg-slate-800 hover:bg-slate-900" 
+              <Button
+                type="submit"
+                className="bg-slate-800 hover:bg-slate-900"
                 disabled={creating || !selectedCountry || !selectedCurrency || !selectedPlan}
               >
                 {creating ? (

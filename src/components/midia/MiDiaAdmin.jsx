@@ -162,7 +162,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
   const otsPropias = todasOrdenes.filter(o => o.tecnico_asignado_id === user?.id);
 
-  // Bandeja accionable para ORG_ADMIN/BRANCH_ADMIN. "Mi Día" administrativo
+  // Bandeja accionable para ORG_ADMIN/BRANCH_ADMIN. "Hoy" administrativo
   // antes ocultaba por completo las OTs ASIGNADA que el técnico veía en su
   // propia bandeja.
   const otsPendientesCobroDiagnostico = todasOrdenes.filter(o =>
@@ -184,8 +184,8 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">Mi Día</h1>
-            <p className="text-slate-600">Vista operativa del día</p>
+            <h1 className="text-4xl font-bold text-slate-900">Hoy</h1>
+            <p className="text-slate-600">Lo que requiere atención y acción ahora.</p>
           </div>
         </div>
       </div>
@@ -285,7 +285,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
           ) : (
             <>
               {otsVencidas.slice(0, 3).map(ot => (
-                <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
+                <Link key={ot.id} to={`/expediente/${ot.id}`}>
                   <div className="flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md transition-shadow cursor-pointer">
                     <div className="flex items-center gap-3">
                       <AlertCircle className="w-5 h-5 text-red-500" />
@@ -294,7 +294,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
                         <p className="text-sm text-slate-500">{getClienteName(ot.cliente_id)} - Vencida</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline">Ver OT</Button>
+                    <Button size="sm" variant="outline">Abrir expediente</Button>
                   </div>
                 </Link>
               ))}
@@ -357,7 +357,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
               <p className="text-sm font-medium text-slate-700 mb-2">Cola de Revisión ({otsColaRevision.length})</p>
               <div className="space-y-2">
                 {otsColaRevision.slice(0, 3).map(ot => (
-                  <Link key={ot.id} to={createPageUrl('ColaRevision')}>
+                  <Link key={ot.id} to={`/expediente/${ot.id}`}>
                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
                       <div>
                         <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
@@ -376,7 +376,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
               <p className="text-sm font-medium text-slate-700 mb-2">OTs Críticas ({otsCriticas.length})</p>
               <div className="space-y-2">
                 {otsCriticas.slice(0, 3).map(ot => (
-                  <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
+                  <Link key={ot.id} to={`/expediente/${ot.id}`}>
                     <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors cursor-pointer">
                       <div>
                         <p className="font-medium text-slate-900">{ot.codigo_ot}</p>
@@ -395,7 +395,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
               <p className="text-sm font-medium text-slate-700 mb-2">Mis OTs ({otsPropias.length})</p>
               <div className="space-y-2">
                 {otsPropias.slice(0, 3).map(ot => (
-                  <Link key={ot.id} to={createPageUrl('OrdenesTrabajo')}>
+                  <Link key={ot.id} to={`/expediente/${ot.id}`}>
                     <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer">
                       <div>
                         <p className="font-medium text-slate-900">{ot.codigo_ot}</p>

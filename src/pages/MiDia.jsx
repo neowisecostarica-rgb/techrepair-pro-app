@@ -4,10 +4,11 @@ import PageGuard from '@/components/guards/PageGuard';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import MiDiaTech from '@/components/midia/MiDiaTech';
 import MiDiaAdmin from '@/components/midia/MiDiaAdmin';
+import MiDiaSales from '@/components/midia/MiDiaSales';
 
 export default function MiDia() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'TECHNICIAN', 'BRANCH_ADMIN']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'TECHNICIAN', 'BRANCH_ADMIN', 'SALES']}>
       <MiDiaContent />
     </PageGuard>
   );
@@ -19,6 +20,10 @@ function MiDiaContent() {
 
   if (effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN') {
     return <MiDiaAdmin user={user} effectiveOrgId={effectiveOrgId} effectiveRole={effectiveRole} />;
+  }
+
+  if (effectiveRole === 'SALES') {
+    return <MiDiaSales user={user} effectiveOrgId={effectiveOrgId} />;
   }
 
   return (

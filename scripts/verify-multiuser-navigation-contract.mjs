@@ -44,7 +44,9 @@ test('Mi Dia is visible exactly to presets with technical-work eligibility', () 
 
 test('customer-service navigation matches its operational capabilities', () => {
   const paths = visiblePaths('CUSTOMER_SERVICE');
-  for (const path of ['OrdenesTrabajo', 'Agenda', 'Clientes', 'CRM']) assert.ok(paths.includes(path), path);
+  // CRM remains an authorized contextual capability, but is intentionally not a primary nav destination.
+  for (const path of ['OrdenesTrabajo', 'Agenda', 'Clientes']) assert.ok(paths.includes(path), path);
+  assert.ok(!paths.includes('CRM'), 'CRM should stay out of primary navigation');
   for (const path of ['MiDia', 'Inventario', 'Finanzas', 'Settings']) assert.ok(!paths.includes(path), path);
 });
 

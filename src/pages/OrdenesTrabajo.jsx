@@ -814,25 +814,17 @@ function OrdenesTrabajoContent() {
                           </span>
                         </div>
                       </div>
-                      <div className="mt-3 flex justify-end gap-2">
+                      <div className="mt-3 flex justify-end">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           className="h-7 px-2.5 text-xs"
-                          onClick={(e) => { e.stopPropagation(); setSelectedOT(orden); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/expediente/${orden.id}`); }}
                         >
-                          <Eye className="w-3 h-3 mr-1" />
-                          Ver detalle
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          Abrir expediente
                         </Button>
-                        <Link
-                          to={`/expediente/${orden.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          Ir a expediente
-                        </Link>
                       </div>
                     </div>
                   </CardContent>

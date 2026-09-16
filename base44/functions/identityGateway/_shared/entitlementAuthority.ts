@@ -1,4 +1,4 @@
-export const ENTITLEMENT_POLICY_VERSION = '2026-09-c2-v1';
+export const ENTITLEMENT_POLICY_VERSION = '2026-09-c4-v1';
 
 const LEGACY_PACKAGE_FALLBACK = Object.freeze({
   basic: 'core',
@@ -96,6 +96,15 @@ export async function resolveEffectiveEntitlement(base44, organization) {
     package_id: packageId,
     billing_status: explicit?.billing_status || (organization.status === 'suspended' ? 'suspended' : 'active'),
     billing_interval: explicit?.billing_interval || null,
+    license_status: explicit?.license_status || (explicit ? 'pending' : 'active'),
+    activated_at: explicit?.activated_at || null,
+    activation_method: explicit?.activation_method || (explicit ? null : 'migration'),
+    current_period_start: explicit?.current_period_start || null,
+    current_period_end: explicit?.current_period_end || null,
+    renewal_at: explicit?.renewal_at || null,
+    grace_until: explicit?.grace_until || null,
+    cancel_at_period_end: explicit?.cancel_at_period_end === true,
+    billing_provider: explicit?.billing_provider || null,
     policy_version: explicit?.policy_version || ENTITLEMENT_POLICY_VERSION,
     capabilities,
     limits: {

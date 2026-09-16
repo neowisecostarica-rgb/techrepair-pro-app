@@ -571,13 +571,22 @@ Deno.serve(async (req) => {
         package_id: packageId,
         billing_status: billingStatus,
         billing_interval: billingInterval,
-        policy_version: '2026-09-c2',
+        policy_version: '2026-09-c4',
         capabilities: Array.isArray(body.capabilities) ? body.capabilities : (active?.capabilities || []),
         limits: body.limits && typeof body.limits === 'object' ? body.limits : (active?.limits || {}),
         overrides: body.overrides && typeof body.overrides === 'object' ? body.overrides : (active?.overrides || {}),
         effective_from: active?.effective_from || now,
         source: ['contract', 'migration', 'admin', 'pilot'].includes(body.source) ? body.source : 'admin',
         notes: clean(body.notes, 1000) || active?.notes || '',
+        license_status: ['pending', 'active', 'grace', 'suspended', 'revoked', 'expired'].includes(body.license_status) ? body.license_status : (active?.license_status || 'pending'),
+        activated_at: active?.activated_at || null,
+        activation_method: active?.activation_method || null,
+        current_period_start: body.current_period_start || active?.current_period_start || null,
+        current_period_end: body.current_period_end || active?.current_period_end || null,
+        renewal_at: body.renewal_at || active?.renewal_at || null,
+        grace_until: body.grace_until || active?.grace_until || null,
+        cancel_at_period_end: body.cancel_at_period_end === true,
+        billing_provider: clean(body.billing_provider, 120) || active?.billing_provider || '',
       };
       const policy = active
         ? await base44.asServiceRole.entities.EntitlementPolicy.update(active.id, data)
@@ -589,6 +598,25 @@ Deno.serve(async (req) => {
         correlationId: body.correlation_id,
         metadata: { operation: 'ENTITLEMENT_POLICY_SET', package_id: packageId, billing_status: billingStatus, billing_interval: billingInterval },
       });
+      return Response.json({ success: true, policy, entitlement: await resolveEffectiveEntitlement(base44, organization) });
+    }
+
+    if (action === 'adminActivateLicense') {
+      if (!isCanonicalSuperAdmin(user)) return jsonError('Superadmin requerido', 403, 'SUPERADMIN_REQUIRED');
+      const organizationId = clean(body.organization_id, 160);
+      const [organization] = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, 1);
+      if (!organization) return jsonError('Organizacion no encontrada', 404, 'ORGANIZATION_NOT_FOUND');
+      if (inspectControlledPilotConfiguration(organization).enabled) return jsonError('El superadmin no puede mutar una organizacion en piloto controlado', 409, 'CONTROLLED_PILOT_ADMIN_MUTATION_DISABLED');
+      const policies = await base44.asServiceRole.entities.EntitlementPolicy.filter({ organization_id: organizationId }, '-created_date', 20);
+      const active = (policies || []).find(policy => !policy.effective_until) || policies?.[0] || null;
+      if (!active) return jsonError('Primero configure el paquete comercial', 409, 'ENTITLEMENT_REQUIRED');
+      const now = new Date().toISOString();
+      const policy = await base44.asServiceRole.entities.EntitlementPolicy.update(active.id, {
+        license_status: 'active', activated_at: active.activated_at || now,
+        activation_method: ['admin','invite','contract','migration','pilot'].includes(body.activation_method) ? body.activation_method : 'admin',
+        policy_version: '2026-09-c4',
+      });
+      await appendSuperAdminAudit(base44, user, { action: 'update_org', organizationId: organization.id, organizationName: organization.name, correlationId: body.correlation_id, metadata: { operation: 'LICENSE_ACTIVATED', package_id: active.package_id } });
       return Response.json({ success: true, policy, entitlement: await resolveEffectiveEntitlement(base44, organization) });
     }
 

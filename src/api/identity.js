@@ -36,3 +36,6 @@ export const adminCreateIdentityOrganization = (organization, adminEmail) =>
 
 export const adminSetIdentityEntitlement = (organizationId, entitlement) =>
   invokeIdentity('adminSetEntitlement', { organization_id: organizationId, ...entitlement });
+
+export const adminActivateIdentityLicense = (organizationId, activationMethod = 'admin') =>
+  invokeIdentity('adminActivateLicense', { organization_id: organizationId, activation_method: activationMethod });

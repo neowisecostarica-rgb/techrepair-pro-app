@@ -246,7 +246,7 @@ export default function WizardDiagnosticoTecnico({
               El diagnóstico debe cobrarse antes de iniciar la revisión técnica.
             </p>
             <p className="text-sm font-medium">
-              Próximo paso: Ir al Punto de Venta para cobrar el diagnóstico.
+              Próximo paso: Ir a Caja y Cobros para cobrar el diagnóstico.
             </p>
           </AlertDescription>
         </Alert>
@@ -275,7 +275,7 @@ export default function WizardDiagnosticoTecnico({
           <AlertCircle className="w-4 h-4 text-red-600" />
           <AlertDescription className="text-red-800">
             <strong>Trabajo NO activo:</strong> No puedes diagnosticar un trabajo pausado o en espera. 
-            Por favor, retoma el trabajo desde "Mi Día" antes de continuar.
+            Por favor, retoma el trabajo desde "Hoy" antes de continuar.
           </AlertDescription>
         </Alert>
         <div className="flex justify-end pt-4">

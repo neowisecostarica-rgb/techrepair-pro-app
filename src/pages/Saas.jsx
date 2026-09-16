@@ -118,6 +118,7 @@ export default function Saas() {
 }
 
 function SaasContent() {
+  const [consoleSection, setConsoleSection] = useState(() => typeof window !== 'undefined' ? (window.location.hash.replace('#', '') || 'overview') : 'overview');
   const [user, setUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
@@ -151,6 +152,14 @@ function SaasContent() {
       setUser(authUser);
     }
   }, [authUser]);
+
+  useEffect(() => {
+    const syncSection = () => setConsoleSection(window.location.hash.replace('#', '') || 'overview');
+    window.addEventListener('hashchange', syncSection);
+    return () => window.removeEventListener('hashchange', syncSection);
+  }, []);
+
+  const showSection = (section) => consoleSection === section || consoleSection === 'overview';
 
   const { data: adminOverview = {} } = useQuery({
     queryKey: ['identity', 'admin-overview'],
@@ -395,8 +404,8 @@ function SaasContent() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Platform Administration</h1>
-            <p className="text-slate-600">Multi-tenant SaaS Management & System Health</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">TRP Platform Console</h1>
+            <p className="text-slate-600">Administración multi-tenant, comercial y salud de plataforma</p>
             {user && (
               <div className="flex items-center gap-2 mt-3">
                 <Badge className="bg-slate-800 text-white border-0">
@@ -426,7 +435,7 @@ function SaasContent() {
         </div>
 
       <div id="commercial" className="scroll-mt-6" />
-      <Card className="border border-slate-200 shadow-sm bg-white">
+      {consoleSection === 'overview' && <Card className="border border-slate-200 shadow-sm bg-white">
         <CardContent className="p-4 flex flex-wrap gap-2 items-center">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-2">Platform Console</span>
           {[
@@ -441,7 +450,7 @@ function SaasContent() {
             </Button>
           ))}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Platform Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -510,12 +519,12 @@ function SaasContent() {
 
       {/* Global Sales Metrics (Super Admin) */}
       {!authIsImpersonating && (
-        <PlatformActivityMetrics organizations={organizations} />
+        {consoleSection === 'overview' && <PlatformActivityMetrics organizations={organizations} />}
       )}
 
       <div id="health" className="scroll-mt-6" />
       {/* System Health */}
-      {totalHealthIssues > 0 && (
+      {showSection('health') && totalHealthIssues > 0 && (
         <Card className="border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -557,7 +566,7 @@ function SaasContent() {
       <div id="pilot" className="scroll-mt-6" />
       <div id="audit" className="scroll-mt-6" />
       {/* Audit Log */}
-      {auditLogs.length > 0 && (
+      {showSection('audit') && auditLogs.length > 0 && (
         <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Platform Audit Log (Last 10 Actions)</CardTitle>
@@ -599,6 +608,7 @@ function SaasContent() {
       )}
 
       <div id="organizations" className="scroll-mt-6" />
+      {showSection('organizations') && <>
       {/* Filters & Search */}
       <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-6">
@@ -766,6 +776,27 @@ function SaasContent() {
       </Card>
 
 
+
+      </>}
+
+      {consoleSection === 'pilot' && (
+        <Card className="border border-slate-200 shadow-sm bg-white">
+          <CardHeader><CardTitle className="text-lg">Pilot Control</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-600">Superficie reservada para control de pilotos. La activación y las mutaciones continúan gobernadas por las protecciones backend existentes; no se exponen controles ficticios.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {consoleSection === 'commercial' && (
+        <Card className="border border-slate-200 shadow-sm bg-white">
+          <CardHeader><CardTitle className="text-lg">Commercial & Plans</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-slate-600">Autoridad comercial TRP: Core, Advanced y Enterprise. Los códigos Basic/Pro/Premium permanecen únicamente como compatibilidad legacy.</p>
+            <Button variant="outline" onClick={() => { window.location.hash = 'organizations'; }}>Administrar paquetes por organización</Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Modal Suspend Organization */}
       <Dialog open={showSuspendModal} onOpenChange={setShowSuspendModal}>

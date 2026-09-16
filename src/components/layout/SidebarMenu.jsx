@@ -56,11 +56,12 @@ export default function SidebarMenu({ effectiveRole, capabilities = [], currentP
             {/* Ítems de la sección */}
             {isOpen && items.map((item) => {
               const Icon = item.icon;
-              const isActive = currentPageName === item.path;
+              const activeHash = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '';
+              const isActive = currentPageName === item.path && (item.path !== 'Saas' || (item.hash ? activeHash === item.hash : !activeHash));
               return (
                 <Link
                   key={`${item.path}-${item.label}`}
-                  to={createPageUrl(item.path)}
+                  to={`${createPageUrl(item.path)}${item.hash ? `#${item.hash}` : ''}`}
                   title={sidebarOpen && item.tooltip ? item.tooltip : undefined}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                     isActive

@@ -390,7 +390,7 @@ function SaasContent() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#f6f8fb] p-8">
+      <div id="overview" className="min-h-screen bg-[#f6f8fb] p-8 scroll-mt-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -424,6 +424,24 @@ function SaasContent() {
             </Button>
           </div>
         </div>
+
+      <div id="commercial" className="scroll-mt-6" />
+      <Card className="border border-slate-200 shadow-sm bg-white">
+        <CardContent className="p-4 flex flex-wrap gap-2 items-center">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-2">Platform Console</span>
+          {[
+            ['organizations', 'Organizaciones'],
+            ['commercial', 'Commercial & Plans'],
+            ['health', 'Platform Health'],
+            ['audit', 'Audit'],
+            ['pilot', 'Pilot Control'],
+          ].map(([target, label]) => (
+            <Button key={target} variant="outline" size="sm" onClick={() => { window.location.hash = target; document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+              {label}
+            </Button>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Platform Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -495,6 +513,7 @@ function SaasContent() {
         <PlatformActivityMetrics organizations={organizations} />
       )}
 
+      <div id="health" className="scroll-mt-6" />
       {/* System Health */}
       {totalHealthIssues > 0 && (
         <Card className="border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
@@ -535,6 +554,8 @@ function SaasContent() {
         </Card>
       )}
 
+      <div id="pilot" className="scroll-mt-6" />
+      <div id="audit" className="scroll-mt-6" />
       {/* Audit Log */}
       {auditLogs.length > 0 && (
         <Card className="border border-slate-200 shadow-sm">
@@ -577,6 +598,7 @@ function SaasContent() {
         </Card>
       )}
 
+      <div id="organizations" className="scroll-mt-6" />
       {/* Filters & Search */}
       <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-6">

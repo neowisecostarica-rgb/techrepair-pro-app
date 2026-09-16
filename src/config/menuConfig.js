@@ -20,6 +20,11 @@ import {
   ShieldAlert,
   Activity,
   Laptop,
+  Building2,
+  CreditCard,
+  HeartPulse,
+  ScrollText,
+  FlaskConical,
 } from 'lucide-react';
 
 export const MENU_ITEMS = [
@@ -121,19 +126,60 @@ export const MENU_ITEMS = [
     anyCapabilities: ['ORG_ADMINISTRATION'],
   },
 
-  // ── SUPER_ADMIN (panel SaaS) ────────────────────────────────────────────────
+  // ── SUPER_ADMIN — TRP Platform Console ──────────────────────────────────────
   {
-    label: 'Panel SaaS',
+    label: 'Overview',
     path: 'Saas',
+    hash: 'overview',
     icon: LayoutDashboard,
     category: null,
+    platformRoles: ['SUPER_ADMIN'],
+  },
+  {
+    label: 'Organizaciones',
+    path: 'Saas',
+    hash: 'organizations',
+    icon: Building2,
+    category: 'PLATAFORMA',
+    platformRoles: ['SUPER_ADMIN'],
+  },
+  {
+    label: 'Commercial & Plans',
+    path: 'Saas',
+    hash: 'commercial',
+    icon: CreditCard,
+    category: 'PLATAFORMA',
+    platformRoles: ['SUPER_ADMIN'],
+  },
+  {
+    label: 'Platform Health',
+    path: 'Saas',
+    hash: 'health',
+    icon: HeartPulse,
+    category: 'CONTROL',
+    platformRoles: ['SUPER_ADMIN'],
+  },
+  {
+    label: 'Audit',
+    path: 'Saas',
+    hash: 'audit',
+    icon: ScrollText,
+    category: 'CONTROL',
+    platformRoles: ['SUPER_ADMIN'],
+  },
+  {
+    label: 'Pilot Control',
+    path: 'Saas',
+    hash: 'pilot',
+    icon: FlaskConical,
+    category: 'CONTROL',
     platformRoles: ['SUPER_ADMIN'],
   },
   {
     label: 'Admin Reset',
     path: 'AdminReset',
     icon: AlertCircle,
-    category: null,
+    category: 'SENSITIVE',
     platformRoles: ['SUPER_ADMIN'],
   },
 ];

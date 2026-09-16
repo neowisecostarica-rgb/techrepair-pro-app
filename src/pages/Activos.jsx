@@ -73,7 +73,7 @@ export default function Activos() {
             const ultimaOT = historial[0];
             const owner = clienteById[equipo.cliente_id];
             return (
-              <Card key={equipo.id} className="border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+              <Card key={equipo.id} className="border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/activo/${equipo.id}`)}>
                 <CardContent className="p-5 space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0"><Laptop className="w-5 h-5" /></div>
@@ -93,7 +93,7 @@ export default function Activos() {
 
                   <div className="flex items-center justify-between border-t pt-3">
                     <div className="flex items-center gap-2 text-sm text-slate-600"><History className="w-4 h-4" /><span><strong>{historial.length}</strong> {historial.length === 1 ? 'intervención' : 'intervenciones'}</span>{ultimaOT && <Badge className="bg-slate-100 text-slate-700 border-0">{ultimaOT.estado}</Badge>}</div>
-                    {ultimaOT ? <Button variant="ghost" size="sm" onClick={() => navigate(`/expediente/${ultimaOT.id}`)}>Último expediente <ArrowRight className="w-3.5 h-3.5 ml-1" /></Button> : <Button variant="ghost" size="sm" onClick={() => navigate('/OrdenesTrabajo')}>Crear primera OT <ArrowRight className="w-3.5 h-3.5 ml-1" /></Button>}
+                    <Button variant="ghost" size="sm" onClick={(event) => { event.stopPropagation(); navigate(`/activo/${equipo.id}`); }}>Ver activo <ArrowRight className="w-3.5 h-3.5 ml-1" /></Button>
                   </div>
                 </CardContent>
               </Card>

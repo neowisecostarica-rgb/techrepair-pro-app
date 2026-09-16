@@ -1,84 +1,87 @@
 # TRP C5 — COMMERCIAL CLOSURE / WEBSITE HANDOFF SOT
 
-Date: 2026-09-16
-Status: CLOSED — COMMERCIAL ENGINE READY FOR WEBSITE
-Product: TRP — Technology Reliability Platform
-Territory: Technology Asset Operations
+Fecha: 2026-09-16
+Estado: CLOSED — COMMERCIAL ENGINE READY FOR WEBSITE + PILOT VALIDATION
+Producto: TRP — Technology Reliability Platform
+Territorio: Technology Asset Operations
 
-## 1. What TRP sells
-TRP sells an operating platform for technology service operations and technology assets. It connects the operational service workflow with asset identity, evidence, history and lifecycle context so a company can move from isolated repairs toward operational control and, progressively, reliability.
+## 1. Qué vendemos
+TRP convierte operaciones técnicas fragmentadas en una operación trazable alrededor del activo. La narrativa comercial canónica es:
 
-Canonical narrative: `Repair → Operational Control → Asset Lifecycle → Reliability`.
+`Repair → Operational Control → Asset Lifecycle → Reliability`
 
-TRP is not positioned as generic ticketing, an ERP, accounting/payroll/HR software, or an unvalidated predictive-reliability product.
+Promesa de trabajo para ventas/web: **controlar el ciclo completo del trabajo técnico y conservar el historial operacional del activo para que el equipo sepa qué ocurre, qué falta y qué decisión sigue.**
 
-## 2. Commercial packages
-Customer-facing packages are `TRP Core`, `TRP Business`, `TRP Enterprise`.
-Internal entitlement ID `advanced` maps to Business and must not be exposed as the commercial name.
+TRP no se presenta como CRM, POS, inventario, agenda o ticketing aislado. Esos componentes sostienen el workflow operacional F0–F8 y el historial del activo.
 
-Working pilot pricing baseline:
-- Core: USD 69/month or USD 690/year.
-- Business: USD 129/month or USD 1,290/year.
-- Enterprise: custom annual contract / quote.
+## 2. ICP de lanzamiento
+Comprador primario: dueño, gerente general o responsable de operaciones de un negocio que recibe/custodia equipos, diagnostica, cotiza, interviene, prueba, cobra y entrega.
 
-Annual Core/Business baseline equals ten monthly payments. Pricing remains a pilot baseline and may only change through an explicit superseding commercial decision after evidence.
+Señales de fit: múltiples OTs simultáneas, varias personas tocando el proceso, necesidad de custodia/trazabilidad, diagnóstico/cotización, repuestos, cliente preguntando estado, evidencia, una o más sucursales.
 
-## 3. What the upgrade buys
-The essential F0–F8 operational workflow remains commercially useful in paid packages. Upgrades buy depth, scale and control rather than artificial transaction restrictions.
+No optimizar el lanzamiento para CRM generalista, retail puro, ERP contable, project management genérico o empresas sin workflow técnico sobre activos/equipos.
 
-Core: complete essential operational workflow, customer/asset context and basic business visibility.
-Business: Core plus production-ready advanced multi-branch operation, deeper analytics/supervision, Quality/Non-conformity, Recycling, CRM/Leads and advanced automation where actually production-ready.
-Enterprise: contractual scale/governance/evidence/support and only the Enterprise capabilities/integrations that are implemented and explicitly contracted.
+## 3. Oferta canónica
+### TRP Core — USD 69/mes · USD 690/año
+Workflow operacional esencial completo. No se mutila F0–F8 para forzar upgrades. Incluye recepción/OT, Expediente, diagnóstico/pruebas, cotización/aprobación, clientes/equipos/activos, caja/cobros, entrega/evidencia, garantía, inventario operacional, agenda, portal/seguimiento, Hoy por rol y lectura básica del negocio.
 
-No artificial caps on customers, assets or work orders solely to force an upgrade. Branch/user/asset scale thresholds remain configurable hypotheses until pilot evidence supports a policy.
+### TRP Business — USD 129/mes · USD 1,290/año
+Todo Core + mayor profundidad, escala y control: multi-sucursal avanzada, analytics/productividad más profundos y capacidades avanzadas únicamente donde estén production-ready. ID técnico interno: `advanced`; nunca exponerlo al cliente.
 
-## 4. Contract and billing unit
-Primary commercial unit: organization / tenant. Users are not the primary billing meter. Monthly, annual and Enterprise contract intervals are supported by the commercial architecture.
+### TRP Enterprise — cotización / contrato anual
+Para escala, gobernanza, evidencia, soporte e integraciones específicamente contratadas y realmente disponibles. Implementación/migración/integración se cotiza separadamente salvo que el contrato diga lo contrario.
 
-## 5. Onboarding and implementation offer
-Core launch pilot: guided/self-guided onboarding may be included. Target scope is organization → branch → users/roles → assets → first OT / first value.
+Precios Core/Business son baseline de piloto, no una promesa de precio perpetuo. Cambios futuros requieren decisión que explícitamente superseda esta SOT.
 
-Business: guided onboarding is appropriate; migration/configuration beyond standard onboarding is scoped according to complexity.
+## 4. Unidad comercial y límites
+Unidad contractual primaria: organización/tenant. Usuarios no son el medidor primario. No hay caps artificiales de OT/clientes/activos en el workflow esencial. Sucursales, activos, complejidad y capacidades son dimensiones configurables de entitlement/escala; thresholds duros se validarán con telemetría real de piloto antes de venderlos como límites.
 
-Enterprise: implementation, migration, integrations and specialized services are separately scoped/quoted unless the contract explicitly includes them.
+## 5. Onboarding e implementación
+Core: onboarding guiado/self-guided puede incluirse en pilotos de lanzamiento.
+Business: onboarding guiado; migración se incluye o cotiza según complejidad real.
+Enterprise: discovery, implementación, migración, integración, capacitación/rollout y servicios especializados se cotizan por alcance.
 
-There is no universal setup fee yet. Do not hide material implementation work inside SaaS recurring price.
+Regla: no esconder trabajo material de implementación dentro de la suscripción SaaS y no inventar un setup fee universal sin evidencia de piloto.
 
-## 6. Activation and billing truth
-Assisted pilot activation is administratively controlled and auditable. Entitlement, billing, license/access and operational Organization.status are separate authorities.
+## 6. Trial y activación de piloto
+No se fija todavía un trial público automático. Para el piloto, activación controlada por Super Admin + EntitlementPolicy + licencia auditable. Esto permite vender/probar sin fingir checkout o billing automation inexistente.
 
-TRP does not currently claim automated payment collection, invoicing/tax documents, payment-provider webhooks or automatic renewal/suspension. Those require an approved provider/integration. `past_due` does not silently suspend operational access.
+Billing, entitlement, licencia y Organization.status permanecen separados. `past_due` no suspende automáticamente la operación. Grace/suspensión/revocación requieren transición explícita/auditable hasta que exista un proveedor real y una política aprobada.
 
-## 7. Trial / sales motion for pilot
-No public self-service free trial is approved in C5. The launch motion is assisted demo / commercial pilot / controlled activation. A future self-service trial requires support capacity, abuse controls, onboarding telemetry and a billing/provider decision.
+## 7. Qué NO vender todavía
+- TRP Reliability Score.
+- Predicciones automáticas de reemplazo.
+- Availability/MTBF/MTTR donde no exista instrumentación/datos válidos.
+- Employee Technology Lifecycle como capability terminada.
+- SSO/HRIS/MDM/RMM/ITSM u otras integraciones no implementadas/validadas.
+- Billing/payment automation, invoicing o checkout que todavía no exista.
+- Cualquier roadmap Enterprise como funcionalidad actual.
 
-Primary website conversion should therefore be demo/contact/pilot-oriented rather than “start free trial” unless a later decision supersedes this SOT.
+Reliability se comunica hoy como dirección y valor derivado de trazabilidad/historial/señales explicables, no como algoritmo mágico.
 
-## 8. Reliability claims boundary
-Website and sales may communicate the progression toward reliability and explainable operational signals based on actual data. Do not claim a `TRP Reliability Score`, predictive replacement, guaranteed uptime or metrics that the product cannot currently substantiate.
+## 8. Handoff obligatorio a Website (D)
+La web debe usar producto real y visual system TRP. Debe cubrir: hero/promesa, problema/transformación, Repair→Reliability, cómo funciona, screenshots reales, workflow/capacidades, asset lifecycle, roles, multi-sucursal, seguridad/trazabilidad, Core/Business/Enterprise, onboarding, FAQ y CTA demo/contacto.
 
-## 9. Enterprise claims boundary
-Enterprise can be presented as a contractual path for scale, governance, evidence and specialized implementation. Employee Technology Lifecycle, SSO/API/MDM/RMM/HRIS and external integrations must be labeled current only after implementation and validation. Roadmap is not a sales feature.
+No usar lenguaje de software de reparación barato. No usar Basic/Pro/Premium legacy. No mostrar `advanced`. No prometer roadmap.
 
-## 10. Website handoff
-Megablock D may now build the sales experience using this commercial truth:
-- brand: TRP — Technology Reliability Platform;
-- territory: Technology Asset Operations;
-- narrative: Repair → Operational Control → Asset Lifecycle → Reliability;
-- packages: Core / Business / Enterprise;
-- pricing: 69/690, 129/1290, Enterprise custom;
-- CTA motion: demo/contact/assisted pilot;
-- screenshots from real final TRP product surfaces;
-- no legacy Basic/Pro/Premium;
-- no technical `advanced` label;
-- no fake billing automation;
-- no roadmap fiction.
+## 9. Handoff a Enterprise (E)
+Enterprise debe convertir necesidades de escala/control en capacidades reales: gobernanza, seguridad, evidencia/retención, Employee Technology Lifecycle y adapters/integraciones cuando se implementen. Enterprise no es “Business ilimitado”.
 
-## 11. C Commercial Engine Definition of Done
-C1 commercial architecture: CLOSED.
-C2 entitlement authority + Super Admin: CLOSED.
-C3 packaging/pricing reconciliation: CLOSED.
-C4 billing/licensing lifecycle + console UX: CLOSED.
-C5 offer/onboarding/claims/website handoff: CLOSED.
+## 10. Handoff a Pilot/GTM (F)
+El piloto debe validar: willingness-to-pay, tiempo de onboarding, costo de implementación/soporte, uso real por roles, multi-sucursal, volumen de activos/OT, capacidades que impulsan upgrade y evidencia de valor operacional. Esa evidencia puede superseder pricing/thresholds mediante nueva decisión explícita.
 
-MEGABLOCK C: CLOSED — implementation/commercial definition complete for assisted pilot and Website handoff. Pricing validation continues as pilot evidence, not as an open engineering blocker.
+## 11. Definition of Done C
+- Posicionamiento comercial canónico: cerrado.
+- Core/Business/Enterprise: cerrado como baseline de piloto.
+- Pricing 69/129/custom + anual: cerrado como baseline de piloto.
+- Organización/tenant como unidad contractual: cerrado.
+- Entitlement Authority: implementado.
+- Billing/licensing lifecycle: implementado para operación administrada.
+- Super Admin commercial console: implementada y UX-polished.
+- Onboarding/implementation model: definido sin fees inventados.
+- Trial público automático: deliberadamente no aprobado; piloto administrado.
+- Claims/no-claims: cerrados.
+- Website handoff: listo.
+- Human E2E y runtime: permanecen en G.
+
+**MEGABLOCK C — COMMERCIAL ENGINE: CLOSED.**

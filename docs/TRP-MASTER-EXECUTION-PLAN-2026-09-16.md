@@ -117,6 +117,18 @@ Reconciliado contra `docs/TRP-CONTEXT-RECOVERY-2026-09-15.md`:
 - Website handoff canónico: `docs/TRP-C5-COMMERCIAL-CLOSURE-2026-09-16.md`.
 - MEGABLOQUE C CLOSED. Pricing continúa validándose con evidencia del piloto, sin bloquear D.
 
+### C5 — COMMERCIAL CLOSURE CLOSED
+- Posicionamiento y promesa comercial listos para web.
+- ICP de lanzamiento y no-ICP definidos.
+- Core USD 69/690, Business USD 129/1290, Enterprise custom como baseline de piloto.
+- Onboarding/implementation separados de suscripción sin setup fee universal inventado.
+- Trial público automático no aprobado; piloto con activación administrada/auditable.
+- Claims/no-claims cerrados para evitar vender roadmap.
+- Handoff explícito a Website, Enterprise y Pilot/GTM.
+- SOT: `docs/TRP-C5-COMMERCIAL-CLOSURE-2026-09-16.md`.
+
+**MEGABLOQUE C — CLOSED. Próximo bloque: D — WEBSITE / SALES EXPERIENCE.**
+
 ## MEGABLOQUE D — WEBSITE / SALES EXPERIENCE
 Estado: NEXT — ENABLED BY C COMMERCIAL CLOSURE
 

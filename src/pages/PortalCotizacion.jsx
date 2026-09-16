@@ -387,7 +387,7 @@ export default function PortalCotizacion() {
         </Card>
 
         {cotizacion.estado === 'enviada' && customerDecisionEnabled && (
-          <Card className="border-2 border-blue-200 shadow-xl">
+          <Card className="border border-slate-200 shadow-sm">
             <CardContent className="p-6">
               <h2 className="text-lg font-bold text-slate-900 mb-2">Decisión del cliente</h2>
               <p className="text-sm text-slate-600 mb-4">

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import PageGuard from '@/components/guards/PageGuard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Laptop, Search, History, MapPin, User, ArrowRight, PackageOpen } from 'lucide-react';
 
 export default function Activos() {
+  return (
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'TECHNICIAN', 'CUSTOMER_SERVICE']}>
+      <ActivosContent />
+    </PageGuard>
+  );
+}
+
+function ActivosContent() {
   const navigate = useNavigate();
   const { effectiveOrgId } = useAuthContext();
   const [search, setSearch] = React.useState('');

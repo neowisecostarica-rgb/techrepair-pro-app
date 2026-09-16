@@ -173,7 +173,7 @@ function ExpedienteOTContent() {
           className="text-slate-500 hover:text-slate-900 -ml-2"
         >
           <ArrowLeft className="w-4 h-4 mr-1.5" />
-          Órdenes de Trabajo
+          Órdenes
         </Button>
         <span className="text-slate-300">/</span>
         <span className="text-sm text-slate-600 font-mono">{ot.codigo_ot}</span>
@@ -190,7 +190,7 @@ function ExpedienteOTContent() {
         ventaPagada={!!ventaPagada}
       />
 
-      {/* ── FASE 3: Centro de Mando ────────────────────────────────────────── */}
+      {/* ── Centro de mando: la OT es la fuente única de verdad operativa ─── */}
       <CentroMando ot={ot} effectiveRole={effectiveRole} />
 
       {/* ── Contexto avanzado ligado a esta OT ─────────────────────────────── */}

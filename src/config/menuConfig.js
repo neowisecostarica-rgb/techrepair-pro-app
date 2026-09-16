@@ -17,9 +17,9 @@ import {
   Settings,
   FileText,
   Sun,
-  TrendingUp,
   ShieldAlert,
   Activity,
+  Laptop,
 } from 'lucide-react';
 
 export const MENU_ITEMS = [
@@ -55,6 +55,13 @@ export const MENU_ITEMS = [
     icon: Wrench,
     category: 'TALLER',
     anyCapabilities: ['RECEPTION_OPERATIONS', 'TECHNICAL_WORK'],
+  },
+  {
+    label: 'Activos',
+    path: 'Activos',
+    icon: Laptop,
+    category: 'TALLER',
+    anyCapabilities: ['RECEPTION_OPERATIONS', 'TECHNICAL_WORK', 'TECHNICAL_SUPERVISION'],
   },
   {
     label: 'Agenda',

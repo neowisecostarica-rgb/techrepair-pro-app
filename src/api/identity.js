@@ -33,3 +33,6 @@ export const adminUpdateIdentityOrganization = (organizationId, changes) =>
   invokeIdentity('adminUpdateOrganization', { organization_id: organizationId, changes });
 export const adminCreateIdentityOrganization = (organization, adminEmail) =>
   invokeIdentity('adminCreateOrganization', { organization, admin_email: adminEmail });
+
+export const adminSetIdentityEntitlement = (organizationId, entitlement) =>
+  invokeIdentity('adminSetEntitlement', { organization_id: organizationId, ...entitlement });

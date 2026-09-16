@@ -24,7 +24,7 @@ import {
   normalizeTenantRole,
 } from './_shared/roleCapabilities.ts';
 import { inspectControlledPilotConfiguration } from './_shared/controlledPilotAuthority.ts';
-import { resolveEffectiveEntitlement } from './_shared/entitlementAuthority.ts';
+import { resolveEffectiveEntitlement, normalizePackageId } from './_shared/entitlementAuthority.ts';
 
 const ORG_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE', 'SUPPORT'];
 const ORG_UPDATE_FIELDS = new Set([
@@ -537,11 +537,59 @@ Deno.serve(async (req) => {
         base44.asServiceRole.entities.UserAccount.list('-created_date', 2000),
         base44.asServiceRole.entities.SuperAdminAudit.list('-recorded_at', 200),
       ]);
+      const organizationEntitlements = await Promise.all((organizations || []).map(async organization => ({
+        organization_id: organization.id,
+        entitlement: await resolveEffectiveEntitlement(base44, organization),
+      })));
       return Response.json({
         organizations: (organizations || []).map(sanitizeOrganization),
+        entitlements: Object.fromEntries(organizationEntitlements.map(item => [item.organization_id, item.entitlement])),
         accounts: (accounts || []).map(sanitizeUserAccount),
         auditLogs: (auditLogs || []).map(projectSuperAdminAudit),
       });
+    }
+
+    if (action === 'adminSetEntitlement') {
+      if (!isCanonicalSuperAdmin(user)) return jsonError('Superadmin requerido', 403, 'SUPERADMIN_REQUIRED');
+      const organizationId = clean(body.organization_id, 160);
+      const [organization] = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, 1);
+      if (!organization) return jsonError('Organizacion no encontrada', 404, 'ORGANIZATION_NOT_FOUND');
+      if (inspectControlledPilotConfiguration(organization).enabled) {
+        return jsonError('El superadmin no puede mutar una organizacion en piloto controlado', 409, 'CONTROLLED_PILOT_ADMIN_MUTATION_DISABLED');
+      }
+      const packageId = normalizePackageId(body.package_id);
+      if (!packageId) return jsonError('Paquete comercial invalido', 400, 'COMMERCIAL_PACKAGE_INVALID');
+      const billingStatus = ['trial', 'active', 'past_due', 'suspended', 'cancelled'].includes(body.billing_status)
+        ? body.billing_status : 'active';
+      const billingInterval = ['monthly', 'annual', 'contract'].includes(body.billing_interval)
+        ? body.billing_interval : (packageId === 'enterprise' ? 'contract' : 'monthly');
+      const existing = await base44.asServiceRole.entities.EntitlementPolicy.filter({ organization_id: organizationId }, '-created_date', 20);
+      const active = (existing || []).find(policy => !policy.effective_until) || existing?.[0] || null;
+      const now = new Date().toISOString();
+      const data = {
+        organization_id: organizationId,
+        package_id: packageId,
+        billing_status: billingStatus,
+        billing_interval: billingInterval,
+        policy_version: '2026-09-c2',
+        capabilities: Array.isArray(body.capabilities) ? body.capabilities : (active?.capabilities || []),
+        limits: body.limits && typeof body.limits === 'object' ? body.limits : (active?.limits || {}),
+        overrides: body.overrides && typeof body.overrides === 'object' ? body.overrides : (active?.overrides || {}),
+        effective_from: active?.effective_from || now,
+        source: ['contract', 'migration', 'admin', 'pilot'].includes(body.source) ? body.source : 'admin',
+        notes: clean(body.notes, 1000) || active?.notes || '',
+      };
+      const policy = active
+        ? await base44.asServiceRole.entities.EntitlementPolicy.update(active.id, data)
+        : await base44.asServiceRole.entities.EntitlementPolicy.create(data);
+      await appendSuperAdminAudit(base44, user, {
+        action: 'update_org',
+        organizationId: organization.id,
+        organizationName: organization.name,
+        correlationId: body.correlation_id,
+        metadata: { operation: 'ENTITLEMENT_POLICY_SET', package_id: packageId, billing_status: billingStatus, billing_interval: billingInterval },
+      });
+      return Response.json({ success: true, policy, entitlement: await resolveEffectiveEntitlement(base44, organization) });
     }
 
     if (action === 'adminUpdateOrganization') {

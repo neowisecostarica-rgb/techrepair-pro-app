@@ -436,7 +436,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center text-white font-bold">
+                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center text-red-700 font-bold">
                       <Zap className="w-6 h-6" />
                     </div>
                     <div>
@@ -602,7 +602,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center text-white font-bold">
+                      <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center text-teal-700 font-bold">
                         <Play className="w-6 h-6" />
                       </div>
                       <div>
@@ -734,7 +734,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                     )}
                     
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-white font-bold">
+                      <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 font-bold">
                         <Pause className="w-6 h-6" />
                       </div>
                       <div>
@@ -851,7 +851,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-white font-bold">
+                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-700 font-bold">
                         <AlertCircle className="w-6 h-6" />
                       </div>
                       <div>

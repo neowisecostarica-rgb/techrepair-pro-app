@@ -132,8 +132,8 @@ export default function PortalCliente() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-0 shadow-2xl">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <Shield className="w-16 h-16 mx-auto mb-6 text-slate-400" />
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Acceso Restringido</h1>
@@ -148,9 +148,9 @@ export default function PortalCliente() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Cargando información...</p>
         </div>
       </div>
@@ -159,8 +159,8 @@ export default function PortalCliente() {
 
   if (error || !orden) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-0 shadow-2xl">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
             <h1 className="text-2xl font-bold text-slate-900 mb-3">
@@ -187,10 +187,10 @@ export default function PortalCliente() {
                        !linkExpirado;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-[#f6f8fb] p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <Card className="border-0 shadow-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+        <Card className="border border-slate-200 shadow-sm bg-[#0b1220] text-white">
           <CardContent className="p-8">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
@@ -209,7 +209,7 @@ export default function PortalCliente() {
         </Card>
 
         {/* Información del Cliente y Equipo */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -240,7 +240,7 @@ export default function PortalCliente() {
         </Card>
 
         {/* Línea de Tiempo */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <h3 className="font-bold text-lg text-slate-900 mb-6">Progreso</h3>
             <div className="space-y-4">
@@ -302,7 +302,7 @@ export default function PortalCliente() {
         {/* Diagnóstico */}
         {diagnostico && (
           <>
-            <Card className="border-0 shadow-xl">
+            <Card className="border border-slate-200 shadow-sm">
               <CardContent className="p-6">
                 <h3 className="font-bold text-lg text-slate-900 mb-4">Diagnóstico</h3>
                 
@@ -329,7 +329,7 @@ export default function PortalCliente() {
                   )}
 
                   {diagnostico.propuesta_precio_total && (
-                    <div className="p-6 bg-gradient-to-br from-emerald-50 to-blue-50 rounded-xl border-2 border-emerald-200">
+                    <div className="p-6 bg-teal-50 rounded-xl border-2 border-emerald-200">
                       <Label className="text-slate-700 text-sm font-semibold">Costo Estimado</Label>
                       <p className="text-4xl font-bold text-emerald-600 mt-2">
                         ₡{diagnostico.propuesta_precio_total.toLocaleString()}
@@ -352,7 +352,7 @@ export default function PortalCliente() {
 
             {/* Evidencias */}
             {evidencias.length > 0 && (
-              <Card className="border-0 shadow-xl">
+              <Card className="border border-slate-200 shadow-sm">
                 <CardContent className="p-6">
                   <h3 className="font-bold text-lg text-slate-900 mb-4">Evidencias</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -385,7 +385,7 @@ export default function PortalCliente() {
 
         {/* Enlace Expirado */}
         {linkExpirado && (orden.estado === 'DIAGNOSTICADA' || orden.estado === 'COTIZADA') && !orden.cliente_aprobado && (
-          <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-300">
+          <Card className="border border-slate-200 shadow-sm bg-red-50 border-2 border-red-300">
             <CardContent className="p-8 text-center">
               <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
               <h3 className="font-bold text-xl text-slate-900 mb-2">Enlace Expirado</h3>
@@ -398,7 +398,7 @@ export default function PortalCliente() {
 
         {/* Aprobación */}
         {puedeAprobar && (
-          <Card className="border-0 shadow-xl bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200">
+          <Card className="border border-slate-200 shadow-sm bg-amber-50 border-2 border-yellow-200">
             <CardContent className="p-8">
               <div className="flex items-start gap-4 mb-6">
                 <AlertCircle className="w-8 h-8 text-orange-600 flex-shrink-0" />
@@ -413,7 +413,7 @@ export default function PortalCliente() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={() => setShowAprobarModal(true)}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-lg h-14 text-lg"
+                  className="flex-1 bg-teal-700 hover:bg-teal-800 hover:shadow-lg h-14 text-lg"
                 >
                   <ThumbsUp className="w-5 h-5 mr-2" />
                   Autorizar Reparación
@@ -433,7 +433,7 @@ export default function PortalCliente() {
 
         {/* Estado de Aprobación */}
         {orden.cliente_aprobado === true && (
-          <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200">
+          <Card className="border border-slate-200 shadow-sm bg-teal-50 border-2 border-green-200">
             <CardContent className="p-8 text-center">
               <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600" />
               <h3 className="font-bold text-2xl text-slate-900 mb-2">Reparación Autorizada</h3>
@@ -448,7 +448,7 @@ export default function PortalCliente() {
         )}
 
         {orden.cliente_aprobado === false && (
-          <Card className="border-0 shadow-xl bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-200">
+          <Card className="border border-slate-200 shadow-sm bg-red-50 border-2 border-red-200">
             <CardContent className="p-8 text-center">
               <XCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
               <h3 className="font-bold text-2xl text-slate-900 mb-2">Reparación Rechazada</h3>
@@ -498,7 +498,7 @@ export default function PortalCliente() {
               <Button 
                 onClick={() => aprobarMutation.mutate()}
                 disabled={aprobarMutation.isPending}
-                className="bg-gradient-to-r from-green-500 to-emerald-500"
+                className="bg-teal-700 hover:bg-teal-800"
               >
                 {aprobarMutation.isPending ? 'Procesando...' : 'Confirmar Autorización'}
               </Button>

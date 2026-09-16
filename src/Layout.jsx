@@ -83,7 +83,7 @@ function LayoutContent({ children, currentPageName }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Cargando plataforma...</p>
         </div>
       </div>
@@ -107,7 +107,7 @@ function LayoutContent({ children, currentPageName }) {
           <div className="flex gap-3 justify-center">
             <Button
               onClick={reloadAuth}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-teal-700 hover:bg-teal-800"
             >
               Reintentar
             </Button>
@@ -135,7 +135,7 @@ function LayoutContent({ children, currentPageName }) {
             Base44 reconoce tu sesión, pero TRP no pudo cargar la autorización del usuario. El acceso permanece bloqueado de forma segura.
           </p>
           <div className="flex gap-3 justify-center">
-            <Button onClick={reloadAuth} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={reloadAuth} className="bg-teal-700 hover:bg-teal-800">
               Reintentar
             </Button>
             <Button onClick={() => base44.auth.logout()} variant="outline">
@@ -160,7 +160,7 @@ function LayoutContent({ children, currentPageName }) {
           <div className="flex gap-3 justify-center">
             <Button
               onClick={reloadAuth}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-teal-700 hover:bg-teal-800"
             >
               Reintentar
             </Button>
@@ -189,7 +189,7 @@ function LayoutContent({ children, currentPageName }) {
     return (
       <div className="min-h-screen bg-[#f6f8fb]">
         {/* Sidebar for SUPER_ADMIN */}
-        <aside className="fixed left-0 top-0 h-screen w-64 bg-[#0b1220] border-r border-slate-800 z-40">
+        <aside className="hidden md:block fixed left-0 top-0 h-screen w-64 bg-[#0b1220] border-r border-slate-800 z-40">
           <div className="flex flex-col h-full">
             <div className="p-5 border-b border-slate-800">
               <div className="flex items-center gap-3">
@@ -234,8 +234,8 @@ function LayoutContent({ children, currentPageName }) {
           </div>
         </aside>
 
-        <main className="ml-64">
-          <div className="p-8">{children}</div>
+        <main className="md:ml-64">
+          <div className="px-4 py-5 sm:px-6 md:p-8">{children}</div>
         </main>
       </div>
     );
@@ -260,7 +260,7 @@ function LayoutContent({ children, currentPageName }) {
               <button
                 key={account.id}
                 onClick={() => selectOrganization(account)}
-                className="w-full text-left px-4 py-4 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-200"
+                className="w-full text-left px-4 py-4 rounded-xl border border-slate-200 hover:border-teal-400 hover:bg-teal-50 transition-all duration-200"
               >
                 <p className="font-semibold text-slate-900">{account.organization_id}</p>
                 <p className="text-sm text-slate-500 mt-0.5">{account.role}</p>
@@ -301,7 +301,7 @@ function LayoutContent({ children, currentPageName }) {
             <button
               type="button"
               onClick={reloadAuth}
-              className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+              className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
             >
               Reintentar
             </button>
@@ -338,7 +338,7 @@ function LayoutContent({ children, currentPageName }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Verificando estado de tu cuenta...</p>
         </div>
       </div>
@@ -358,7 +358,7 @@ function LayoutContent({ children, currentPageName }) {
           <div className="flex gap-3 justify-center">
             <Button
               onClick={() => window.open('mailto:soporte@techrepair-platform.com', '_blank')}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-teal-700 hover:bg-teal-800"
             >
               Contactar Soporte
             </Button>
@@ -401,7 +401,7 @@ function LayoutContent({ children, currentPageName }) {
 
     <div className={`min-h-screen bg-[#f6f8fb] ${isImpersonating && organization?.status === 'suspended' ? 'pt-28' : isImpersonating ? 'pt-16' : ''}`}>
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-screen bg-[#0b1220] border-r border-slate-800 transition-all duration-300 z-40 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+      <aside className={`hidden md:block fixed left-0 top-0 h-screen bg-[#0b1220] border-r border-slate-800 transition-all duration-300 z-40 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-5 border-b border-slate-800">
@@ -477,7 +477,7 @@ function LayoutContent({ children, currentPageName }) {
       </aside>
 
       {/* Main Content */}
-      <main className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
+      <main className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
         <div className="px-5 py-6 md:px-8 md:py-8 xl:px-10">
           {children}
         </div>

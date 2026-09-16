@@ -71,8 +71,8 @@ export default function PortalGarantia() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-0 shadow-2xl">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <Shield className="w-16 h-16 mx-auto mb-6 text-slate-400" />
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Acceso Restringido</h1>
@@ -87,9 +87,9 @@ export default function PortalGarantia() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Cargando certificado...</p>
         </div>
       </div>
@@ -98,8 +98,8 @@ export default function PortalGarantia() {
 
   if (error || !garantia) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-0 shadow-2xl">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Garantía No Encontrada</h1>
@@ -118,10 +118,10 @@ export default function PortalGarantia() {
   const Icon = config.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-[#f6f8fb] p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <Card className="border-0 shadow-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+        <Card className="border border-slate-200 shadow-sm bg-[#0b1220] text-white">
           <CardContent className="p-8">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
@@ -140,7 +140,7 @@ export default function PortalGarantia() {
         </Card>
 
         {/* Información del Cliente */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -159,7 +159,7 @@ export default function PortalGarantia() {
         </Card>
 
         {/* Fechas y Vigencia */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Vigencia de la Garantía</CardTitle>
           </CardHeader>
@@ -201,7 +201,7 @@ export default function PortalGarantia() {
         </Alert>
 
         {/* Texto Legal (Snapshot) */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-blue-600" />
@@ -218,7 +218,7 @@ export default function PortalGarantia() {
         </Card>
 
         {/* Footer - Información del Taller */}
-        <Card className="border-0 shadow-xl bg-slate-50">
+        <Card className="border border-slate-200 shadow-sm bg-slate-50">
           <CardContent className="p-6 text-center">
             <div className="text-sm text-slate-600 space-y-2">
               <p className="font-semibold text-slate-900 text-base">

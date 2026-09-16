@@ -21,8 +21,8 @@ export default function SuspendedScreen({ orgName, orgId }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-orange-50 flex items-center justify-center p-6">
-      <Card className="w-full max-w-2xl border-0 shadow-2xl border-2 border-red-300">
+    <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+      <Card className="w-full max-w-2xl border border-slate-200 shadow-sm border-2 border-red-300">
         <CardContent className="p-12 text-center">
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="w-12 h-12 text-red-600" />

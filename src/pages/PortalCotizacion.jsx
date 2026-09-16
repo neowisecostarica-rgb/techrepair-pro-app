@@ -212,8 +212,8 @@ export default function PortalCotizacion() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-0 shadow-2xl">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <FileText className="w-16 h-16 mx-auto mb-6 text-slate-400" />
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Acceso Restringido</h1>
@@ -228,9 +228,9 @@ export default function PortalCotizacion() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Cargando cotización...</p>
         </div>
       </div>
@@ -239,8 +239,8 @@ export default function PortalCotizacion() {
 
   if (error || !cotizacion) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-0 shadow-2xl">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Cotización No Encontrada</h1>
@@ -257,10 +257,10 @@ export default function PortalCotizacion() {
   const Icon = config.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-[#f6f8fb] p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <Card className="border-0 shadow-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+        <Card className="border border-slate-200 shadow-sm bg-[#0b1220] text-white">
           <CardContent className="p-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
@@ -297,7 +297,7 @@ export default function PortalCotizacion() {
         </Alert>
 
         {/* Información del Cliente y Cotización */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -330,7 +330,7 @@ export default function PortalCotizacion() {
         </Card>
 
         {/* Items */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Ítems de la Cotización</CardTitle>
           </CardHeader>
@@ -361,7 +361,7 @@ export default function PortalCotizacion() {
         </Card>
 
         {/* Totales */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
@@ -405,7 +405,7 @@ export default function PortalCotizacion() {
                 <Button
                   onClick={() => decisionMutation.mutate({ newStatus: 'APROBADA' })}
                   disabled={decisionMutation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-teal-700 hover:bg-teal-800"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
                   Aprobar cotización
@@ -455,7 +455,7 @@ export default function PortalCotizacion() {
         )}
 
         {cotizacion.notas && (
-          <Card className="border-0 shadow-xl">
+          <Card className="border border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Notas Adicionales</CardTitle>
             </CardHeader>
@@ -466,7 +466,7 @@ export default function PortalCotizacion() {
         )}
 
         {/* Footer - Información del Negocio */}
-        <Card className="border-0 shadow-xl bg-slate-50">
+        <Card className="border border-slate-200 shadow-sm bg-slate-50">
           <CardContent className="p-6 text-center">
             <div className="text-sm text-slate-600 space-y-2">
               <p className="font-semibold text-slate-900 text-base">

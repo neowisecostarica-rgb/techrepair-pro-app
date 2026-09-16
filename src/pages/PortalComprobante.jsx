@@ -51,8 +51,8 @@ export default function PortalComprobante() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-0 shadow-2xl">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <FileText className="w-16 h-16 mx-auto mb-6 text-slate-400" />
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Acceso Restringido</h1>
@@ -67,9 +67,9 @@ export default function PortalComprobante() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Cargando comprobante...</p>
         </div>
       </div>
@@ -78,8 +78,8 @@ export default function PortalComprobante() {
 
   if (error || !venta) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full border-0 shadow-2xl">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
             <h1 className="text-2xl font-bold text-slate-900 mb-3">Comprobante No Encontrado</h1>
@@ -95,10 +95,10 @@ export default function PortalComprobante() {
   const urlGarantia = null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-[#f6f8fb] p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
-        <Card className="border-0 shadow-2xl bg-gradient-to-r from-emerald-600 to-blue-600 text-white">
+        <Card className="border border-slate-200 shadow-sm bg-[#0b1220] text-white">
           <CardContent className="p-8">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
@@ -117,7 +117,7 @@ export default function PortalComprobante() {
         </Card>
 
         {/* Información de Venta */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -143,7 +143,7 @@ export default function PortalComprobante() {
 
         {/* Cliente */}
         {cliente && (
-          <Card className="border-0 shadow-xl">
+          <Card className="border border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Cliente</CardTitle>
             </CardHeader>
@@ -156,7 +156,7 @@ export default function PortalComprobante() {
         )}
 
         {/* Detalle de Items */}
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Detalle del Servicio</CardTitle>
           </CardHeader>
@@ -217,14 +217,14 @@ export default function PortalComprobante() {
 
         {/* Acciones */}
         <div className="flex gap-3 print:hidden">
-          <Button onClick={() => window.print()} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={() => window.print()} className="flex-1 bg-teal-700 hover:bg-teal-800">
             <Printer className="w-4 h-4 mr-2" />
             Imprimir
           </Button>
         </div>
 
         {/* Footer */}
-        <Card className="border-0 shadow-xl bg-slate-50">
+        <Card className="border border-slate-200 shadow-sm bg-slate-50">
           <CardContent className="p-6 text-center">
             <div className="text-sm text-slate-600 space-y-2">
               <p className="font-semibold text-slate-900 text-base">

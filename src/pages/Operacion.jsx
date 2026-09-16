@@ -10,8 +10,8 @@ import { Wrench, Clock, AlertTriangle, Users, FileText, Shield, TrendingUp } fro
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay, subDays } from 'date-fns';
 import { useAuthContext } from '@/components/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import FiltrosOperacion from '@/components/operacion/FiltrosOperacion';
-import ModalDetalleOT from '@/components/operacion/ModalDetalleOT';
 
 export default function Operacion() {
   return (
@@ -28,7 +28,7 @@ function OperacionContent() {
   const [fechaHasta, setFechaHasta] = useState('');
   const [sucursalId, setSucursalId] = useState(null);
   const [tecnicoId, setTecnicoId] = useState(null);
-  const [otSeleccionada, setOtSeleccionada] = useState(null);
+  const navigate = useNavigate();
 
   const isBranchAdmin = effectiveRole === 'BRANCH_ADMIN';
   const branchIdFijo = isBranchAdmin ? userAccount?.branch_id : null;
@@ -255,7 +255,7 @@ function OperacionContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Operación</h1>
-          <p className="text-slate-600">Supervisa carga, demoras y estado del taller en un solo lugar.</p>
+          <p className="text-slate-600">Supervisa, detecta excepciones y entra al expediente para resolver.</p>
         </div>
         <Badge className={isBranchAdmin ? 'bg-blue-100 text-blue-700 border-0' : 'bg-emerald-100 text-emerald-700 border-0'}>
           {isBranchAdmin ? 'Tu Sucursal' : 'Vista Completa'}
@@ -441,7 +441,7 @@ function OperacionContent() {
                       <tr
                         key={ot.id}
                         className="border-t hover:bg-slate-50 cursor-pointer transition-colors"
-                        onClick={() => setOtSeleccionada(ot)}
+                        onClick={() => navigate(`/expediente/${ot.id}`)}
                       >
                         <td className="p-3 font-medium text-slate-900">{ot.codigo_ot}</td>
                         <td className="p-3 text-slate-700">{ot.clienteNombre}</td>
@@ -472,15 +472,6 @@ function OperacionContent() {
         </CardContent>
       </Card>
 
-      {/* Modal Detalle */}
-      {otSeleccionada && (
-        <ModalDetalleOT
-          ot={otSeleccionada}
-          cliente={clientes.find(c => c.id === otSeleccionada.cliente_id)}
-          tecnico={tecnicos.find(t => t.user_id === otSeleccionada.tecnico_asignado_id)}
-          onClose={() => setOtSeleccionada(null)}
-        />
-      )}
     </div>
   );
 }

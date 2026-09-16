@@ -9,6 +9,10 @@ App Base44: 695d708948469128f473d080
 ## REGLA MAESTRA
 Este documento consolida el plan de ejecución vigente. No crear caminos paralelos ni volver a abrir bloques cerrados sin evidencia de regresión. QA humano E2E se mantiene al final, como decisión de producto/ejecución.
 
+### Contexto canónico recuperado del 15-Sep
+Fuente obligatoria: `docs/TRP-CONTEXT-RECOVERY-2026-09-15.md`.
+Ese documento conserva la auditoría amplia de producto/comercial/Enterprise/web/licenciamiento/piloto y las decisiones que originaron este roadmap. No depender de memoria conversacional para reconstruirlas. Si una decisión posterior entra en conflicto, registrar explícitamente la reconciliación/SUPERSEDES en el SOT.
+
 ## DECISIONES CERRADAS
 - Marca: TRP.
 - Significado oficial actual: Technology Reliability Platform.
@@ -67,7 +71,7 @@ Incluye:
 Definition of success visual: una captura del producto debe ser reconocible como TRP aun sin contexto externo.
 
 ## MEGABLOQUE C — COMMERCIAL ENGINE
-Estado: ACTIVE — C1 CLOSED / C2 ENTITLEMENT AUTHORITY CLOSED / C3 NEXT
+Estado: ACTIVE — C1 CLOSED / C2 ENTITLEMENT AUTHORITY CLOSED / C3 RECONCILIATION ACTIVE
 
 Incluye:
 - Aplicar Brand Positioning definitivo.
@@ -83,6 +87,15 @@ Incluye:
 - Entitlements reales en backend.
 - Billing: suscripción, pago, renovación, suspensión/cancelación.
 - Licensing/activation.
+
+### C3 — RECONCILIATION GATE (15-Sep context)
+Antes de cerrar C3 o iniciar C4:
+- Baseline recuperada del 15-Sep: Core USD 69/mes o 690/año; Business USD 129/mes o 1,290/año; Enterprise custom/contrato anual + implementación.
+- Los USD 79/149 introducidos posteriormente quedan como propuesta NO aprobada hasta reconciliación explícita.
+- Resolver nombre comercial `Business` vs ID técnico `advanced`; no asumir que el ID técnico es el nombre customer-facing.
+- No imponer caps artificiales a órdenes/clientes/activos para forzar upgrade.
+- Escala inicial por usuarios/sedes se mantiene como hipótesis configurable, no límite hardcoded, hasta validación de piloto.
+- C4 Billing/Licensing NO inicia hasta cerrar este gate.
 
 ## MEGABLOQUE D — WEBSITE / SALES EXPERIENCE
 Estado: PENDIENTE

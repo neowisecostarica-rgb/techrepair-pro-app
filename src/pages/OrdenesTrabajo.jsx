@@ -558,8 +558,8 @@ function OrdenesTrabajoContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Órdenes de Trabajo</h1>
-          <p className="text-slate-500">Gestión completa de reparaciones</p>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Órdenes</h1>
+          <p className="text-slate-500">Recibe, encuentra y abre el expediente de cada trabajo.</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -590,7 +590,7 @@ function OrdenesTrabajoContent() {
 
       {/* Vista Kanban */}
       {vistaActiva === 'kanban' && (
-        <KanbanBoard onCardClick={(ot) => setSelectedOT(ot)} />
+        <KanbanBoard onCardClick={(ot) => navigate(`/expediente/${ot.id}`)} />
       )}
 
       {/* Vista Lista */}
@@ -656,7 +656,7 @@ function OrdenesTrabajoContent() {
             <Card 
               key={orden.id} 
               className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer"
-              onClick={() => setSelectedOT(orden)}
+              onClick={() => navigate(`/expediente/${orden.id}`)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -708,19 +708,11 @@ function OrdenesTrabajoContent() {
                       variant="outline"
                       size="sm"
                       className="h-7 px-2.5 text-xs"
-                      onClick={(e) => { e.stopPropagation(); setSelectedOT(orden); }}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/expediente/${orden.id}`); }}
                     >
-                      <Eye className="w-3 h-3 mr-1" />
-                      Ver detalle
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      Abrir expediente
                     </Button>
-                    <Link
-                      to={`/expediente/${orden.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      Ir a expediente
-                    </Link>
                   </div>
                 </div>
               </CardContent>
@@ -763,7 +755,7 @@ function OrdenesTrabajoContent() {
                 <Card
                   key={orden.id}
                   className="border-0 shadow-md hover:shadow-xl transition-all cursor-pointer"
-                  onClick={() => setSelectedOT(orden)}
+                  onClick={() => navigate(`/expediente/${orden.id}`)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
@@ -851,7 +843,7 @@ function OrdenesTrabajoContent() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              {editingOT ? 'Editar Orden de Trabajo' : 'Nueva Orden de Trabajo'}
+              {editingOT ? 'Editar recepción' : 'Nueva recepción'}
             </DialogTitle>
           </DialogHeader>
 

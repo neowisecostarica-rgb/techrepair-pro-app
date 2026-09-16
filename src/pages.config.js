@@ -52,6 +52,7 @@ import AdminReset from './pages/AdminReset';
 import AdminSeedCompuStore from './pages/AdminSeedCompuStore';
 import Agenda from './pages/Agenda';
 import Activos from './pages/Activos';
+import ActivoDetalle from './pages/ActivoDetalle';
 import AnalisisTrabajo from './pages/AnalisisTrabajo';
 import CRM from './pages/CRM';
 import Calidad from './pages/Calidad';
@@ -95,6 +96,7 @@ export const PAGES = {
     "AdminSeedCompuStore": AdminSeedCompuStore,
     "Agenda": Agenda,
     "Activos": Activos,
+    "ActivoDetalle": ActivoDetalle,
     "AnalisisTrabajo": AnalisisTrabajo,
     "CRM": CRM,
     "Calidad": Calidad,

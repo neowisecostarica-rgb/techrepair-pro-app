@@ -24,6 +24,7 @@ import {
   normalizeTenantRole,
 } from './_shared/roleCapabilities.ts';
 import { inspectControlledPilotConfiguration } from './_shared/controlledPilotAuthority.ts';
+import { resolveEffectiveEntitlement } from './_shared/entitlementAuthority.ts';
 
 const ORG_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE', 'SUPPORT'];
 const ORG_UPDATE_FIELDS = new Set([
@@ -143,6 +144,9 @@ async function buildContext(base44, user) {
     ? (identity.user.impersonating_org_id ? 'ORG_ADMIN' : 'SUPER_ADMIN')
     : normalizeTenantRole(identity.activeAccount?.role);
   const activeOrganization = organizations.find(org => org.id === identity.user.organization_id) || null;
+  const entitlement = activeOrganization
+    ? await resolveEffectiveEntitlement(base44, activeOrganization)
+    : null;
 
   return {
     ok: true,
@@ -154,6 +158,7 @@ async function buildContext(base44, user) {
       organization: organizationById.get(account.organization_id) || null,
     })),
     organizations: organizations.map(sanitizeOrganization),
+    entitlement,
     authorization: {
       role: authorizationRole,
       capabilities: authorizationRole === 'SUPER_ADMIN' ? [] : getRoleCapabilities(authorizationRole),

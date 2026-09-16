@@ -1,5 +1,5 @@
 /**
- * MENU DECLARATIVO — TechRepairPro
+ * MENU DECLARATIVO — TRP / Technology Reliability Platform
  * Fuente única de verdad para navegación.
  * El Layout filtra por capacidades resueltas por el backend.
  * Esta configuración es solo UX; cada comando sigue autorizado en backend.
@@ -25,18 +25,11 @@ import {
 export const MENU_ITEMS = [
   // ── Sin categoría (siempre visible arriba) ──────────────────────────────────
   {
-    label: 'Mi Día',
+    label: 'Hoy',
     path: 'MiDia',
     icon: Sun,
     category: null,
-    anyCapabilities: ['TECHNICAL_WORK'],
-  },
-  {
-    label: 'Mis Ventas',
-    path: 'MisVentas',
-    icon: TrendingUp,
-    category: null,
-    anyCapabilities: ['SALE_OPERATIONS'],
+    anyCapabilities: ['TECHNICAL_WORK', 'TECHNICAL_SUPERVISION', 'FINANCIAL_READ'],
   },
 
   // ── VISIÓN DEL NEGOCIO ──────────────────────────────────────────────────────
@@ -47,34 +40,7 @@ export const MENU_ITEMS = [
     category: 'NEGOCIO',
     anyCapabilities: ['FINANCIAL_READ'],
   },
-  {
-    label: 'Finanzas',
-    path: 'Finanzas',
-    icon: LayoutDashboard,
-    category: 'NEGOCIO',
-    anyCapabilities: ['FINANCIAL_READ'],
-  },
-  {
-    label: 'Ventas y Ganancias',
-    path: 'VentasMetricas',
-    icon: LayoutDashboard,
-    category: 'NEGOCIO',
-    anyCapabilities: ['FINANCIAL_READ'],
-  },
-  {
-    label: 'Rendimiento del Equipo',
-    path: 'ProductividadTecnicos',
-    icon: Users,
-    category: 'NEGOCIO',
-    anyCapabilities: ['TECHNICAL_SUPERVISION'],
-  },
-  {
-    label: 'Análisis de Operaciones',
-    path: 'AnalisisTrabajo',
-    icon: FileText,
-    category: 'NEGOCIO',
-    anyCapabilities: ['TECHNICAL_SUPERVISION'],
-  },
+
   {
     label: 'Operación',
     path: 'Operacion',
@@ -84,7 +50,7 @@ export const MENU_ITEMS = [
   },
   // ── TALLER ──────────────────────────────────────────────────────────────────
   {
-    label: 'Órdenes de Trabajo',
+    label: 'Órdenes',
     path: 'OrdenesTrabajo',
     icon: Wrench,
     category: 'TALLER',
@@ -98,26 +64,26 @@ export const MENU_ITEMS = [
     anyCapabilities: ['AGENDA_OPERATIONS', 'TECHNICAL_WORK'],
   },
 
-  // ── VENTAS ──────────────────────────────────────────────────────────────────
+  // ── CLIENTES Y VENTAS ───────────────────────────────────────────────────────
   {
     label: 'Caja y Cobros',
     path: 'PuntoVenta',
     icon: ShoppingCart,
-    category: 'VENTAS',
+    category: 'CLIENTES Y VENTAS',
     anyCapabilities: ['SALE_OPERATIONS'],
   },
   {
     label: 'Cotizaciones',
     path: 'VentasCotizaciones',
     icon: FileText,
-    category: 'VENTAS',
+    category: 'CLIENTES Y VENTAS',
     anyCapabilities: ['QUOTE_OPERATIONS'],
   },
   {
     label: 'Garantías',
     path: 'VentasGarantias',
     icon: ShieldAlert,
-    category: 'VENTAS',
+    category: 'CLIENTES Y VENTAS',
     anyCapabilities: ['DELIVERY_OPERATIONS'],
   },
 
@@ -126,7 +92,7 @@ export const MENU_ITEMS = [
     label: 'Clientes',
     path: 'Clientes',
     icon: Users,
-    category: 'CLIENTES',
+    category: 'CLIENTES Y VENTAS',
     anyCapabilities: ['CUSTOMER_SERVICE_OPERATIONS'],
   },
 
@@ -135,7 +101,7 @@ export const MENU_ITEMS = [
     label: 'Inventario',
     path: 'Inventario',
     icon: Package,
-    category: 'INVENTARIO',
+    category: 'TALLER',
     anyCapabilities: ['INVENTORY_READ'],
   },
 

@@ -101,7 +101,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">Mi Día</h1>
+            <h1 className="text-4xl font-bold text-slate-900">Hoy</h1>
             <p className="text-slate-600">Seguimiento y cierres</p>
           </div>
         </div>

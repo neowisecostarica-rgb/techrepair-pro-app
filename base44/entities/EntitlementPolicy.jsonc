@@ -1,0 +1,93 @@
+{
+  "name": "EntitlementPolicy",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "Tenant/Organization this policy belongs to"
+    },
+    "package_id": {
+      "type": "string",
+      "enum": [
+        "core",
+        "advanced",
+        "enterprise"
+      ],
+      "description": "Canonical internal commercial package"
+    },
+    "billing_status": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "active",
+        "past_due",
+        "suspended",
+        "cancelled"
+      ],
+      "default": "active"
+    },
+    "billing_interval": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "annual",
+        "contract"
+      ],
+      "default": "monthly"
+    },
+    "policy_version": {
+      "type": "string",
+      "default": "2026-09-c1"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Explicit commercial capability grants"
+    },
+    "limits": {
+      "type": "object",
+      "description": "Explicit commercial limits. Null/absent means policy default, never frontend authority."
+    },
+    "overrides": {
+      "type": "object",
+      "description": "Auditable contractual overrides resolved by backend"
+    },
+    "effective_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "effective_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "contract",
+        "migration",
+        "admin",
+        "pilot"
+      ],
+      "description": "Origin of explicit entitlement policy"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal commercial/admin note"
+    }
+  },
+  "required": [
+    "organization_id",
+    "package_id",
+    "billing_status",
+    "billing_interval",
+    "policy_version"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

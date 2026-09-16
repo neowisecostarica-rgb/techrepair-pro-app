@@ -46,6 +46,8 @@ function LayoutContent({ children, currentPageName }) {
       VENTAS: true,
       CLIENTES: true,
       INVENTARIO: true,
+      NEGOCIO: true,
+      // Compatibilidad con preferencia persistida de la navegación anterior.
       'VISIÓN DEL NEGOCIO': true,
       FINANZAS: true,
       CONFIGURACIÓN: true,

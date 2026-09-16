@@ -796,8 +796,8 @@ function SaasContent() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {[
-              { name: 'Core', monthly: '$79', annual: '$790', note: 'Workflow operativo esencial completo · sin caps de órdenes' },
-              { name: 'Advanced', monthly: '$149', annual: '$1,490', note: 'Más profundidad, escala, analytics, calidad y automatización' },
+              { name: 'Core', monthly: '$69', annual: '$690', note: 'Workflow operativo esencial completo · sin caps artificiales de órdenes' },
+              { name: 'Business', monthly: '$129', annual: '$1,290', note: 'Más profundidad, escala, analytics, calidad y automatización · entitlement técnico: advanced' },
               { name: 'Enterprise', monthly: 'Custom', annual: 'Contrato anual', note: 'Gobernanza, escala e integraciones contratadas y disponibles' },
             ].map(plan => (
               <Card key={plan.name} className="border border-slate-200 shadow-sm bg-white">

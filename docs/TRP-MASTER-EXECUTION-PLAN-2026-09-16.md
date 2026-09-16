@@ -71,7 +71,7 @@ Incluye:
 Definition of success visual: una captura del producto debe ser reconocible como TRP aun sin contexto externo.
 
 ## MEGABLOQUE C — COMMERCIAL ENGINE
-Estado: ACTIVE — C1 CLOSED / C2 ENTITLEMENT AUTHORITY CLOSED / C3 RECONCILIATION ACTIVE
+Estado: ACTIVE — C1 CLOSED / C2 CLOSED / C3 RECONCILED / C4 NEXT
 
 Incluye:
 - Aplicar Brand Positioning definitivo.
@@ -88,14 +88,14 @@ Incluye:
 - Billing: suscripción, pago, renovación, suspensión/cancelación.
 - Licensing/activation.
 
-### C3 — RECONCILIATION GATE (15-Sep context)
-Antes de cerrar C3 o iniciar C4:
+### C3 — RECONCILIATION CLOSED (15-Sep context)
+Reconciliado contra `docs/TRP-CONTEXT-RECOVERY-2026-09-15.md`:
 - Baseline recuperada del 15-Sep: Core USD 69/mes o 690/año; Business USD 129/mes o 1,290/año; Enterprise custom/contrato anual + implementación.
-- Los USD 79/149 introducidos posteriormente quedan como propuesta NO aprobada hasta reconciliación explícita.
-- Resolver nombre comercial `Business` vs ID técnico `advanced`; no asumir que el ID técnico es el nombre customer-facing.
+- La propuesta posterior USD 79/149 queda SUPERSEDED por la baseline recuperada USD 69/129.
+- Nombre comercial de trabajo: `Business`; ID técnico de entitlement permanece `advanced` para evitar migración innecesaria.
 - No imponer caps artificiales a órdenes/clientes/activos para forzar upgrade.
 - Escala inicial por usuarios/sedes se mantiene como hipótesis configurable, no límite hardcoded, hasta validación de piloto.
-- C4 Billing/Licensing NO inicia hasta cerrar este gate.
+- Gate cerrado. C4 Billing/Licensing queda habilitado como siguiente bloque.
 
 ## MEGABLOQUE D — WEBSITE / SALES EXPERIENCE
 Estado: PENDIENTE

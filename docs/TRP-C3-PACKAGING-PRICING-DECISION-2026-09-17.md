@@ -1,6 +1,6 @@
 # TRP C3 — Packaging + Pricing Decision
 
-Status: NEEDS RECONCILIATION — 15-SEP CONTEXT RECOVERED; DO NOT TREAT USD 79/149 AS APPROVED
+Status: RECONCILED — WORKING COMMERCIAL BASELINE / PILOT VALIDATION REQUIRED
 Date: 2026-09-17
 Product: TRP — Technology Reliability Platform
 Territory: Technology Asset Operations
@@ -16,7 +16,8 @@ Public pricing research shows repair-management products around USD 39–149/mon
 For a professional operation that needs the complete essential workflow.
 Includes the commercial core: organization/branches/roles, reception and work orders, canonical Expediente F0–F8, diagnosis/tests, quotes and approval, customers/equipment/assets, cash/collections, delivery/evidence, warranty, operational inventory, agenda and customer portal.
 
-### TRP Advanced
+### TRP Business
+Technical entitlement ID: `advanced`. Customer-facing working name: `Business`.
 Everything in Core plus greater operational depth, scale and control: advanced multi-branch operation, deeper analytics/productivity, Quality / Non-conformities, Recycling, CRM/Leads where production-ready, and advanced automations where production-ready.
 
 ### TRP Enterprise
@@ -28,19 +29,16 @@ Do not price primarily per technician/user; that creates friction against adopti
 Scale dimensions may include branches, active technology assets and contracted enterprise scope. Users are not the primary billing meter.
 
 ## 5. Commercial launch baseline
-
-> RECONCILIATION HOLD (2026-09-16): A canonical context recovery of the 15-Sep discussion found the prior working baseline `Core USD 69 / Business USD 129 / Enterprise custom`. Therefore the USD 79/149 values below are preserved as a later proposal for audit history, but are NOT approved commercial truth. See `docs/TRP-CONTEXT-RECOVERY-2026-09-15.md`. C3 cannot close until pricing and Business-vs-Advanced naming are explicitly reconciled.
-
 Currency of record for international pricing: USD.
 Local CRC display may be maintained as a commercial display layer, not as a second entitlement model.
 
-TRP Core: USD 79/month or USD 790/year.
-TRP Advanced: USD 149/month or USD 1,490/year.
-TRP Enterprise: custom annual contract / quote.
+TRP Core: USD 69/month or USD 690/year.
+TRP Business: USD 129/month or USD 1,290/year. Technical entitlement ID remains `advanced` for compatibility.
+TRP Enterprise: custom annual contract / quote + separately scoped implementation unless contract states otherwise.
 
-Annual baseline = 10 months of monthly price (approximately two months benefit) to encourage annual commitment without creating a different product.
+This reconciles C3 with the canonical 15-Sep recovery note. The later USD 79/149 proposal is superseded and must not appear as commercial truth. Pricing remains a WORKING PILOT BASELINE until validated with real pilot economics and sales evidence; changing it later requires an explicit superseding decision.
 
-These are TRP launch baselines and replace the legacy Basic/Pro/Premium prices as customer-facing commercial truth. Legacy plan codes/prices remain compatibility-only until migration is authorized.
+Annual baseline = 10 months of monthly price. Legacy Basic/Pro/Premium prices remain compatibility-only until migration is authorized.
 
 ## 6. Scale policy
 Core and Advanced must not become unusable through arbitrary ticket/work-order caps. No transaction cap in the essential F0–F8 workflow.
@@ -70,9 +68,9 @@ TRP operates in Technology Asset Operations.
 Reliability Layer may later use availability, MTBF, MTTR, recurrence, assets at risk, maintenance compliance and lifecycle evidence. Do not commercialize a TRP Reliability Score until methodology is validated.
 
 ## 11. Acceptance criteria for C3
-- Core / Advanced / Enterprise are canonical packages.
-- USD 79 / 149 / custom are launch pricing baseline.
-- Annual Core 790 / Advanced 1490.
+- Customer-facing working packages are Core / Business / Enterprise; technical ID `advanced` remains internal compatibility for Business.
+- USD 69 / 129 / custom are the recovered working pilot pricing baseline.
+- Annual Core 690 / Business 1290.
 - Organization/tenant is primary billing unit.
 - No essential workflow transaction caps.
 - Entitlement limits remain configurable.

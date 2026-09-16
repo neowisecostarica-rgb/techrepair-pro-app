@@ -16,8 +16,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { listIdentityAccounts } from '@/api/identity';
 import { useAuthContext } from '@/components/contexts/AuthContext';
-import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, AlertCircle, Recycle, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import ExpedienteHeader from '@/components/expediente/ExpedienteHeader';
@@ -102,6 +104,22 @@ function ExpedienteOTContent() {
     staleTime: 60 * 1000,
   });
 
+  // ── Registros contextuales avanzados ─────────────────────────────────────
+  // Permanecen como capabilities, pero su contexto natural es la OT.
+  const { data: noConformidades = [] } = useQuery({
+    queryKey: ['expediente-no-conformidades', id],
+    queryFn: () => base44.entities.NoConformidad.filter({ orden_trabajo_id: id }),
+    enabled: !!id && ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: reciclaje = [] } = useQuery({
+    queryKey: ['expediente-reciclaje', id],
+    queryFn: () => base44.entities.Reciclaje.filter({ orden_trabajo_id: id }),
+    enabled: !!id && ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole),
+    staleTime: 60 * 1000,
+  });
+
   // ── Estados de pago derivados ────────────────────────────────────────────
   const ventaPagada = ventas.find(v => v.estado === 'pagada' && v.tipo_concepto !== 'revision_diagnostico');
   const revisionPagada = ot?.diagnostico_habilitado;
@@ -174,6 +192,32 @@ function ExpedienteOTContent() {
 
       {/* ── FASE 3: Centro de Mando ────────────────────────────────────────── */}
       <CentroMando ot={ot} effectiveRole={effectiveRole} />
+
+      {/* ── Contexto avanzado ligado a esta OT ─────────────────────────────── */}
+      {(noConformidades.length > 0 || reciclaje.length > 0) && (
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="mr-auto">
+                <p className="text-sm font-semibold text-slate-900">Registros vinculados</p>
+                <p className="text-xs text-slate-500">Calidad y disposición forman parte de la historia de esta orden.</p>
+              </div>
+              {noConformidades.length > 0 && (
+                <Badge variant="outline" className="gap-1.5 border-amber-200 text-amber-700">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  {noConformidades.length} no conformidad{noConformidades.length === 1 ? '' : 'es'}
+                </Badge>
+              )}
+              {reciclaje.length > 0 && (
+                <Badge variant="outline" className="gap-1.5 border-emerald-200 text-emerald-700">
+                  <Recycle className="w-3.5 h-3.5" />
+                  {reciclaje.length} registro{reciclaje.length === 1 ? '' : 's'} de reciclaje
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Cuerpo principal en tabs ───────────────────────────────────────── */}
       <Tabs defaultValue="timeline" className="w-full">

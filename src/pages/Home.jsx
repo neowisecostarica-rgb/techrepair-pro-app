@@ -33,7 +33,7 @@ export default function Home() {
       'CUSTOMER_SERVICE': 'OrdenesTrabajo',
     };
 
-    const target = landingByRole[effectiveRole] || 'Dashboard';
+    const target = landingByRole[effectiveRole] || 'MiDia';
     navigate(createPageUrl(target));
   }, [loading, user, effectiveRole, navigate]);
 

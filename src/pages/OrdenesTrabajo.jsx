@@ -225,6 +225,19 @@ function OrdenesTrabajoContent() {
     }
   }, [terminos]);
 
+  // Activation path: el onboarding termina en una acción real, no en otra pantalla de configuración.
+  // Abrimos la recepción automáticamente una sola vez cuando viene del flujo first_work_order.
+  const activationOpenedRef = React.useRef(false);
+  useEffect(() => {
+    if (activationOpenedRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('activation') !== 'first_work_order') return;
+    activationOpenedRef.current = true;
+    resetForm();
+    setEditingOT(null);
+    setShowModal(true);
+  }, []);
+
   // DCE-001A: única ruta canónica de lectura para Smart Intake.
   const { data: smartIntakeResult } = useQuery({
     queryKey: smartIntakeQueryKeys.byWorkOrder(selectedOT?.id),
@@ -252,7 +265,17 @@ function OrdenesTrabajoContent() {
         title: result?.idempotent ? 'Recepción recuperada' : 'Orden de trabajo creada',
         description: 'La recepción del equipo fue registrada correctamente.',
       });
-      if (result?.navigate_to) navigate(result.navigate_to);
+      // Time-to-Value: después de la primera recepción, llevar al usuario al
+      // expediente recién creado para que vea inmediatamente el valor de TRP.
+      const params = new URLSearchParams(window.location.search);
+      const isFirstWorkOrderActivation = params.get('activation') === 'first_work_order';
+      if (isFirstWorkOrderActivation && result?.work_order_id) {
+        navigate(`/expediente/${result.work_order_id}`, { replace: true });
+      } else if (isFirstWorkOrderActivation && result?.id) {
+        navigate(`/expediente/${result.id}`, { replace: true });
+      } else if (result?.navigate_to) {
+        navigate(result.navigate_to);
+      }
     },
     onError: (error) => {
       setGuardandoOT(false);

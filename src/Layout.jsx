@@ -200,7 +200,7 @@ function LayoutContent({ children, currentPageName }) {
         {/* Sidebar for SUPER_ADMIN */}
         <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 z-40">
           <div className="flex flex-col h-full">
-            <div className="p-6 border-b border-slate-200">
+            <div className="p-5 border-b border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
                   <Wrench className="w-6 h-6 text-white" />
@@ -224,16 +224,16 @@ function LayoutContent({ children, currentPageName }) {
             </nav>
 
             {user && (
-              <div className="p-4 border-t border-slate-200">
+              <div className="p-4 border-t border-slate-800">
                 <div className="px-4 py-3 bg-slate-50 rounded-xl mb-3">
                   <p className="text-sm font-medium text-slate-900">{user.full_name}</p>
                   <p className="text-xs text-slate-500">{user.email}</p>
-                  <p className="text-xs text-emerald-600 font-medium mt-1">SUPER_ADMIN</p>
+                  <p className="text-xs text-teal-300 font-medium mt-1">SUPER_ADMIN</p>
                 </div>
                 <Button
                   onClick={handleLogout}
                   variant="outline"
-                  className="w-full justify-start gap-2 text-slate-600 hover:text-red-600 hover:border-red-300"
+                  className="w-full justify-start gap-2 border-slate-700 bg-transparent text-slate-400 hover:bg-white/5 hover:text-white hover:border-slate-600"
                 >
                   <LogOut className="w-4 h-4" />
                   Cerrar Sesión
@@ -408,36 +408,27 @@ function LayoutContent({ children, currentPageName }) {
       </div>
     )}
 
-    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 ${isImpersonating && organization?.status === 'suspended' ? 'pt-28' : isImpersonating ? 'pt-16' : ''}`}>
-      <style>{`
-        :root {
-          --primary: 142 71% 45%;
-          --primary-foreground: 0 0% 100%;
-          --secondary: 200 70% 50%;
-          --accent: 142 71% 95%;
-        }
-      `}</style>
-
+    <div className={`min-h-screen bg-[#f6f8fb] ${isImpersonating && organization?.status === 'suspended' ? 'pt-28' : isImpersonating ? 'pt-16' : ''}`}>
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-screen bg-white border-r border-slate-200 transition-all duration-300 z-40 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+      <aside className={`fixed left-0 top-0 h-screen bg-[#0b1220] border-r border-slate-800 transition-all duration-300 z-40 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-slate-200">
+          <div className="p-5 border-b border-slate-800">
             <div className="flex items-center justify-between">
               {sidebarOpen && (
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
-                    <Wrench className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 bg-teal-400/10 ring-1 ring-inset ring-teal-300/20 rounded-xl flex items-center justify-center">
+                    <span className="text-sm font-black tracking-[-0.04em] text-teal-300">TRP</span>
                   </div>
                   <div>
-                    <h1 className="text-lg font-bold text-slate-900">TechRepair</h1>
-                    <p className="text-xs text-slate-500">Pro Platform</p>
+                    <h1 className="text-lg font-bold tracking-tight text-white">TRP</h1>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Technology Reliability</p>
                   </div>
                 </div>
               )}
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                 title={sidebarOpen ? 'Colapsar menú' : 'Expandir menú'}
               >
                 {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
@@ -459,14 +450,14 @@ function LayoutContent({ children, currentPageName }) {
 
           {/* User Section */}
           {user && (
-            <div className="p-4 border-t border-slate-200">
+            <div className="p-4 border-t border-slate-800">
               {sidebarOpen ? (
                 <div className="space-y-3">
-                  <div className="px-4 py-3 bg-slate-50 rounded-xl">
-                    <p className="text-sm font-medium text-slate-900">{user.full_name}</p>
-                    <p className="text-xs text-slate-500">{user.email}</p>
+                  <div className="px-4 py-3 bg-white/5 ring-1 ring-inset ring-white/5 rounded-xl">
+                    <p className="text-sm font-medium text-slate-100">{user.full_name}</p>
+                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
                     {effectiveRole && (
-                      <p className="text-xs text-emerald-600 font-medium mt-1">
+                      <p className="text-xs text-teal-300 font-medium mt-1">
                         {effectiveRole}
                         {isImpersonating && ' (Soporte)'}
                       </p>
@@ -475,7 +466,7 @@ function LayoutContent({ children, currentPageName }) {
                   <Button
                     onClick={handleLogout}
                     variant="outline"
-                    className="w-full justify-start gap-2 text-slate-600 hover:text-red-600 hover:border-red-300"
+                    className="w-full justify-start gap-2 border-slate-700 bg-transparent text-slate-400 hover:bg-white/5 hover:text-white hover:border-slate-600"
                   >
                     <LogOut className="w-4 h-4" />
                     Cerrar Sesión
@@ -484,9 +475,9 @@ function LayoutContent({ children, currentPageName }) {
               ) : (
                 <button
                   onClick={handleLogout}
-                  className="w-full p-3 hover:bg-red-50 rounded-lg transition-colors"
+                  className="w-full p-3 hover:bg-white/5 rounded-lg transition-colors"
                 >
-                  <LogOut className="w-5 h-5 text-slate-400 hover:text-red-600 mx-auto" />
+                  <LogOut className="w-5 h-5 text-slate-500 hover:text-white mx-auto" />
                 </button>
               )}
             </div>
@@ -496,7 +487,7 @@ function LayoutContent({ children, currentPageName }) {
 
       {/* Main Content */}
       <main className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-        <div className="p-8">
+        <div className="px-5 py-6 md:px-8 md:py-8 xl:px-10">
           {children}
         </div>
       </main>

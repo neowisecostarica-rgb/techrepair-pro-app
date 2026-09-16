@@ -221,7 +221,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
               ))}
               <Link to={createPageUrl('PuntoVenta')}>
                 <Button variant="outline" className="w-full mt-2">
-                  Ir a Punto de Venta
+                  Ir a Caja y Cobros
                 </Button>
               </Link>
             </div>

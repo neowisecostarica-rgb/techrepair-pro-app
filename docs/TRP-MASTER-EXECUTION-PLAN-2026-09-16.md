@@ -38,7 +38,7 @@ Incluye:
 - Optimizar Time-to-Value.
 
 ## MEGABLOQUE B — TRP SAAS VISUAL SYSTEM
-Estado: NEXT / ACTIVE — OBLIGATORIO
+Estado: CLOSED — IMPLEMENTATION COMPLETE / HUMAN VISUAL QA DEFERRED TO G
 
 Principio: `TRP must look and feel like TRP, not NeoWise Design.`
 
@@ -67,7 +67,7 @@ Incluye:
 Definition of success visual: una captura del producto debe ser reconocible como TRP aun sin contexto externo.
 
 ## MEGABLOQUE C — COMMERCIAL ENGINE
-Estado: PENDIENTE
+Estado: ACTIVE — C1 COMMERCIAL ARCHITECTURE COMPLETE / C2 NEXT
 
 Incluye:
 - Aplicar Brand Positioning definitivo.
@@ -245,6 +245,35 @@ Deuda conscientemente trasladada:
 - pricing/entitlements/billing/licensing → Megabloque C;
 - Employee Lifecycle Enterprise → Megabloque E.
 
+## CIERRE MEGABLOQUE B — 2026-09-16
+
+TRP SaaS Visual System queda cerrado en implementación de la pasada visual sistémica. Human visual E2E permanece deliberadamente diferido al Megabloque G junto con el QA funcional final.
+
+Entregado en la pasada B:
+- shell/layout TRP y limpieza de branding residual;
+- lenguaje visual aplicado a Command Centers y superficies core;
+- primitives UI base (button/card/input/table/badge) alineados;
+- consistencia visual extendida a Órdenes, Activos, Expediente, Agenda, Clientes, Inventario, Caja/Cobros, Settings, SaaS y portales públicos;
+- estados/superficies de suspensión y portales alineados con TRP;
+- identidad visual separada de TechRepair/NeoWise en las superficies intervenidas.
+
+No se declara QA visual humano final aquí; ese gate sigue en G.
+
+## C1 — COMMERCIAL ARCHITECTURE — 2026-09-16
+
+SOT: `docs/TRP-COMMERCIAL-ARCHITECTURE-C1-2026-09-16.md`.
+
+Decisiones C1:
+- `Organization.plan` legacy deja de considerarse autoridad comercial;
+- separar legacy plan, commercial package, entitlement, billing y activation/licensing;
+- organización/tenant como unidad contractual primaria;
+- core F0–F8 no se degrada para forzar upgrade;
+- diferenciación por profundidad, escala y control;
+- Basic/Pro/Premium y sus precios hardcodeados son compatibilidad legacy, no pricing TRP aprobado;
+- Premium legacy no implica Enterprise;
+- Reliability Score sigue fuera de comercialización;
+- capa de compatibilidad inicial en `src/config/commercialArchitecture.js` sin mutar tenants reales.
+
 ## PRÓXIMA ACCIÓN
 
-Entrar a MEGABLOQUE B — TRP SaaS Visual System. Empezar por shell/login/navigation/header y tokens visuales globales; después Command Centers, tablas/formularios/estados y responsive. No volver a Naming. No iniciar pricing/web antes de terminar B.
+Entrar a C2 — Entitlement Authority backend. Implementar contrato/política efectiva y resolver compatibilidad legacy sin backfill destructivo. Después integrar Super Admin contra esa autoridad. No publicar precios ni conectar billing real hasta cerrar packaging/pricing y operación comercial.

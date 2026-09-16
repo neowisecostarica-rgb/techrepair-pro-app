@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Rocket, CheckCircle2, Circle, Settings, UserPlus, Users, FileText } from 'lucide-react';
+import { Rocket, CheckCircle2, Circle, Settings, UserPlus, FileText } from 'lucide-react';
 
 export default function QuickStartCard({ 
   hasBasicInfo, 
@@ -13,38 +13,32 @@ export default function QuickStartCard({
 }) {
   const navigate = useNavigate();
 
+  // Product SOT: primero llevar al usuario al valor operacional.
+  // Cliente y equipo se crean inline en recepción; no son un prerequisito separado.
   const steps = [
     {
-      label: 'Configura tu negocio',
-      description: 'Completa información básica como nombre legal, teléfono y país',
+      label: 'Recibe tu primer equipo',
+      description: 'Crea tu primera orden y empieza a darle seguimiento al servicio',
+      completed: hasOrders,
+      icon: FileText,
+      action: () => navigate(`${createPageUrl('OrdenesTrabajo')}?activation=first_work_order`),
+      buttonText: 'Recibir equipo',
+    },
+    {
+      label: 'Completa los datos de tu negocio',
+      description: 'Agrega información comercial y preferencias cuando ya estés operando',
       completed: hasBasicInfo,
       icon: Settings,
       action: () => navigate(createPageUrl('Settings')),
-      buttonText: 'Ir a Configuración',
+      buttonText: 'Completar datos',
     },
     {
-      label: 'Agrega tu primer técnico o colaborador',
-      description: 'Invita a tu equipo para empezar a colaborar',
+      label: 'Invita a tu equipo',
+      description: 'Agrega técnicos o colaboradores para trabajar juntos',
       completed: hasCollaborators,
       icon: UserPlus,
       action: () => navigate(createPageUrl('Settings')),
-      buttonText: 'Invitar Usuario',
-    },
-    {
-      label: 'Registra tu primer cliente',
-      description: 'Crea el perfil de tu primer cliente',
-      completed: hasClients,
-      icon: Users,
-      action: () => navigate(createPageUrl('Clientes')),
-      buttonText: 'Nuevo Cliente',
-    },
-    {
-      label: 'Crea tu primera Orden de Trabajo',
-      description: 'Comienza a gestionar servicios y reparaciones',
-      completed: hasOrders,
-      icon: FileText,
-      action: () => navigate(createPageUrl('OrdenesTrabajo')),
-      buttonText: 'Nueva OT',
+      buttonText: 'Invitar usuario',
     },
   ];
 
@@ -62,10 +56,10 @@ export default function QuickStartCard({
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-slate-900">
-                👋 Bienvenido a TechRepair Pro
+                👋 Empieza con tu primer servicio
               </CardTitle>
               <p className="text-sm text-slate-600 mt-1">
-                Para empezar y aprovechar la plataforma, completa estos pasos básicos
+                No necesitas configurar todo antes de trabajar. Recibe un equipo y completa el resto después.
               </p>
             </div>
           </div>

@@ -139,8 +139,15 @@ function OrdenesTrabajoContent() {
     queryKey: ['ordenes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const response = await base44.functions.invoke('listWorkOrders', {});
-      return (response.data || []).map(normalizarOrden);
+      let cursor = null;
+      const all = [];
+      do {
+        const response = await base44.functions.invoke('listWorkOrders', { limit: 200, ...(cursor ? { cursor } : {}) });
+        const page = response.data || {};
+        all.push(...(page.records || []));
+        cursor = page.has_more ? page.next_cursor : null;
+      } while (cursor);
+      return all.map(normalizarOrden);
     },
     enabled: !!effectiveOrgId,
     staleTime: 30 * 1000,

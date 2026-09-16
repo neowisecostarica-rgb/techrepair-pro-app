@@ -20,8 +20,15 @@ export default function KanbanBoard({ onCardClick }) {
   const { data: fetchedOrdenes = [], isLoading } = useQuery({
     queryKey: ['listWorkOrders'],
     queryFn: async () => {
-      const res = await base44.functions.invoke('listWorkOrders', {});
-      return res.data?.workOrders || res.data || [];
+      let cursor = null;
+      const all = [];
+      do {
+        const res = await base44.functions.invoke('listWorkOrders', { limit: 200, ...(cursor ? { cursor } : {}) });
+        const page = res.data || {};
+        all.push(...(page.records || []));
+        cursor = page.has_more ? page.next_cursor : null;
+      } while (cursor);
+      return all;
     },
   });
 

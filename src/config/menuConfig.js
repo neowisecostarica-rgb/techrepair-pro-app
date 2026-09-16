@@ -13,6 +13,7 @@ import {
   Users,
   ShoppingCart,
   Calendar,
+  AlertCircle,
   Settings,
   FileText,
   Sun,

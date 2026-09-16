@@ -187,7 +187,7 @@ function LayoutContent({ children, currentPageName }) {
 
     // SUPER_ADMIN in Saas or AdminReset page: Render minimal layout
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+      <div className="min-h-screen bg-[#f6f8fb]">
         <style>{`
           :root {
             --primary: 142 71% 45%;
@@ -198,16 +198,16 @@ function LayoutContent({ children, currentPageName }) {
         `}</style>
 
         {/* Sidebar for SUPER_ADMIN */}
-        <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 z-40">
+        <aside className="fixed left-0 top-0 h-screen w-64 bg-[#0b1220] border-r border-slate-800 z-40">
           <div className="flex flex-col h-full">
             <div className="p-5 border-b border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
-                  <Wrench className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 bg-teal-400/10 ring-1 ring-inset ring-teal-300/20 rounded-xl flex items-center justify-center">
+                  <span className="text-sm font-black tracking-[-0.04em] text-teal-300">TRP</span>
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-slate-900">TechRepair</h1>
-                  <p className="text-xs text-slate-500">Super Admin</p>
+                  <h1 className="text-lg font-bold tracking-tight text-white">TRP</h1>
+                  <p className="text-xs text-slate-500">Platform Administration</p>
                 </div>
               </div>
             </div>
@@ -225,9 +225,9 @@ function LayoutContent({ children, currentPageName }) {
 
             {user && (
               <div className="p-4 border-t border-slate-800">
-                <div className="px-4 py-3 bg-slate-50 rounded-xl mb-3">
-                  <p className="text-sm font-medium text-slate-900">{user.full_name}</p>
-                  <p className="text-xs text-slate-500">{user.email}</p>
+                <div className="px-4 py-3 bg-white/5 ring-1 ring-inset ring-white/5 rounded-xl mb-3">
+                  <p className="text-sm font-medium text-slate-100">{user.full_name}</p>
+                  <p className="text-xs text-slate-500 truncate">{user.email}</p>
                   <p className="text-xs text-teal-300 font-medium mt-1">SUPER_ADMIN</p>
                 </div>
                 <Button

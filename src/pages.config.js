@@ -51,6 +51,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminReset from './pages/AdminReset';
 import AdminSeedCompuStore from './pages/AdminSeedCompuStore';
 import Agenda from './pages/Agenda';
+import Activos from './pages/Activos';
 import AnalisisTrabajo from './pages/AnalisisTrabajo';
 import CRM from './pages/CRM';
 import Calidad from './pages/Calidad';
@@ -93,6 +94,7 @@ export const PAGES = {
     "AdminReset": AdminReset,
     "AdminSeedCompuStore": AdminSeedCompuStore,
     "Agenda": Agenda,
+    "Activos": Activos,
     "AnalisisTrabajo": AnalisisTrabajo,
     "CRM": CRM,
     "Calidad": Calidad,

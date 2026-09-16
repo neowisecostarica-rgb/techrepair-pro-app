@@ -2,10 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { listIdentityAccounts } from '@/api/identity';
-import {
-  getSmartIntakeByWorkOrder,
-  smartIntakeQueryKeys,
-} from '@/api/smartIntake';
+
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,16 +48,6 @@ function OrdenesTrabajoContent() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingOT, setEditingOT] = useState(null);
-  const [selectedOT, setSelectedOT] = useState(null);
-  const [showWizard, setShowWizard] = useState(false);
-  const [wizardOT, setWizardOT] = useState(null);
-  const [showPreDiagnostico, setShowPreDiagnostico] = useState(false);
-  const [preDiagnosticoOT, setPreDiagnosticoOT] = useState(null);
-  const [showDiagnosticoTecnico, setShowDiagnosticoTecnico] = useState(false);
-  const [diagnosticoTecnicoOT, setDiagnosticoTecnicoOT] = useState(null);
-  const [smartIntakeData, setSmartIntakeData] = useState(null);
-  const [showCotizacion, setShowCotizacion] = useState(false);
-  const [cotizacionOT, setCotizacionOT] = useState(null);
   const [vistaActiva, setVistaActiva] = useState('lista');
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todas');
@@ -72,10 +60,6 @@ function OrdenesTrabajoContent() {
   const [selectedPrioridad, setSelectedPrioridad] = useState('normal');
   const [terminosActivos, setTerminosActivos] = useState(null);
   const [receptionError, setReceptionError] = useState(null);
-  const [showReasignar, setShowReasignar] = useState(false);
-  const [reasignarOT, setReasignarOT] = useState(null);
-  const [nuevoTecnicoId, setNuevoTecnicoId] = useState('');
-  const [motivoReasignacion, setMotivoReasignacion] = useState('');
   const [newEquipoData, setNewEquipoData] = useState({
     tipo: '',
     marca: '',
@@ -144,16 +128,6 @@ function OrdenesTrabajoContent() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
-
-  // Mantener el modal abierto sincronizado con la fuente remota. Antes el
-  // detalle conservaba una copia vieja de la OT después de asignar o cobrar.
-  useEffect(() => {
-    if (!selectedOT?.id) return;
-    const ordenActualizada = ordenes.find(o => o.id === selectedOT.id);
-    if (ordenActualizada) {
-      setSelectedOT(ordenActualizada);
-    }
-  }, [ordenes, selectedOT?.id]);
 
   // P0.4: Se eliminó el loop de carga de estados de pago (N queries secuenciales).
   // Los badges de pago en vista lista son opcionales — se pueden recuperar bajo demanda desde el detalle.
@@ -226,15 +200,6 @@ function OrdenesTrabajoContent() {
     setEditingOT(null);
     setShowModal(true);
   }, []);
-
-  // DCE-001A: única ruta canónica de lectura para Smart Intake.
-  const { data: smartIntakeResult } = useQuery({
-    queryKey: smartIntakeQueryKeys.byWorkOrder(selectedOT?.id),
-    queryFn: () => getSmartIntakeByWorkOrder(selectedOT.id),
-    enabled: !!selectedOT?.id && selectedOT?.estado === 'EN_COLA_REVISION',
-    staleTime: 0,
-  });
-  const preDiagSelectedOT = smartIntakeResult?.intake || null;
 
   const [guardandoOT, setGuardandoOT] = useState(false);
 
@@ -326,7 +291,6 @@ function OrdenesTrabajoContent() {
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       setShowModal(false);
       setEditingOT(null);
-      setSelectedOT(null);
       toast({ title: '✅ Orden de trabajo actualizada correctamente' });
     },
     onError: (error) => {
@@ -398,20 +362,6 @@ function OrdenesTrabajoContent() {
     }
   };
 
-  const handleCopiarLink = async (orden) => {
-    const response = await base44.functions.invoke('issuePublicDocumentToken', {
-      type: 'work_order',
-      resource_id: orden.id,
-      correlation_id: crypto.randomUUID(),
-    });
-    const token = response?.data?.token;
-    if (!token) throw new Error(response?.data?.error || 'No se pudo emitir el enlace publico');
-    const baseUrl = window.location.origin;
-    const link = `${baseUrl}${createPageUrl('PortalCliente')}?token=${token}`;
-    navigator.clipboard.writeText(link);
-    toast({ title: 'Link copiado al portapapeles' });
-  };
-
   const ordenesFiltradas = ordenes.filter(o => {
     const matchSearch = !searchTerm || 
       o.codigo_ot?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -442,127 +392,6 @@ function OrdenesTrabajoContent() {
     const equipo = equipos.find(e => e.id === equipoId);
     if (!equipo) return 'Equipo desconocido';
     return `${equipo.marca || equipo.brand || ''} ${equipo.modelo || equipo.model || ''}`.trim() || 'Equipo sin identificar';
-  };
-
-  const [reasignando, setReasignando] = useState(false);
-
-  // P0.2-E: Estado para visualización de diagnóstico
-  const [showPreviewDiagnostico, setShowPreviewDiagnostico] = useState(false);
-  const [diagnosticoPreviewData, setDiagnosticoPreviewData] = useState(null);
-  const [loadingDiagnosticoPreview, setLoadingDiagnosticoPreview] = useState(false);
-
-  const handleVerDiagnostico = async (ot) => {
-    setLoadingDiagnosticoPreview(true);
-    const [diagResults, clienteResults, equipoResults, tecnicoResults] = await Promise.all([
-      base44.entities.DiagnosticoTecnico.filter({ organization_id: ot.organization_id, orden_trabajo_id: ot.id, bloqueado: false }),
-      base44.entities.Cliente.filter({ id: ot.cliente_id }),
-      base44.entities.Equipo.filter({ id: ot.equipo_id }),
-      listIdentityAccounts(ot.organization_id).then(({ accounts }) =>
-        accounts.filter(account => account.user_id === ot.tecnico_asignado_id)
-      ),
-    ]);
-    setDiagnosticoPreviewData({
-      diagnostico: diagResults[0] || null,
-      cliente: clienteResults[0] || null,
-      equipo: equipoResults[0] || null,
-      tecnico: tecnicoResults[0] || null,
-      ordenTrabajo: ot,
-    });
-    setLoadingDiagnosticoPreview(false);
-    setShowPreviewDiagnostico(true);
-  };
-
-  const handleReasignar = async () => {
-    if (!reasignarOT || !nuevoTecnicoId) {
-      toast({ variant: 'destructive', title: 'Completa todos los campos requeridos' });
-      return;
-    }
-
-    setReasignando(true);
-    try {
-      const tecnico = tecnicos.find(t => t.user_id === nuevoTecnicoId);
-      const res = await base44.functions.invoke('reassignWorkOrderTechnician', {
-        orden_trabajo_id: reasignarOT.id,
-        tecnico_asignado_id: nuevoTecnicoId,
-        tecnico_asignado_email: tecnico?.user_email || '',
-        motivo: motivoReasignacion.trim() || null,
-      });
-
-      if (!res?.data?.success) {
-        throw new Error(res?.data?.error || 'La reasignación no fue confirmada por el servidor');
-      }
-
-      const otActualizada = normalizarOrden({
-        ...reasignarOT,
-        ...(res.data.updated_ot || {}),
-        tecnico_asignado_id: nuevoTecnicoId,
-        tecnico_asignado_email: tecnico?.user_email || '',
-        estado: res.data.estado_actual || reasignarOT.estado,
-      });
-
-      // Actualización optimista del modal + refresco de todas las bandejas que
-      // consumen la OT. Así el usuario no tiene que cerrar y volver a entrar.
-      setSelectedOT(current => current?.id === reasignarOT.id ? otActualizada : current);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] }),
-        queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] }),
-        queryClient.invalidateQueries({ queryKey: ['todas-ordenes', effectiveOrgId] }),
-        queryClient.invalidateQueries({ queryKey: ['expediente-ot', reasignarOT.id] }),
-      ]);
-
-      setShowReasignar(false);
-      setReasignarOT(null);
-      setNuevoTecnicoId('');
-      setMotivoReasignacion('');
-      toast({ title: '✅ Técnico reasignado correctamente', duration: 3000 });
-    } catch (error) {
-      console.error('Error reasignando técnico:', error);
-      const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
-      toast({ variant: 'destructive', title: 'Error al reasignar técnico', description: msg, duration: 4000 });
-    } finally {
-      setReasignando(false);
-    }
-  };
-
-  const handleCobrarTrabajo = async (orden) => {
-    navigate(`${createPageUrl('PuntoVenta')}?ot_id=${orden.id}&concepto=reparacion`);
-  };
-
-  const handleCobrarDiagnostico = (orden) => {
-    navigate(`${createPageUrl('PuntoVenta')}?ot_id=${orden.id}&concepto=revision_diagnostico`);
-  };
-
-  const handleIniciarRevision = async (orden) => {
-    try {
-      const response = await base44.functions.invoke('initTechnicalActivity', {
-        orden_trabajo_id: orden.id,
-        tecnico_id: orden.tecnico_asignado_id || user?.id,
-        tipo_actividad: 'diagnostico',
-        subtipo: 'Inicio de revisión técnica',
-      });
-
-      if (!response?.data?.success) {
-        throw new Error(response?.data?.error || 'No se pudo iniciar la revisión');
-      }
-
-      setSelectedOT(current => current?.id === orden.id ? {
-        ...current,
-        estado: response.data.estado_ot || 'EN_REVISION',
-        estado_atencion: response.data.estado_atencion || 'ACTIVO',
-      } : current);
-
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] }),
-        queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] }),
-        queryClient.invalidateQueries({ queryKey: ['todas-ordenes', effectiveOrgId] }),
-        queryClient.invalidateQueries({ queryKey: ['expediente-ot', orden.id] }),
-        queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] }),
-      ]);
-      toast({ title: 'Revisión iniciada', description: 'La actividad técnica quedó registrada y la OT está en revisión.' });
-    } catch (error) {
-      const msg = error?.response?.data?.error || error?.backendMessage || error?.message || 'Error desconocido';
-      toast({ variant: 'destructive', title: 'No se pudo iniciar la revisión', description: msg });
-    }
   };
 
   return (
@@ -837,7 +666,7 @@ function OrdenesTrabajoContent() {
 
       {/* Modal Crear OT */}
       <Dialog
-        open={showModal && !selectedOT}
+        open={showModal}
         onOpenChange={(open) => {
           if (!open && (guardandoOT || createMutation.isPending)) return;
           setShowModal(open);

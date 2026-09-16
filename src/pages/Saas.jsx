@@ -25,20 +25,12 @@ const LEGACY_PLAN_CATALOG = [
     code: 'basic',
     name: 'Basic',
     description: 'Para negocios pequeños (1 sucursal, funcionalidades básicas)',
-    prices: {
-      CRC: 19900,
-      USD: 39,
-    },
     color: 'blue',
   },
   {
     code: 'pro',
     name: 'Pro',
     description: 'Para negocios en crecimiento (multi-sucursal, reportes avanzados)',
-    prices: {
-      CRC: 39900,
-      USD: 79,
-    },
     color: 'purple',
     recommended: true,
   },
@@ -46,10 +38,6 @@ const LEGACY_PLAN_CATALOG = [
     code: 'premium',
     name: 'Premium',
     description: 'Para empresas establecidas (usuarios ilimitados, soporte prioritario)',
-    prices: {
-      CRC: 79900,
-      USD: 149,
-    },
     color: 'emerald',
   },
 ];
@@ -467,7 +455,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <ShieldAlert className="w-5 h-5 text-purple-600" />
-              <p className="text-xs font-semibold text-slate-600">Plan Distribution</p>
+              <p className="text-xs font-semibold text-slate-600">Commercial Packages</p>
             </div>
             <div className="text-xs space-y-1 mt-2">
               <p className="text-slate-700">Core: <span className="font-bold">{planDistribution.core}</span></p>
@@ -799,7 +787,7 @@ function SaasContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Change Plan */}
+      {/* Modal Commercial Package */}
       <Dialog open={showChangePlanModal} onOpenChange={setShowChangePlanModal}>
         <DialogContent>
           <DialogHeader>

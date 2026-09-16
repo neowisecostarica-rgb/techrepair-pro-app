@@ -67,7 +67,7 @@ Incluye:
 Definition of success visual: una captura del producto debe ser reconocible como TRP aun sin contexto externo.
 
 ## MEGABLOQUE C — COMMERCIAL ENGINE
-Estado: ACTIVE — C1 COMMERCIAL ARCHITECTURE COMPLETE / C2 NEXT
+Estado: ACTIVE — C1 CLOSED / C2 ENTITLEMENT AUTHORITY CLOSED / C3 NEXT
 
 Incluye:
 - Aplicar Brand Positioning definitivo.
@@ -276,4 +276,23 @@ Decisiones C1:
 
 ## PRÓXIMA ACCIÓN
 
-Entrar a C2 — Entitlement Authority backend. Implementar contrato/política efectiva y resolver compatibilidad legacy sin backfill destructivo. Después integrar Super Admin contra esa autoridad. No publicar precios ni conectar billing real hasta cerrar packaging/pricing y operación comercial.
+Entrar a C3 — Packaging + Pricing Decision. Definir nombres comerciales finales, unidad de cobro, límites, mensual/anual, Enterprise y onboarding/implementation. Entitlement Authority ya es backend SOT y Super Admin consume package efectivo; Organization.plan queda solo como compatibilidad legacy. No conectar billing real hasta aprobar pricing.
+
+
+## C2 — ENTITLEMENT AUTHORITY — 2026-09-16
+
+Estado: CLOSED — BACKEND AUTHORITY + SUPER ADMIN INTEGRATION
+
+Entregado:
+- entidad `EntitlementPolicy` service-only con package, billing status/interval, capabilities, limits, overrides y vigencia;
+- `entitlementAuthority.ts` resuelve policy explícita o fallback legacy no destructivo;
+- `identityGateway.context` devuelve entitlement efectivo del tenant activo;
+- `adminOverview` devuelve entitlements efectivos por organización;
+- nueva acción Super Admin `adminSetEntitlement` auditable;
+- Super Admin filtra/muestra Core/Advanced/Enterprise desde autoridad backend;
+- cambio comercial ya no muta `Organization.plan`;
+- precios legacy hardcodeados retirados del panel Super Admin;
+- creación de tenant conserva Basic/Pro/Premium únicamente como código de provisioning legacy hasta una migración posterior segura;
+- cero backfill/mutación masiva de tenants reales.
+
+Gate C2: build/lint/diff-check PASS.

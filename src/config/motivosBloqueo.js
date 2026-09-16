@@ -7,7 +7,7 @@ export const MOTIVOS_BLOQUEO = {
   PENDIENTE_PAGO: {
     label: 'Pendiente de Pago',
     descripcion: 'La revisión diagnóstica requiere pago previo antes de proceder.',
-    accion: 'Registrar cobro de revisión en Punto de Venta',
+    accion: 'Registrar cobro de revisión en Caja y Cobros',
     rol_responsable: 'SALES',
     color: 'amber',
   },

@@ -49,7 +49,7 @@ export default function Onboarding() {
           : activeAccount.role === 'CUSTOMER_SERVICE'
             ? 'OrdenesTrabajo'
             : activeAccount.role === 'SALES'
-              ? 'VentasCotizaciones'
+              ? 'MiDia'
               : activeAccount.role === 'INVENTORY'
                 ? 'Inventario'
                 : 'MiDia';
@@ -70,7 +70,7 @@ export default function Onboarding() {
             : accepted.account?.role === 'CUSTOMER_SERVICE'
               ? 'OrdenesTrabajo'
               : accepted.account?.role === 'SALES'
-                ? 'VentasCotizaciones'
+                ? 'MiDia'
                 : accepted.account?.role === 'INVENTORY'
                   ? 'Inventario'
                   : 'MiDia';
@@ -148,10 +148,10 @@ export default function Onboarding() {
 
   if (mode === 'checking') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
         <Card className="w-full max-w-md border-0 shadow-2xl">
           <CardContent className="p-8 text-center">
-            <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
+            <Loader2 className="w-12 h-12 text-teal-700 animate-spin mx-auto mb-4" />
             <p className="text-slate-600">Verificando tu cuenta...</p>
           </CardContent>
         </Card>
@@ -161,10 +161,10 @@ export default function Onboarding() {
 
   if (mode === 'invited') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
         <Card className="w-full max-w-md border-0 shadow-2xl">
           <CardContent className="p-8 text-center">
-            <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
+            <Loader2 className="w-12 h-12 text-teal-700 animate-spin mx-auto mb-4" />
             <p className="text-slate-600">Completando tu registro como usuario invitado...</p>
           </CardContent>
         </Card>
@@ -174,12 +174,12 @@ export default function Onboarding() {
 
   if (mode === 'success') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
         <Card className="w-full max-w-md border-0 shadow-2xl">
           <CardContent className="p-8 text-center">
-            <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+            <CheckCircle2 className="w-16 h-16 text-teal-700 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Tu espacio TRP está listo</h2>
-            <p className="text-emerald-600 font-medium">Vamos directo a tu primera recepción.</p>
+            <p className="text-teal-700 font-medium">Vamos directo a tu primera recepción.</p>
           </CardContent>
         </Card>
       </div>
@@ -219,10 +219,10 @@ export default function Onboarding() {
 
   // mode === 'new_company'
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
       <Card className="w-full max-w-lg border-0 shadow-2xl">
         <CardHeader className="text-center border-b border-slate-100">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-[#0b1220] rounded-full flex items-center justify-center mx-auto mb-4">
             <Building2 className="w-8 h-8 text-white" />
           </div>
           <CardTitle className="text-3xl font-bold text-slate-900">Configura tu organización</CardTitle>
@@ -305,15 +305,15 @@ export default function Onboarding() {
               </div>
             </div>
 
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-              <p className="text-sm text-emerald-800">
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+              <p className="text-sm text-teal-900">
                 <strong>Serás el administrador principal</strong> de esta empresa con acceso completo a todas las funciones.
               </p>
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600"
+              className="w-full bg-teal-700 hover:bg-teal-800"
               disabled={creating || !user?.id || !selectedCountry || !selectedCurrency}
 
             >

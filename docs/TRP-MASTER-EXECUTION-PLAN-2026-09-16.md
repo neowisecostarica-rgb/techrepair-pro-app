@@ -151,6 +151,9 @@ Incluye:
 - CTA demo/contacto.
 - Responsive premium.
 - No mostrar roadmap como funcionalidad existente.
+- Implementación SOT: `docs/TRP-D-WEBSITE-SALES-EXPERIENCE-2026-09-16.md`.
+- Web pública implementada en `/trp` con mockups editoriales reemplazables y editor Super Admin de visuales.
+- SEO/domain/contact endpoint final se resuelve en cutover; no bloquear E.
 
 ## MEGABLOQUE E — ENTERPRISE
 Estado: PENDIENTE / DISEÑO POST-CORE

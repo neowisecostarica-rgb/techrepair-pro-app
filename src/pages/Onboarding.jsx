@@ -178,8 +178,8 @@ export default function Onboarding() {
         <Card className="w-full max-w-md border-0 shadow-2xl">
           <CardContent className="p-8 text-center">
             <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Todo Listo!</h2>
-            <p className="text-emerald-600 font-medium">Ahora recibe tu primer equipo...</p>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Tu espacio TRP está listo</h2>
+            <p className="text-emerald-600 font-medium">Vamos directo a tu primera recepción.</p>
           </CardContent>
         </Card>
       </div>
@@ -225,8 +225,8 @@ export default function Onboarding() {
           <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Building2 className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-3xl font-bold text-slate-900">Crea tu negocio</CardTitle>
-          <p className="text-slate-500 mt-2">Solo necesitamos lo esencial. Después podrás recibir tu primer equipo.</p>
+          <CardTitle className="text-3xl font-bold text-slate-900">Configura tu organización</CardTitle>
+          <p className="text-slate-500 mt-2">Solo lo esencial para empezar. TRP te llevará directo a registrar tu primer trabajo.</p>
         </CardHeader>
         <CardContent className="p-8">
           <form onSubmit={handleCreateCompany} className="space-y-6">
@@ -235,7 +235,7 @@ export default function Onboarding() {
               <Input
                 id="company_name"
                 name="company_name"
-                placeholder="Ej: Mi Taller de Reparación"
+                placeholder="Ej: Compu Store Costa Rica"
                 required
                 disabled={creating}
               />
@@ -324,7 +324,7 @@ export default function Onboarding() {
                 </>
               ) : (
                 <>
-                  Crear negocio y continuar
+                  Crear organización y recibir primer equipo
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </>
               )}

@@ -44,9 +44,15 @@ export default function Onboarding() {
 
       const activeAccount = context.userAccount;
       if (activeAccount) {
-        const targetPage = ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(activeAccount.role)
-          ? 'Dashboard'
-          : 'MiDia';
+        const targetPage = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(activeAccount.role)
+          ? 'MiDia'
+          : activeAccount.role === 'CUSTOMER_SERVICE'
+            ? 'OrdenesTrabajo'
+            : activeAccount.role === 'SALES'
+              ? 'VentasCotizaciones'
+              : activeAccount.role === 'INVENTORY'
+                ? 'Inventario'
+                : 'MiDia';
         window.location.href = createPageUrl(targetPage);
         return;
       }
@@ -59,9 +65,15 @@ export default function Onboarding() {
         isLinkingRef.current = true;
         try {
           const accepted = await acceptIdentityInvitation(invitation.id);
-          const targetPage = ['ORG_ADMIN', 'BRANCH_ADMIN'].includes(accepted.account?.role)
-            ? 'Dashboard'
-            : 'MiDia';
+          const targetPage = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(accepted.account?.role)
+            ? 'MiDia'
+            : accepted.account?.role === 'CUSTOMER_SERVICE'
+              ? 'OrdenesTrabajo'
+              : accepted.account?.role === 'SALES'
+                ? 'VentasCotizaciones'
+                : accepted.account?.role === 'INVENTORY'
+                  ? 'Inventario'
+                  : 'MiDia';
           window.location.href = createPageUrl(targetPage);
           return;
         } catch (err) {

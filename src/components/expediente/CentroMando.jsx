@@ -253,7 +253,7 @@ export default function CentroMando({ ot, effectiveRole }) {
                     href={`${createPageUrl('PuntoVenta')}?ot_id=${ot.id}&concepto=revision_diagnostico`}
                     className="text-xs px-2 py-1 bg-amber-600 text-white rounded-md font-semibold whitespace-nowrap hover:bg-amber-700"
                   >
-                    Ir a Punto de Venta
+                    Ir a Caja y Cobros
                   </a>
                 )}
               </div>

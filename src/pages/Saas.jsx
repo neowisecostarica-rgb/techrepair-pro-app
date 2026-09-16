@@ -789,13 +789,37 @@ function SaasContent() {
       )}
 
       {consoleSection === 'commercial' && (
-        <Card className="border border-slate-200 shadow-sm bg-white">
-          <CardHeader><CardTitle className="text-lg">Commercial & Plans</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-slate-600">Autoridad comercial TRP: Core, Advanced y Enterprise. Los códigos Basic/Pro/Premium permanecen únicamente como compatibilidad legacy.</p>
-            <Button variant="outline" onClick={() => { window.location.hash = 'organizations'; }}>Administrar paquetes por organización</Button>
-          </CardContent>
-        </Card>
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Commercial & Plans</h2>
+            <p className="text-sm text-slate-600 mt-1">Packaging oficial de TRP. La autoridad contractual por tenant continúa en EntitlementPolicy.</p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {[
+              { name: 'Core', monthly: '$79', annual: '$790', note: 'Workflow operativo esencial completo · sin caps de órdenes' },
+              { name: 'Advanced', monthly: '$149', annual: '$1,490', note: 'Más profundidad, escala, analytics, calidad y automatización' },
+              { name: 'Enterprise', monthly: 'Custom', annual: 'Contrato anual', note: 'Gobernanza, escala e integraciones contratadas y disponibles' },
+            ].map(plan => (
+              <Card key={plan.name} className="border border-slate-200 shadow-sm bg-white">
+                <CardHeader><CardTitle className="text-lg">TRP {plan.name}</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex items-end gap-2 mb-2"><span className="text-3xl font-semibold text-slate-950">{plan.monthly}</span>{plan.name !== 'Enterprise' && <span className="text-sm text-slate-500 mb-1">/mes</span>}</div>
+                  <p className="text-sm font-medium text-teal-800 mb-3">{plan.annual}{plan.name !== 'Enterprise' && ' / año'}</p>
+                  <p className="text-sm text-slate-600">{plan.note}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <Card className="border border-slate-200 shadow-sm bg-white">
+            <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="font-medium text-slate-900">Unidad comercial: organización / tenant</p>
+                <p className="text-sm text-slate-600 mt-1">Usuarios no son el medidor primario. Escala por sucursales, activos y alcance Enterprise se resolverá mediante entitlements configurables.</p>
+              </div>
+              <Button variant="outline" onClick={() => { window.location.hash = 'organizations'; }}>Administrar paquetes</Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Modal Suspend Organization */}

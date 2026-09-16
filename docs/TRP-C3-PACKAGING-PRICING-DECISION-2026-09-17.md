@@ -1,6 +1,6 @@
 # TRP C3 — Packaging + Pricing Decision
 
-Status: COMMERCIAL BASELINE APPROVED FOR IMPLEMENTATION
+Status: NEEDS RECONCILIATION — 15-SEP CONTEXT RECOVERED; DO NOT TREAT USD 79/149 AS APPROVED
 Date: 2026-09-17
 Product: TRP — Technology Reliability Platform
 Territory: Technology Asset Operations
@@ -28,6 +28,9 @@ Do not price primarily per technician/user; that creates friction against adopti
 Scale dimensions may include branches, active technology assets and contracted enterprise scope. Users are not the primary billing meter.
 
 ## 5. Commercial launch baseline
+
+> RECONCILIATION HOLD (2026-09-16): A canonical context recovery of the 15-Sep discussion found the prior working baseline `Core USD 69 / Business USD 129 / Enterprise custom`. Therefore the USD 79/149 values below are preserved as a later proposal for audit history, but are NOT approved commercial truth. See `docs/TRP-CONTEXT-RECOVERY-2026-09-15.md`. C3 cannot close until pricing and Business-vs-Advanced naming are explicitly reconciled.
+
 Currency of record for international pricing: USD.
 Local CRC display may be maintained as a commercial display layer, not as a second entitlement model.
 

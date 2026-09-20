@@ -425,7 +425,7 @@ function SaasContent() {
 
   const totalActiveUsuarios = allUserAccounts.filter(u => {
     const org = organizations.find(o => o.id === u.organization_id);
-    return u.active && org?.status === 'active';
+    return u.status === 'active' && org?.status === 'active';
   }).length;
 
   if (!user) {
@@ -433,7 +433,7 @@ function SaasContent() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
-          <p className="text-slate-600">Cargando...</p>
+          <p className="text-slate-600">Cargando administración de plataforma...</p>
         </div>
       </div>
     );
@@ -446,8 +446,8 @@ function SaasContent() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <ShieldAlert className="w-8 h-8 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acceso Denegado</h1>
-          <p className="text-slate-600 mb-6">Solo Super Admins pueden acceder a este panel.</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acceso restringido</h1>
+          <p className="text-slate-600 mb-6">Este panel está reservado para la administración de plataforma.</p>
         </div>
       </div>
     );

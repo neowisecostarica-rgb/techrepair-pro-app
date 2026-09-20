@@ -155,7 +155,7 @@ function CRMContent() {
   }
 
   if (isLoading) {
-    return <div className="max-w-7xl mx-auto p-6 text-center">Cargando leads...</div>;
+    return <div className="max-w-7xl mx-auto p-6 text-center">Cargando prospectos...</div>;
   }
 
   if (isError) {
@@ -172,14 +172,14 @@ function CRMContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">CRM - Gestión de Leads</h1>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">CRM — Prospectos</h1>
           <p className="text-slate-500">Pipeline de ventas y conversión de clientes</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="w-5 h-5 mr-2" />
-          Nuevo Lead
+          Nuevo prospecto
         </Button>
       </div>
 
@@ -196,7 +196,7 @@ function CRMContent() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <Input
@@ -207,7 +207,7 @@ function CRMContent() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Filtrar por estado" />
           </SelectTrigger>
           <SelectContent>
@@ -226,7 +226,8 @@ function CRMContent() {
             {filteredLeads.length === 0 ? (
               <div className="text-center py-12">
                 <UserPlus className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">No hay leads que mostrar</p>
+                <p className="text-slate-500">No hay prospectos que coincidan con esta vista</p>
+                {!searchTerm && statusFilter === 'all' && <Button className="mt-4" onClick={() => setShowCreateModal(true)}><Plus className="w-4 h-4 mr-2" />Crear primer prospecto</Button>}
               </div>
             ) : (
               filteredLeads.map(lead => (

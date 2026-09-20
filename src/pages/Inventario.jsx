@@ -461,7 +461,8 @@ function InventarioContent() {
             {itemsFiltrados.length === 0 && (
               <div className="p-12 text-center">
                 <Package className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-400">No se encontraron items</p>
+                <p className="text-slate-400">No se encontraron artículos</p>
+                <p className="mt-1 text-sm text-slate-500">Ajusta los filtros o crea un artículo nuevo si tienes permisos de edición.</p>
               </div>
             )}
           </div>
@@ -473,12 +474,12 @@ function InventarioContent() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              {editingItem ? 'Editar Item' : 'Nuevo Item de Inventario'}
+              {editingItem ? 'Editar artículo' : 'Nuevo artículo de inventario'}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* CÓDIGO INTERNO - AUTO GENERADO */}
               {!editingItem && (
                 <div className="space-y-2 col-span-2">
@@ -783,7 +784,7 @@ function InventarioContent() {
                   </h4>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="fecha_compra">Fecha de Compra</Label>
                     <Input

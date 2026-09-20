@@ -158,8 +158,8 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   const getAvailableRoles = () => {
     if (effectiveRole === 'ORG_ADMIN') {
       return [
-        { value: 'ORG_ADMIN', label: 'Administrador de Organización' },
-        { value: 'BRANCH_ADMIN', label: 'Administrador Sucursal' },
+        { value: 'ORG_ADMIN', label: 'Administrador principal' },
+        { value: 'BRANCH_ADMIN', label: 'Administrador de sucursal' },
         { value: 'TECHNICIAN', label: 'Técnico' },
         { value: 'SALES', label: 'Ventas' },
         { value: 'INVENTORY', label: 'Inventario' },
@@ -172,18 +172,18 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   const availableRoles = getAvailableRoles();
 
   if (!isReady) {
-    return <div className="p-6 text-center text-slate-500">Cargando...</div>;
+    return <div className="p-6 text-center text-slate-500">Cargando usuarios y permisos...</div>;
   }
 
   return (
     <>
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b border-slate-100">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Gestión de Usuarios</CardTitle>
             <Button onClick={() => setShowInviteModal(true)} size="sm">
               <Plus className="w-4 h-4 mr-2" />
-              Invitar Usuario
+              Invitar usuario
             </Button>
           </div>
         </CardHeader>
@@ -292,11 +292,11 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
         </DialogContent>
       </Dialog>
 
-      {/* Modal Invitar Usuario */}
+      {/* Modal Invitar usuario */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invitar Usuario</DialogTitle>
+            <DialogTitle>Invitar usuario</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleInviteUser} className="space-y-4">
             <div className="space-y-2">
@@ -336,7 +336,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                 Cancelar
               </Button>
               <Button type="submit" disabled={inviting}>
-                {inviting ? 'Invitando...' : 'Invitar Usuario'}
+                {inviting ? 'Invitando...' : 'Invitar usuario'}
               </Button>
             </div>
           </form>

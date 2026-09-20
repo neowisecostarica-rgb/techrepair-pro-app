@@ -34,3 +34,6 @@ Human validation will happen after autonomous product + website remediation. It 
 - Super Admin visible terminology: replaced platform-internal `multi-tenant`, `SUPER_ADMIN` and `ORG_ADMIN` labels with operator-facing language while preserving canonical role identifiers in authorization code.
 - Automated build/lint and role/navigation contracts remain release gates.
 - Human role-journey QA remains deferred until autonomous remediation is complete.
+
+- State/CTA pass: CRM now uses prospect-facing language, responsive primary-action/filter layout and an actionable true-empty state; inventory empty/form states are clearer and mobile-safe; user management exposes human role labels and specific loading context.
+- Super Admin active-user metric now reads canonical `UserAccount.status` instead of legacy `active`, aligning visible system status with authorization truth.

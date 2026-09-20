@@ -62,6 +62,7 @@ function PuntoVentaContent() {
   const [validacionesPendientes, setValidacionesPendientes] = useState([]);
   const [ordenTrabajoObj, setOrdenTrabajoObj] = useState(null);
   const [showConfirmacionVenta, setShowConfirmacionVenta] = useState(false);
+  const [showConversionAntigua, setShowConversionAntigua] = useState(false);
   // Identidad del intento: permanece estable durante retries y solo cambia cuando
   // createSale confirma una venta efectiva.
   const [idempotencyKey, setIdempotencyKey] = useState(() => `ik_${crypto.randomUUID()}`);
@@ -95,27 +96,7 @@ function PuntoVentaContent() {
         const horasTranscurridas = (ahora - createdDate) / (1000 * 60 * 60);
         
         if (horasTranscurridas > 2) {
-          const confirmar = window.confirm(
-            '⚠️ Esta venta borrador tiene más de 2 horas de antigüedad.\n\n' +
-            '¿Deseas continuar con esta conversión o cancelarla?'
-          );
-          
-          if (!confirmar) {
-            // Revertir cotización y eliminar venta
-            (async () => {
-              try {
-                // La reversión de una conversión borrador debe pasar por la autoridad backend.
-                // Venta.delete está gobernado por operationalGateway y solo admite estados
-                // borrador/procesando/inconsistente; createSale es quien materializa la conversión.
-                await base44.entities.Venta.delete(preloadedVenta.id);
-                toast({ title: 'Conversión cancelada', description: 'Volvemos a la cotización sin crear una venta.' });
-                window.history.back();
-              } catch (error) {
-                console.error('Error al cancelar conversión:', error);
-              }
-            })();
-            return;
-          }
+          setShowConversionAntigua(true);
         }
       }
       
@@ -1013,6 +994,19 @@ function PuntoVentaContent() {
           setCodigoNoEncontrado('');
         }}
       />
+
+      <Dialog open={showConversionAntigua} onOpenChange={setShowConversionAntigua}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Conversión pendiente</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">Esta venta en borrador proviene de una cotización y tiene más de 2 horas. Puedes continuar con la conversión o cancelarla y volver a la cotización.</p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={async () => { try { await base44.entities.Venta.delete(preloadedVenta.id); setShowConversionAntigua(false); toast({ title: 'Conversión cancelada', description: 'Volvemos a la cotización sin crear una venta.' }); window.history.back(); } catch (error) { console.error('Error al cancelar conversión:', error); toast({ variant: 'destructive', title: 'No se pudo cancelar la conversión', description: 'La venta borrador se mantiene sin cambios. Intenta nuevamente.' }); } }}>Cancelar conversión</Button>
+              <Button onClick={() => setShowConversionAntigua(false)}>Continuar conversión</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!ventaCompletada} onOpenChange={() => setVentaCompletada(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">

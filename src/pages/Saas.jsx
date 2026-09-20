@@ -18,6 +18,7 @@ import {
   adminUpdateIdentityOrganization,
   adminSetIdentityEntitlement,
   adminActivateIdentityLicense,
+  adminSetIdentityCommercialLifecycle,
   getIdentityAdminOverview,
 } from '@/api/identity';
 
@@ -127,6 +128,7 @@ function SaasContent() {
   const [showSuspenderModal, setShowSuspenderModal] = useState(false);
   const [showChangePlanModal, setShowChangePlanModal] = useState(false);
   const [showActionConfirm, setShowActionConfirm] = useState(false);
+  const [showLifecycleModal, setShowLifecycleModal] = useState(false);
   const [pendingAdminAction, setPendingAdminAction] = useState(null);
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [suspendReason, setSuspenderReason] = useState('');
@@ -134,6 +136,8 @@ function SaasContent() {
   const [newPaquete, setNewPaquete] = useState('core');
   const [newBillingInterval, setNewBillingInterval] = useState('monthly');
   const [newBillingStatus, setNewBillingStatus] = useState('active');
+  const [newLicenseStatus, setNewLicenseStatus] = useState('active');
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -270,6 +274,17 @@ function SaasContent() {
       console.error('Error cambiando entitlement:', error);
       toast({ variant: 'destructive', title: 'No se pudo cambiar el paquete', description: error?.message || 'Inténtalo nuevamente.' });
     }
+  };
+
+
+  const handleCommercialLifecycle = async () => {
+    if (!selectedOrg) return;
+    try {
+      await adminSetIdentityCommercialLifecycle(selectedOrg.id, { billing_status: newBillingStatus, license_status: newLicenseStatus, cancel_at_period_end: cancelAtPeriodEnd });
+      queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
+      toast({ title: 'Ciclo comercial actualizado', description: 'Facturación y licencia quedaron actualizadas sin alterar por sí solas el acceso operativo.' });
+      setShowLifecycleModal(false); setSelectedOrg(null); setCancelAtPeriodEnd(false);
+    } catch (error) { toast({ variant: 'destructive', title: 'No se pudo actualizar el ciclo comercial', description: error?.message || 'Inténtalo nuevamente.' }); }
   };
 
   const requestActivateLicense = async (organization) => {
@@ -801,6 +816,11 @@ function SaasContent() {
                             >
                               Plan y facturación
                             </Button>
+                            {entitlementSource === 'explicit_policy' && (
+                              <Button size="sm" variant="outline" onClick={() => { setSelectedOrg(org); setNewBillingStatus(billingStatus); setNewLicenseStatus(licenseStatus); setCancelAtPeriodEnd(Boolean(entitlement?.cancel_at_period_end)); setShowLifecycleModal(true); }} disabled={authIsImpersonating} className="text-xs">
+                                Ciclo comercial
+                              </Button>
+                            )}
                             {licenseStatus !== 'active' && entitlementSource === 'explicit_policy' && (
                               <Button size="sm" variant="outline" onClick={() => requestActivateLicense(org)} disabled={authIsImpersonating} className="text-xs border-teal-300 text-teal-700 hover:bg-teal-50">
                                 Activar licencia
@@ -893,6 +913,21 @@ function SaasContent() {
           </Card>
         </div>
       )}
+
+
+      <Dialog open={showLifecycleModal} onOpenChange={setShowLifecycleModal}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Ciclo comercial y licencia</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-slate-50 p-3"><p className="text-sm text-slate-600">Organización</p><p className="font-semibold">{selectedOrg?.name}</p></div>
+            <div><Label>Estado de facturación</Label><select value={newBillingStatus} onChange={e=>setNewBillingStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="trial">Prueba</option><option value="active">Activa</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></div>
+            <div><Label>Estado de licencia</Label><select value={newLicenseStatus} onChange={e=>setNewLicenseStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="pending">Pendiente</option><option value="active">Activa</option><option value="grace">Gracia</option><option value="suspended">Suspendida</option><option value="revoked">Revocada</option><option value="expired">Vencida</option></select></div>
+            <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={cancelAtPeriodEnd} onChange={e=>setCancelAtPeriodEnd(e.target.checked)} className="mt-1"/><span><strong>Cancelar al final del período</strong><span className="mt-1 block text-xs text-slate-500">Registra la intención comercial. No suspende por sí sola el acceso operativo de la organización.</span></span></label>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Facturación, licencia y acceso operativo son estados distintos. Para bloquear el acceso usa Suspender organización.</div>
+            <div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setShowLifecycleModal(false)}>Cancelar</Button><Button onClick={handleCommercialLifecycle} className="bg-teal-700 hover:bg-teal-800">Guardar ciclo</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Suspender Organization */}
       <Dialog open={showSuspenderModal} onOpenChange={setShowSuspenderModal}>

@@ -1,0 +1,30 @@
+{
+  "name": "PublicSiteConfig",
+  "type": "object",
+  "description": "Global public website configuration controlled by platform admin.",
+  "properties": {
+    "config_key": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "updated_by": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "config_key"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

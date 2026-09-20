@@ -237,6 +237,22 @@ Deno.serve(async (req) => {
     const action = body.action || 'context';
     diagnosticStage = 'ACTION_DISPATCH';
 
+    if (action === 'getPublicSiteConfig') {
+      const rows = await base44.asServiceRole.entities.PublicSiteConfig.filter({ config_key: 'main' }, 1);
+      return Response.json({ contact_email: clean(rows?.[0]?.contact_email, 320) || '' });
+    }
+
+    if (action === 'adminSetPublicSiteConfig') {
+      if (!isCanonicalSuperAdmin(user)) return jsonError('Acceso denegado', 403, 'SUPERADMIN_REQUIRED');
+      const contactEmail = clean(body.contact_email, 320);
+      const rows = await base44.asServiceRole.entities.PublicSiteConfig.filter({ config_key: 'main' }, 1);
+      const data = { config_key: 'main', contact_email: contactEmail, updated_by: user.id, updated_at: new Date().toISOString() };
+      if (rows?.[0]?.id) await base44.asServiceRole.entities.PublicSiteConfig.update(rows[0].id, data);
+      else await base44.asServiceRole.entities.PublicSiteConfig.create(data);
+      await appendSuperAdminAudit(base44, { actorUser: user, action: 'PUBLIC_SITE_CONFIG_UPDATED', targetType: 'PublicSiteConfig', targetId: rows?.[0]?.id || 'main', metadata: { contact_email_configured: Boolean(contactEmail) } });
+      return Response.json({ success: true, contact_email: contactEmail });
+    }
+
     if (action === 'context') {
       diagnosticStage = 'CONTEXT_BUILD';
       const context = await buildContext(base44, user);

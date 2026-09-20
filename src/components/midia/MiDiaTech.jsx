@@ -39,8 +39,10 @@ import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { obtenerEstadoPagoOT } from '@/components/ot/obtenerEstadoPagoOT';
 import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { retomarOrdenTrabajo } from '@/components/ot/retomarOrdenTrabajo';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function MiDiaTech({ user, userAccount, effectiveOrgId, effectiveRole }) {
+  const { toast } = useToast();
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [showDetalleOT, setShowDetalleOT] = useState(false);
@@ -54,6 +56,8 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   const [botonesDeshabilitados, setBotonesDeshabilitados] = useState({});
   const [transicionEnCurso, setTransicionEnCurso] = useState(false);
   const [estadosPago, setEstadosPago] = useState({});
+  const [pendingSwitchOT, setPendingSwitchOT] = useState(null);
+  const [pendingPaymentOT, setPendingPaymentOT] = useState(null);
 
   // SOT v1: Hoy es la bandeja de ejecución técnica pura.
   // Estados válidos: ASIGNADA, EN_REVISION, EN_REPARACION, PRUEBAS.
@@ -195,7 +199,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       setShowPauseModal(false);
       setObservacionesPausa('');
     } catch (error) {
-      alert('Error al pausar: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo pausar el trabajo', description: error.message });
     }
   };
 
@@ -206,13 +210,13 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     setTransicionEnCurso(true);
     
     try {
+      if (ordenActiva && ordenActiva.id !== orden.id && pendingSwitchOT?.id !== orden.id) {
+        setPendingSwitchOT(orden);
+        setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
+        setTransicionEnCurso(false);
+        return;
+      }
       if (ordenActiva && ordenActiva.id !== orden.id) {
-        if (!confirm('Ya tienes un trabajo activo. ¿Pausar el actual y retomar este?')) {
-          setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
-          setTransicionEnCurso(false);
-          return;
-        }
-
         const pauseResponse = await base44.functions.invoke('technicalActivityCommand', {
           action: 'PAUSE',
           work_order_id: ordenActiva.id,
@@ -238,7 +242,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
       setTransicionEnCurso(false);
     } catch (error) {
-      alert('Error al retomar trabajo: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo retomar el trabajo', description: error.message });
       setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
       setTransicionEnCurso(false);
     }
@@ -246,26 +250,21 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
   const handleIniciarDiagnostico = async (orden) => {
     if (orden.tecnico_asignado_id !== user?.id) {
-      alert('No estás asignado a esta orden de trabajo');
+      toast({ variant: 'destructive', title: 'Orden no asignada', description: 'No estás asignado a esta orden de trabajo.' });
       return;
     }
 
     if (orden.estado !== 'EN_REVISION') {
-      alert('Esta orden debe estar en estado EN_REVISION para realizar el diagnóstico');
+      toast({ variant: 'destructive', title: 'Diagnóstico no disponible', description: 'La orden debe estar en revisión para realizar el diagnóstico.' });
       return;
     }
 
     if (!orden.diagnostico_habilitado) {
       if (effectiveRole === 'TECHNICIAN') {
-        alert('⏸️ Esta orden requiere pago de diagnóstico.\n\nPor favor, contacta a administración o ventas para procesar el pago.');
+        toast({ title: 'Diagnóstico pendiente de pago', description: 'Contacta a administración o ventas para procesar el pago antes de continuar.' });
         return;
       } else {
-        const confirmar = window.confirm(
-          '🔒 El diagnóstico debe cobrarse antes de iniciar.\n\n¿Deseas ir a Caja y Cobros para cobrar ahora?'
-        );
-        if (confirmar) {
-          window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;
-        }
+        setPendingPaymentOT(orden);
         return;
       }
     }
@@ -286,7 +285,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     if (botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso) return;
     
     if (!['ASIGNADA', 'EN_REVISION'].includes(orden.estado)) {
-      alert('Solo se puede iniciar revisión desde estado ASIGNADA o reconciliar una OT EN_REVISION sin actividad');
+      toast({ variant: 'destructive', title: 'No se puede iniciar la revisión', description: 'La orden debe estar asignada o en revisión sin actividad.' });
       return;
     }
 
@@ -307,17 +306,12 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
         if (codigo === 'DIAGNOSTICO_NO_HABILITADO') {
           if (effectiveRole === 'TECHNICIAN') {
-            alert(`⏸️ ${response?.data?.descripcion_bloqueo || 'Diagnóstico bloqueado'}\n\nContacta a administración o ventas para procesar el pago.`);
+            toast({ title: 'Diagnóstico bloqueado', description: `${response?.data?.descripcion_bloqueo || 'Procesa el pago antes de continuar.'} Contacta a administración o ventas.` });
           } else {
-            const confirmar = window.confirm(
-              `🔒 ${response?.data?.descripcion_bloqueo || 'Diagnóstico bloqueado'}\n\n¿Deseas ir a Caja y Cobros para procesar el pago?`
-            );
-            if (confirmar) {
-              window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${orden.id}&concepto=revision_diagnostico`;
-            }
+            setPendingPaymentOT(orden);
           }
         } else {
-          alert('Error al iniciar revisión: ' + errorMsg);
+          toast({ variant: 'destructive', title: 'No se pudo iniciar la revisión', description: errorMsg });
         }
         setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: false }));
         setTransicionEnCurso(false);
@@ -331,7 +325,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       
       setTransicionEnCurso(false);
     } catch (error) {
-      alert('Error al iniciar revisión: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo iniciar la revisión', description: error.message });
       setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: false }));
       setTransicionEnCurso(false);
     }
@@ -356,7 +350,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
       setTransicionEnCurso(false);
     } catch (error) {
-      alert('Error al cambiar estado: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo cambiar el estado', description: error.message });
       setBotonesDeshabilitados(prev => ({ ...prev, [key]: false }));
       setTransicionEnCurso(false);
     }
@@ -896,6 +890,14 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       </div>
 
       {/* Modal Pausar */}
+      <Dialog open={Boolean(pendingSwitchOT)} onOpenChange={(open) => { if (!open) setPendingSwitchOT(null); }}>
+        <DialogContent><DialogHeader><DialogTitle>Cambiar de trabajo activo</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Ya tienes una orden activa. TRP pausará el trabajo actual antes de retomar la orden seleccionada.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingSwitchOT(null)}>Cancelar</Button><Button onClick={() => { const ot=pendingSwitchOT; setPendingSwitchOT(null); if (ot) handleRetomar(ot); }}>Pausar y retomar</Button></div></div></DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(pendingPaymentOT)} onOpenChange={(open) => { if (!open) setPendingPaymentOT(null); }}>
+        <DialogContent><DialogHeader><DialogTitle>Diagnóstico pendiente de cobro</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">El diagnóstico debe cobrarse antes de iniciar. Puedes ir a Caja y Cobros para procesarlo ahora.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingPaymentOT(null)}>Ahora no</Button><Button onClick={() => { const id=pendingPaymentOT?.id; setPendingPaymentOT(null); if(id) window.location.href=createPageUrl('PuntoVenta')+`?ot_id=${id}&concepto=revision_diagnostico`; }}>Ir a Caja y Cobros</Button></div></div></DialogContent>
+      </Dialog>
+
       <Dialog open={showPauseModal} onOpenChange={setShowPauseModal}>
         <DialogContent>
           <DialogHeader>

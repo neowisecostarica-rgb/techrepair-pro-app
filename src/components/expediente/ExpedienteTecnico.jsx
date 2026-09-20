@@ -10,6 +10,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -57,6 +58,7 @@ function Dato({ label, children }) {
 }
 
 export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, cliente, equipo, tecnico, onOTUpdated }) {
+  const { t } = useI18n();
   // ── DMR activo ────────────────────────────────────────────────────────────
   const { data: dmrList = [], isLoading: loadingDMR } = useQuery({
     queryKey: ['expediente-dmr', ot.id],
@@ -216,7 +218,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
             {dmr.cliente_snapshot && (
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Snapshot Cliente</p>
+                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">{t('tail.customerSnapshot','Snapshot Cliente')}</p>
                 <div className="bg-slate-50 rounded-lg p-2 space-y-0.5">
                   <Dato label="Nombre">{dmr.cliente_snapshot.nombre_completo}</Dato>
                   {dmr.cliente_snapshot.telefono && <Dato label="Teléfono">{dmr.cliente_snapshot.telefono}</Dato>}
@@ -226,7 +228,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
             {dmr.activo_snapshot && (
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Snapshot Equipo</p>
+                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">{t('tail.equipmentSnapshot','Snapshot Equipo')}</p>
                 <div className="bg-slate-50 rounded-lg p-2 space-y-0.5">
                   <Dato label="Tipo">{dmr.activo_snapshot.tipo}</Dato>
                   <Dato label="Marca/Modelo">{`${dmr.activo_snapshot.marca || ''} ${dmr.activo_snapshot.modelo || ''}`.trim()}</Dato>
@@ -251,7 +253,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
             {/* ── Pre-Diagnóstico de Recepción (desde diagnostico_snapshot del DMR) ── */}
             {dmr.diagnostico_snapshot && Object.keys(dmr.diagnostico_snapshot).length > 0 && (
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Pre-Diagnóstico de Recepción</p>
+                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">{t('docResidual.preDiagnosis','Pre-Diagnóstico de Recepción')}</p>
                 <div className="bg-blue-50 rounded-lg p-2 space-y-0.5">
                   {dmr.diagnostico_snapshot.accesorios_ingreso && (
                     <Dato label="Accesorios">{dmr.diagnostico_snapshot.accesorios_ingreso}</Dato>

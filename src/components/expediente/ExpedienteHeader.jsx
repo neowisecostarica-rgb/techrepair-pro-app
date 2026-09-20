@@ -8,6 +8,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { format, differenceInDays } from 'date-fns';
@@ -43,6 +44,7 @@ function IndicadorEstado({ label, activo, activoLabel, pendienteLabel }) {
 }
 
 export default function ExpedienteHeader({ ot, cliente, equipo, tecnico, revisionPagada, cotizacionAprobada, ventaPagada }) {
+  const { t } = useI18n();
   if (!ot) return null;
 
   const estadoConf = WORK_ORDER_STATUSES[ot.estado] || { label: ot.estado, color: 'bg-slate-100 text-slate-700' };
@@ -95,7 +97,7 @@ export default function ExpedienteHeader({ ot, cliente, equipo, tecnico, revisio
           <div className="flex items-start gap-2">
             <User className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
             <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wide">Cliente</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide">{t('publicDocs.customer','Cliente')}</p>
               <p className="text-sm font-semibold text-white leading-tight">{cliente?.nombre_completo || '—'}</p>
               {cliente?.telefono && (
                 <a href={`tel:${cliente.telefono}`} className="text-xs text-teal-300 flex items-center gap-1 hover:text-teal-200 mt-0.5">
@@ -108,7 +110,7 @@ export default function ExpedienteHeader({ ot, cliente, equipo, tecnico, revisio
           <div className="flex items-start gap-2">
             <Wrench className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
             <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wide">Equipo</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide">{t('diagnosisSummary.equipment','Equipo')}</p>
               <p className="text-sm font-semibold text-white leading-tight">{equipoLabel}</p>
               {ot.serie_ingreso && (
                 <p className="text-xs text-slate-400 font-mono mt-0.5">{ot.serie_ingreso}</p>
@@ -119,7 +121,7 @@ export default function ExpedienteHeader({ ot, cliente, equipo, tecnico, revisio
           <div className="flex items-start gap-2">
             <User className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
             <div>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wide">Técnico</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide">{t('saleContext.technician','Técnico')}</p>
               <p className="text-sm font-semibold text-white leading-tight">{tecnicoLabel}</p>
               <p className="text-xs text-slate-400 mt-0.5">
                 {format(new Date(ot.fecha_ingreso || ot.created_date), "dd MMM yyyy", { locale: es })}

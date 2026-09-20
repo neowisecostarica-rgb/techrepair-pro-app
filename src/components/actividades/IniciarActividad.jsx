@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -19,6 +20,7 @@ import { Play } from 'lucide-react';
  *   - Orden correcto: transitionOT → crear actividad → setear ACTIVO
  */
 export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [tipoActividad, setTipoActividad] = useState('');
   const [subtipo, setSubtipo] = useState('');
@@ -96,23 +98,23 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Iniciar Actividad</DialogTitle>
+            <DialogTitle>{t('tail.startActivity','Iniciar Actividad')}</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="tipo_actividad">Tipo de Actividad *</Label>
+              <Label htmlFor="tipo_actividad">{t('tail.activityType','Tipo de Actividad *')}</Label>
               <Select value={tipoActividad} onValueChange={setTipoActividad}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar tipo" />
+                  <SelectValue placeholder={t('otTech.selectType','Seleccionar tipo')} />
                 </SelectTrigger>
                 <SelectContent>
                   {/* diagnostico está excluido — solo el Centro de Mando puede iniciarlo */}
-                  <SelectItem value="reparacion">Reparación</SelectItem>
+                  <SelectItem value="reparacion">{t('saleContext.repair','Reparación')}</SelectItem>
                   <SelectItem value="instalacion">Instalación</SelectItem>
                   <SelectItem value="prueba">Prueba</SelectItem>
                   <SelectItem value="limpieza">Limpieza</SelectItem>
-                  <SelectItem value="entrega">Entrega</SelectItem>
+                  <SelectItem value="entrega">{t('tail.delivery','Entrega')}</SelectItem>
                   <SelectItem value="otro">Otro</SelectItem>
                 </SelectContent>
               </Select>

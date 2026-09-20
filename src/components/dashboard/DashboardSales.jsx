@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -9,6 +10,7 @@ import { createPageUrl } from '../../utils';
 import { Button } from '@/components/ui/button';
 
 export default function DashboardSales({ effectiveOrgId }) {
+  const { t } = useI18n();
   const { data: ventas = [], isLoading: loadingVentas } = useQuery({
     queryKey: ['ventas', effectiveOrgId],
     queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId }),
@@ -30,7 +32,7 @@ export default function DashboardSales({ effectiveOrgId }) {
   if (loadingVentas || loadingClientes) {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
-        <p className="text-slate-500">Cargando métricas de ventas...</p>
+        <p className="text-slate-500">{t('tail.loadingSalesMetrics','Cargando métricas de ventas...')}</p>
       </div>
     );
   }
@@ -73,7 +75,7 @@ export default function DashboardSales({ effectiveOrgId }) {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Dashboard de Ventas</h1>
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">{t('tail.salesDashboard','Dashboard de Ventas')}</h1>
         <p className="text-slate-500">Tus métricas de ventas y clientes</p>
       </div>
 
@@ -126,11 +128,11 @@ export default function DashboardSales({ effectiveOrgId }) {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Clientes Activos</h3>
+              <h3 className="text-lg font-semibold text-slate-900">{t('tail.activeCustomers','Clientes Activos')}</h3>
               <p className="text-sm text-slate-500">{clientesActivos} clientes registrados</p>
             </div>
             <Link to={createPageUrl('Clientes')}>
-              <Button size="sm">Ver Clientes</Button>
+              <Button size="sm">{t('tail.viewCustomers','Ver Clientes')}</Button>
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
@@ -142,7 +144,7 @@ export default function DashboardSales({ effectiveOrgId }) {
             <div className="p-4 bg-blue-50 rounded-lg">
               <TrendingUp className="w-8 h-8 text-blue-600 mb-2" />
               <p className="text-2xl font-bold text-slate-900">{ventasMes.length}</p>
-              <p className="text-sm text-slate-600">Ventas este mes</p>
+              <p className="text-sm text-slate-600">{t('tail.salesMonth','Ventas este mes')}</p>
             </div>
           </div>
         </CardContent>

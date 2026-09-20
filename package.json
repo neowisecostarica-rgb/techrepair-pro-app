@@ -58,7 +58,8 @@
     "test:i18n-public-portals": "node scripts/verify-i18n-public-portals.mjs",
     "test:i18n-ot-tech": "node scripts/verify-i18n-ot-tech.mjs",
     "test:i18n-governance": "node scripts/verify-i18n-governance.mjs",
-    "test:i18n-residual-docs": "node scripts/verify-i18n-residual-docs.mjs"
+    "test:i18n-residual-docs": "node scripts/verify-i18n-residual-docs.mjs",
+    "test:i18n-tail-ops": "node scripts/verify-i18n-tail-ops.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

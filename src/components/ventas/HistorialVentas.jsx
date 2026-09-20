@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -13,6 +14,7 @@ import { useAuthContext } from '@/components/contexts/AuthContext';
 import AccionesPostVenta from './AccionesPostVenta';
 
 export default function HistorialVentas() {
+  const { t } = useI18n();
   const { effectiveOrgId } = useAuthContext();
   const [busqueda, setBusqueda] = useState('');
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
@@ -47,7 +49,7 @@ export default function HistorialVentas() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando historial...</p>
+          <p className="text-slate-600">{t('tail.loadingHistory','Cargando historial...')}</p>
         </div>
       </div>
     );
@@ -66,7 +68,7 @@ export default function HistorialVentas() {
           <div className="flex items-center gap-2">
             <Search className="w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Buscar por cliente o monto..."
+              placeholder={t('tail.searchSales','Buscar por cliente o monto...')}
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className="flex-1"
@@ -130,7 +132,7 @@ export default function HistorialVentas() {
       <Dialog open={!!ventaSeleccionada} onOpenChange={() => setVentaSeleccionada(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Detalle de Venta</DialogTitle>
+            <DialogTitle>{t('tail.saleDetail','Detalle de Venta')}</DialogTitle>
           </DialogHeader>
           {ventaSeleccionada && (
             <div className="space-y-6 mt-4">
@@ -142,7 +144,7 @@ export default function HistorialVentas() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Cliente</p>
+                  <p className="text-xs text-slate-500">{t('publicDocs.customer','Cliente')}</p>
                   <p className="font-semibold text-slate-900">
                     {getClienteName(ventaSeleccionada.cliente_id)}
                   </p>
@@ -162,7 +164,7 @@ export default function HistorialVentas() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="font-semibold text-slate-900 mb-3">Acciones Post-Venta</h4>
+                <h4 className="font-semibold text-slate-900 mb-3">{t('tail.postSale','Acciones Post-Venta')}</h4>
                 <AccionesPostVenta venta={ventaSeleccionada} />
               </div>
             </div>

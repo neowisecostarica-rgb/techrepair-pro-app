@@ -149,7 +149,7 @@ function ProveedoresContent() {
                 <Building2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-600 mb-1">Proveedores Activos</p>
+                <p className="text-xs text-slate-600 mb-1">{t('tail.activeSuppliers','Proveedores Activos')}</p>
                 <p className="text-2xl font-bold text-slate-900">{proveedoresActivos.length}</p>
               </div>
             </div>
@@ -163,7 +163,7 @@ function ProveedoresContent() {
                 <Building2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-600 mb-1">Proveedores Inactivos</p>
+                <p className="text-xs text-slate-600 mb-1">{t('tail.inactiveSuppliers','Proveedores Inactivos')}</p>
                 <p className="text-2xl font-bold text-slate-900">{proveedoresInactivos.length}</p>
               </div>
             </div>
@@ -202,7 +202,7 @@ function ProveedoresContent() {
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold text-slate-900">{proveedor.name}</p>
                         {proveedor.active ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 border-0">Activo</Badge>
+                          <Badge className="bg-emerald-100 text-emerald-700 border-0">{t('tail.active','Activo')}</Badge>
                         ) : (
                           <Badge className="bg-slate-100 text-slate-700 border-0">Inactivo</Badge>
                         )}
@@ -255,7 +255,7 @@ function ProveedoresContent() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!proveedorEliminar} onOpenChange={(open) => { if (!open) setProveedorEliminar(null); }}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Eliminar proveedor</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Vas a eliminar <strong>{proveedorEliminar?.name}</strong>. Revisa que sea el proveedor correcto antes de continuar.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setProveedorEliminar(null)}>Cancelar</Button><Button variant="destructive" onClick={() => { deleteMutation.mutate(proveedorEliminar.id); setProveedorEliminar(null); }}>Eliminar proveedor</Button></div></div></DialogContent></Dialog>
+      <Dialog open={!!proveedorEliminar} onOpenChange={(open) => { if (!open) setProveedorEliminar(null); }}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{t('tail.deleteSupplier','Eliminar proveedor')}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Vas a eliminar <strong>{proveedorEliminar?.name}</strong>. Revisa que sea el proveedor correcto antes de continuar.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setProveedorEliminar(null)}>{t('tail.cancel','Cancelar')}</Button><Button variant="destructive" onClick={() => { deleteMutation.mutate(proveedorEliminar.id); setProveedorEliminar(null); }}>{t('tail.deleteSupplier','Eliminar proveedor')}</Button></div></div></DialogContent></Dialog>
 
       {/* Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -265,7 +265,7 @@ function ProveedoresContent() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label>Nombre del Proveedor *</Label>
+              <Label>{t('tail.supplierName','Nombre del Proveedor *')}</Label>
               <Input
                 name="name"
                 defaultValue={proveedorEditar?.name}

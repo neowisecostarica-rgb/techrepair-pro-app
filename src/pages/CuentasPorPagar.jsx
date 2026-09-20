@@ -362,10 +362,10 @@ function CuentasPorPagarContent() {
           </DialogHeader>
           <form onSubmit={handleSubmitFactura} className="space-y-4">
             <div>
-              <Label>Proveedor *</Label>
+              <Label>{t('tail.supplierRequired','Proveedor *')}</Label>
               <Select name="supplier_id" required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona proveedor..." />
+                  <SelectValue placeholder={t('tail.selectSupplier','Selecciona proveedor...')} />
                 </SelectTrigger>
                 <SelectContent>
                   {proveedores.map(p => (
@@ -482,7 +482,7 @@ function CuentasPorPagarContent() {
                 />
               </div>
               <div>
-                <Label>Fecha de Pago *</Label>
+                <Label>{t('tail.paymentDate','Fecha de Pago *')}</Label>
                 <Input
                   name="date"
                   type="date"
@@ -491,7 +491,7 @@ function CuentasPorPagarContent() {
                 />
               </div>
               <div>
-                <Label>Método de Pago *</Label>
+                <Label>{t('tail.paymentMethod','Método de Pago *')}</Label>
                 <Select name="method" defaultValue="transferencia">
                   <SelectTrigger>
                     <SelectValue />
@@ -515,7 +515,7 @@ function CuentasPorPagarContent() {
                 <Label>Notas</Label>
                 <Textarea
                   name="notes"
-                  placeholder="Notas adicionales..."
+                  placeholder={t('tail.notes','Notas adicionales...')}
                   rows={2}
                 />
               </div>

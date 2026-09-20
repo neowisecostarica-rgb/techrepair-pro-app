@@ -699,7 +699,7 @@ function OrdenesTrabajoContent() {
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
-                <strong>Recepción de Equipo:</strong> Esta orden registra la recepción del equipo para diagnóstico.
+                <strong>{t('tail.equipmentIntake','Recepción de Equipo')}:</strong> {t('tail.intakeHelp','Esta orden registra la recepción del equipo para diagnóstico.') }
                 La aprobación del trabajo se solicitará al cliente después del diagnóstico.
               </AlertDescription>
             </Alert>
@@ -721,7 +721,7 @@ function OrdenesTrabajoContent() {
               ) : (
                 <>
                   <Input value={getClienteName(selectedClienteId)} disabled className="bg-slate-100" />
-                  <p className="text-xs text-slate-500">Cliente no editable para mantener integridad de datos</p>
+                  <p className="text-xs text-slate-500">{t('tail.customerLocked','Cliente no editable para mantener integridad de datos')}</p>
                 </>
               )}
             </div>
@@ -767,7 +767,7 @@ function OrdenesTrabajoContent() {
               ) : (
                 <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-4 space-y-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-emerald-900">Registrar Nuevo Equipo</h4>
+                    <h4 className="font-semibold text-emerald-900">{t('tail.registerEquipment','Registrar Nuevo Equipo')}</h4>
                     <Button
                       type="button"
                       variant="ghost"
@@ -869,7 +869,7 @@ function OrdenesTrabajoContent() {
                     </div>
 
                     <div className="col-span-2 space-y-2">
-                      <Label className="text-sm">Accesorios Entregados</Label>
+                      <Label className="text-sm">{t('tail.accessories','Accesorios Entregados')}</Label>
                       <Textarea
                         value={newEquipoData.accesorios_ingreso}
                         onChange={(e) => setNewEquipoData({...newEquipoData, accesorios_ingreso: e.target.value})}
@@ -898,7 +898,7 @@ function OrdenesTrabajoContent() {
                 <Label htmlFor="branch_id">{t('workOrders.branch','Sucursal *')}</Label>
                 <Select name="branch_id" defaultValue={editingOT?.branch_id || userAccount?.branch_id} required>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar sucursal" />
+                    <SelectValue placeholder={t('tail.selectBranch','Seleccionar sucursal')} />
                   </SelectTrigger>
                   <SelectContent>
                     {branches.map(b => (

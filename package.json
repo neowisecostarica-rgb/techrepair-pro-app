@@ -64,7 +64,7 @@
     "test:enterprise-mutation-audit": "node scripts/verify-enterprise-mutation-audit.mjs",
     "test:enterprise-branch-isolation": "node scripts/verify-enterprise-branch-isolation.mjs",
     "test:enterprise-subject-matching": "node scripts/verify-enterprise-subject-matching.mjs",
-    "test:audit-concurrency-boundary": "node --test scripts/verify-audit-concurrency-boundary.mjs"
+    "test:audit-concurrency-boundary": "tsx --test scripts/verify-audit-concurrency-boundary.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

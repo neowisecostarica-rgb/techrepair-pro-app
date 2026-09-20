@@ -143,7 +143,10 @@ async function buildContext(base44, user) {
   const authorizationRole = identity.isSuperAdmin
     ? (identity.user.impersonating_org_id ? 'ORG_ADMIN' : 'SUPER_ADMIN')
     : normalizeTenantRole(identity.activeAccount?.role);
-  const activeOrganization = organizations.find(org => org.id === identity.user.organization_id) || null;
+  const effectiveOrganizationId = identity.isSuperAdmin && identity.user.impersonating_org_id
+    ? identity.user.impersonating_org_id
+    : identity.user.organization_id;
+  const activeOrganization = organizations.find(org => org.id === effectiveOrganizationId) || null;
   const entitlement = activeOrganization
     ? await resolveEffectiveEntitlement(base44, activeOrganization)
     : null;

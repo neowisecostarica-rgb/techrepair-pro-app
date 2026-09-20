@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { getIdentityContext, switchIdentityOrganization } from '@/api/identity';
+import { endIdentityImpersonation, getIdentityContext, startIdentityImpersonation, switchIdentityOrganization } from '@/api/identity';
 import { base44 } from '@/api/base44Client';
 import { queryClientInstance } from '@/lib/query-client';
 
@@ -156,6 +156,24 @@ export function AuthProvider({ children }) {
     await refreshAuth();
   };
 
+  const beginImpersonation = async (organizationId) => {
+    queryClientInstance.clear();
+    sessionStorage.removeItem('role_redirect_done');
+    await startIdentityImpersonation(organizationId);
+    isLoadingRef.current = false;
+    last429Timestamp.current = null;
+    await loadAuthData();
+  };
+
+  const finishImpersonation = async () => {
+    queryClientInstance.clear();
+    sessionStorage.removeItem('role_redirect_done');
+    await endIdentityImpersonation();
+    isLoadingRef.current = false;
+    last429Timestamp.current = null;
+    await loadAuthData();
+  };
+
   const isImpersonating = Boolean(user?.is_super_admin && user?.impersonating_org_id);
   const effectiveOrgId = userAccount?.organization_id || user?.organization_id || null;
   const effectiveRole = user?.is_super_admin && !isImpersonating
@@ -197,6 +215,8 @@ export function AuthProvider({ children }) {
     controlledPilotMode,
     hasCapability,
     selectOrganization,
+    beginImpersonation,
+    finishImpersonation,
     refreshAuth,
     reloadAuth: refreshAuth,
   }), [

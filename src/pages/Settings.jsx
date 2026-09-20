@@ -38,6 +38,8 @@ function SettingsContent() {
   const { toast } = useToast();
   const { user, userAccount, effectiveOrgId } = useAuthContext();
   const [showBranchModal, setShowBranchModal] = useState(false);
+  const [branchToDeactivate, setBranchToDeactivate] = useState(null);
+  const [deactivationReason, setDeactivationReason] = useState('');
   const queryClient = useQueryClient();
 
   const { data: organization, isLoading: isLoadingOrg } = useQuery({
@@ -103,8 +105,9 @@ function SettingsContent() {
 
   const handleBranchLifecycle = (branch) => {
     if (branch.active) {
-      const reason = window.prompt('Motivo de desactivacion de la sucursal:');
-      if (!reason?.trim()) return;
+      setBranchToDeactivate(branch);
+      setDeactivationReason('');
+      return;
       lifecycleMutation.mutate({
         action: 'DEACTIVATE',
         branch_id: branch.id,

@@ -11,6 +11,7 @@ import { MessageSquare, Send, Mail, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
+import { useToast } from '@/components/ui/use-toast';
 
 const PLANTILLAS = {
   estado_ot: {
@@ -41,6 +42,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
   const [asunto, setAsunto] = useState('');
   const [contenido, setContenido] = useState('');
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const createMensajeMutation = useMutation({
     mutationFn: (data) => recordCustomerMessage(clienteId, data),
@@ -49,7 +51,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
       setShowModal(false);
       resetForm();
     },
-    onError: (error) => alert(error?.message || 'No se pudo registrar el mensaje'),
+    onError: (error) => toast({ variant: 'destructive', title: 'No se pudo registrar el mensaje', description: error?.message || 'Inténtalo nuevamente.' }),
   });
 
   const resetForm = () => {
@@ -75,19 +77,19 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
 
     if (canal === 'email') {
       if (!cliente?.email) {
-        alert('El cliente no tiene correo electrónico registrado');
+        toast({ title: 'Correo no disponible', description: 'El cliente no tiene correo electrónico registrado.' });
         return;
       }
       window.open(`mailto:${encodeURIComponent(cliente.email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(contenido)}`, '_blank');
     } else if (canal === 'whatsapp') {
       if (!telefono) {
-        alert('El cliente no tiene teléfono registrado');
+        toast({ title: 'Teléfono no disponible', description: 'El cliente no tiene teléfono registrado.' });
         return;
       }
       window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(contenido)}`, '_blank', 'noopener,noreferrer');
     } else if (canal === 'sms') {
       if (!telefono) {
-        alert('El cliente no tiene teléfono registrado');
+        toast({ title: 'Teléfono no disponible', description: 'El cliente no tiene teléfono registrado.' });
         return;
       }
       window.open(`sms:${telefono}?body=${encodeURIComponent(contenido)}`, '_blank');

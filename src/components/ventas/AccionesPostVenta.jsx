@@ -9,6 +9,7 @@ import { Printer, Mail, MessageSquare } from 'lucide-react';
 import TiqueteVenta from './TiqueteVenta';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { issuePublicLink } from '@/api/publicLinks';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function AccionesPostVenta({ venta, variant = 'default' }) {
   const [showTiquete, setShowTiquete] = useState(false);
@@ -16,6 +17,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
   const [canalReenvio, setCanalReenvio] = useState(null);
   const [destinatario, setDestinatario] = useState('');
   const { user, effectiveOrgId } = useAuthContext();
+  const { toast } = useToast();
   const logMutation = useMutation({
     mutationFn: async (logData) => {
       return await base44.entities.ComprobanteVentaLog.create({
@@ -44,7 +46,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
 
   const handleConfirmarReenvio = async () => {
     if (!destinatario.trim()) {
-      alert('Ingrese el destinatario');
+      toast({ title: 'Destinatario requerido', description: `Ingresa ${canalReenvio === 'whatsapp' ? 'un número de teléfono' : 'un correo electrónico'} antes de continuar.` });
       return;
     }
 
@@ -66,7 +68,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
       notas: 'Canal externo abierto; entrega pendiente de confirmación por el usuario'
     });
 
-    alert(`Canal de ${canalReenvio === 'whatsapp' ? 'WhatsApp' : 'correo'} abierto. Confirma el envío en la aplicación externa.`);
+    toast({ title: 'Canal externo abierto', description: `Confirma el envío en ${canalReenvio === 'whatsapp' ? 'WhatsApp' : 'tu aplicación de correo'}.` });
     setShowReenvio(false);
     setDestinatario('');
   };

@@ -119,6 +119,9 @@ export default function PanelOperativoDiagnostico({
   const [documentoOpen, setDocumentoOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError]     = useState(null);
+  const [confirmAnularOpen, setConfirmAnularOpen] = useState(false);
+  const [decisionPendiente, setDecisionPendiente] = useState(null);
+  const [motivoRechazo, setMotivoRechazo] = useState('');
   const { user, controlledPilotMode } = useAuthContext();
 
   // RC2-GOLD-05: Para ORG_ADMIN/BRANCH_ADMIN, el tecnicoId del wizard es el técnico asignado a la OT.
@@ -316,9 +319,14 @@ export default function PanelOperativoDiagnostico({
   };
 
   // Anular documento
-  const handleAnular = async () => {
+  const handleAnular = () => {
     if (!docActivo) return;
-    if (!window.confirm('¿Anular este documento? Esta acción es irreversible. Podrás crear un reemplazo después.')) return;
+    setConfirmAnularOpen(true);
+  };
+
+  const confirmarAnulacion = async () => {
+    if (!docActivo) return;
+    setConfirmAnularOpen(false);
     setActionLoading(true);
     setActionError(null);
     try {
@@ -361,7 +369,7 @@ export default function PanelOperativoDiagnostico({
     await handleMarcarEnviado('EMAIL');
   };
 
-  const registrarDecisionCliente = async (newStatus) => {
+  const registrarDecisionCliente = async (newStatus, rejectionReason = '') => {
     if (!controlledPilotMode) {
       await base44.entities.DiagnosticoDocumento.update(docActivo.id, {
         aprobacion_status: newStatus === 'APROBADA' ? 'APROBADA' : 'RECHAZADA',
@@ -371,9 +379,6 @@ export default function PanelOperativoDiagnostico({
       return { success: true, legacy_nonpilot: true };
     }
     if (!pendingQuote) throw new Error('No existe una cotizacion enviada pendiente para esta OT');
-    const rejectionReason = newStatus === 'CANCELADA'
-      ? window.prompt('Motivo comunicado por el cliente (opcional):') || ''
-      : '';
     const response = await base44.functions.invoke('transitionWorkOrderStatus', {
       action: 'RECORD_CUSTOMER_DECISION',
       orden_trabajo_id: ot.id,
@@ -693,6 +698,14 @@ export default function PanelOperativoDiagnostico({
       </div>
 
       {/* ── Modal: Wizard Diagnóstico ────────────────────────────────────────── */}
+      <Dialog open={confirmAnularOpen} onOpenChange={setConfirmAnularOpen}>
+        <DialogContent><DialogHeader><DialogTitle>Anular documento de diagnóstico</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Esta acción es irreversible. El documento quedará anulado en el historial y podrás emitir un reemplazo después.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setConfirmAnularOpen(false)}>Cancelar</Button><Button variant="destructive" onClick={confirmarAnulacion}>Anular documento</Button></div></div></DialogContent>
+      </Dialog>
+
+      <Dialog open={decisionPendiente === 'CANCELADA'} onOpenChange={(open)=>{ if(!open) setDecisionPendiente(null); }}>
+        <DialogContent><DialogHeader><DialogTitle>Registrar rechazo del cliente</DialogTitle></DialogHeader><div className="space-y-4"><div><label className="text-sm font-medium text-slate-700">Motivo comunicado (opcional)</label><textarea value={motivoRechazo} onChange={e=>setMotivoRechazo(e.target.value)} rows={3} className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" placeholder="Ej. El cliente decidió no continuar con la reparación" /></div><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setDecisionPendiente(null)}>Cancelar</Button><Button variant="destructive" onClick={async()=>{ try { await registrarDecisionCliente('CANCELADA', motivoRechazo); invalidarPanel(); setDecisionPendiente(null); } catch(e){ setActionError(e.message); } }}>Registrar rechazo</Button></div></div></DialogContent>
+      </Dialog>
+
       <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

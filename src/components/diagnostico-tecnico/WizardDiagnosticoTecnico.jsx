@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, FileText } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
 import { createPageUrl } from '@/utils';
 import { COMPONENTES_DISPONIBLES, PRUEBAS_POR_COMPONENTE } from './pruebasPorComponente';
 
@@ -31,6 +32,7 @@ export default function WizardDiagnosticoTecnico({
   onClose, 
   onComplete 
 }) {
+  const { toast } = useToast();
   const [paso, setPaso] = useState(0); // 0 = contexto, 1-4 = wizard
   const [saving, setSaving] = useState(false);
   const [diagnostico, setDiagnostico] = useState(null);
@@ -122,7 +124,7 @@ export default function WizardDiagnosticoTecnico({
       }
     } catch (error) {
       console.error('Error guardando progreso:', error);
-      alert('Error al guardar: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo guardar el diagnóstico', description: error.message });
     } finally {
       setSaving(false);
     }
@@ -137,7 +139,7 @@ export default function WizardDiagnosticoTecnico({
         motivo: 'credito_ya_consumido',
         ts: new Date().toISOString() 
       });
-      alert('Este diagnóstico ya fue finalizado previamente');
+      toast({ title: 'Diagnóstico ya finalizado', description: 'Este diagnóstico ya fue finalizado previamente y no puede prepararse de nuevo.' });
       return;
     }
 
@@ -187,7 +189,7 @@ export default function WizardDiagnosticoTecnico({
       }
     } catch (error) {
       console.error('Error preparando diagnóstico:', error);
-      alert('Error al preparar: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo preparar el diagnóstico', description: error.message });
     } finally {
       setSaving(false);
     }

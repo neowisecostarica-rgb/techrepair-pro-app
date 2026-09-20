@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, CheckCircle2, AlertCircle, Save, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
 import {
   getLegacyPreDiagnosticoForEditing,
   invalidateSmartIntake,
@@ -183,6 +184,7 @@ function FieldLabel({ children, optional }) {
 // ─── Wizard Principal ─────────────────────────────────────────────────────────
 
 export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, userId, onClose, onComplete }) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [preDiagnostico, setPreDiagnostico] = useState(null);
@@ -288,7 +290,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
       invalidarQueriesPreDiagnostico();
     } catch (error) {
       console.error('Error guardando borrador:', error);
-      alert('Error al guardar: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo guardar el pre-diagnóstico', description: error.message });
     } finally {
       setSaving(false);
     }
@@ -327,7 +329,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
 
   const completarWizard = async () => {
     if (!formData.problema_principal) {
-      alert('Selecciona el problema principal antes de completar.');
+      toast({ title: 'Problema principal requerido', description: 'Selecciona el problema principal antes de completar el pre-diagnóstico.' });
       return;
     }
     setSaving(true);
@@ -360,7 +362,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
       onComplete();
     } catch (error) {
       console.error('Error completando wizard:', error);
-      alert('Error al completar: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo completar el pre-diagnóstico', description: error.message });
     } finally {
       setSaving(false);
     }

@@ -36,6 +36,7 @@ export default function FormularioCliente({
   const [isDirty, setIsDirty] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [showNoEmailWarning, setShowNoEmailWarning] = useState(false);
+  const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const [formData, setFormData] = useState({
     nombre_completo: '',
     identificacion: '',
@@ -298,13 +299,8 @@ export default function FormularioCliente({
             type="button" 
             variant="outline" 
             onClick={() => {
-              if (isDirty && !saving) {
-                if (window.confirm('¿Descartar los cambios sin guardar?')) {
-                  onCancelar();
-                }
-              } else {
-                onCancelar();
-              }
+              if (isDirty && !saving) setShowDiscardWarning(true);
+              else onCancelar();
             }} 
             disabled={saving}
           >
@@ -327,6 +323,10 @@ export default function FormularioCliente({
       </form>
 
       {/* Advertencia suave — sin email en mode quick */}
+      <AlertDialog open={showDiscardWarning} onOpenChange={setShowDiscardWarning}>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Descartar cambios</AlertDialogTitle><AlertDialogDescription>Hay cambios sin guardar. Si continúas, se perderán los datos modificados en este formulario.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Seguir editando</AlertDialogCancel><AlertDialogAction onClick={() => { setShowDiscardWarning(false); onCancelar(); }}>Descartar cambios</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={showNoEmailWarning} onOpenChange={setShowNoEmailWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>

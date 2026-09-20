@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   CheckCircle, 
   Circle, 
@@ -84,6 +85,8 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [notaOpen, setNotaOpen] = useState(false);
+  const [notaTexto, setNotaTexto] = useState('');
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
 
@@ -207,19 +210,14 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
     }
   };
 
-  const handleAddNota = () => {
-    const nota = prompt('Ingrese la nota:');
-    if (!nota) return;
-
-    const evidencia = {
-      diagnostico_id: diagnostico.id,
-      tipo: 'nota',
-      contenido_texto: nota,
-      descripcion: ''
-    };
-
+  const handleAddNota = () => { setNotaTexto(''); setNotaOpen(true); };
+  const confirmarNota = () => {
+    const nota = notaTexto.trim();
+    if (!nota || !diagnostico) return;
+    const evidencia = { diagnostico_id: diagnostico.id, tipo: 'nota', contenido_texto: nota, descripcion: '' };
     saveEvidenciaMutation.mutate(evidencia);
     setEvidencias(prev => [...prev, { ...evidencia, id: Date.now() }]);
+    setNotaOpen(false); setNotaTexto('');
   };
 
   const handleSaveConclusionStep = () => {
@@ -287,6 +285,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
   }
 
   return (
+    <>
     <div className="space-y-6">
       {/* Header con progreso */}
       <div className="space-y-4">
@@ -717,5 +716,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         )}
       </div>
     </div>
+      <Dialog open={notaOpen} onOpenChange={setNotaOpen}><DialogContent><DialogHeader><DialogTitle>Agregar nota al diagnóstico</DialogTitle></DialogHeader><div className="space-y-4"><Textarea value={notaTexto} onChange={(e)=>setNotaTexto(e.target.value)} placeholder="Escribe la observación técnica" rows={4} autoFocus /><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setNotaOpen(false)}>Cancelar</Button><Button onClick={confirmarNota} disabled={!notaTexto.trim()}>Agregar nota</Button></div></div></DialogContent></Dialog>
+    </>
   );
 }

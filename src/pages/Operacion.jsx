@@ -429,11 +429,11 @@ function OperacionContent() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Código OT</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Cliente</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('finalI18n.customer','Cliente')}</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Estado</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Días Demora</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Técnico</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Sucursal</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('finalI18n.technician','Técnico')}</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('finalI18n.branch','Sucursal')}</th>
                   </tr>
                 </thead>
                 <tbody>

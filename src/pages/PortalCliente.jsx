@@ -215,12 +215,12 @@ export default function PortalCliente() {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label className="text-slate-500 text-sm">Cliente</Label>
+                <Label className="text-slate-500 text-sm">{t('finalI18n.customer','Cliente')}</Label>
                 <p className="font-bold text-lg text-slate-900">{cliente?.nombre_completo}</p>
                 <p className="text-sm text-slate-600">{cliente?.telefono}</p>
               </div>
               <div>
-                <Label className="text-slate-500 text-sm">Equipo</Label>
+                <Label className="text-slate-500 text-sm">{t('finalI18n.equipment','Equipo')}</Label>
                 <p className="font-bold text-lg text-slate-900">
                   {equipo?.marca} {equipo?.modelo}
                 </p>
@@ -306,7 +306,7 @@ export default function PortalCliente() {
           <>
             <Card className="border border-slate-200 shadow-sm">
               <CardContent className="p-6">
-                <h3 className="font-bold text-lg text-slate-900 mb-4">Diagnóstico</h3>
+                <h3 className="font-bold text-lg text-slate-900 mb-4">{t('finalI18n.diagnosis','Diagnóstico')}</h3>
                 
                 <div className="space-y-4">
                   <div>

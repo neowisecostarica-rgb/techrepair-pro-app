@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -10,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { getIdentityAdminOverview } from '@/api/identity';
 
 export default function DashboardSuperAdmin() {
+  const { t } = useI18n();
   // Global queries (no org filter)
   const { data: overview = {}, isLoading: loadingIdentity } = useQuery({
     queryKey: ['identity', 'admin-overview'],
@@ -28,7 +30,7 @@ export default function DashboardSuperAdmin() {
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
-        <p className="text-slate-500">Cargando métricas de plataforma...</p>
+        <p className="text-slate-500">{t('finalI18n.loadingPlatformMetrics','Cargando métricas de plataforma...')}</p>
       </div>
     );
   }
@@ -41,7 +43,7 @@ export default function DashboardSuperAdmin() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Administración de plataforma</h1>
-        <p className="text-slate-500">Métricas globales de la plataforma</p>
+        <p className="text-slate-500">{t('finalI18n.globalMetrics','Métricas globales de la plataforma')}</p>
       </div>
 
       {/* Stats Grid */}
@@ -73,7 +75,7 @@ export default function DashboardSuperAdmin() {
         <CardContent className="p-6 text-center">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Panel de administración</h3>
           <Link to={createPageUrl('Saas')}>
-            <Button size="lg">Abrir administración</Button>
+            <Button size="lg">{t('finalI18n.openAdmin','Abrir administración')}</Button>
           </Link>
         </CardContent>
       </Card>

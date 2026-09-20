@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -9,6 +10,7 @@ export default function DiagnosticoTiquete80mm({
   equipo, 
   tecnico 
 }) {
+  const { t } = useI18n();
   if (!ordenTrabajo || !diagnostico) return null;
 
   const handleImprimir = () => {
@@ -57,7 +59,7 @@ export default function DiagnosticoTiquete80mm({
           {/* Info Cliente */}
           <div className="mb-3 text-xs">
             <div className="mb-1">
-              <span className="font-semibold">Cliente:</span>
+              <span className="font-semibold">{t('finalI18n.customer','Cliente')}:</span>
               <br />
               <span>{cliente?.nombre_completo || 'N/A'}</span>
             </div>
@@ -65,7 +67,7 @@ export default function DiagnosticoTiquete80mm({
               <span className="font-semibold">Teléfono:</span> {cliente?.telefono || 'N/A'}
             </div>
             <div className="mb-1">
-              <span className="font-semibold">Equipo:</span>
+              <span className="font-semibold">{t('finalI18n.equipment','Equipo')}:</span>
               <br />
               <span>{equipo ? `${equipo.marca} ${equipo.modelo} (${equipo.tipo})` : 'N/A'}</span>
             </div>
@@ -115,7 +117,7 @@ export default function DiagnosticoTiquete80mm({
           {/* Footer */}
           <div className="border-t-2 border-slate-900 pt-3 text-xs">
             <div className="mb-2">
-              <span className="font-semibold">Técnico:</span> {tecnico?.user_email || 'N/A'}
+              <span className="font-semibold">{t('finalI18n.technician','Técnico')}:</span> {tecnico?.user_email || 'N/A'}
             </div>
             <div className="mb-3">
               <span className="font-semibold">Emisión:</span> {format(new Date(), 'dd/MM/yyyy', { locale: es })}

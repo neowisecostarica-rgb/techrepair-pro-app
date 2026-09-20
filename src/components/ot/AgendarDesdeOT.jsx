@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,6 +16,7 @@ import { useToast } from '@/components/ui/use-toast';
  * Permite crear eventos de calendario ligados a una orden de trabajo
  */
 export default function AgendarDesdeOT({ ordenTrabajo, effectiveOrgId, onSuccess }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [creando, setCreando] = useState(false);
@@ -103,17 +105,17 @@ export default function AgendarDesdeOT({ ordenTrabajo, effectiveOrgId, onSuccess
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="diagnostico">Diagnóstico</SelectItem>
-                  <SelectItem value="reparacion">Reparación</SelectItem>
+                  <SelectItem value="diagnostico">{t('finalI18n.diagnosis','Diagnóstico')}</SelectItem>
+                  <SelectItem value="reparacion">{t('finalI18n.repair','Reparación')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tecnico_id">Técnico Asignado *</Label>
+              <Label htmlFor="tecnico_id">{t('finalI18n.assignedTechnician','Técnico Asignado *')}</Label>
               <Select name="tecnico_id" required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar técnico" />
+                  <SelectValue placeholder={t('residual.selectTech','Seleccionar técnico')} />
                 </SelectTrigger>
                 <SelectContent>
                   {tecnicos.map(t => (

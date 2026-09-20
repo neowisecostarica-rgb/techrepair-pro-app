@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -11,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 
 export default function CrearProductoRapido({ open, onClose, codigoBarras, onProductoCreado }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { effectiveOrgId } = useAuthContext();
   const queryClient = useQueryClient();
@@ -76,7 +78,7 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Crear Producto Rápido</DialogTitle>
+          <DialogTitle>{t('finalI18n.quickProduct','Crear Producto Rápido')}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -114,7 +116,7 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
             ) : (
               <Select value={formData.categoria_id} onValueChange={(val) => setFormData({ ...formData, categoria_id: val })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar categoría" />
+                  <SelectValue placeholder={t('docResidual.selectCategory','Seleccionar categoría')} />
                 </SelectTrigger>
                 <SelectContent>
                   {categorias.map(cat => (
@@ -140,7 +142,7 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
               />
             </div>
             <div>
-              <Label>Precio Venta *</Label>
+              <Label>{t('finalI18n.salePrice','Precio Venta *')}</Label>
               <Input
                 type="number"
                 value={formData.precio_venta}

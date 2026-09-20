@@ -120,7 +120,7 @@ function SettingsContent() {
 
   // Fallback explícito para org no encontrada (NO loading infinito)
   if (!userAccount) {
-    return <div className="p-8 text-center">Cargando información de usuario...</div>;
+    return <div className="p-8 text-center">{t('finalI18n.loadingUser','Cargando información de usuario...')}</div>;
   }
 
   if (!effectiveOrgId) {
@@ -144,7 +144,7 @@ function SettingsContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando configuración...</p>
+          <p className="text-slate-600">{t('finalI18n.loadingSettings','Cargando configuración...')}</p>
         </div>
       </div>
     );
@@ -319,7 +319,7 @@ function SettingsContent() {
       {/* Modal Nueva Sucursal */}
       <Dialog open={!!branchToDeactivate} onOpenChange={(open) => { if (!open) setBranchToDeactivate(null); }}>
         <DialogContent><DialogHeader><DialogTitle>{t('settings.deactivate','Desactivar sucursal')}</DialogTitle></DialogHeader>
-          <div className="space-y-4"><p className="text-sm text-slate-600">Indica el motivo para desactivar <strong>{branchToDeactivate?.name}</strong>.</p><div><Label>Motivo</Label><Input value={deactivationReason} onChange={(e) => setDeactivationReason(e.target.value)} /></div><div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setBranchToDeactivate(null)}>Cancelar</Button><Button variant="destructive" disabled={!deactivationReason.trim()} onClick={() => { lifecycleMutation.mutate({ action: 'DEACTIVATE', branch_id: branchToDeactivate.id, reason: deactivationReason.trim(), operation_key: `branch_deactivate_${crypto.randomUUID()}` }); setBranchToDeactivate(null); }}>Desactivar sucursal</Button></div></div>
+          <div className="space-y-4"><p className="text-sm text-slate-600">Indica el motivo para desactivar <strong>{branchToDeactivate?.name}</strong>.</p><div><Label>Motivo</Label><Input value={deactivationReason} onChange={(e) => setDeactivationReason(e.target.value)} /></div><div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setBranchToDeactivate(null)}>{t('finalI18n.cancel','Cancelar')}</Button><Button variant="destructive" disabled={!deactivationReason.trim()} onClick={() => { lifecycleMutation.mutate({ action: 'DEACTIVATE', branch_id: branchToDeactivate.id, reason: deactivationReason.trim(), operation_key: `branch_deactivate_${crypto.randomUUID()}` }); setBranchToDeactivate(null); }}>Desactivar sucursal</Button></div></div>
         </DialogContent>
       </Dialog>
 
@@ -345,7 +345,7 @@ function SettingsContent() {
               <Button type="button" variant="outline" onClick={() => setShowBranchModal(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Crear Sucursal</Button>
+              <Button type="submit">{t('finalI18n.createBranch','Crear Sucursal')}</Button>
             </div>
           </form>
         </DialogContent>

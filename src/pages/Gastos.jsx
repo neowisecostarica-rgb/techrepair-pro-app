@@ -29,6 +29,7 @@ function GastosContent() {
   const { effectiveOrgId, userAccount, effectiveRole, user } = useAuthContext();
   const [showModal, setShowModal] = useState(false);
   const [gastoEditar, setGastoEditar] = useState(null);
+  const [gastoEliminar, setGastoEliminar] = useState(null);
   const [mesActual, setMesActual] = useState(new Date());
   const queryClient = useQueryClient();
 
@@ -306,11 +307,7 @@ function GastosContent() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          if (window.confirm('¿Eliminar este gasto?')) {
-                            deleteMutation.mutate(gasto.id);
-                          }
-                        }}
+                        onClick={() => setGastoEliminar(gasto)}
                       >
                         <Trash2 className="w-4 h-4 text-red-600" />
                       </Button>

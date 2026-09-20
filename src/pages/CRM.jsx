@@ -364,7 +364,7 @@ function CRMContent() {
               <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Crear Lead</Button>
+              <Button type="submit">Crear prospecto</Button>
             </div>
           </form>
         </DialogContent>

@@ -34,7 +34,10 @@ test('identity gateway publishes one backend-owned authorization projection', as
 test('tenant navigation is capability-based and platform navigation is explicit', () => {
   assert.ok(MENU_ITEMS.every(item => item.anyCapabilities || item.platformRoles));
   assert.ok(MENU_ITEMS.every(item => !Object.hasOwn(item, 'roles')));
-  assert.deepEqual(MENU_ITEMS.filter(item => item.platformRoles).map(item => item.path), ['Saas', 'AdminReset']);
+  const platformItems = MENU_ITEMS.filter(item => item.platformRoles);
+  assert.ok(platformItems.every(item => item.platformRoles.includes('SUPER_ADMIN')));
+  assert.deepEqual([...new Set(platformItems.map(item => item.path))], ['Saas', 'AdminReset']);
+  assert.deepEqual(platformItems.filter(item => item.path === 'Saas').map(item => item.hash), ['overview', 'organizations', 'commercial', 'health', 'audit', 'pilot']);
 });
 
 test('Mi Dia is visible exactly to presets with technical-work eligibility', () => {

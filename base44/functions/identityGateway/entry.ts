@@ -671,6 +671,7 @@ Deno.serve(async (req) => {
           organizationId: organization.id,
           organizationName: organization.name,
           correlationId: body.correlation_id,
+          context: clean(body.audit_context, 2000),
           metadata: { changed_fields: Object.keys(updates) },
         });
       } catch (error) {

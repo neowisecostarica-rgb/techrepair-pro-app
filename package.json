@@ -36,7 +36,8 @@
     "test:security-round2": "tsx scripts/verify-security-round2-contract.mjs",
     "test:controlled-pilot": "tsx scripts/verify-controlled-pilot-operator-contract.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:superadmin-lifecycle": "node scripts/verify-superadmin-lifecycle-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

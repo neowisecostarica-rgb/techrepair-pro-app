@@ -205,8 +205,8 @@ function SaasContent() {
   });
 
   const toggleOrgStatusMutation = useMutation({
-    mutationFn: async ({ orgId, newStatus }) => {
-      return await adminUpdateIdentityOrganization(orgId, { status: newStatus });
+    mutationFn: async ({ orgId, newStatus, auditContext }) => {
+      return await adminUpdateIdentityOrganization(orgId, { status: newStatus }, auditContext);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
@@ -222,7 +222,8 @@ function SaasContent() {
     try {
       await toggleOrgStatusMutation.mutateAsync({
         orgId: selectedOrg.id,
-        newStatus: 'suspended'
+        newStatus: 'suspended',
+        auditContext: `Suspensión administrativa: ${suspendReason.trim()}`
       });
 
       setShowSuspenderModal(false);
@@ -287,7 +288,7 @@ function SaasContent() {
     setShowActionConfirm(false);
     try {
       if (action.type === 'reactivate') {
-        await toggleOrgStatusMutation.mutateAsync({ orgId: action.organization.id, newStatus: 'active' });
+        await toggleOrgStatusMutation.mutateAsync({ orgId: action.organization.id, newStatus: 'active', auditContext: 'Reactivación administrativa confirmada' });
       } else if (action.type === 'activateLicense') {
         await adminActivateIdentityLicense(action.organization.id, 'admin');
         queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });

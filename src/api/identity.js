@@ -29,8 +29,8 @@ export const updateIdentityOrganization = (organizationId, changes) =>
 export const listIdentityAccounts = (organizationId) =>
   invokeIdentity('listAccounts', { organization_id: organizationId });
 export const getIdentityAdminOverview = () => invokeIdentity('adminOverview');
-export const adminUpdateIdentityOrganization = (organizationId, changes) =>
-  invokeIdentity('adminUpdateOrganization', { organization_id: organizationId, changes });
+export const adminUpdateIdentityOrganization = (organizationId, changes, auditContext = undefined) =>
+  invokeIdentity('adminUpdateOrganization', { organization_id: organizationId, changes, audit_context: auditContext });
 export const adminCreateIdentityOrganization = (organization, adminEmail) =>
   invokeIdentity('adminCreateOrganization', { organization, admin_email: adminEmail });
 

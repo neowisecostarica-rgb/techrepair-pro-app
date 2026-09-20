@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -60,7 +61,7 @@ export default function GlobalSalesMetrics({ organizations }) {
           <div className="p-4 bg-emerald-50 rounded-xl">
             <div className="flex items-center gap-2 mb-1">
               <ShoppingCart className="w-4 h-4 text-emerald-600" />
-              <p className="text-xs font-semibold text-slate-600">Ventas Hoy (Global)</p>
+              <p className="text-xs font-semibold text-slate-600">{t('sweep.globalSalesToday','Ventas Hoy (Global)')}</p>
             </div>
             <p className="text-2xl font-bold text-slate-900">{ventasHoy.length}</p>
             <p className="text-xs text-emerald-700 mt-1">{formatMoney(ingresoHoy)} en ingresos</p>

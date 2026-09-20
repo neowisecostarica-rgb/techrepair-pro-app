@@ -304,7 +304,7 @@ export default function FormularioCotizacion({
                       </Select>
                     </div>
                     <div className="col-span-2 relative">
-                      <Label className="text-xs">Buscar / Descripción</Label>
+                      <Label className="text-xs">{t('sweep.searchDescription','Buscar / Descripción')}</Label>
                       <div className="relative">
                         <Search className="absolute left-2 top-2 w-4 h-4 text-slate-400" />
                         <Input

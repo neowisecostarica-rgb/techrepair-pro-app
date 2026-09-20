@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -21,7 +22,7 @@ export default function DashboardTechnician({ effectiveOrgId, userId }) {
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
-        <p className="text-slate-500">Cargando tus órdenes...</p>
+        <p className="text-slate-500">{t('sweep.loadingOrders','Cargando tus órdenes...')}</p>
       </div>
     );
   }

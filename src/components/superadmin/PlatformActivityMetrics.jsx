@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -83,7 +84,7 @@ export default function PlatformActivityMetrics({ organizations }) {
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-4 h-4 text-slate-500" />
-              <p className="text-xs font-semibold text-slate-500">Usuarios activos</p>
+              <p className="text-xs font-semibold text-slate-500">{t('residual.activeUsers','Usuarios activos')}</p>
             </div>
             <p className="text-2xl font-bold text-slate-900">{usuariosActivos}</p>
             <p className="text-xs text-slate-400 mt-1">en plataforma</p>

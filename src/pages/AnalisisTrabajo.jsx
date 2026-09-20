@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useMemo } from 'react';
 import PageGuard from '@/components/guards/PageGuard';
 import { useOrgAdminMetrics } from '@/components/hooks/useOrgAdminMetrics';
@@ -9,6 +10,7 @@ import { Loader2, BarChart2, AlertTriangle, Package } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AnalisisTrabajo() {
+  const { t } = useI18n();
   return (
     <PageGuard allowedRoles={['ORG_ADMIN']}>
       <AnalisisTrabajoContent />
@@ -80,7 +82,7 @@ function AnalisisTrabajoContent() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-emerald-600" />
-          <p className="text-slate-600">Cargando análisis...</p>
+          <p className="text-slate-600">{t('sweep.loadingAnalysis','Cargando análisis...')}</p>
         </div>
       </div>
     );
@@ -114,13 +116,13 @@ function AnalisisTrabajoContent() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="tipo">Por Tipo</TabsTrigger>
           <TabsTrigger value="bloqueos">Bloqueos</TabsTrigger>
-          <TabsTrigger value="inventario">Inventario</TabsTrigger>
+          <TabsTrigger value="inventario">{t('sweep.inventory','Inventario')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tipo" className="space-y-4">
           <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle>Actividades por Tipo</CardTitle>
+              <CardTitle>{t('sweep.activitiesByType','Actividades por Tipo')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {Object.entries(analisisPorTipo).map(([tipo, data]) => (

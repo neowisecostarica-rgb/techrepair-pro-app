@@ -10,6 +10,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2, Lock, Send, FileText, Archive } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -278,7 +279,7 @@ export default function CentroMando({ ot, effectiveRole }) {
               ) : ot.diagnostico_habilitado ? (
                 <><Play className="w-4 h-4 mr-1.5" /> {requiereReconciliarInicio ? 'Registrar Inicio' : 'Iniciar Revisión'}</>
               ) : (
-                <><Lock className="w-4 h-4 mr-1.5" /> Pendiente de pago</>
+                <><Lock className="w-4 h-4 mr-1.5" /> {t('sweep.pendingPayment','Pendiente de pago')}</>
               )}
             </Button>
           )}

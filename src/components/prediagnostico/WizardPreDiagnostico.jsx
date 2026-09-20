@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -402,7 +403,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
       {/* Header fijo */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-white shrink-0">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Pre-Diagnóstico</h2>
+          <h2 className="text-lg font-bold text-slate-900">{t('docResidual.preDiagnosis','Pre-Diagnóstico')}</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             {ordenTrabajo.codigo_ot} · captura lo que reporta el cliente
           </p>
@@ -437,7 +438,7 @@ export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, use
           </div>
 
           <div>
-            <FieldLabel>¿Equipo crítico para el cliente?</FieldLabel>
+            <FieldLabel>{t('sweep.criticalForCustomer','¿Equipo crítico para el cliente?')}</FieldLabel>
             <p className="text-xs text-slate-500 mb-2">Lo necesita urgentemente para trabajar o estudiar</p>
             <SiNoToggle
               value={formData.equipo_critico ? 'si' : 'no'}

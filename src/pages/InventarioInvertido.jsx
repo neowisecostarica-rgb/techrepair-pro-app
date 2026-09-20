@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -10,6 +11,7 @@ import { DollarSign, Package, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 
 export default function InventarioInvertido() {
+  const { t } = useI18n();
   return (
     <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN']}>
       <InventarioInvertidoContent />
@@ -141,7 +143,7 @@ function InventarioInvertidoContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando inventario invertido...</p>
+          <p className="text-slate-600">{t('sweep.loadingReverseInventory','Cargando inventario invertido...')}</p>
         </div>
       </div>
     );
@@ -150,7 +152,7 @@ function InventarioInvertidoContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Inventario Invertido</h1>
+        <h1 className="text-3xl font-bold text-slate-900">{t('sweep.reverseInventory','Inventario Invertido')}</h1>
         <p className="text-slate-600">Capital inmovilizado en stock y análisis de rotación</p>
       </div>
 

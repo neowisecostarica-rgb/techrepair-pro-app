@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import PageGuard from '@/components/guards/PageGuard';
 import { useOrgAdminMetrics } from '@/components/hooks/useOrgAdminMetrics';
@@ -11,6 +12,7 @@ import { Loader2, BarChart3 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminDashboard() {
+  const { t } = useI18n();
   return (
     <PageGuard allowedRoles={['ORG_ADMIN']}>
       <AdminDashboardContent />
@@ -27,7 +29,7 @@ function AdminDashboardContent() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-emerald-600" />
-          <p className="text-slate-600">Cargando métricas...</p>
+          <p className="text-slate-600">{t('sweep.loadingMetrics','Cargando métricas...')}</p>
         </div>
       </div>
     );

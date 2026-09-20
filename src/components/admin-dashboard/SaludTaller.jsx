@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, AlertTriangle, RefreshCw } from 'lucide-react';
@@ -45,7 +46,7 @@ export default function SaludTaller({ metrics }) {
               <RefreshCw className="w-5 h-5 text-red-600" />
               <div>
                 <p className="text-sm font-medium text-slate-900">Tasa de Reproceso</p>
-                <p className="text-xs text-slate-500">Actividades con reproceso</p>
+                <p className="text-xs text-slate-500">{t('sweep.reworkActivities','Actividades con reproceso')}</p>
               </div>
             </div>
             <Badge className="bg-red-600 text-white text-lg">

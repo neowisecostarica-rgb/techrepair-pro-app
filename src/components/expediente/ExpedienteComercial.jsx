@@ -9,6 +9,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -101,7 +102,7 @@ export default function ExpedienteComercial({ ot, ventas = [], cotizaciones = []
           <p className="text-2xl font-bold text-slate-800">{cotizaciones.length}</p>
         </div>
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-          <p className="text-[10px] text-slate-400 uppercase font-semibold">Ventas</p>
+          <p className="text-[10px] text-slate-400 uppercase font-semibold">{t('sweep.sales','Ventas')}</p>
           <p className="text-2xl font-bold text-slate-800">{ventas.length}</p>
         </div>
         <div className={`rounded-xl border p-3 text-center ${totalCobrado > 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getIdentityOrganization, updateIdentityOrganization } from '@/api/identity';
@@ -67,7 +68,7 @@ export default function GarantiaPanel({ organizationId }) {
   };
 
   if (isLoading) {
-    return <div className="text-slate-500">Cargando configuración...</div>;
+    return <div className="text-slate-500">{t('finalI18n.loadingSettings','Cargando configuración...')}</div>;
   }
 
   return (
@@ -90,7 +91,7 @@ export default function GarantiaPanel({ organizationId }) {
         {/* Garantía por Venta de Productos */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold">Garantía por Venta de Productos</Label>
+            <Label className="text-base font-semibold">{t('sweep.productWarranty','Garantía por Venta de Productos')}</Label>
             {!editando && config && (
               <Button size="sm" variant="outline" onClick={() => setEditando(true)}>
                 Editar
@@ -126,7 +127,7 @@ export default function GarantiaPanel({ organizationId }) {
 
         {/* Garantía por Reparación */}
         <div className="space-y-3 pt-4 border-t">
-          <Label className="text-base font-semibold">Garantía por Reparación</Label>
+          <Label className="text-base font-semibold">{t('sweep.repairWarranty','Garantía por Reparación')}</Label>
           
           <div className="space-y-2">
             <Label className="text-sm">Vigencia (meses)</Label>

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -14,6 +15,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function ConfiguracionNegocio() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { effectiveOrgId } = useAuthContext();
   const queryClient = useQueryClient();
@@ -76,7 +78,7 @@ export default function ConfiguracionNegocio() {
   };
 
   if (isLoading) {
-    return <div className="text-center p-8">Cargando configuración...</div>;
+    return <div className="text-center p-8">{t('finalI18n.loadingSettings','Cargando configuración...')}</div>;
   }
 
   return (

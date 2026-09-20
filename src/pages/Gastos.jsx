@@ -378,7 +378,7 @@ function GastosContent() {
               </Select>
             </div>
             <div>
-              <Label>Método de Pago</Label>
+              <Label>{t('residual.paymentMethod','Método de Pago')}</Label>
               <Select name="payment_method" defaultValue={gastoEditar?.payment_method || ''}>
                 <SelectTrigger>
                   <SelectValue placeholder="Opcional" />

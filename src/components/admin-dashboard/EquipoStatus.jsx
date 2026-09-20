@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, UserCheck } from 'lucide-react';
@@ -17,7 +18,7 @@ export default function EquipoStatus({ metrics }) {
             <div className="flex items-center gap-3">
               <UserCheck className="w-8 h-8 text-emerald-600" />
               <div>
-                <p className="text-sm font-medium text-slate-900">Técnicos Activos</p>
+                <p className="text-sm font-medium text-slate-900">{t('sweep.activeTechnicians','Técnicos Activos')}</p>
                 <p className="text-xs text-slate-500">Con actividades en el periodo</p>
               </div>
             </div>
@@ -27,7 +28,7 @@ export default function EquipoStatus({ metrics }) {
           {metrics.tecnicosIdle !== null && (
             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
               <div>
-                <p className="text-sm font-medium text-slate-900">Técnicos Sin Actividad</p>
+                <p className="text-sm font-medium text-slate-900">{t('sweep.inactiveTechnicians','Técnicos Sin Actividad')}</p>
                 <p className="text-xs text-slate-500">En el periodo seleccionado</p>
               </div>
               <p className="text-2xl font-bold text-slate-600">{metrics.tecnicosIdle}</p>

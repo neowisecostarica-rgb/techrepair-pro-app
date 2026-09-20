@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -216,7 +217,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
   if (isBranchAdmin && !canonicalBranchId) {
     return (
       <div className="max-w-4xl mx-auto p-6 rounded-2xl border border-amber-200 bg-amber-50">
-        <h1 className="text-xl font-bold text-amber-900">Sucursal no asignada</h1>
+        <h1 className="text-xl font-bold text-amber-900">{t('sweep.branchUnassigned','Sucursal no asignada')}</h1>
         <p className="mt-2 text-amber-800">
           Tu cuenta de administración de sucursal no tiene una sucursal asignada. El acceso operativo permanece bloqueado hasta corregir la asignación.
         </p>

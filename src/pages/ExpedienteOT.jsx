@@ -10,6 +10,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -38,6 +39,7 @@ export default function ExpedienteOT() {
 }
 
 function ExpedienteOTContent() {
+  const { t } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -132,7 +134,7 @@ function ExpedienteOTContent() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mr-3" />
-        <span className="text-slate-500">Cargando expediente...</span>
+        <span className="text-slate-500">{t('sweep.loadingRecord','Cargando expediente...')}</span>
       </div>
     );
   }
@@ -225,7 +227,7 @@ function ExpedienteOTContent() {
       <Tabs defaultValue="timeline" className="w-full">
         <TabsList className={`grid w-full ${canReadCommercial ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="timeline">📋 Bitácora</TabsTrigger>
-          <TabsTrigger value="tecnico">🔬 Técnico</TabsTrigger>
+          <TabsTrigger value="tecnico">🔬 {t('finalI18n.technician','Técnico')}</TabsTrigger>
           {canReadCommercial && <TabsTrigger value="comercial">💰 Comercial</TabsTrigger>}
         </TabsList>
 

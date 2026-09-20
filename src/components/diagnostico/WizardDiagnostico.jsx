@@ -353,7 +353,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         {currentStep === 2 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Checklist Técnico</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{t('sweep.technicalChecklist','Checklist Técnico')}</h3>
               <p className="text-slate-500">Revisa cada componente y marca el resultado</p>
             </div>
 
@@ -616,7 +616,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
             <div className="space-y-4">
               <Card className="border-0 shadow-md">
                 <CardContent className="p-6">
-                  <h4 className="font-bold mb-3">Tipo de Diagnóstico</h4>
+                  <h4 className="font-bold mb-3">{t('sweep.diagnosisType','Tipo de Diagnóstico')}</h4>
                   <Badge className="capitalize">{tipoDiagnostico}</Badge>
                 </CardContent>
               </Card>

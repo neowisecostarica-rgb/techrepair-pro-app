@@ -26,6 +26,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -136,7 +137,7 @@ export default function ModalDetalleOT({ ot, cliente, tecnico, onClose }) {
             <Dato label="Diagnóstico">
               {ot.diagnostico_habilitado
                 ? <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Habilitado</span>
-                : <span className="text-slate-400">Pendiente de pago</span>
+                : <span className="text-slate-400">{t('sweep.pendingPayment','Pendiente de pago')}</span>
               }
             </Dato>
             {ot.cliente_aprobado !== undefined && ot.cliente_aprobado !== null && (

@@ -9,6 +9,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -235,6 +236,7 @@ const FILTROS = [
 ];
 
 export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
+  const { t } = useI18n();
   const [filtroActivo, setFiltroActivo] = useState('todos');
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
@@ -289,7 +291,7 @@ export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-emerald-500 mr-3" />
-        <span className="text-slate-500">Cargando bitácora...</span>
+        <span className="text-slate-500">{t('sweep.loadingLog','Cargando bitácora...')}</span>
       </div>
     );
   }

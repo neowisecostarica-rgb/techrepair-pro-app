@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -154,7 +155,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
           <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
             <FileText className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Cotizaciones Pendientes</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('sweep.pendingQuotes','Cotizaciones Pendientes')}</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -193,7 +194,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
           <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
             <DollarSign className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Mis Ventas del Día</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('sweep.myDailySales','Mis Ventas del Día')}</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">

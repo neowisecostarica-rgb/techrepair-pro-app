@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ export default function OrganizationCard({
           <div className="p-3 bg-slate-50 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-4 h-4 text-blue-500" />
-              <p className="text-xs text-slate-500">Usuarios</p>
+              <p className="text-xs text-slate-500">{t('residual.users','Usuarios')}</p>
             </div>
             <p className="font-bold text-slate-900">{stats?.users || 0}</p>
           </div>

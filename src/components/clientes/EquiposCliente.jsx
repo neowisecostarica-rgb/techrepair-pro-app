@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { Laptop, Smartphone, Monitor, Printer, Tablet, HelpCircle } from 'lucide-react';
 
@@ -38,7 +39,7 @@ export default function EquiposCliente({ equipos = [], isLoading = false }) {
       </h3>
 
       {isLoading && (
-        <p className="text-sm text-slate-400 py-2">Cargando equipos...</p>
+        <p className="text-sm text-slate-400 py-2">{t('sweep.loadingEquipment','Cargando equipos...')}</p>
       )}
 
       {!isLoading && equipos.length === 0 && (

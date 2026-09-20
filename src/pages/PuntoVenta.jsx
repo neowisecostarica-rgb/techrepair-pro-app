@@ -626,7 +626,7 @@ function PuntoVentaContent() {
           <Alert className="bg-emerald-50 border-emerald-200">
             <AlertCircle className="w-4 h-4 text-emerald-600" />
             <AlertDescription className="text-emerald-800">
-              📋 <strong>Conversión desde Cotización</strong> - Los datos están precargados. Puedes modificar ítems, cantidades o precios antes de facturar.
+              📋 <strong>{t('sweep.quoteConversion','Conversión desde Cotización')}</strong> - Los datos están precargados. Puedes modificar ítems, cantidades o precios antes de facturar.
               <br />
               <span className="text-xs text-emerald-600 mt-1 block">
                Total Original: ₡{(preloadedVenta?.cotizacion_total_original || 0).toLocaleString()} | Actual: ₡{(calcularTotales().total || 0).toLocaleString()}
@@ -861,9 +861,9 @@ function PuntoVentaContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="revision_diagnostico">Revisión / Diagnóstico</SelectItem>
-                    <SelectItem value="reparacion">Reparación</SelectItem>
-                    <SelectItem value="venta_producto">Venta de Producto</SelectItem>
+                    <SelectItem value="revision_diagnostico">{t('sweep.reviewDiagnosis','Revisión / Diagnóstico')}</SelectItem>
+                    <SelectItem value="reparacion">{t('finalI18n.repair','Reparación')}</SelectItem>
+                    <SelectItem value="venta_producto">{t('sweep.productSale','Venta de Producto')}</SelectItem>
                     <SelectItem value="otro">Otro</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1003,7 +1003,7 @@ function PuntoVentaContent() {
           <div className="space-y-4">
             <p className="text-sm text-slate-600">Esta venta en borrador proviene de una cotización y tiene más de 2 horas. Puedes continuar con la conversión o cancelarla y volver a la cotización.</p>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={async () => { try { await base44.entities.Venta.delete(preloadedVenta.id); setShowConversionAntigua(false); toast({ title: 'Conversión cancelada', description: 'Volvemos a la cotización sin crear una venta.' }); window.history.back(); } catch (error) { console.error('Error al cancelar conversión:', error); toast({ variant: 'destructive', title: 'No se pudo cancelar la conversión', description: 'La venta borrador se mantiene sin cambios. Intenta nuevamente.' }); } }}>Cancelar conversión</Button>
+              <Button variant="outline" onClick={async () => { try { await base44.entities.Venta.delete(preloadedVenta.id); setShowConversionAntigua(false); toast({ title: 'Conversión cancelada', description: 'Volvemos a la cotización sin crear una venta.' }); window.history.back(); } catch (error) { console.error('Error al cancelar conversión:', error); toast({ variant: 'destructive', title: 'No se pudo cancelar la conversión', description: 'La venta borrador se mantiene sin cambios. Intenta nuevamente.' }); } }}>{t('sweep.cancelConversion','Cancelar conversión')}</Button>
               <Button onClick={() => setShowConversionAntigua(false)}>Continuar conversión</Button>
             </div>
           </div>

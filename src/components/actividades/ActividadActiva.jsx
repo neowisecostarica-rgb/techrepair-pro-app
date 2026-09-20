@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -92,7 +93,7 @@ export default function ActividadActiva({ actividad, onUpdated }) {
                 <Clock className="w-6 h-6 text-white" />
               </div>
               <div>
-                <Badge className="bg-emerald-600 text-white mb-1">Actividad en Progreso</Badge>
+                <Badge className="bg-emerald-600 text-white mb-1">{t('sweep.activityProgress','Actividad en Progreso')}</Badge>
                 <h3 className="text-lg font-bold text-slate-900">
                   {tipoLabels[actividad.tipo_actividad] || actividad.tipo_actividad}
                 </h3>
@@ -148,7 +149,7 @@ export default function ActividadActiva({ actividad, onUpdated }) {
       <Dialog open={showBloqueoModal} onOpenChange={setShowBloqueoModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Marcar Actividad como Bloqueada</DialogTitle>
+            <DialogTitle>{t('sweep.markBlocked','Marcar Actividad como Bloqueada')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-4">

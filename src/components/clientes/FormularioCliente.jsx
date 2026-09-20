@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -189,7 +190,7 @@ export default function FormularioCliente({
             </div>
 
             <div className="space-y-2">
-              <Label>Tipo de Cliente *</Label>
+              <Label>{t('sweep.customerType','Tipo de Cliente *')}</Label>
               <Select
                 value={formData.tipo_cliente}
                 onValueChange={(value) => handleFieldChange('tipo_cliente', value)}
@@ -237,7 +238,7 @@ export default function FormularioCliente({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Tipo de Cliente *</Label>
+                <Label>{t('sweep.customerType','Tipo de Cliente *')}</Label>
                 <Select
                   value={formData.tipo_cliente}
                   onValueChange={(value) => handleFieldChange('tipo_cliente', value)}

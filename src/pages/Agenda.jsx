@@ -441,9 +441,9 @@ function AgendaContent() {
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="diagnostico">Diagnóstico (requiere OT)</SelectItem>
-                    <SelectItem value="reparacion">Reparación (requiere OT)</SelectItem>
-                    <SelectItem value="entrega">Entrega</SelectItem>
+                    <SelectItem value="diagnostico">{t('sweep.diagnosisRequires','Diagnóstico (requiere OT)')}</SelectItem>
+                    <SelectItem value="reparacion">{t('sweep.repairRequires','Reparación (requiere OT)')}</SelectItem>
+                    <SelectItem value="entrega">{t('tail.delivery','Entrega')}</SelectItem>
                     <SelectItem value="soporte_remoto">Soporte Remoto</SelectItem>
                     <SelectItem value="soporte_sitio">Soporte en Sitio</SelectItem>
                     <SelectItem value="consulta">Consulta</SelectItem>

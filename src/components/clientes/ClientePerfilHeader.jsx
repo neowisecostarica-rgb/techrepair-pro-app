@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Phone, Mail, MessageCircle, Pencil, Building2, User, CreditCard, Calendar, ExternalLink } from 'lucide-react';
@@ -161,7 +162,7 @@ export default function ClientePerfilHeader({ cliente, ordenes = [], onEditarCli
             className="flex-1 sm:flex-none w-full gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
           >
             <Pencil className="w-4 h-4" />
-            <span>Editar</span>
+            <span>{t('quoteManage.edit','Editar')}</span>
           </Button>
         </div>
       </div>

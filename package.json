@@ -54,7 +54,8 @@
     "test:i18n-admin-inventory": "node scripts/verify-i18n-admin-inventory.mjs",
     "test:i18n-residual-priority": "node scripts/verify-i18n-residual-priority.mjs",
     "test:i18n-ops-finance": "node scripts/verify-i18n-ops-finance.mjs",
-    "test:i18n-final-residual": "node scripts/verify-i18n-final-residual.mjs"
+    "test:i18n-final-residual": "node scripts/verify-i18n-final-residual.mjs",
+    "test:i18n-public-portals": "node scripts/verify-i18n-public-portals.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

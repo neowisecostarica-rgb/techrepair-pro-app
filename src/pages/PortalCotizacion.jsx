@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -54,6 +55,7 @@ const estadoConfig = {
 };
 
 export default function PortalCotizacion() {
+  const { t } = useI18n();
   const [token, setToken] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -220,9 +222,9 @@ export default function PortalCotizacion() {
         <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <FileText className="w-16 h-16 mx-auto mb-6 text-slate-400" />
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Acceso Restringido</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">{t('publicDocs.restricted','Acceso Restringido')}</h1>
             <p className="text-slate-600">
-              Por favor, utilice el enlace único enviado para acceder a su cotización.
+              {t('publicDocs.quoteAccess','Utilice el enlace único enviado para acceder a su cotización.') }
             </p>
           </CardContent>
         </Card>
@@ -235,7 +237,7 @@ export default function PortalCotizacion() {
       <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando cotización...</p>
+          <p className="text-slate-600">{t('publicDocs.loadingQuote','Cargando cotización...')}</p>
         </div>
       </div>
     );
@@ -247,9 +249,9 @@ export default function PortalCotizacion() {
         <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Cotización No Encontrada</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">{t('publicDocs.quoteMissing','Cotización No Encontrada')}</h1>
             <p className="text-slate-600">
-              El enlace puede haber expirado o no es válido. Contacte al negocio para obtener una nueva cotización.
+              {t('publicDocs.quoteInvalid','El enlace puede haber expirado o no es válido. Contacte al negocio para obtener una nueva cotización.') }
             </p>
           </CardContent>
         </Card>
@@ -272,8 +274,8 @@ export default function PortalCotizacion() {
                   <FileText className="w-8 h-8" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold">{organization?.name || 'Cotización Comercial'}</h1>
-                  <p className="text-blue-100">Propuesta de servicio/producto</p>
+                  <h1 className="text-3xl font-bold">{organization?.name || t('publicDocs.commercialQuote','Cotización Comercial')}</h1>
+                  <p className="text-blue-100">{t('publicDocs.proposal','Propuesta de servicio/producto')}</p>
                 </div>
               </div>
               <Button
@@ -282,7 +284,7 @@ export default function PortalCotizacion() {
                 className="gap-2"
               >
                 <Download className="w-4 h-4" />
-                Descargar PDF
+                {t('publicDocs.downloadPdf','Descargar PDF')}
               </Button>
             </div>
             <div className="flex items-center gap-3 pt-4 border-t border-white/20">
@@ -296,7 +298,7 @@ export default function PortalCotizacion() {
         <Alert className="border-2 border-red-300 bg-red-50">
           <AlertCircle className="w-5 h-5 text-red-600" />
           <AlertDescription className="text-base font-semibold text-red-800">
-            Este documento NO es una factura ni comprobante fiscal. Es una propuesta comercial.
+            {t('publicDocs.notInvoice','Este documento NO es una factura ni comprobante fiscal. Es una propuesta comercial.')}
           </AlertDescription>
         </Alert>
 
@@ -305,16 +307,16 @@ export default function PortalCotizacion() {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label className="text-slate-500 text-sm">Cliente</Label>
+                <Label className="text-slate-500 text-sm">{t('publicDocs.customer','Cliente')}</Label>
                 <p className="font-bold text-lg text-slate-900">{cliente?.nombre_completo || 'Cargando...'}</p>
                 {cliente?.telefono && <p className="text-sm text-slate-600">{cliente.telefono}</p>}
               </div>
               <div>
-                <Label className="text-slate-500 text-sm">Vendedor</Label>
+                <Label className="text-slate-500 text-sm">{t('publicDocs.seller','Vendedor')}</Label>
                 <p className="font-medium text-slate-900">{cotizacion.vendedor_nombre}</p>
               </div>
               <div>
-                <Label className="text-slate-500 text-sm">Fecha de Emisión</Label>
+                <Label className="text-slate-500 text-sm">{t('publicDocs.issued','Fecha de Emisión')}</Label>
                 <p className="text-slate-900 flex items-center gap-2 mt-1">
                   <Calendar className="w-4 h-4 text-slate-400" />
                   {format(new Date(cotizacion.created_date), "dd 'de' MMMM, yyyy", { locale: es })}
@@ -322,7 +324,7 @@ export default function PortalCotizacion() {
               </div>
               {cotizacion.valida_hasta && (
                 <div>
-                  <Label className="text-slate-500 text-sm">Válida Hasta</Label>
+                  <Label className="text-slate-500 text-sm">{t('publicDocs.validUntil','Válida Hasta')}</Label>
                   <p className="text-slate-900 flex items-center gap-2 mt-1">
                     <Calendar className="w-4 h-4 text-slate-400" />
                     {format(new Date(cotizacion.valida_hasta), "dd 'de' MMMM, yyyy", { locale: es })}
@@ -336,7 +338,7 @@ export default function PortalCotizacion() {
         {/* Items */}
         <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Ítems de la Cotización</CardTitle>
+            <CardTitle className="text-lg">{t('publicDocs.quoteItems','Ítems de la Cotización')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">

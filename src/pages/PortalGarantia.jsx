@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -38,6 +39,7 @@ const estadoConfig = {
 };
 
 export default function PortalGarantia() {
+  const { t } = useI18n();
   const [token, setToken] = useState('');
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export default function PortalGarantia() {
       <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando certificado...</p>
+          <p className="text-slate-600">{t('publicDocs.loadingWarranty','Cargando certificado...')}</p>
         </div>
       </div>
     );
@@ -102,9 +104,9 @@ export default function PortalGarantia() {
         <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Garantía No Encontrada</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">{t('publicDocs.warrantyMissing','Garantía No Encontrada')}</h1>
             <p className="text-slate-600">
-              El enlace puede haber expirado o no es válido. Contacte al taller para obtener un nuevo certificado.
+              {t('publicDocs.warrantyInvalid','El enlace puede haber expirado o no es válido. Contacte al taller para obtener un nuevo certificado.') }
             </p>
           </CardContent>
         </Card>
@@ -128,8 +130,8 @@ export default function PortalGarantia() {
                 <Shield className="w-8 h-8" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold">Certificado de Garantía</h1>
-                <p className="text-blue-100">Documento de respaldo de servicio</p>
+                <h1 className="text-3xl font-bold">{t('publicDocs.warrantyCertificate','Certificado de Garantía')}</h1>
+                <p className="text-blue-100">{t('publicDocs.serviceSupport','Documento de respaldo de servicio')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 pt-4 border-t border-white/20">
@@ -144,12 +146,12 @@ export default function PortalGarantia() {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label className="text-slate-500 text-sm">Cliente</Label>
+                <Label className="text-slate-500 text-sm">{t('publicDocs.customer','Cliente')}</Label>
                 <p className="font-bold text-lg text-slate-900">{cliente?.nombre_completo || 'Cargando...'}</p>
                 {cliente?.telefono && <p className="text-sm text-slate-600">{cliente.telefono}</p>}
               </div>
               <div>
-                <Label className="text-slate-500 text-sm">Tipo de Origen</Label>
+                <Label className="text-slate-500 text-sm">{t('publicDocs.originType','Tipo de Origen')}</Label>
                 <Badge variant="outline" className="text-sm">
                   {garantia.origen_tipo === 'OT' ? 'Orden de Trabajo' : 'Venta'}
                 </Badge>
@@ -161,26 +163,26 @@ export default function PortalGarantia() {
         {/* Fechas y Vigencia */}
         <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Vigencia de la Garantía</CardTitle>
+            <CardTitle className="text-lg">{t('publicDocs.warrantyValidity','Vigencia de la Garantía')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <Label className="text-slate-500 text-sm">Fecha de Emisión</Label>
+                <Label className="text-slate-500 text-sm">{t('publicDocs.issued','Fecha de Emisión')}</Label>
                 <p className="text-slate-900 flex items-center gap-2 mt-1">
                   <Calendar className="w-4 h-4 text-slate-400" />
                   {format(new Date(garantia.fecha_emision), "dd 'de' MMMM, yyyy", { locale: es })}
                 </p>
               </div>
               <div>
-                <Label className="text-slate-500 text-sm">Vigencia Desde</Label>
+                <Label className="text-slate-500 text-sm">{t('publicDocs.validFrom','Vigencia Desde')}</Label>
                 <p className="text-slate-900 flex items-center gap-2 mt-1">
                   <Calendar className="w-4 h-4 text-slate-400" />
                   {format(new Date(garantia.fecha_inicio), "dd 'de' MMMM, yyyy", { locale: es })}
                 </p>
               </div>
               <div>
-                <Label className="text-slate-500 text-sm">Vigencia Hasta</Label>
+                <Label className="text-slate-500 text-sm">{t('publicDocs.validTo','Vigencia Hasta')}</Label>
                 <p className="text-slate-900 flex items-center gap-2 mt-1">
                   <Calendar className="w-4 h-4 text-slate-400" />
                   {format(new Date(garantia.fecha_fin), "dd 'de' MMMM, yyyy", { locale: es })}

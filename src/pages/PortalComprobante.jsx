@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -16,6 +17,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function PortalComprobante() {
+  const { t } = useI18n();
   const [token, setToken] = useState('');
 
   useEffect(() => {
@@ -55,9 +57,9 @@ export default function PortalComprobante() {
         <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <FileText className="w-16 h-16 mx-auto mb-6 text-slate-400" />
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Acceso Restringido</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">{t('publicDocs.restricted','Acceso Restringido')}</h1>
             <p className="text-slate-600">
-              Por favor, utilice el enlace único enviado para acceder a su comprobante de venta.
+              {t('publicDocs.receiptAccess','Utilice el enlace único enviado para acceder a su comprobante de venta.') }
             </p>
           </CardContent>
         </Card>
@@ -70,7 +72,7 @@ export default function PortalComprobante() {
       <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando comprobante...</p>
+          <p className="text-slate-600">{t('publicDocs.loadingReceipt','Cargando comprobante...')}</p>
         </div>
       </div>
     );
@@ -82,9 +84,9 @@ export default function PortalComprobante() {
         <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <XCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Comprobante No Encontrado</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">{t('publicDocs.receiptMissing','Comprobante No Encontrado')}</h1>
             <p className="text-slate-600">
-              El enlace puede haber expirado o no es válido.
+              {t('publicDocs.invalidLink','El enlace puede haber expirado o no es válido.') }
             </p>
           </CardContent>
         </Card>
@@ -105,13 +107,13 @@ export default function PortalComprobante() {
                 <FileText className="w-8 h-8" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold">Comprobante de Venta</h1>
+                <h1 className="text-3xl font-bold">{t('publicDocs.receipt','Comprobante de Venta')}</h1>
                 <p className="text-emerald-100">{organization?.name || 'Taller de Reparaciones'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 pt-4 border-t border-white/20">
               <CheckCircle2 className="w-6 h-6" />
-              <span className="text-xl font-semibold">Venta Pagada</span>
+              <span className="text-xl font-semibold">{t('publicDocs.paid','Venta Pagada')}</span>
             </div>
           </CardContent>
         </Card>
@@ -128,12 +130,12 @@ export default function PortalComprobante() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-slate-500">Método de Pago</p>
+                <p className="text-sm text-slate-500">{t('publicDocs.paymentMethod','Método de Pago')}</p>
                 <Badge className="capitalize mt-1">{venta.metodo_pago}</Badge>
               </div>
               {ordenTrabajo && (
                 <div>
-                  <p className="text-sm text-slate-500">Orden de Trabajo</p>
+                  <p className="text-sm text-slate-500">{t('publicDocs.workOrder','Orden de Trabajo')}</p>
                   <p className="font-medium text-slate-900">{ordenTrabajo.codigo_ot}</p>
                 </div>
               )}
@@ -145,7 +147,7 @@ export default function PortalComprobante() {
         {cliente && (
           <Card className="border border-slate-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Cliente</CardTitle>
+              <CardTitle className="text-lg">{t('publicDocs.customer','Cliente')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="font-medium text-slate-900">{cliente.nombre_completo}</p>
@@ -158,7 +160,7 @@ export default function PortalComprobante() {
         {/* Detalle de Items */}
         <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Detalle del Servicio</CardTitle>
+            <CardTitle className="text-lg">{t('publicDocs.serviceDetail','Detalle del Servicio')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -166,7 +168,7 @@ export default function PortalComprobante() {
                 <div key={idx} className="flex justify-between items-start p-3 bg-slate-50 rounded-lg">
                   <div className="flex-1">
                     <p className="font-medium text-slate-900">{item.descripcion}</p>
-                    <p className="text-sm text-slate-500">Cantidad: {item.cantidad}</p>
+                    <p className="text-sm text-slate-500">{t('publicDocs.quantity','Cantidad')}: {item.cantidad}</p>
                   </div>
                   <p className="font-semibold text-slate-900">₡{item.subtotal.toLocaleString()}</p>
                 </div>

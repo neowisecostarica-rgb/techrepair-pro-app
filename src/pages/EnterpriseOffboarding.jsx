@@ -15,7 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Plus, Laptop, KeyRound, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 const formatDate = value => value ? new Intl.DateTimeFormat('es-CR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value)) : 'No definido';
-export default function EnterpriseOffboarding(){ return <PageGuard allowedRoles={['ORG_ADMIN','BRANCH_ADMIN']}><OffboardingContent/></PageGuard>; }
+export default function EnterpriseOffboarding(){ return <PageGuard allowedRoles={['ORG_ADMIN','BRANCH_ADMIN']} requiredAnyCapabilities={['ENTERPRISE_OFFBOARDING']}><OffboardingContent/></PageGuard>; }
 function OffboardingContent(){
  const {effectiveOrgId}=useAuthContext(); const qc=useQueryClient(); const {toast}=useToast();
  const [createOpen,setCreateOpen]=React.useState(false); const [selected,setSelected]=React.useState(null); const [busy,setBusy]=React.useState(false);

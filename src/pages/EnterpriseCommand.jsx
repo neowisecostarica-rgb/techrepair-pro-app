@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Laptop, UserMinus, KeyRound, AlertTriangle, ArrowRight, Clock3, FileCheck2 } from 'lucide-react';
 const d=v=>v?new Intl.DateTimeFormat('es-CR',{dateStyle:'medium'}).format(new Date(v)):'—';
-export default function EnterpriseCommand(){return <PageGuard allowedRoles={['ORG_ADMIN','BRANCH_ADMIN']}><Content/></PageGuard>}
+export default function EnterpriseCommand(){return <PageGuard allowedRoles={['ORG_ADMIN','BRANCH_ADMIN']} requiredAnyCapabilities={['ENTERPRISE_COMMAND_EVIDENCE']}><Content/></PageGuard>}
 function Content(){const {effectiveOrgId}=useAuthContext(),navigate=useNavigate();
  const {data:assignments=[]}=useQuery({queryKey:['enterprise-command-assignments',effectiveOrgId],queryFn:()=>base44.entities.AssetAssignment.filter({organization_id:effectiveOrgId},'-assigned_at',500),enabled:!!effectiveOrgId});
  const {data:cases=[]}=useQuery({queryKey:['enterprise-command-offboarding',effectiveOrgId],queryFn:()=>base44.entities.EnterpriseOffboarding.filter({organization_id:effectiveOrgId},'-opened_at',300),enabled:!!effectiveOrgId});

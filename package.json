@@ -40,7 +40,8 @@
     "test:superadmin-lifecycle": "node scripts/verify-superadmin-lifecycle-contract.mjs",
     "test:enterprise-asset-control": "node scripts/verify-enterprise-asset-control.mjs",
     "test:enterprise-offboarding": "node scripts/verify-enterprise-offboarding.mjs",
-    "test:enterprise-command": "node scripts/verify-enterprise-command.mjs"
+    "test:enterprise-command": "node scripts/verify-enterprise-command.mjs",
+    "test:enterprise-entitlement": "node scripts/verify-enterprise-entitlement.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

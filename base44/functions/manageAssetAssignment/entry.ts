@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
 import { appendAuditEvent } from './_shared/auditEvent.ts';
+import { resolveEffectiveEntitlement } from './_shared/entitlementAuthority.ts';
 const clean=(v,n=500)=>typeof v==='string'?v.trim().slice(0,n):null;
 const allowedRoles=new Set(['ORG_ADMIN','BRANCH_ADMIN']);
 async function one(entity,q){return (await entity.filter(q,'-created_date',1))?.[0]||null;}
@@ -11,6 +12,7 @@ Deno.serve(async req=>{
   const body=await req.json().catch(()=>({}));
   const auth=await resolveAuthorizedContext(base44,user,{organizationHint:body.organization_id||null});
   if(!auth.ok||!allowedRoles.has(auth.role)) return Response.json({error:'Administracion de activos no autorizada',code:'ASSET_ASSIGNMENT_FORBIDDEN'},{status:auth.status||403});
+  const org=(await base44.asServiceRole.entities.Organization.filter({id:auth.organizationId,status:'active'},'-created_date',1))?.[0]; const entitlement=org?await resolveEffectiveEntitlement(base44,org):null; if(!entitlement?.capabilities?.includes('ENTERPRISE_ASSET_CUSTODY')) return Response.json({error:'La organización no tiene Custodia Enterprise habilitada',code:'ENTERPRISE_ENTITLEMENT_REQUIRED'},{status:403});
   const equipo=await one(base44.asServiceRole.entities.Equipo,{id:clean(body.equipo_id,160),organization_id:auth.organizationId});
   if(!equipo)return Response.json({error:'Activo no encontrado',code:'ASSET_NOT_FOUND'},{status:404});
   if(auth.role==='BRANCH_ADMIN'&&auth.branchId&&equipo.branch_id&&equipo.branch_id!==auth.branchId)return Response.json({error:'Activo fuera de la sucursal autorizada'},{status:403});

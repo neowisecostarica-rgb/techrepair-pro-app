@@ -161,7 +161,7 @@ async function buildContext(base44, user) {
     entitlement,
     authorization: {
       role: authorizationRole,
-      capabilities: authorizationRole === 'SUPER_ADMIN' ? [] : getRoleCapabilities(authorizationRole),
+      capabilities: authorizationRole === 'SUPER_ADMIN' ? [] : [...new Set([...getRoleCapabilities(authorizationRole), ...(entitlement?.capabilities || [])])],
       scope: authorizationRole === 'SUPER_ADMIN' ? 'PLATFORM' : getRoleScope(authorizationRole),
       preset_version: AUTHORIZATION_PRESET_VERSION,
       controlled_pilot_mode: inspectControlledPilotConfiguration(activeOrganization).enabled,

@@ -75,14 +75,14 @@ export const MENU_ITEMS = [
     path: 'EnterpriseOffboarding',
     icon: UserMinus,
     category: 'TALLER',
-    anyCapabilities: ['ORG_ADMINISTRATION'],
+    anyCapabilities: ['ENTERPRISE_OFFBOARDING'],
   },
   {
     label: 'Control Enterprise',
     path: 'EnterpriseCommand',
     icon: ShieldCheck,
     category: 'NEGOCIO',
-    anyCapabilities: ['ORG_ADMINISTRATION'],
+    anyCapabilities: ['ENTERPRISE_COMMAND_EVIDENCE'],
   },
   {
     label: 'Agenda',

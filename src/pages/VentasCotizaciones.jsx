@@ -1,3 +1,5 @@
+import { useI18n } from '@/i18n';
+import { formatDateTime, formatDate, formatLongDate } from '@/i18n/format';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -13,14 +15,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus, Pencil, Send, LinkIcon, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function VentasCotizaciones() {
+  const { locale } = useI18n();
   return (
     <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN']}>
       <VentasCotizacionesContent />
@@ -261,12 +262,12 @@ function VentasCotizacionesContent() {
                           </Badge>
                         )}
                         {cot.valida_hasta && (
-                          <span>Válida hasta: {format(new Date(cot.valida_hasta), 'dd/MM/yyyy', { locale: es })}</span>
+                          <span>Válida hasta: {formatDate(cot.valida_hasta, locale, {year:'numeric',month:'2-digit',day:'2-digit'})}</span>
                         )}
                       </div>
                       {cot.ultimo_envio && (
                         <p className="text-xs text-slate-500">
-                          📤 Enviada por {cot.ultimo_envio.canal === 'whatsapp' ? 'WhatsApp' : cot.ultimo_envio.canal === 'correo' ? 'Email' : 'Link'} - {format(new Date(cot.ultimo_envio.fecha), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          📤 Enviada por {cot.ultimo_envio.canal === 'whatsapp' ? 'WhatsApp' : cot.ultimo_envio.canal === 'correo' ? 'Email' : 'Link'} - {formatDateTime(cot.ultimo_envio.fecha, locale, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}
                         </p>
                       )}
                     </div>
@@ -353,7 +354,7 @@ function VentasCotizacionesContent() {
                 <div>
                   <p className="text-xs text-slate-500">Fecha</p>
                   <p className="text-slate-900">
-                    {format(new Date(cotizacionSeleccionada.created_date), 'dd MMM yyyy', { locale: es })}
+                    {formatDate(cotizacionSeleccionada.created_date, locale)}
                   </p>
                 </div>
               </div>
@@ -416,7 +417,7 @@ function VentasCotizacionesContent() {
                     <strong>Último envío:</strong> {cotizacionSeleccionada.ultimo_envio.canal === 'whatsapp' ? 'WhatsApp' : cotizacionSeleccionada.ultimo_envio.canal === 'correo' ? 'Correo Electrónico' : 'Link Compartido'}
                   </p>
                   <p className="text-xs text-blue-600 mt-1">
-                    {format(new Date(cotizacionSeleccionada.ultimo_envio.fecha), "dd/MM/yyyy 'a las' HH:mm", { locale: es })} por {cotizacionSeleccionada.ultimo_envio.enviado_por_nombre}
+                    {formatDateTime(cotizacionSeleccionada.ultimo_envio.fecha, locale)} por {cotizacionSeleccionada.ultimo_envio.enviado_por_nombre}
                   </p>
                 </div>
               )}

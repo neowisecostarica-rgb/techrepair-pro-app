@@ -1,3 +1,5 @@
+import { useI18n } from '@/i18n';
+import { formatDateTime, formatDate, formatLongDate } from '@/i18n/format';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -14,8 +16,6 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Search, FileText, AlertCircle, CheckCircle2, Loader2, User, ExternalLink } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount } from '@/components/hooks/useOrgData';
 
@@ -44,6 +44,7 @@ export default function OrdenesTrabajo() {
 }
 
 function OrdenesTrabajoContent() {
+  const { locale } = useI18n();
   // TECHNICIAN accede en modo consulta — sin redirección
 
   const [showModal, setShowModal] = useState(false);
@@ -518,7 +519,7 @@ function OrdenesTrabajoContent() {
                           {getEquipoInfo(orden.equipo_id)}
                         </p>
                         <p className="text-xs text-slate-400">
-                          Ingreso: {format(new Date(orden.fecha_ingreso || orden.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
+                          Ingreso: {formatDateTime(orden.fecha_ingreso || orden.created_date, locale)}
                         </p>
                       </div>
                     </div>
@@ -615,7 +616,7 @@ function OrdenesTrabajoContent() {
                             <p className="text-sm text-slate-600 font-medium">{orden.motivo_ingreso}</p>
                             <p className="text-xs text-slate-500">{getEquipoInfo(orden.equipo_id)}</p>
                             <p className="text-xs text-slate-400">
-                              Ingreso: {format(new Date(orden.fecha_ingreso || orden.created_date), 'dd MMM yyyy HH:mm', { locale: es })}
+                              Ingreso: {formatDateTime(orden.fecha_ingreso || orden.created_date, locale)}
                             </p>
                           </div>
                         </div>

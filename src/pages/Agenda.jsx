@@ -1,3 +1,5 @@
+import { useI18n } from '@/i18n';
+import { formatDateTime, formatDate, formatLongDate } from '@/i18n/format';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -10,8 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Video, MapPin, ExternalLink, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { createPageUrl } from '../utils';
@@ -88,6 +88,7 @@ const estadoCitaConfig = {
 };
 
 export default function Agenda() {
+  const { locale } = useI18n();
   return (
     <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'CUSTOMER_SERVICE']}>
       <AgendaContent />
@@ -301,7 +302,7 @@ function AgendaContent() {
       <Card className="border border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100">
           <CardTitle className="text-lg font-semibold">
-            {format(new Date(fechaFiltro), "EEEE, dd 'de' MMMM yyyy", { locale: es })}
+            {formatLongDate(fechaFiltro, locale)}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">

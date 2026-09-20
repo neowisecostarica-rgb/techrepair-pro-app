@@ -22,29 +22,6 @@ import {
   getIdentityAdminOverview,
 } from '@/api/identity';
 
-// Legacy plan catalog: compatibility/provisioning only. Not TRP commercial pricing authority.
-const LEGACY_PLAN_CATALOG = [
-  {
-    code: 'basic',
-    name: 'Basic',
-    description: 'Para negocios pequeños (1 sucursal, funcionalidades básicas)',
-    color: 'blue',
-  },
-  {
-    code: 'pro',
-    name: 'Pro',
-    description: 'Para negocios en crecimiento (multi-sucursal, reportes avanzados)',
-    color: 'purple',
-    recommended: true,
-  },
-  {
-    code: 'premium',
-    name: 'Premium',
-    description: 'Para empresas establecidas (usuarios ilimitados, soporte prioritario)',
-    color: 'emerald',
-  },
-];
-
 // P1: COUNTRY-CURRENCY MAP (ISO codes normalizados)
 const COUNTRY_CURRENCY_MAP = [
   { code: 'CR', name: 'Costa Rica', currency: 'CRC', flag: '🇨🇷' },
@@ -147,7 +124,6 @@ function SaasContent() {
   // P1: Estado para selects del modal
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState('');
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -373,7 +349,7 @@ function SaasContent() {
         legal_name: formData.get('legal_name'),
         country: selectedCountry, // P1: ISO code
         currency: selectedCurrency, // P1: ISO code
-        plan: selectedPlan, // P1: código de plan
+        plan: 'basic', // compatibilidad técnica; el paquete comercial se asigna después
         status: 'active',
         partner_id: formData.get('partner_id') || undefined,
       },
@@ -857,7 +833,7 @@ function SaasContent() {
         <Card className="border border-slate-200 shadow-sm bg-white">
           <CardHeader><CardTitle className="text-lg">Control de piloto</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-600">Superficie reservada para control de pilotos. La activación y las mutaciones continúan gobernadas por las protecciones backend existentes; no se exponen controles ficticios.</p>
+            <p className="text-sm text-slate-600">Vista informativa del piloto controlado. Las protecciones y mutaciones permanecen gobernadas por backend; esta consola no ofrece controles que todavía no tengan una operación canónica segura.</p>
           </CardContent>
         </Card>
       )}
@@ -888,7 +864,7 @@ function SaasContent() {
             <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <p className="font-medium text-slate-900">Unidad comercial: organización</p>
-                <p className="text-sm text-slate-600 mt-1">Usuarios no son el medidor primario. Escala por sucursales, activos y alcance Enterprise se resolverá mediante entitlements configurables.</p>
+                <p className="text-sm text-slate-600 mt-1">Los usuarios no son el medidor primario. El alcance se controla por paquete y capacidades habilitadas para cada organización.</p>
               </div>
               <Button variant="outline" onClick={() => { window.location.hash = 'organizations'; }}>Administrar paquetes</Button>
             </CardContent>
@@ -1058,7 +1034,6 @@ function SaasContent() {
           // Reset form state al cerrar
           setSelectedCountry('');
           setSelectedCurrency('');
-          setSelectedPlan('');
         }
       }}>
         <DialogContent className="max-w-2xl">
@@ -1114,24 +1089,9 @@ function SaasContent() {
                 </select>
               </div>
 
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="plan">Plan *</Label>
-                <select
-                  id="plan"
-                  value={selectedPlan}
-                  onChange={(e) => setSelectedPlan(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-slate-200 rounded-md bg-white"
-                >
-                  <option value="">Seleccionar plan</option>
-                  {LEGACY_PLAN_CATALOG.map(plan => (
-                    <option key={plan.code} value={plan.code}>
-                      {plan.name} (compatibilidad de aprovisionamiento)
-                    </option>
-                  ))}
-                </select>
-
-                <p className="text-xs text-slate-500 mt-2">Código usado solo para compatibilidad de aprovisionamiento. El paquete comercial se asigna después de crear la organización.</p>
+              <div className="space-y-2 col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-sm font-medium text-slate-900">Paquete comercial</p>
+                <p className="text-xs text-slate-600 mt-1">La organización se crea con configuración técnica compatible. Después de crearla, asigna Core, Business o Enterprise desde “Administrar paquete”.</p>
               </div>
 
               <div className="space-y-2">
@@ -1163,8 +1123,7 @@ function SaasContent() {
                   setShowModal(false);
                   setSelectedCountry('');
                   setSelectedCurrency('');
-                  setSelectedPlan('');
-                }}
+                        }}
                 disabled={creating}
               >
                 Cancelar
@@ -1172,7 +1131,7 @@ function SaasContent() {
               <Button
                 type="submit"
                 className="bg-slate-800 hover:bg-slate-900"
-                disabled={creating || !selectedCountry || !selectedCurrency || !selectedPlan}
+                disabled={creating || !selectedCountry || !selectedCurrency}
               >
                 {creating ? (
                   <>

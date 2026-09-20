@@ -630,7 +630,7 @@ function SaasContent() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
               <Input
-                placeholder="Search organization..."
+                placeholder="Buscar organización..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -662,7 +662,7 @@ function SaasContent() {
       {/* Tenant Management Table */}
       <Card className="border border-slate-200 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Tenant Management ({filteredOrgs.length} organizations)</CardTitle>
+          <CardTitle className="text-lg">Gestión de organizaciones ({filteredOrgs.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredOrgs.length > 0 ? (
@@ -827,7 +827,7 @@ function SaasContent() {
             {[
               { name: 'Core', monthly: '$69', annual: '$690', note: 'Workflow operativo esencial completo · sin caps artificiales de órdenes' },
               { name: 'Business', monthly: '$129', annual: '$1,290', note: 'Más profundidad, escala, analytics, calidad y automatización · entitlement técnico: advanced' },
-              { name: 'Enterprise', monthly: 'Custom', annual: 'Contrato anual', note: 'Gobernanza, escala e integraciones contratadas y disponibles' },
+              { name: 'Enterprise', monthly: 'A medida', annual: 'Contrato anual', note: 'Gobernanza, escala e integraciones contratadas y disponibles' },
             ].map(plan => (
               <Card key={plan.name} className="border border-slate-200 shadow-sm bg-white">
                 <CardHeader><CardTitle className="text-lg">TRP {plan.name}</CardTitle></CardHeader>
@@ -855,12 +855,12 @@ function SaasContent() {
       <Dialog open={showSuspenderModal} onOpenChange={setShowSuspenderModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-red-600">Suspender Organization</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-red-600">Suspender organización</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-800">
-                <strong>Warning:</strong> Suspendering this organization will immediately block access for all users.
+                <strong>Atención:</strong> Suspender esta organización bloqueará inmediatamente el acceso de todos sus usuarios.
               </p>
             </div>
             {selectedOrg && (
@@ -939,9 +939,9 @@ function SaasContent() {
               </select>
             </div>
             <div>
-              <Label htmlFor="billing-status">Estado de billing</Label>
+              <Label htmlFor="billing-status">Estado de facturación</Label>
               <select id="billing-status" value={newBillingStatus} onChange={(e) => setNewBillingStatus(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md">
-                <option value="trial">Trial</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspenderido</option><option value="cancelled">Cancelarado</option>
+                <option value="trial">Prueba</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspendido</option><option value="cancelled">Cancelado</option>
               </select>
               <p className="text-xs text-slate-500 mt-1">Este estado comercial no cambia automáticamente el acceso operativo de la organización.</p>
             </div>
@@ -1046,12 +1046,12 @@ function SaasContent() {
                   <option value="">Seleccionar plan</option>
                   {LEGACY_PLAN_CATALOG.map(plan => (
                     <option key={plan.code} value={plan.code}>
-                      {plan.name} (legacy provisioning)
+                      {plan.name} (compatibilidad de aprovisionamiento)
                     </option>
                   ))}
                 </select>
 
-                <p className="text-xs text-slate-500 mt-2">Legacy provisioning code only. Facturación package is assigned from Entitlement Authority after tenant creation.</p>
+                <p className="text-xs text-slate-500 mt-2">Código usado solo para compatibilidad de aprovisionamiento. El paquete comercial se asigna después de crear la organización.</p>
               </div>
 
               <div className="space-y-2">
@@ -1069,9 +1069,9 @@ function SaasContent() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="admin_email">Administrator Email *</Label>
+                <Label htmlFor="admin_email">Correo del administrador *</Label>
                 <Input id="admin_email" name="admin_email" type="email" required />
-                <p className="text-xs text-slate-500">This user will be invited and assigned as ORG_ADMIN</p>
+                <p className="text-xs text-slate-500">Este usuario recibirá una invitación y será asignado como administrador de la organización.</p>
               </div>
             </div>
 

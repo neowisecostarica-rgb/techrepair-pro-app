@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -11,6 +12,7 @@ import DiagnosticoTiquete80mm from '@/components/diagnostico/DiagnosticoTiquete8
 import DiagnosticoDocumentoA4 from '@/components/diagnostico/DiagnosticoDocumentoA4';
 
 export default function ResumenDiagnostico() {
+  const { t } = useI18n();
   const urlParams = new URLSearchParams(window.location.search);
   const otId = urlParams.get('ot_id');
   const diagnosticoId = urlParams.get('diagnostico_id');
@@ -92,7 +94,7 @@ export default function ResumenDiagnostico() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando diagnóstico...</p>
+          <p className="text-slate-600">{t('diagnosisSummary.loading','Cargando diagnóstico...')}</p>
         </div>
       </div>
     );
@@ -104,8 +106,8 @@ export default function ResumenDiagnostico() {
         <Alert className="max-w-md">
           <AlertTriangle className="w-4 h-4" />
           <AlertDescription>
-            <p className="font-semibold mb-2">Diagnóstico no disponible</p>
-            <p className="text-sm">No se encontró el diagnóstico técnico solicitado.</p>
+            <p className="font-semibold mb-2">{t('diagnosisSummary.unavailable','Diagnóstico no disponible')}</p>
+            <p className="text-sm">{t('diagnosisSummary.notFound','No se encontró el diagnóstico técnico solicitado.')}</p>
             <Button
               onClick={() => window.location.href = createPageUrl('OrdenesTrabajo')}
               className="mt-4"
@@ -174,7 +176,7 @@ export default function ResumenDiagnostico() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver a Orden
           </Button>
-          <h1 className="text-3xl font-bold text-slate-900">Resumen de Diagnóstico</h1>
+          <h1 className="text-3xl font-bold text-slate-900">{t('diagnosisSummary.title','Resumen de Diagnóstico')}</h1>
           <p className="text-slate-600 mt-2">
             OT: <span className="font-mono font-bold text-emerald-600">{ordenTrabajo.codigo_ot || 'OT-LEGACY'}</span>
           </p>
@@ -184,11 +186,11 @@ export default function ResumenDiagnostico() {
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-slate-500">Cliente</p>
+              <p className="text-sm text-slate-500">{t('diagnosisSummary.customer','Cliente')}</p>
               <p className="font-semibold text-slate-900">{cliente?.nombre_completo || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Equipo</p>
+              <p className="text-sm text-slate-500">{t('diagnosisSummary.equipment','Equipo')}</p>
               <p className="font-medium text-slate-900">
                 {equipo ? `${equipo.marca} ${equipo.modelo}` : 'N/A'}
               </p>

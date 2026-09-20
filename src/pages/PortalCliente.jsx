@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -35,6 +36,7 @@ const estadoConfig = {
 };
 
 export default function PortalCliente() {
+  const { t } = useI18n();
   const [token, setToken] = useState('');
   const [showAprobarModal, setShowAprobarModal] = useState(false);
   const [showRechazarModal, setShowRechazarModal] = useState(false);
@@ -136,7 +138,7 @@ export default function PortalCliente() {
         <Card className="max-w-md w-full border border-slate-200 shadow-sm">
           <CardContent className="p-12 text-center">
             <Shield className="w-16 h-16 mx-auto mb-6 text-slate-400" />
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Acceso Restringido</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">{t('customerPortal.restricted','Acceso Restringido')}</h1>
             <p className="text-slate-600">
               Por favor, utilice el enlace único enviado por su técnico para acceder al estado de su equipo.
             </p>
@@ -151,7 +153,7 @@ export default function PortalCliente() {
       <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando información...</p>
+          <p className="text-slate-600">{t('customerPortal.loading','Cargando información...')}</p>
         </div>
       </div>
     );
@@ -197,8 +199,8 @@ export default function PortalCliente() {
                 <Package className="w-8 h-8" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold">Estado de tu Equipo</h1>
-                <p className="text-blue-100">Consulta el progreso de tu reparación</p>
+                <h1 className="text-3xl font-bold">{t('customerPortal.equipmentStatus','Estado de tu Equipo')}</h1>
+                <p className="text-blue-100">{t('customerPortal.progressHelp','Consulta el progreso de tu reparación')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 pt-4 border-t border-white/20">
@@ -242,14 +244,14 @@ export default function PortalCliente() {
         {/* Línea de Tiempo */}
         <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
-            <h3 className="font-bold text-lg text-slate-900 mb-6">Progreso</h3>
+            <h3 className="font-bold text-lg text-slate-900 mb-6">{t('customerPortal.progress','Progreso')}</h3>
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
                   <CheckCircle className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-slate-900">Ingreso Recibido</p>
+                  <p className="font-semibold text-slate-900">{t('customerPortal.received','Ingreso Recibido')}</p>
                   <p className="text-sm text-slate-600">
                     {format(new Date(orden.fecha_ingreso || orden.created_date), "dd/MM/yyyy HH:mm", { locale: es })}
                   </p>
@@ -262,7 +264,7 @@ export default function PortalCliente() {
                     <CheckCircle className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-slate-900">Revisión Iniciada</p>
+                    <p className="font-semibold text-slate-900">{t('customerPortal.reviewStarted','Revisión Iniciada')}</p>
                     <p className="text-sm text-slate-600">
                       {format(new Date(orden.fecha_revision_inicio), "dd/MM/yyyy HH:mm", { locale: es })}
                     </p>
@@ -276,7 +278,7 @@ export default function PortalCliente() {
                     <CheckCircle className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-slate-900">Diagnóstico Completado</p>
+                    <p className="font-semibold text-slate-900">{t('customerPortal.diagnosisDone','Diagnóstico Completado')}</p>
                     <p className="text-sm text-slate-600">
                       {format(new Date(orden.fecha_diagnostico), "dd/MM/yyyy HH:mm", { locale: es })}
                     </p>
@@ -290,8 +292,8 @@ export default function PortalCliente() {
                     <Wrench className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-slate-900">En Reparación</p>
-                    <p className="text-sm text-slate-600">Trabajando en tu equipo</p>
+                    <p className="font-semibold text-slate-900">{t('customerPortal.repairing','En Reparación')}</p>
+                    <p className="text-sm text-slate-600">{t('customerPortal.repairingHelp','Trabajando en tu equipo')}</p>
                   </div>
                 </div>
               )}
@@ -354,7 +356,7 @@ export default function PortalCliente() {
             {evidencias.length > 0 && (
               <Card className="border border-slate-200 shadow-sm">
                 <CardContent className="p-6">
-                  <h3 className="font-bold text-lg text-slate-900 mb-4">Evidencias</h3>
+                  <h3 className="font-bold text-lg text-slate-900 mb-4">{t('customerPortal.evidence','Evidencias')}</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {evidencias.map((ev, idx) => (
                       <div key={idx}>
@@ -388,7 +390,7 @@ export default function PortalCliente() {
           <Card className="border border-slate-200 shadow-sm bg-red-50 border-2 border-red-300">
             <CardContent className="p-8 text-center">
               <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
-              <h3 className="font-bold text-xl text-slate-900 mb-2">Enlace Expirado</h3>
+              <h3 className="font-bold text-xl text-slate-900 mb-2">{t('customerPortal.expired','Enlace Expirado')}</h3>
               <p className="text-slate-700">
                 Este enlace de acceso ha expirado. Por favor, contacta al taller para obtener un nuevo enlace y poder aprobar o rechazar la reparación.
               </p>
@@ -403,7 +405,7 @@ export default function PortalCliente() {
               <div className="flex items-start gap-4 mb-6">
                 <AlertCircle className="w-8 h-8 text-orange-600 flex-shrink-0" />
                 <div>
-                  <h3 className="font-bold text-xl text-slate-900 mb-2">Decisión Requerida</h3>
+                  <h3 className="font-bold text-xl text-slate-900 mb-2">{t('customerPortal.decision','Decisión Requerida')}</h3>
                   <p className="text-slate-700">
                     Por favor, revise el diagnóstico y costo estimado. ¿Desea autorizar la reparación de su equipo?
                   </p>
@@ -436,7 +438,7 @@ export default function PortalCliente() {
           <Card className="border border-slate-200 shadow-sm bg-teal-50 border-2 border-green-200">
             <CardContent className="p-8 text-center">
               <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600" />
-              <h3 className="font-bold text-2xl text-slate-900 mb-2">Reparación Autorizada</h3>
+              <h3 className="font-bold text-2xl text-slate-900 mb-2">{t('customerPortal.approved','Reparación Autorizada')}</h3>
               <p className="text-slate-700">
                 Has autorizado la reparación el {format(new Date(orden.cliente_aprobado_at), "dd 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
               </p>
@@ -451,7 +453,7 @@ export default function PortalCliente() {
           <Card className="border border-slate-200 shadow-sm bg-red-50 border-2 border-red-200">
             <CardContent className="p-8 text-center">
               <XCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
-              <h3 className="font-bold text-2xl text-slate-900 mb-2">Reparación Rechazada</h3>
+              <h3 className="font-bold text-2xl text-slate-900 mb-2">{t('customerPortal.rejected','Reparación Rechazada')}</h3>
               <p className="text-slate-700">
                 Has rechazado la reparación. Puedes recoger tu equipo cuando lo desees.
               </p>

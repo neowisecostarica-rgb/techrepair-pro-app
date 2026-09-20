@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -9,6 +10,7 @@ import { es } from 'date-fns/locale';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function MisVentas() {
+  const { t } = useI18n();
   const { user, effectiveOrgId } = useAuthContext();
 
   const { data: ventas = [], isLoading } = useQuery({
@@ -85,7 +87,7 @@ export default function MisVentas() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando tus ventas...</p>
+          <p className="text-slate-600">{t('mySales.loading','Cargando tus ventas...')}</p>
         </div>
       </div>
     );
@@ -99,8 +101,8 @@ export default function MisVentas() {
           <TrendingUp className="w-8 h-8 text-white" />
         </div>
         <div>
-          <h1 className="text-4xl font-bold text-slate-900">Mis Ventas</h1>
-          <p className="text-slate-600">Rendimiento personal como vendedor</p>
+          <h1 className="text-4xl font-bold text-slate-900">{t('mySales.title','Mis Ventas')}</h1>
+          <p className="text-slate-600">{t('mySales.subtitle','Rendimiento personal como vendedor')}</p>
         </div>
       </div>
 
@@ -110,7 +112,7 @@ export default function MisVentas() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Ventas Hoy</p>
+                <p className="text-sm text-slate-500 mb-1">{t('mySales.today','Ventas Hoy')}</p>
                 <p className="text-3xl font-bold text-emerald-600">₡{totalHoy.toLocaleString()}</p>
                 <p className="text-xs text-slate-500 mt-1">{ventasHoy.length} transacciones</p>
               </div>
@@ -123,7 +125,7 @@ export default function MisVentas() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Ventas del Mes</p>
+                <p className="text-sm text-slate-500 mb-1">{t('mySales.month','Ventas del Mes')}</p>
                 <p className="text-3xl font-bold text-blue-600">₡{totalMes.toLocaleString()}</p>
                 <p className="text-xs text-slate-500 mt-1">{ventasMes.length} transacciones</p>
               </div>
@@ -136,7 +138,7 @@ export default function MisVentas() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Ticket Promedio</p>
+                <p className="text-sm text-slate-500 mb-1">{t('mySales.average','Ticket Promedio')}</p>
                 <p className="text-3xl font-bold text-purple-600">₡{ticketPromedio.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                 <p className="text-xs text-slate-500 mt-1">Promedio del mes</p>
               </div>
@@ -179,11 +181,11 @@ export default function MisVentas() {
       {/* Últimas ventas */}
       <Card className="border-0 shadow-lg">
         <CardHeader>
-          <CardTitle>Mis Últimas Ventas</CardTitle>
+          <CardTitle>{t('mySales.latest','Mis Últimas Ventas')}</CardTitle>
         </CardHeader>
         <CardContent>
           {ultimasVentas.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">No tienes ventas registradas todavía</p>
+            <p className="text-center text-slate-500 py-8">{t('mySales.empty','No tienes ventas registradas todavía')}</p>
           ) : (
             <div className="space-y-3">
               {ultimasVentas.map((venta) => (

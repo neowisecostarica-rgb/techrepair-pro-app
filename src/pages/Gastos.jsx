@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -26,6 +27,7 @@ export default function Gastos() {
 }
 
 function GastosContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, userAccount, effectiveRole, user } = useAuthContext();
   const [showModal, setShowModal] = useState(false);
   const [gastoEditar, setGastoEditar] = useState(null);
@@ -132,7 +134,7 @@ function GastosContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando gastos...</p>
+          <p className="text-slate-600">{t('expenses.loading','Cargando gastos...')}</p>
         </div>
       </div>
     );
@@ -143,8 +145,8 @@ function GastosContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Gastos Operativos</h1>
-          <p className="text-slate-600">Control de gastos mensuales y estimados</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t('expenses.title','Gastos Operativos')}</h1>
+          <p className="text-slate-600">{t('expenses.subtitle','Control de gastos mensuales y estimados')}</p>
         </div>
         <Button
           onClick={() => {
@@ -164,7 +166,7 @@ function GastosContent() {
           <div className="flex items-center gap-4">
             <Calendar className="w-5 h-5 text-slate-500" />
             <div className="flex-1">
-              <Label className="text-sm font-medium">Período</Label>
+              <Label className="text-sm font-medium">{t('expenses.period','Período')}</Label>
               <div className="flex gap-2 mt-2">
                 <Button
                   size="sm"
@@ -201,7 +203,7 @@ function GastosContent() {
                 <DollarSign className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-600 mb-1">Total Gastos</p>
+                <p className="text-xs text-slate-600 mb-1">{t('expenses.total','Total Gastos')}</p>
                 <p className="text-2xl font-bold text-slate-900">₡{totalGastos.toLocaleString()}</p>
               </div>
             </div>
@@ -215,7 +217,7 @@ function GastosContent() {
                 <TrendingDown className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-600 mb-1">Gastos Fijos</p>
+                <p className="text-xs text-slate-600 mb-1">{t('expenses.fixed','Gastos Fijos')}</p>
                 <p className="text-2xl font-bold text-slate-900">₡{gastosFijos.toLocaleString()}</p>
                 <Badge className="bg-orange-200 text-orange-800 border-0 text-xs mt-1">
                   Estimado mensual
@@ -232,7 +234,7 @@ function GastosContent() {
                 <TrendingDown className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-600 mb-1">Gastos Variables</p>
+                <p className="text-xs text-slate-600 mb-1">{t('expenses.variable','Gastos Variables')}</p>
                 <p className="text-2xl font-bold text-slate-900">₡{gastosVariables.toLocaleString()}</p>
               </div>
             </div>
@@ -251,7 +253,7 @@ function GastosContent() {
           {gastos.length === 0 ? (
             <div className="text-center py-12">
               <TrendingDown className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-slate-700 mb-2">No hay gastos registrados</h3>
+              <h3 className="text-xl font-semibold text-slate-700 mb-2">{t('expenses.empty','No hay gastos registrados')}</h3>
               <p className="text-slate-500">Registra tu primer gasto usando el botón superior</p>
             </div>
           ) : (
@@ -324,7 +326,7 @@ function GastosContent() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{gastoEditar ? 'Editar Gasto' : 'Registrar Gasto'}</DialogTitle>
+            <DialogTitle>{gastoEditar ? t('expenses.edit','Editar Gasto') : t('expenses.new','Registrar Gasto')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

@@ -75,7 +75,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
               <Package className="w-6 h-6 text-purple-600" />
-              {t('otTech.confirmDelivery','{t('otTech.confirmDelivery','Confirmar Entrega')} de Orden de Trabajo')}
+              {t('otTech.confirmDelivery','Confirmar Entrega de Orden de Trabajo')}
             </DialogTitle>
           </DialogHeader>
 
@@ -130,7 +130,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
                 onClick={() => setShowModal(false)}
                 disabled={delivery.isPending}
               >
-                Cancelar
+                {t('otTech.cancel','Cancelar')}
               </Button>
               <Button
                 onClick={() => delivery.mutate()}

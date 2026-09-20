@@ -83,7 +83,7 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
             <div>
               <h4 className="font-semibold text-sm text-slate-700 mb-3 flex items-center gap-2">
                 <Shield className="w-4 h-4 text-orange-600" />
-                Activos ({bloqueosActivos.length})
+                {t('otTech.active','Activos')} ({bloqueosActivos.length})
               </h4>
               <div className="space-y-3">
                 {bloqueosActivos.map((bloqueo) => (
@@ -101,7 +101,7 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
                     </div>
                     <div className="mt-3 p-3 bg-white rounded border border-orange-200">
                       <p className="text-xs text-orange-800">
-                        🛡️ <strong>Protección activa:</strong> Este bloqueo quedará registrado. No se te atribuirá el retraso.
+                        🛡️ <strong>{t('otTech.protection','Protección activa:')}</strong> {t('otTech.protectionHelp','Este bloqueo quedará registrado. No se te atribuirá el retraso.')}
                       </p>
                     </div>
                   </div>
@@ -144,7 +144,7 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-900">
-                ℹ️ Reporta cualquier situación que impida continuar con el trabajo. Esto protege tu desempeño.
+                ℹ️ {t('otTech.blockHelp','Reporta cualquier situación que impida continuar con el trabajo. Esto protege tu desempeño.')}
               </p>
             </div>
             <div className="space-y-2">

@@ -18,6 +18,7 @@ import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function VentasCotizaciones() {
   return (
@@ -29,6 +30,7 @@ export default function VentasCotizaciones() {
 
 function VentasCotizacionesContent() {
   const { effectiveOrgId, user, userAccount } = useAuthContext();
+  const { toast } = useToast();
   const { data: organization } = useQuery({
     queryKey: ['org-ventascot', effectiveOrgId],
     queryFn: async () => {
@@ -107,7 +109,7 @@ function VentasCotizacionesContent() {
 
   const convertirAVenta = (cotizacion) => {
     if (cotizacion.estado !== 'aprobada') {
-      alert('Solo se pueden convertir cotizaciones aprobadas a ventas');
+      toast({ variant: 'destructive', title: 'Cotización aún no aprobada', description: 'Solo las cotizaciones aprobadas pueden convertirse en venta.' });
       return;
     }
 
@@ -440,7 +442,7 @@ function VentasCotizacionesContent() {
                       <Button
                         onClick={async () => {
                           if (cotizacionSeleccionada.requiere_aprobacion && !cotizacionSeleccionada.aprobada_por) {
-                            alert('Esta cotización requiere aprobación por el descuento aplicado.');
+                            toast({ variant: 'destructive', title: 'Aprobación requerida', description: 'El descuento aplicado requiere aprobación antes de continuar.' });
                             return;
                           }
                           const response = await base44.functions.invoke('approveCotizacion', {
@@ -458,7 +460,7 @@ function VentasCotizacionesContent() {
                           };
                           const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
-                          alert('✅ Cotización enviada. Link copiado al portapapeles.');
+                          toast({ title: 'Cotización enviada', description: 'El enlace quedó copiado al portapapeles.' });
                           setCotizacionSeleccionada(updatedQuote);
                         }}
                         className="bg-blue-600 hover:bg-blue-700"
@@ -482,7 +484,7 @@ function VentasCotizacionesContent() {
                           queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
                           const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
-                          alert('✅ Link copiado. Reenvío registrado.');
+                          toast({ title: 'Reenvío registrado', description: 'El enlace quedó copiado al portapapeles.' });
                           setCotizacionSeleccionada(response.data.cotizacion || response.data.data || cotizacionSeleccionada);
                         }}
                         className="bg-blue-600 hover:bg-blue-700"
@@ -494,7 +496,7 @@ function VentasCotizacionesContent() {
                         onClick={async () => {
                           const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
-                          alert('Link copiado al portapapeles');
+                          toast({ title: 'Enlace copiado', description: 'Ya puedes compartirlo con el cliente.' });
                         }}
                         variant="outline"
                         className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"

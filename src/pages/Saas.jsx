@@ -773,7 +773,7 @@ function SaasContent() {
                           <Badge className={tenantReady ? 'bg-teal-50 text-teal-800 border border-teal-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
                             {tenantReady ? 'Lista' : `${readinessCount}/6`}
                           </Badge>
-                          {!tenantReady && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? 'Provisioning pendiente' : !hasPrimaryBranch ? 'Falta sucursal' : !hasAdmin ? 'Falta administrador principal' : !commercialReady ? 'Falta paquete' : !licenseReady ? 'Licencia pendiente' : 'Acceso suspendido'}</p>}
+                          {!tenantReady && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? 'Configuración inicial pendiente' : !hasPrimaryBranch ? 'Falta sucursal' : !hasAdmin ? 'Falta administrador principal' : !commercialReady ? 'Falta paquete' : !licenseReady ? 'Licencia pendiente' : 'Acceso suspendido'}</p>}
                         </td>
                         <td className="hidden xl:table-cell p-3 text-xs text-slate-600">
                           {new Date(org.created_date).toLocaleDateString('es-ES')}

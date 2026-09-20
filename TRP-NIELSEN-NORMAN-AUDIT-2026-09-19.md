@@ -41,3 +41,9 @@ Human validation will happen after autonomous product + website remediation. It 
 - Internal-jargon pass: removed remaining operator-visible `ORG_ADMIN`, `BRANCH_ADMIN`, `tenant` and sales `Lead` terminology from priority surfaces while preserving internal authorization identifiers.
 - Canonical-status pass: inventory/user-management/Super Admin actions and counts now use `UserAccount.status` rather than legacy `active` where discovered.
 - Super Admin control recovery: removed unreachable post-confirmation code from reactivation/license request handlers and added explicit failure feedback to the designed confirmation flow.
+
+
+## MB3 automated remediation status — CLOSED pending human QA
+The autonomous Nielsen remediation pass is complete for the release-candidate source: native browser dialogs are eliminated; dense responsive grids have breakpoint coverage; priority loading/error/empty states and CTAs were normalized; operator-facing internal role/tenant jargon was removed from priority surfaces; canonical membership status is used in the discovered dashboard, readiness and user-management paths; and Super Admin confirmation/error flows were reconciled.
+
+Human role-journey validation remains intentionally deferred to the final integral QA macrogolpe. Any issue found there reopens the specific surface, not the entire audit.

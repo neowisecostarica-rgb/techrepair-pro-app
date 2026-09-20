@@ -16,7 +16,7 @@ export default function MaintenanceDisabled({ title }) {
           <p>Esta herramienta de mantenimiento está deshabilitada en el cliente de producción.</p>
           <p className="flex items-start gap-2">
             <ShieldCheck className="h-4 w-4 mt-0.5 text-emerald-600" />
-            Las operaciones de identidad, tenant, seed y borrado sólo pueden ejecutarse mediante un flujo backend autorizado y auditable.
+            Las operaciones sensibles de identidad, configuración inicial y borrado solo pueden ejecutarse mediante un flujo de servidor autorizado y auditable.
           </p>
         </CardContent>
       </Card>

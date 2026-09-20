@@ -24,7 +24,7 @@ export default function PlatformActivityMetrics({ organizations }) {
   const transaccionesHoy = allVentas.filter(v => v.created_date?.startsWith(today));
   const volumenHoy = transaccionesHoy.reduce((s, v) => s + (v.total || 0), 0);
   const volumenTotal = allVentas.reduce((s, v) => s + (v.total || 0), 0);
-  const usuariosActivos = allUserAccounts.filter(u => u.active).length;
+  const usuariosActivos = allUserAccounts.filter(u => u.status === 'active').length;
   const orgsActivas = organizations.filter(o => o.status === 'active').length;
 
   // Top orgs por volumen transaccional (actividad, no rentabilidad)
@@ -63,7 +63,7 @@ export default function PlatformActivityMetrics({ organizations }) {
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Activity className="w-5 h-5 text-slate-600" />
-          Platform Activity — Uso del Sistema
+          Actividad de plataforma — uso del sistema
         </CardTitle>
         <p className="text-xs text-slate-400 mt-1">
           Métricas agregadas de actividad transaccional. No representan finanzas ni rentabilidad de las organizaciones.
@@ -74,7 +74,7 @@ export default function PlatformActivityMetrics({ organizations }) {
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
             <div className="flex items-center gap-2 mb-1">
               <Globe className="w-4 h-4 text-slate-500" />
-              <p className="text-xs font-semibold text-slate-500">Orgs Activas</p>
+              <p className="text-xs font-semibold text-slate-500">Organizaciones activas</p>
             </div>
             <p className="text-2xl font-bold text-slate-900">{orgsActivas}</p>
             <p className="text-xs text-slate-400 mt-1">de {organizations.length} totales</p>
@@ -83,7 +83,7 @@ export default function PlatformActivityMetrics({ organizations }) {
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-4 h-4 text-slate-500" />
-              <p className="text-xs font-semibold text-slate-500">Usuarios Activos</p>
+              <p className="text-xs font-semibold text-slate-500">Usuarios activos</p>
             </div>
             <p className="text-2xl font-bold text-slate-900">{usuariosActivos}</p>
             <p className="text-xs text-slate-400 mt-1">en plataforma</p>
@@ -92,7 +92,7 @@ export default function PlatformActivityMetrics({ organizations }) {
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-4 h-4 text-slate-500" />
-              <p className="text-xs font-semibold text-slate-500">Transacciones Hoy</p>
+              <p className="text-xs font-semibold text-slate-500">Transacciones hoy</p>
             </div>
             <p className="text-2xl font-bold text-slate-900">{transaccionesHoy.length}</p>
             <p className="text-xs text-slate-400 mt-1">vol. {formatVolumen(volumenHoy)}</p>
@@ -101,7 +101,7 @@ export default function PlatformActivityMetrics({ organizations }) {
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
             <div className="flex items-center gap-2 mb-1">
               <Activity className="w-4 h-4 text-slate-500" />
-              <p className="text-xs font-semibold text-slate-500">Total Transacciones</p>
+              <p className="text-xs font-semibold text-slate-500">Total de transacciones</p>
             </div>
             <p className="text-2xl font-bold text-slate-900">{allVentas.length}</p>
             <p className="text-xs text-slate-400 mt-1">vol. {formatVolumen(volumenTotal)}</p>
@@ -111,7 +111,7 @@ export default function PlatformActivityMetrics({ organizations }) {
         {actividadPorOrg.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              Actividad por Organización (transacciones procesadas)
+              Actividad por organización (transacciones procesadas)
             </p>
             <div className="space-y-2">
               {actividadPorOrg.map((org, idx) => (

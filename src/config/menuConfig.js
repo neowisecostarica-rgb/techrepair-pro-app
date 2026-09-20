@@ -128,7 +128,7 @@ export const MENU_ITEMS = [
 
   // ── SUPER_ADMIN — TRP Platform Console ──────────────────────────────────────
   {
-    label: 'Overview',
+    label: 'Resumen',
     path: 'Saas',
     hash: 'overview',
     icon: LayoutDashboard,
@@ -144,7 +144,7 @@ export const MENU_ITEMS = [
     platformRoles: ['SUPER_ADMIN'],
   },
   {
-    label: 'Commercial & Plans',
+    label: 'Comercial y planes',
     path: 'Saas',
     hash: 'commercial',
     icon: CreditCard,
@@ -152,7 +152,7 @@ export const MENU_ITEMS = [
     platformRoles: ['SUPER_ADMIN'],
   },
   {
-    label: 'Platform Health',
+    label: 'Estado de plataforma',
     path: 'Saas',
     hash: 'health',
     icon: HeartPulse,
@@ -160,7 +160,7 @@ export const MENU_ITEMS = [
     platformRoles: ['SUPER_ADMIN'],
   },
   {
-    label: 'Audit',
+    label: 'Auditoría',
     path: 'Saas',
     hash: 'audit',
     icon: ScrollText,
@@ -168,7 +168,7 @@ export const MENU_ITEMS = [
     platformRoles: ['SUPER_ADMIN'],
   },
   {
-    label: 'Pilot Control',
+    label: 'Control de piloto',
     path: 'Saas',
     hash: 'pilot',
     icon: FlaskConical,
@@ -176,7 +176,7 @@ export const MENU_ITEMS = [
     platformRoles: ['SUPER_ADMIN'],
   },
   {
-    label: 'Admin Reset',
+    label: 'Restablecimiento admin',
     path: 'AdminReset',
     icon: AlertCircle,
     category: 'SENSITIVE',

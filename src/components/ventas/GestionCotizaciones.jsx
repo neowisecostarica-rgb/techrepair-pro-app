@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
 import { issuePublicLink } from '@/api/publicLinks';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [], openDirectly = false }) {
   const [showModal, setShowModal] = useState(openDirectly);
@@ -31,6 +32,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const [clienteSeleccionadoInterno, setClienteSeleccionadoInterno] = useState('');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [pendingConversion, setPendingConversion] = useState(null);
 
   const clienteActual = clienteId;
   const organizationId = userAccount?.organization_id;
@@ -105,7 +108,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mensajes-cliente'] });
       queryClient.invalidateQueries({ queryKey: customer360QueryKeys.detail(clienteActual) });
-      alert('Canal externo abierto y seguimiento registrado. Confirma el envío en WhatsApp o correo.');
+      toast({ title: 'Seguimiento registrado', description: 'Se abrió el canal externo. Confirma el envío en WhatsApp o correo.' });
     },
   });
 
@@ -240,7 +243,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     e.preventDefault();
 
     if (!clienteActual) {
-      alert('Por favor selecciona un cliente antes de guardar la cotización');
+      toast({ variant: 'destructive', title: 'Selecciona un cliente', description: 'La cotización necesita un cliente antes de guardarse.' });
       return;
     }
 
@@ -272,7 +275,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const handleEnviar = async (cotizacion) => {
     if (!clienteActual) {
-      alert('Por favor selecciona un cliente antes de enviar la cotización');
+      toast({ variant: 'destructive', title: 'Selecciona un cliente', description: 'La cotización necesita un cliente antes de enviarse.' });
       return;
     }
 
@@ -282,14 +285,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
         canal_envio: 'link',
       });
       if (response.data?.error) {
-        alert(`No se pudo enviar la cotización: ${response.data.error}`);
+        toast({ variant: 'destructive', title: 'No se pudo enviar la cotización', description: response.data.error });
         return;
       }
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
     } catch (error) {
-      alert(`No se pudo enviar la cotización: ${error.message}`);
+      toast({ variant: 'destructive', title: 'No se pudo enviar la cotización', description: error.message });
     }
   };
 
@@ -297,7 +300,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     const baseUrl = organization?.public_base_url || window.location.origin;
     const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
     navigator.clipboard.writeText(link);
-    alert('Link copiado al portapapeles');
+    toast({ title: 'Enlace copiado', description: 'El enlace público de la cotización está en el portapapeles.' });
   };
 
   const descargarPDF = (cotizacion, cliente, organization) => {
@@ -417,7 +420,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const handleEditar = (cotizacion) => {
     if (cotizacion.estado !== 'borrador') {
-      alert('Solo se pueden editar cotizaciones en estado borrador');
+      toast({ title: 'Cotización no editable', description: 'Solo las cotizaciones en borrador se pueden editar.' });
       return;
     }
     setEditingCotizacion(cotizacion);
@@ -427,32 +430,28 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const handleConvertirEnFactura = async (cotizacion) => {
     if (cotizacion.estado !== 'aprobada') {
-      alert('Solo se pueden convertir cotizaciones en estado APROBADA');
+      toast({ title: 'Conversión no disponible', description: 'Solo las cotizaciones aprobadas se pueden convertir en venta.' });
       return;
     }
 
     if (cotizacion.estado_conversion === 'EN_PROCESO_FACTURACION') {
-      alert('Esta cotización ya tiene una conversión en proceso');
+      toast({ title: 'Conversión en proceso', description: 'Esta cotización ya está siendo convertida.' });
       return;
     }
 
     if (cotizacion.estado_conversion === 'CONVERTIDA') {
-      alert('Esta cotización ya fue convertida a venta');
+      toast({ title: 'Cotización convertida', description: 'Esta cotización ya fue convertida a venta.' });
       return;
     }
 
-    if (!window.confirm('¿Deseas convertir esta cotización en una venta?\n\nSe abrirá el POS con los datos precargados.')) {
-      return;
-    }
+    setPendingConversion(cotizacion);
+  };
 
-    navigate(createPageUrl('PuntoVenta'), {
-      state: {
-        cotizacion_origen: cotizacion,
-        carrito: cotizacion.items,
-        cliente_id: cotizacion.cliente_id,
-        orden_trabajo_id: cotizacion.orden_trabajo_id,
-      },
-    });
+  const confirmarConversion = () => {
+    const cotizacion = pendingConversion;
+    if (!cotizacion) return;
+    setPendingConversion(null);
+    navigate(createPageUrl('PuntoVenta'), { state: { cotizacion_origen: cotizacion, carrito: cotizacion.items, cliente_id: cotizacion.cliente_id, orden_trabajo_id: cotizacion.orden_trabajo_id } });
   };
 
   const estadoConfig = {
@@ -598,6 +597,10 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
           </div>
         )}
       </div>
+
+      <Dialog open={Boolean(pendingConversion)} onOpenChange={(open) => { if (!open) setPendingConversion(null); }}>
+        <DialogContent><DialogHeader><DialogTitle>Convertir cotización en venta</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Se abrirá Punto de Venta con el cliente y los ítems de esta cotización precargados. La venta no queda finalizada hasta completar el flujo del POS.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingConversion(null)}>Cancelar</Button><Button onClick={confirmarConversion}>Continuar al POS</Button></div></div></DialogContent>
+      </Dialog>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

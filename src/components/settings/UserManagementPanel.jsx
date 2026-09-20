@@ -10,15 +10,18 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
 import { Plus, Search, UserX, Edit, UserCheck } from 'lucide-react';
 
 export default function UserManagementPanel({ organizationId, currentUserId, branches }) {
   const { effectiveRole, status } = useAuthContext();
+  const { toast } = useToast();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [pendingSuspendUser, setPendingSuspendUser] = useState(null);
   const queryClient = useQueryClient();
 
   // Wait for auth to be ready
@@ -59,14 +62,14 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       
       // FEEDBACK DIFERENCIADO
       if (result.action === 'created') {
-        alert(`✅ Invitación enviada exitosamente a ${result.email}\n\nEl usuario podrá acceder al iniciar sesión.`);
+        toast({ title: 'Invitación enviada', description: `${result.email} podrá acceder al iniciar sesión.` });
       } else {
-        alert(`✅ Invitación actualizada para ${result.email}\n\nSe ha actualizado su rol y sucursal asignados.`);
+        toast({ title: 'Invitación actualizada', description: `Se actualizaron el rol y la sucursal de ${result.email}.` });
       }
     },
     onError: (error) => {
       setInviting(false);
-      alert(`❌ Error al invitar usuario: ${error.message}`);
+      toast({ variant: 'destructive', title: 'No se pudo invitar al usuario', description: error.message });
     },
   });
 
@@ -86,7 +89,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       setShowEditModal(false);
       setEditingUser(null);
     },
-    onError: (error) => alert(`❌ Error al actualizar usuario: ${error.message}`),
+    onError: (error) => toast({ variant: 'destructive', title: 'No se pudo actualizar el usuario', description: error.message }),
   });
 
 
@@ -119,15 +122,16 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
 
   const handleDeactivate = (user) => {
     if (isLastActiveOrgAdmin(user)) {
-      alert('⚠️ Esta empresa debe tener al menos un administrador activo.\n\nNo puedes suspender el último ORG_ADMIN.');
+      toast({ variant: 'destructive', title: 'Administrador principal requerido', description: 'Invita o activa otro ORG_ADMIN antes de suspender este acceso.' });
       return;
     }
-    if (confirm(`¿Suspender acceso de ${user.user_email}?\n\nEl usuario no podrá iniciar sesión pero su historial quedará intacto.`)) {
-      updateUserMutation.mutate({
-        id: user.id,
-        data: { role: user.role, branch_id: user.branch_id || null, status: 'suspended' },
-      });
-    }
+    setPendingSuspendUser(user);
+  };
+
+  const confirmDeactivate = () => {
+    if (!pendingSuspendUser) return;
+    updateUserMutation.mutate({ id: pendingSuspendUser.id, data: { role: pendingSuspendUser.role, branch_id: pendingSuspendUser.branch_id || null, status: 'suspended' } });
+    setPendingSuspendUser(null);
   };
 
   const handleActivate = (user) => {
@@ -275,6 +279,18 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
           </div>
         </CardContent>
       </Card>
+
+
+      <Dialog open={Boolean(pendingSuspendUser)} onOpenChange={(open) => { if (!open) setPendingSuspendUser(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Suspender acceso del usuario</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">{pendingSuspendUser?.user_email} dejará de tener acceso operativo a esta organización. Su historial y las acciones ya registradas se conservan.</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Esto suspende una membresía de TRP. No ejecuta offboarding laboral ni revoca accesos en sistemas externos.</div>
+            <div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingSuspendUser(null)}>Cancelar</Button><Button onClick={confirmDeactivate} className="bg-orange-600 hover:bg-orange-700">Suspender acceso</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Invitar Usuario */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>

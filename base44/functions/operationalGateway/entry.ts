@@ -128,6 +128,14 @@ async function resolveRecordBranchIds(base44, organizationId, entityName, record
   if (entityName === 'Branch') return [record.id];
   if (record.branch_id) return [record.branch_id];
 
+  if (scope === 'enterprise_branch') {
+    if (record.branch_id) return [record.branch_id];
+    const parentId = record.onboarding_id || record.offboarding_id;
+    if (!parentId) return [];
+    const parentEntity = record.onboarding_id ? base44.asServiceRole.entities.EnterpriseOnboarding : base44.asServiceRole.entities.EnterpriseOffboarding;
+    const parent = await findOne(parentEntity, { id: parentId, organization_id: organizationId });
+    return parent?.branch_id ? [parent.branch_id] : [];
+  }
   if (scope === 'work_order' || scope === 'work_order_optional') {
     const ot = await loadWorkOrder(base44, organizationId, record.orden_trabajo_id);
     return ot?.branch_id ? [ot.branch_id] : [];
@@ -308,7 +316,7 @@ async function handleRead(base44, authorization, decision, body) {
   const filter = sanitizeOperationalFilter(body.filter || {});
   if (authorization.organizationId) filter.organization_id = authorization.organizationId;
   const requested = requestedBranch(body);
-  const directBranchScope = ['branch'].includes(decision.policy.scope) && entityName !== 'Branch';
+  const directBranchScope = ['branch','enterprise_branch'].includes(decision.policy.scope) && entityName !== 'Branch';
   if (!authorization.isPlatformGlobal && directBranchScope) {
     if (!decision.branchScope.organizationWide) filter.branch_id = decision.branchScope.branchId;
     else if (requested) filter.branch_id = requested;

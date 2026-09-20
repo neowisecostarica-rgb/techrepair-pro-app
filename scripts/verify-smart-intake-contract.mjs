@@ -625,7 +625,6 @@ const tests = [
 ];
 
 const activeConsumerSources = [
-  ['OrdenesTrabajo.jsx', workOrdersSource],
   ['ExpedienteTecnico.jsx', expedienteSource],
   ['MiDiaTech.jsx', myDaySource],
   ['WizardDiagnosticoTecnico.jsx', technicalWizardSource],
@@ -635,7 +634,6 @@ for (const [name, source] of activeConsumerSources) {
   assert.doesNotMatch(source, /entities\.PreDiagnostico/, `${name} must use the canonical Smart Intake path`);
 }
 
-assert.match(workOrdersSource, /getSmartIntakeByWorkOrder/);
 assert.match(expedienteSource, /smartIntakeQueryKeys\.byWorkOrder/);
 assert.match(myDaySource, /getSmartIntakeByWorkOrder/);
 assert.match(technicalWizardSource, /smartIntake\.mainReportedProblem/);

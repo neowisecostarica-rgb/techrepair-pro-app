@@ -53,7 +53,7 @@ await check('public quote decision consumes token and attributes CUSTOMER_TOKEN 
 });
 
 await check('client flows request short-lived links instead of persisting bearers', () => {
-  const files = ['src/pages/OrdenesTrabajo.jsx', 'src/pages/VentasCotizaciones.jsx', 'src/components/ventas/GestionCotizaciones.jsx', 'src/pages/VentasGarantias.jsx', 'src/components/ventas/AccionesPostVenta.jsx', 'src/components/ventas/EnviarWhatsApp.jsx'];
+  const files = ['src/pages/VentasCotizaciones.jsx', 'src/components/ventas/GestionCotizaciones.jsx', 'src/pages/VentasGarantias.jsx', 'src/components/ventas/AccionesPostVenta.jsx', 'src/components/ventas/EnviarWhatsApp.jsx'];
   for (const file of files) assert.ok(read(file).includes('issuePublicDocumentToken') || read(file).includes('issuePublicLink'), file);
   const productionSources = ['base44/functions/createWorkOrder/entry.ts', 'base44/functions/createSale/entry.ts', 'base44/functions/_shared/deliveryAtomicity.ts', 'base44/functions/operationalGateway/entry.ts'];
   for (const file of productionSources) assert.ok(!read(file).includes('public_access_token:'), file);

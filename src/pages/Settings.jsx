@@ -15,6 +15,7 @@ import UserManagementPanel from '../components/settings/UserManagementPanel';
 import ConfiguracionPanel from '../components/admin/ConfiguracionPanel';
 import ConfiguracionNegocio from '../components/settings/ConfiguracionNegocio';
 import { useAuthContext } from '../components/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 function branchLifecycleError(error, fallback) {
   const payload = error?.data || error?.response?.data || error || {};
@@ -34,6 +35,7 @@ export default function Settings() {
 }
 
 function SettingsContent() {
+  const { toast } = useToast();
   const { user, userAccount, effectiveOrgId } = useAuthContext();
   const [showBranchModal, setShowBranchModal] = useState(false);
   const queryClient = useQueryClient();
@@ -84,7 +86,7 @@ function SettingsContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] });
     },
-    onError: error => alert(error.message),
+    onError: error => toast({ variant: 'destructive', title: 'No se pudo guardar la configuración', description: error.message }),
   });
 
   const handleCreateBranch = (e) => {

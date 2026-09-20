@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { issuePublicLink } from '@/api/publicLinks';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function VentasGarantias() {
   return (
@@ -22,6 +23,7 @@ export default function VentasGarantias() {
 }
 
 function VentasGarantiasContent() {
+  const { toast } = useToast();
   const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
   const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
   const branchFilter = !isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {};
@@ -351,7 +353,7 @@ function VentasGarantiasContent() {
                         const url = `https://wa.me/${cliente.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}`;
                         window.open(url, '_blank');
                       } else {
-                        alert('Cliente sin teléfono registrado');
+                        toast({ variant: 'destructive', title: 'Teléfono requerido', description: 'Registra un teléfono del cliente antes de enviar la garantía.' });
                       }
                     }}
                   >

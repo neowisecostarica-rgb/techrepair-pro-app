@@ -17,8 +17,10 @@ import { withOrgId } from '@/components/hooks/useOrgData';
 import { aplicarStatusInvoices, statusInvoiceConfig } from '@/components/finanzas/calcularStatusInvoice';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function CuentasPorPagar() {
+  const { toast } = useToast();
   return (
     <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN']}>
       <CuentasPorPagarContent />
@@ -100,7 +102,7 @@ function CuentasPorPagarContent() {
     );
     
     if (existente) {
-      alert('Ya existe una factura con este número para este proveedor');
+      toast({ variant: 'destructive', title: 'Factura duplicada', description: 'Ya existe una factura con este número para el proveedor seleccionado.' });
       return;
     }
     
@@ -119,7 +121,7 @@ function CuentasPorPagarContent() {
 
     // Validar due_date >= date
     if (new Date(data.due_date) < new Date(data.date)) {
-      alert('La fecha de vencimiento no puede ser anterior a la fecha de factura');
+      toast({ variant: 'destructive', title: 'Fecha de vencimiento inválida', description: 'La fecha de vencimiento debe ser igual o posterior a la fecha de factura.' });
       return;
     }
 
@@ -134,7 +136,7 @@ function CuentasPorPagarContent() {
     const saldo = facturaSeleccionada.saldo;
     
     if (amount > saldo) {
-      alert(`El monto excede el saldo pendiente (₡${saldo.toLocaleString()})`);
+      toast({ variant: 'destructive', title: 'Monto mayor al saldo', description: `El saldo pendiente es ₡${saldo.toLocaleString()}.` });
       return;
     }
     

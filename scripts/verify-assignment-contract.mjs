@@ -548,7 +548,8 @@ const tests = [
 ];
 
 assert.match(queueSource, /const ALLOWED_ROLES = \['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'\]/);
-assert.match(workOrdersSource, /\['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'\]\.includes\(effectiveRole\)/);
+assert.match(workOrdersSource, /effectiveRole !== 'TECHNICIAN'/);
+assert.match(workOrdersSource, /account\.role === 'TECHNICIAN' && account\.status === 'active'/);
 assert.doesNotMatch(backendSource, /functions\.invoke\(['"]transitionWorkOrderStatus['"]/);
 assert.doesNotMatch(backendSource, /ActividadTecnica|WorkflowGate|initTechnicalActivity/);
 

@@ -455,9 +455,9 @@ function SaasContent() {
           {[
             ['organizations', 'Organizaciones'],
             ['commercial', 'Comercial y planes'],
-            ['health', 'Platform Health'],
-            ['audit', 'Audit'],
-            ['pilot', 'Pilot Control'],
+            ['health', 'Estado de plataforma'],
+            ['audit', 'Auditoría'],
+            ['pilot', 'Control de piloto'],
           ].map(([target, label]) => (
             <Button key={target} variant="outline" size="sm" onClick={() => { window.location.hash = target; document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
               {label}
@@ -484,7 +484,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-xs font-semibold text-slate-600">Suspenderidas</p>
+              <p className="text-xs font-semibold text-slate-600">Suspendidas</p>
             </div>
             <p className="text-3xl font-bold text-slate-900">
               {organizations.filter(o => o.status === 'suspended').length}

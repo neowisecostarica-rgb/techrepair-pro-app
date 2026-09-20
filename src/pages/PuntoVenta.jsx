@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { validarVentaPOS } from '@/components/pos/validacionesPOS';
 import ClienteSearchInput from '@/components/ot/ClienteSearchInput';
 import QuickCreateClienteModal from '@/components/ot/QuickCreateClienteModal';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function PuntoVenta() {
   return (
@@ -32,6 +33,7 @@ export default function PuntoVenta() {
 }
 
 function PuntoVentaContent() {
+  const { toast } = useToast();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const preloadedVenta = location.state?.venta;
@@ -106,7 +108,7 @@ function PuntoVentaContent() {
                 // Venta.delete está gobernado por operationalGateway y solo admite estados
                 // borrador/procesando/inconsistente; createSale es quien materializa la conversión.
                 await base44.entities.Venta.delete(preloadedVenta.id);
-                alert('Conversión cancelada. Redirigiendo...');
+                toast({ title: 'Conversión cancelada', description: 'Volvemos a la cotización sin crear una venta.' });
                 window.history.back();
               } catch (error) {
                 console.error('Error al cancelar conversión:', error);
@@ -364,7 +366,7 @@ function PuntoVentaContent() {
       setIdempotencyKey(`ik_${crypto.randomUUID()}`);
     },
     onError: (error) => {
-      alert(`No se pudo completar la venta: ${error.message || 'Error desconocido'}`);
+      toast({ variant: 'destructive', title: 'No se pudo completar la venta', description: error.message || 'Ocurrió un error inesperado. La venta no se marcó como completada.' });
     }
   });
 
@@ -432,7 +434,7 @@ function PuntoVentaContent() {
         const nuevaCantidad = cantidadActualCarrito + 1;
 
         if (nuevaCantidad > item.cantidad_disponible) {
-          alert(`Stock insuficiente para ${item.nombre}. Disponible: ${item.cantidad_disponible}`);
+          toast({ variant: 'destructive', title: 'Stock insuficiente', description: `${item.nombre}: disponible ${item.cantidad_disponible}.` });
           return;
         }
       }
@@ -475,7 +477,7 @@ function PuntoVentaContent() {
         
         // Solo validar stock si permite_stock = true
         if (categoria?.permite_stock !== false && cantidad > producto.cantidad_disponible) {
-          alert(`Stock insuficiente para ${producto.nombre}. Disponible: ${producto.cantidad_disponible}`);
+          toast({ variant: 'destructive', title: 'Stock insuficiente', description: `${producto.nombre}: disponible ${producto.cantidad_disponible}.` });
           return;
         }
       }
@@ -501,13 +503,13 @@ function PuntoVentaContent() {
 
   const procesarVenta = async () => {
     if (carrito.length === 0) {
-      alert('El carrito está vacío');
+      toast({ variant: 'destructive', title: 'Carrito vacío', description: 'Agrega al menos un producto o servicio antes de procesar la venta.' });
       return;
     }
 
     // Validaciones P0
     if (validacionesPendientes.length > 0) {
-      alert('No se puede procesar la venta:\n\n' + validacionesPendientes.join('\n'));
+      toast({ variant: 'destructive', title: 'La venta necesita información', description: validacionesPendientes.join(' · ') });
       return;
     }
 
@@ -530,7 +532,7 @@ function PuntoVentaContent() {
         if (branches.length === 1) {
           branchIdFinal = branches[0].id;
         } else if (branches.length > 1) {
-          alert('Tu cuenta no tiene una sucursal asignada. Por favor, contacta a tu administrador para que te asigne una sucursal específica.');
+          toast({ variant: 'destructive', title: 'Sucursal requerida', description: 'Tu cuenta no tiene una sucursal asignada. Contacta a tu administrador antes de procesar la venta.' });
           return;
         }
       } catch (error) {
@@ -540,7 +542,7 @@ function PuntoVentaContent() {
 
     // P0: Validar campos requeridos
     if (!effectiveOrgId || !branchIdFinal || !user?.id) {
-      alert('Tu sesión ha expirado o hay un problema con tu contexto de organización. Por favor, cierra sesión y vuelve a iniciar para continuar.');
+      toast({ variant: 'destructive', title: 'No pudimos validar tu contexto', description: 'Cierra sesión y vuelve a ingresar antes de intentar la venta nuevamente.' });
       return;
     }
 
@@ -554,7 +556,7 @@ function PuntoVentaContent() {
       });
 
       if (!validacionPrevia.valido) {
-        alert(validacionPrevia.mensaje);
+        toast({ variant: 'destructive', title: 'Revisa la venta', description: validacionPrevia.mensaje });
         return;
       }
     }
@@ -569,7 +571,7 @@ function PuntoVentaContent() {
           
           // Solo validar stock si permite_stock = true
           if (categoria?.permite_stock !== false && item.cantidad > producto.cantidad_disponible) {
-            alert(`Stock insuficiente para ${producto.nombre}. Disponible: ${producto.cantidad_disponible}, Solicitado: ${item.cantidad}`);
+            toast({ variant: 'destructive', title: 'Stock insuficiente', description: `${producto.nombre}: disponible ${producto.cantidad_disponible}, solicitado ${item.cantidad}.` });
             return;
           }
         }

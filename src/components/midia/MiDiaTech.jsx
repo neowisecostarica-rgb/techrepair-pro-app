@@ -42,8 +42,8 @@ import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { retomarOrdenTrabajo } from '@/components/ot/retomarOrdenTrabajo';
 import { useToast } from '@/components/ui/use-toast';
 
-export default function MiDiaTech({
-  const { t } = useI18n(); user, userAccount, effectiveOrgId, effectiveRole }) {
+export default function MiDiaTech({ user, userAccount, effectiveOrgId, effectiveRole }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showWizard, setShowWizard] = useState(false);

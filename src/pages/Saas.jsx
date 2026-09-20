@@ -848,15 +848,15 @@ function SaasContent() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {[
-              { name: 'Core', monthly: '$69', annual: '$690', note: 'Workflow operativo esencial completo · sin caps artificiales de órdenes' },
-              { name: 'Business', monthly: '$129', annual: '$1,290', note: 'Más profundidad, escala, analytics, calidad y automatización · entitlement técnico: advanced' },
-              { name: 'Enterprise', monthly: 'A medida', annual: 'Contrato anual', note: 'Gobernanza, escala e integraciones contratadas y disponibles' },
+              { name: 'Core', monthly: 'Consultar', annual: 'Precio público pendiente', note: 'Workflow operativo esencial completo · sin caps artificiales de órdenes' },
+              { name: 'Business', monthly: 'Consultar', annual: 'Precio público pendiente', note: 'Más profundidad, escala, analítica operativa, calidad y productividad · entitlement técnico: advanced' },
+              { name: 'Enterprise', monthly: 'A medida', annual: 'Contrato anual', note: 'Gobernanza, custodia de activos, onboarding/offboarding y evidencia operativa' },
             ].map(plan => (
               <Card key={plan.name} className="border border-slate-200 shadow-sm bg-white">
                 <CardHeader><CardTitle className="text-lg">TRP {plan.name}</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="flex items-end gap-2 mb-2"><span className="text-3xl font-semibold text-slate-950">{plan.monthly}</span>{plan.name !== 'Enterprise' && <span className="text-sm text-slate-500 mb-1">/mes</span>}</div>
-                  <p className="text-sm font-medium text-teal-800 mb-3">{plan.annual}{plan.name !== 'Enterprise' && ' / año'}</p>
+                  <div className="flex items-end gap-2 mb-2"><span className="text-3xl font-semibold text-slate-950">{plan.monthly}</span>{plan.monthly.startsWith('$') && <span className="text-sm text-slate-500 mb-1">/mes</span>}</div>
+                  <p className="text-sm font-medium text-teal-800 mb-3">{plan.annual}{plan.annual.startsWith('$') && ' / año'}</p>
                   <p className="text-sm text-slate-600">{plan.note}</p>
                 </CardContent>
               </Card>

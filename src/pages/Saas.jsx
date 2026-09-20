@@ -641,9 +641,9 @@ function SaasContent() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2 border border-slate-200 rounded-md"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspenderidas</option>
+              <option value="all">Todos los estados</option>
+              <option value="active">Activas</option>
+              <option value="suspended">Suspendidas</option>
             </select>
             <select
               value={planFilter}
@@ -670,7 +670,7 @@ function SaasContent() {
               <table className="w-full">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Name</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Organización</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Paquete</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Facturación</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Licencia</th>

@@ -43,7 +43,8 @@
     "test:enterprise-command": "node scripts/verify-enterprise-command.mjs",
     "test:enterprise-entitlement": "node scripts/verify-enterprise-entitlement.mjs",
     "test:enterprise-onboarding": "node scripts/verify-enterprise-onboarding.mjs",
-    "test:i18n-foundation": "node scripts/verify-i18n-foundation.mjs"
+    "test:i18n-foundation": "node scripts/verify-i18n-foundation.mjs",
+    "test:i18n-navigation": "node scripts/verify-i18n-navigation.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

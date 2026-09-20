@@ -62,7 +62,8 @@
     "test:i18n-tail-ops": "node scripts/verify-i18n-tail-ops.mjs",
     "test:i18n-mb5-closure": "node scripts/verify-i18n-mb5-closure.mjs",
     "test:enterprise-mutation-audit": "node scripts/verify-enterprise-mutation-audit.mjs",
-    "test:enterprise-branch-isolation": "node scripts/verify-enterprise-branch-isolation.mjs"
+    "test:enterprise-branch-isolation": "node scripts/verify-enterprise-branch-isolation.mjs",
+    "test:enterprise-subject-matching": "node scripts/verify-enterprise-subject-matching.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

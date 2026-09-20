@@ -1,0 +1,14 @@
+{
+  "name":"AssetAssignment","type":"object","properties":{
+    "organization_id":{"type":"string"},"branch_id":{"type":"string"},"equipo_id":{"type":"string"},
+    "assignee_type":{"type":"string","enum":["EMPLOYEE","CONTRACTOR","DEPARTMENT","LOCATION","OTHER"]},
+    "assignee_reference":{"type":"string"},"assignee_name":{"type":"string"},"assignee_email":{"type":"string"},
+    "assigned_at":{"type":"string","format":"date-time"},"assigned_by_user_id":{"type":"string"},
+    "expected_return_at":{"type":"string","format":"date-time"},"returned_at":{"type":"string","format":"date-time"},
+    "returned_by_user_id":{"type":"string"},"status":{"type":"string","enum":["ACTIVE","RETURNED"],"default":"ACTIVE"},
+    "condition_out":{"type":"string"},"condition_in":{"type":"string"},"notes":{"type":"string"},
+    "evidence_out":{"type":"array","items":{"type":"string"}},"evidence_in":{"type":"array","items":{"type":"string"}},
+    "operation_key":{"type":"string"}
+  },"required":["organization_id","equipo_id","assignee_type","assignee_name","assigned_at","assigned_by_user_id","status","operation_key"],
+  "rls":{"create":false,"read":false,"update":false,"delete":false}
+}

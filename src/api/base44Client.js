@@ -17,6 +17,7 @@ const rawBase44 = createClient({
 
 const protectedOperationalEntities = new Set([
   'ActividadTecnica',
+  'AssetAssignment',
   'BloqueoTecnico',
   'Branch',
   'CategoriaInventario',

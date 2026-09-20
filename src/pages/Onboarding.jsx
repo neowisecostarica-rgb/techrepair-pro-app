@@ -12,8 +12,10 @@ import {
   bootstrapIdentityOrganization,
   getIdentityContext,
 } from '@/api/identity';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function Onboarding() {
+  const { toast } = useToast();
   const [mode, setMode] = useState('checking'); // checking | invited | new_company | success
   const [user, setUser] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -109,7 +111,7 @@ export default function Onboarding() {
     // P0 HARD GUARD: user debe existir y tener id válido
     if (!user || typeof user.id !== 'string') {
       console.error('Usuario no inicializado al crear tenant', user);
-      alert('Tu sesión aún se está inicializando. Intenta de nuevo en unos segundos.');
+      toast({ title: 'Estamos preparando tu sesión', description: 'Espera unos segundos e inténtalo nuevamente.' });
       isCreatingOrgRef.current = false;
       setCreating(false);
       return;
@@ -118,7 +120,7 @@ export default function Onboarding() {
     try {
       const companyName = e.target.company_name.value.trim();
       if (!companyName || !selectedCountry || !selectedCurrency) {
-        alert('Por favor completa todos los campos requeridos');
+        toast({ variant: 'destructive', title: 'Faltan datos requeridos', description: 'Completa los campos obligatorios antes de continuar.' });
         isCreatingOrgRef.current = false;
         setCreating(false);
         return;
@@ -140,7 +142,7 @@ export default function Onboarding() {
     } catch (err) {
       console.error('❌ Error creating company:', err);
       isCreatingOrgRef.current = false;
-      alert('Error al crear la empresa: ' + err.message);
+      toast({ variant: 'destructive', title: 'No se pudo crear la empresa', description: err.message });
       isCreatingOrgRef.current = false;
       setCreating(false);
     }

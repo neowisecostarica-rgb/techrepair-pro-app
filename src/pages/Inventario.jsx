@@ -19,6 +19,7 @@ import { generarCodigoInterno } from '@/components/inventario/utils/generarCodig
 import ModalAjusteStock from '@/components/inventario/ModalAjusteStock';
 import PageGuard from '@/components/guards/PageGuard';
 import TechnicalRequestFulfillmentPanel from '@/components/inventario/TechnicalRequestFulfillmentPanel';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function Inventario() {
   return (
@@ -29,6 +30,7 @@ export default function Inventario() {
 }
 
 function InventarioContent() {
+  const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [showQuickCreateCategoria, setShowQuickCreateCategoria] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -84,7 +86,7 @@ function InventarioContent() {
       setCodigoInternoPreview('');
     },
     onError: (error) => {
-      alert('Error: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo completar la operación', description: error.message });
     }
   });
 
@@ -103,7 +105,7 @@ function InventarioContent() {
       setSelectedCategoriaId('');
     },
     onError: (error) => {
-      alert('Error: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo completar la operación', description: error.message });
     }
   });
 
@@ -119,7 +121,7 @@ function InventarioContent() {
         i.id !== editingItem?.id
       );
       if (duplicado) {
-        alert(`Código de barras ya existe: ${duplicado.nombre}`);
+        toast({ variant: 'destructive', title: 'Código de barras duplicado', description: `Ya está asignado a ${duplicado.nombre}.` });
         return;
       }
     }

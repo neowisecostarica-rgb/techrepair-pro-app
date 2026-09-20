@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { createPageUrl } from '../utils';
 import PageGuard from '@/components/guards/PageGuard';
+import { useToast } from '@/components/ui/use-toast';
 
 // Componente inline para selector de OT (UX FIX + BUG FIX: filtrado por cliente)
 function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId, clienteId, onOTChange }) {
@@ -95,6 +96,7 @@ export default function Agenda() {
 }
 
 function AgendaContent() {
+  const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [editingCita, setEditingCita] = useState(null);
   const [fechaFiltro, setFechaFiltro] = useState(new Date().toISOString().split('T')[0]);
@@ -158,7 +160,7 @@ function AgendaContent() {
 
     },
     onError: (error) => {
-      alert('Error al crear cita: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo crear la cita', description: error.message });
     },
   });
 
@@ -178,7 +180,7 @@ function AgendaContent() {
 
     },
     onError: (error) => {
-      alert('Error al actualizar cita: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo actualizar la cita', description: error.message });
     },
   });
 
@@ -196,7 +198,7 @@ function AgendaContent() {
       // Verificar que la OT pertenece al cliente
       const ots = await base44.entities.OrdenTrabajo.filter({ id: otId, organization_id: effectiveOrgId });
       if (ots[0]?.cliente_id !== clienteId) {
-        alert('Error: La OT seleccionada no pertenece al cliente elegido');
+        toast({ variant: 'destructive', title: 'Orden incompatible', description: 'La orden seleccionada no pertenece al cliente elegido.' });
         setValidando(false);
         return;
       }
@@ -228,7 +230,7 @@ function AgendaContent() {
 
     // P0.4: Validar que si es diagnóstico/reparación, debe tener OT
     if (['diagnostico', 'reparacion'].includes(data.tipo) && !data.orden_trabajo_id) {
-      alert('Los eventos de diagnóstico y reparación requieren una OT asociada');
+      toast({ variant: 'destructive', title: 'Orden requerida', description: 'Los eventos de diagnóstico y reparación deben estar asociados a una orden de trabajo.' });
       setValidando(false);
       return;
     }

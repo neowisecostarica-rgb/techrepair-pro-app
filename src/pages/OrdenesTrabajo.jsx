@@ -44,7 +44,7 @@ export default function OrdenesTrabajo() {
 }
 
 function OrdenesTrabajoContent() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   // TECHNICIAN accede en modo consulta — sin redirección
 
   const [showModal, setShowModal] = useState(false);
@@ -481,7 +481,7 @@ function OrdenesTrabajoContent() {
               <SelectContent>
                 <SelectItem value="todas">Todos los estados</SelectItem>
                 {Object.entries(estadoConfig).map(([key, value]) => (
-                  <SelectItem key={key} value={key}>{value.label}</SelectItem>
+                  <SelectItem key={key} value={key}>{t(value.i18nKey, value.label)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -526,7 +526,7 @@ function OrdenesTrabajoContent() {
 
                     <div className="flex flex-wrap gap-2 items-center">
                       <Badge className={`${config.color} border-0`}>
-                        {config.label}
+                        {t(config.i18nKey, config.label)}
                       </Badge>
                       <Badge className={`${
                         orden.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
@@ -621,7 +621,7 @@ function OrdenesTrabajoContent() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2 items-center">
-                          <Badge className={`${config.color} border-0`}>{config.label}</Badge>
+                          <Badge className={`${config.color} border-0`}>{t(config.i18nKey, config.label)}</Badge>
                           <Badge className={`${
                             orden.prioridad === 'urgente' ? 'bg-red-100 text-red-700' :
                             orden.prioridad === 'high' ? 'bg-orange-100 text-orange-700' :
@@ -971,7 +971,7 @@ function OrdenesTrabajoContent() {
               <div className="space-y-2">
                 <Label htmlFor="estado">Estado (solo lectura)</Label>
                 <Input 
-                  value={estadoConfig[editingOT?.estado]?.label || editingOT?.estado}
+                  value={t(estadoConfig[editingOT?.estado]?.i18nKey, estadoConfig[editingOT?.estado]?.label || editingOT?.estado)}
                   disabled
                   className="bg-slate-100 cursor-not-allowed"
                 />

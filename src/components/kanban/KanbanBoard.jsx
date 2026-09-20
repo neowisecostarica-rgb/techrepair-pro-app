@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useMemo, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function KanbanBoard({ onCardClick }) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const { effectiveOrgId } = useAuthContext();
   const [localOrdenes, setLocalOrdenes] = useState(null); // optimistic state
@@ -132,7 +134,7 @@ export default function KanbanBoard({ onCardClick }) {
                 {/* Header columna */}
                 <div className="px-4 py-3 border-b border-current/10">
                   <div className="flex items-center justify-between">
-                    <span className={`font-semibold text-sm ${col.headerClass}`}>{col.label}</span>
+                    <span className={`font-semibold text-sm ${col.headerClass}`}>{t(col.i18nKey, col.label)}</span>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${col.colorClass} ${col.headerClass} border`}>
                       {cards.length}
                     </span>

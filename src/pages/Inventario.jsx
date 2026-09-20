@@ -214,7 +214,7 @@ function InventarioContent() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Inventario</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">{t('inventory.title','Inventario')}</h1>
           <p className="text-slate-500">Control de repuestos y productos</p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -293,7 +293,7 @@ function InventarioContent() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <Input
-                placeholder="Buscar por código, SKU o nombre... (Enter para buscar exacto)"
+                placeholder={t('inventory.search','Buscar por código, SKU o nombre... (Enter para buscar exacto)')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
@@ -302,7 +302,7 @@ function InventarioContent() {
             </div>
             <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
               <SelectTrigger className="w-full md:w-64">
-                <SelectValue placeholder="Filtrar por categoría" />
+                <SelectValue placeholder={t('inventory.category','Filtrar por categoría')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas las categorías</SelectItem>
@@ -320,7 +320,7 @@ function InventarioContent() {
       {/* Tabla de Inventario */}
       <Card className="border border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100">
-          <CardTitle className="text-lg font-semibold">Artículos en inventario</CardTitle>
+          <CardTitle className="text-lg font-semibold">{t('inventory.items','Artículos en inventario')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -551,7 +551,7 @@ function InventarioContent() {
 
               {/* TIPO DE ITEM */}
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="tipo_item">Tipo de Item *</Label>
+                <Label htmlFor="tipo_item">{t('inventory.itemType','Tipo de Item *')}</Label>
                 <Select name="tipo_item" defaultValue={editingItem?.tipo_item || 'producto'} disabled={effectiveRole !== 'ORG_ADMIN'}>
                   <SelectTrigger>
                     <SelectValue />
@@ -593,7 +593,7 @@ function InventarioContent() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="nombre">Nombre del Producto *</Label>
+                <Label htmlFor="nombre">{t('inventory.name','Nombre del Producto *')}</Label>
                 <Input
                   id="nombre"
                   name="nombre"

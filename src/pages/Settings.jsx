@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -35,6 +36,7 @@ export default function Settings() {
 }
 
 function SettingsContent() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { user, userAccount, effectiveOrgId } = useAuthContext();
   const [showBranchModal, setShowBranchModal] = useState(false);
@@ -177,7 +179,7 @@ function SettingsContent() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Configuración</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">{t('settings.title','Configuración')}</h1>
         <p className="text-slate-500">Gestión de empresa, sucursales y usuarios</p>
       </div>
 
@@ -213,7 +215,7 @@ function SettingsContent() {
         <TabsContent value="empresa">
           <Card className="border border-slate-200 shadow-sm">
             <CardHeader className="border-b border-slate-100">
-              <CardTitle>Datos de la Empresa</CardTitle>
+              <CardTitle>{t('settings.companyData','Datos de la Empresa')}</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-6">
@@ -256,7 +258,7 @@ function SettingsContent() {
         <TabsContent value="sucursales">
           <Card className="border border-slate-200 shadow-sm">
             <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between">
-              <CardTitle>Sucursales</CardTitle>
+              <CardTitle>{t('settings.branches','Sucursales')}</CardTitle>
               <Button onClick={() => setShowBranchModal(true)} size="sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Nueva Sucursal
@@ -316,7 +318,7 @@ function SettingsContent() {
 
       {/* Modal Nueva Sucursal */}
       <Dialog open={!!branchToDeactivate} onOpenChange={(open) => { if (!open) setBranchToDeactivate(null); }}>
-        <DialogContent><DialogHeader><DialogTitle>Desactivar sucursal</DialogTitle></DialogHeader>
+        <DialogContent><DialogHeader><DialogTitle>{t('settings.deactivate','Desactivar sucursal')}</DialogTitle></DialogHeader>
           <div className="space-y-4"><p className="text-sm text-slate-600">Indica el motivo para desactivar <strong>{branchToDeactivate?.name}</strong>.</p><div><Label>Motivo</Label><Input value={deactivationReason} onChange={(e) => setDeactivationReason(e.target.value)} /></div><div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setBranchToDeactivate(null)}>Cancelar</Button><Button variant="destructive" disabled={!deactivationReason.trim()} onClick={() => { lifecycleMutation.mutate({ action: 'DEACTIVATE', branch_id: branchToDeactivate.id, reason: deactivationReason.trim(), operation_key: `branch_deactivate_${crypto.randomUUID()}` }); setBranchToDeactivate(null); }}>Desactivar sucursal</Button></div></div>
         </DialogContent>
       </Dialog>
@@ -324,7 +326,7 @@ function SettingsContent() {
       <Dialog open={showBranchModal} onOpenChange={setShowBranchModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nueva Sucursal</DialogTitle>
+            <DialogTitle>{t('settings.newBranch','Nueva Sucursal')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateBranch} className="space-y-4">
             <div className="space-y-2">

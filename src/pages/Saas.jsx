@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -98,6 +99,7 @@ export default function Saas() {
 }
 
 function SaasContent() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [consoleSection, setConsoleSection] = useState(() => typeof window !== 'undefined' ? (window.location.hash.replace('#', '') || 'overview') : 'overview');
   const [user, setUser] = useState(null);
@@ -404,7 +406,7 @@ function SaasContent() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <ShieldAlert className="w-8 h-8 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acceso restringido</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('saas.restricted','Acceso restringido')}</h1>
           <p className="text-slate-600 mb-6">Este panel está reservado para la administración de plataforma.</p>
         </div>
       </div>
@@ -583,7 +585,7 @@ function SaasContent() {
       {showSection('audit') && auditLogs.length > 0 && (
         <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg">Auditoría de plataforma · últimas 10 acciones</CardTitle>
+            <CardTitle className="text-lg">{t('saas.audit','Auditoría de plataforma · últimas 10 acciones')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -630,7 +632,7 @@ function SaasContent() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
               <Input
-                placeholder="Buscar organización..."
+                placeholder={t('saas.searchOrg','Buscar organización...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -831,7 +833,7 @@ function SaasContent() {
 
       {consoleSection === 'pilot' && (
         <Card className="border border-slate-200 shadow-sm bg-white">
-          <CardHeader><CardTitle className="text-lg">Control de piloto</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">{t('saas.pilot','Control de piloto')}</CardTitle></CardHeader>
           <CardContent>
             <p className="text-sm text-slate-600">Vista informativa del piloto controlado. Las protecciones y mutaciones permanecen gobernadas por backend; esta consola no ofrece controles que todavía no tengan una operación canónica segura.</p>
           </CardContent>
@@ -841,7 +843,7 @@ function SaasContent() {
       {consoleSection === 'commercial' && (
         <div className="space-y-5">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Comercial y planes</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{t('saas.commercial','Comercial y planes')}</h2>
             <p className="text-sm text-slate-600 mt-1">Oferta comercial de TRP. La configuración contractual de cada organización se administra desde esta consola.</p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -875,11 +877,11 @@ function SaasContent() {
 
       <Dialog open={showLifecycleModal} onOpenChange={setShowLifecycleModal}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Ciclo comercial y licencia</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('saas.lifecycle','Ciclo comercial y licencia')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg bg-slate-50 p-3"><p className="text-sm text-slate-600">Organización</p><p className="font-semibold">{selectedOrg?.name}</p></div>
-            <div><Label>Estado de facturación</Label><select value={newBillingStatus} onChange={e=>setNewBillingStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="trial">Prueba</option><option value="active">Activa</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></div>
-            <div><Label>Estado de licencia</Label><select value={newLicenseStatus} onChange={e=>setNewLicenseStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="pending">Pendiente</option><option value="active">Activa</option><option value="grace">Gracia</option><option value="suspended">Suspendida</option><option value="revoked">Revocada</option><option value="expired">Vencida</option></select></div>
+            <div><Label>{t('saas.billingStatus','Estado de facturación')}</Label><select value={newBillingStatus} onChange={e=>setNewBillingStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="trial">Prueba</option><option value="active">Activa</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></div>
+            <div><Label>{t('saas.licenseStatus','Estado de licencia')}</Label><select value={newLicenseStatus} onChange={e=>setNewLicenseStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="pending">Pendiente</option><option value="active">Activa</option><option value="grace">Gracia</option><option value="suspended">Suspendida</option><option value="revoked">Revocada</option><option value="expired">Vencida</option></select></div>
             <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={cancelAtPeriodEnd} onChange={e=>setCancelAtPeriodEnd(e.target.checked)} className="mt-1"/><span><strong>Cancelar al final del período</strong><span className="mt-1 block text-xs text-slate-500">Registra la intención comercial. No suspende por sí sola el acceso operativo de la organización.</span></span></label>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Facturación, licencia y acceso operativo son estados distintos. Para bloquear el acceso usa Suspender organización.</div>
             <div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setShowLifecycleModal(false)}>Cancelar</Button><Button onClick={handleCommercialLifecycle} className="bg-teal-700 hover:bg-teal-800">Guardar ciclo</Button></div>
@@ -891,7 +893,7 @@ function SaasContent() {
       <Dialog open={showSuspenderModal} onOpenChange={setShowSuspenderModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-red-600">Suspender organización</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-red-600">{t('saas.suspendOrg','Suspender organización')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -962,7 +964,7 @@ function SaasContent() {
       <Dialog open={showChangePlanModal} onOpenChange={setShowChangePlanModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Administrar paquete TRP</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{t('saas.managePackage','Administrar paquete TRP')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             {selectedOrg && (
@@ -1038,7 +1040,7 @@ function SaasContent() {
       }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Crear nueva organización</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">{t('saas.createOrg','Crear nueva organización')}</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">

@@ -810,7 +810,7 @@ function SaasContent() {
 
       {consoleSection === 'pilot' && (
         <Card className="border border-slate-200 shadow-sm bg-white">
-          <CardHeader><CardTitle className="text-lg">Pilot Control</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">Control de piloto</CardTitle></CardHeader>
           <CardContent>
             <p className="text-sm text-slate-600">Superficie reservada para control de pilotos. La activación y las mutaciones continúan gobernadas por las protecciones backend existentes; no se exponen controles ficticios.</p>
           </CardContent>

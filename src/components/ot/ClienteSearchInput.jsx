@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ export default function ClienteSearchInput({
   onRequestCreate,
   disabled = false,
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -75,7 +77,7 @@ export default function ClienteSearchInput({
             value={query}
             onChange={handleChange}
             onFocus={() => { if (query.trim()) setOpen(true); }}
-            placeholder="Buscar por nombre, identificación o teléfono..."
+            placeholder={t('otTech.customerSearch','Buscar por nombre, identificación o teléfono...')}
             disabled={disabled}
             autoComplete="off"
           />
@@ -95,7 +97,7 @@ export default function ClienteSearchInput({
           onClick={onRequestCreate}
           disabled={disabled}
           className="shrink-0"
-          title="Crear cliente rápido"
+          title={t('otTech.quickCustomer','Crear cliente rápido')}
         >
           <Plus className="w-4 h-4 mr-1" />
           Nuevo

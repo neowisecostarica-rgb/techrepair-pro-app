@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -14,6 +15,7 @@ const TEXTO_LEGAL_CHECKBOX = 'Confirmo que he recibido el equipo y el servicio d
 const newOperationKey = () => `delivery_${crypto.randomUUID()}`;
 
 export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [acceptance, setAcceptance] = useState(false);
@@ -65,7 +67,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
     <>
       <Button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-purple-500 to-indigo-500">
         <Package className="w-4 h-4 mr-2" />
-        Entregar al Cliente
+        {t('otTech.deliver','Entregar al Cliente')}
       </Button>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -73,18 +75,18 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
               <Package className="w-6 h-6 text-purple-600" />
-              Confirmar Entrega de Orden de Trabajo
+              {t('otTech.confirmDelivery','{t('otTech.confirmDelivery','Confirmar Entrega')} de Orden de Trabajo')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6 mt-4">
             <div className="bg-slate-50 p-4 rounded-lg grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-slate-500">Codigo OT:</p>
+                <p className="text-slate-500">{t('otTech.workOrderCode','Código OT')}:</p>
                 <p className="font-semibold">{ordenTrabajo.codigo_ot}</p>
               </div>
               <div>
-                <p className="text-slate-500">Motivo:</p>
+                <p className="text-slate-500">{t('otTech.reason','Motivo')}:</p>
                 <p className="font-semibold">{ordenTrabajo.motivo_ingreso}</p>
               </div>
             </div>
@@ -92,7 +94,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
             <Alert className="bg-blue-50 border-blue-200">
               <ShieldCheck className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-900">
-                El servidor validara estado tecnico, obligacion comercial, sucursal y garantia antes de confirmar la entrega.
+                {t('otTech.deliveryGuard','El servidor validará estado técnico, obligación comercial, sucursal y garantía antes de confirmar la entrega.')}
               </AlertDescription>
             </Alert>
 
@@ -111,11 +113,11 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
             </div>
 
             <div className="space-y-2">
-              <Label>Nota de Entrega (opcional)</Label>
+              <Label>{t('otTech.deliveryNote','Nota de Entrega (opcional)')}</Label>
               <Textarea
                 value={note}
                 onChange={event => setNote(event.target.value)}
-                placeholder="Observaciones sobre la entrega..."
+                placeholder={t('otTech.deliveryPlaceholder','Observaciones sobre la entrega...')}
                 rows={3}
                 maxLength={2000}
               />
@@ -136,9 +138,9 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
                 className="bg-gradient-to-r from-purple-500 to-indigo-500"
               >
                 {delivery.isPending ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Procesando Entrega...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('otTech.processingDelivery','Procesando Entrega...')}</>
                 ) : (
-                  <><CheckCircle2 className="w-4 h-4 mr-2" />Confirmar Entrega</>
+                  <><CheckCircle2 className="w-4 h-4 mr-2" />{t('otTech.confirmDelivery','Confirmar Entrega')}</>
                 )}
               </Button>
             </div>

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCreated }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [tipo, setTipo] = useState('');
   const [marca, setMarca] = useState('');
@@ -60,7 +62,7 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuevo Equipo</DialogTitle>
+          <DialogTitle>{t('otTech.newEquipment','Nuevo Equipo')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,24 +73,24 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="tipo">Tipo de Equipo *</Label>
+            <Label htmlFor="tipo">{t('otTech.equipmentType','Tipo de Equipo *')}</Label>
             <Select value={tipo} onValueChange={setTipo} disabled={saving}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar tipo" />
+                <SelectValue placeholder={t('otTech.selectType','Seleccionar tipo')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="laptop">Laptop</SelectItem>
                 <SelectItem value="desktop">Desktop</SelectItem>
                 <SelectItem value="tablet">Tablet</SelectItem>
                 <SelectItem value="smartphone">Smartphone</SelectItem>
-                <SelectItem value="impresora">Impresora</SelectItem>
-                <SelectItem value="otro">Otro</SelectItem>
+                <SelectItem value="impresora">{t('otTech.printer','Impresora')}</SelectItem>
+                <SelectItem value="otro">{t('otTech.other','Otro')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="marca">Marca *</Label>
+            <Label htmlFor="marca">{t('otTech.brand','Marca *')}</Label>
             <Input
               id="marca"
               value={marca}
@@ -100,7 +102,7 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="modelo">Modelo</Label>
+            <Label htmlFor="modelo">{t('otTech.model','Modelo')}</Label>
             <Input
               id="modelo"
               value={modelo}
@@ -111,12 +113,12 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="serie">Número de Serie / IMEI</Label>
+            <Label htmlFor="serie">{t('otTech.serial','Número de Serie / IMEI')}</Label>
             <Input
               id="serie"
               value={serie}
               onChange={(e) => setSerie(e.target.value)}
-              placeholder="Opcional"
+              placeholder={t('otTech.optional','Opcional')}
               disabled={saving}
             />
           </div>
@@ -137,7 +139,7 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
                   Creando...
                 </>
               ) : (
-                'Crear Equipo'
+                t('otTech.createEquipment','Crear Equipo')
               )}
             </Button>
           </div>

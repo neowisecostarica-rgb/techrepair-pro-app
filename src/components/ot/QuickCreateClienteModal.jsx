@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import {
   Sheet,
@@ -16,6 +17,7 @@ import FormularioCliente from '@/components/clientes/FormularioCliente';
  * Delega toda la lógica a FormularioCliente mode="quick".
  */
 export default function QuickCreateClienteModal({ open, onOpenChange, onCreated }) {
+  const { t } = useI18n();
   const handleGuardar = (clienteCreado) => {
     onCreated(clienteCreado);
     onOpenChange(false);
@@ -42,7 +44,7 @@ export default function QuickCreateClienteModal({ open, onOpenChange, onCreated 
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <SheetTitle className="text-lg font-semibold">Crear Cliente</SheetTitle>
+            <SheetTitle className="text-lg font-semibold">{t('otTech.createCustomer','Crear Cliente')}</SheetTitle>
           </div>
         </SheetHeader>
 

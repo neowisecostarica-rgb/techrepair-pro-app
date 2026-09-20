@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -14,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function SolicitudesTecnicas({ ordenTrabajoId, userAccount }) {
+  const { t } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const [fulfillmentMode, setFulfillmentMode] = useState('EXISTING_STOCK');
   const queryClient = useQueryClient();
@@ -71,12 +73,12 @@ export default function SolicitudesTecnicas({ ordenTrabajoId, userAccount }) {
     <Card className="border-0 shadow-md">
       <CardHeader className="border-b border-slate-100">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2"><Package className="w-5 h-5 text-emerald-600" />Solicitudes Técnicas</CardTitle>
-          <Button onClick={() => setShowModal(true)} size="sm"><Plus className="w-4 h-4 mr-2" />Nueva Solicitud</Button>
+          <CardTitle className="text-lg flex items-center gap-2"><Package className="w-5 h-5 text-emerald-600" />{t('otTech.requests','Solicitudes Técnicas')}</CardTitle>
+          <Button onClick={() => setShowModal(true)} size="sm"><Plus className="w-4 h-4 mr-2" />{t('otTech.newRequest','Nueva Solicitud')}</Button>
         </div>
       </CardHeader>
       <CardContent className="p-6">
-        {solicitudes.length === 0 ? <div className="text-center py-8 text-slate-400"><Package className="w-12 h-12 mx-auto mb-3" /><p>No hay solicitudes registradas</p></div> :
+        {solicitudes.length === 0 ? <div className="text-center py-8 text-slate-400"><Package className="w-12 h-12 mx-auto mb-3" /><p>{t('otTech.noRequests','No hay solicitudes registradas')}</p></div> :
           <div className="space-y-3">{solicitudes.map(solicitud => {
             const config = estadoConfig[solicitud.estado] || estadoConfig.draft;
             const Icon = config.icon;
@@ -92,7 +94,7 @@ export default function SolicitudesTecnicas({ ordenTrabajoId, userAccount }) {
                 {solicitud.created_date && <p className="text-xs text-slate-400 mt-1">{formatDistanceToNow(new Date(solicitud.created_date), { addSuffix: true, locale: es })}</p>}
                 {solicitud.motivo_rechazo && <p className="text-xs text-red-600 mt-2">{solicitud.motivo_rechazo}</p>}
               </div>
-              {solicitud.estado === 'draft' && <Button size="sm" disabled={commandMutation.isPending} onClick={() => commandMutation.mutate({ action: 'SUBMIT', request_id: solicitud.id, correlation_id: crypto.randomUUID() })}>Solicitar</Button>}
+              {solicitud.estado === 'draft' && <Button size="sm" disabled={commandMutation.isPending} onClick={() => commandMutation.mutate({ action: 'SUBMIT', request_id: solicitud.id, correlation_id: crypto.randomUUID() })}>{t('otTech.request','Solicitar')}</Button>}
             </div>;
           })}</div>}
       </CardContent>
@@ -100,14 +102,14 @@ export default function SolicitudesTecnicas({ ordenTrabajoId, userAccount }) {
 
     <Dialog open={showModal} onOpenChange={setShowModal}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Nueva Solicitud Técnica</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t('otTech.newRequest','Nueva Solicitud Técnica')}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2"><Label>Tipo *</Label><Select name="tipo" required><SelectTrigger><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger><SelectContent><SelectItem value="repuesto">Repuesto</SelectItem><SelectItem value="suministro">Suministro</SelectItem><SelectItem value="herramienta">Herramienta</SelectItem></SelectContent></Select></div>
           <div className="space-y-2"><Label>Modo de abastecimiento *</Label><Select value={fulfillmentMode} onValueChange={setFulfillmentMode}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="EXISTING_STOCK">Stock existente</SelectItem><SelectItem value="NEW_SPEND">Compra / gasto nuevo</SelectItem></SelectContent></Select></div>
           {fulfillmentMode === 'EXISTING_STOCK' && <div className="space-y-2"><Label>Item de inventario *</Label><Select name="inventory_id" required><SelectTrigger><SelectValue placeholder="Seleccionar item" /></SelectTrigger><SelectContent>{inventory.map(item => <SelectItem key={item.id} value={item.id}>{item.nombre} ({item.cantidad_disponible || 0})</SelectItem>)}</SelectContent></Select></div>}
           <div className="space-y-2"><Label>Descripción *</Label><Textarea name="descripcion" required rows={3} /></div>
           <div className="space-y-2"><Label>Cantidad *</Label><Input name="cantidad" type="number" min="1" defaultValue="1" required /></div>
-          <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button><Button type="submit" disabled={commandMutation.isPending}>Guardar Borrador</Button></div>
+          <div className="flex gap-3 justify-end"><Button type="button" variant="outline" onClick={() => setShowModal(false)}>{t('otTech.cancel','Cancelar')}</Button><Button type="submit" disabled={commandMutation.isPending}>{t('otTech.saveDraft','Guardar Borrador')}</Button></div>
         </form>
       </DialogContent>
     </Dialog>

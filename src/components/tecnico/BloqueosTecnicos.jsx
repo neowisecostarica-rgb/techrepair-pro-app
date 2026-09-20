@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -15,6 +16,7 @@ import { withOrgId } from '@/components/hooks/useOrgData';
 import { cambiarEstadoAtencionOT } from '@/components/ot/transicionarEstadoOT';
 
 export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccount }) {
+  const { t } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const queryClient = useQueryClient();
 
@@ -67,11 +69,11 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-600" />
-              Bloqueos Técnicos
+              {t('otTech.blocks','Bloqueos Técnicos')}
             </CardTitle>
             <Button onClick={() => setShowModal(true)} size="sm" variant="outline">
               <Plus className="w-4 h-4 mr-2" />
-              Reportar Bloqueo
+              {t('otTech.reportBlock','Reportar Bloqueo')}
             </Button>
           </div>
         </CardHeader>
@@ -111,7 +113,7 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
           {/* Bloqueos Resueltos */}
           {bloqueosResueltos.length > 0 && (
             <div>
-              <h4 className="font-semibold text-sm text-slate-500 mb-3">Resueltos</h4>
+              <h4 className="font-semibold text-sm text-slate-500 mb-3">{t('otTech.resolved','Resueltos')}</h4>
               <div className="space-y-2">
                 {bloqueosResueltos.map((bloqueo) => (
                   <div key={bloqueo.id} className="p-3 bg-slate-50 rounded-lg opacity-60">
@@ -128,7 +130,7 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
           {bloqueos.length === 0 && (
             <div className="text-center py-8 text-slate-400">
               <Shield className="w-12 h-12 mx-auto mb-3" />
-              <p>Sin bloqueos reportados</p>
+              <p>{t('otTech.noBlocks','Sin bloqueos reportados')}</p>
             </div>
           )}
         </CardContent>
@@ -137,7 +139,7 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reportar Bloqueo Técnico</DialogTitle>
+            <DialogTitle>{t('otTech.reportBlock','Reportar Bloqueo')} Técnico</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -146,24 +148,24 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Tipo de Bloqueo *</Label>
+              <Label>{t('otTech.blockType','Tipo de Bloqueo *')}</Label>
               <Select name="tipo_bloqueo" required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar tipo" />
+                  <SelectValue placeholder={t('otTech.selectType','Seleccionar tipo')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="falta_aprobacion">Falta de Aprobación</SelectItem>
-                  <SelectItem value="falta_repuesto">Falta de Repuesto</SelectItem>
-                  <SelectItem value="espera_cliente">Espera de Cliente</SelectItem>
-                  <SelectItem value="otro">Otro</SelectItem>
+                  <SelectItem value="falta_aprobacion">{t('otTech.missingApproval','Falta de Aprobación')}</SelectItem>
+                  <SelectItem value="falta_repuesto">{t('otTech.missingPart','Falta de Repuesto')}</SelectItem>
+                  <SelectItem value="espera_cliente">{t('otTech.waitingCustomer','Espera de Cliente')}</SelectItem>
+                  <SelectItem value="otro">{t('otTech.other','Otro')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Descripción *</Label>
+              <Label>{t('otTech.description','Descripción *')}</Label>
               <Textarea
                 name="descripcion"
-                placeholder="Describe el bloqueo..."
+                placeholder={t('otTech.blockPlaceholder','Describe el bloqueo...')}
                 required
                 rows={3}
               />
@@ -173,7 +175,7 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
                 Cancelar
               </Button>
               <Button type="submit" disabled={createBloqueoMutation.isPending}>
-                Reportar Bloqueo
+                {t('otTech.reportBlock','Reportar Bloqueo')}
               </Button>
             </div>
           </form>

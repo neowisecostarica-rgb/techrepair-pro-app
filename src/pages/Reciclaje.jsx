@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -35,6 +36,7 @@ export default function Reciclaje() {
 }
 
 function ReciclajeContent() {
+  const { t } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const queryClient = useQueryClient();
@@ -105,8 +107,8 @@ function ReciclajeContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Reciclaje y Sostenibilidad</h1>
-          <p className="text-slate-500">Gestión de desechos e impacto ecológico</p>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">{t('sustain.title','Reciclaje y Sostenibilidad')}</h1>
+          <p className="text-slate-500">{t('sustain.subtitle','Gestión de desechos e impacto ecológico')}</p>
         </div>
         <Button
           onClick={() => { setEditingItem(null); setShowModal(true); }}
@@ -123,7 +125,7 @@ function ReciclajeContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Peso Total Reciclado</p>
+                <p className="text-sm text-slate-600">{t('sustain.weight','Peso Total Reciclado')}</p>
                 <p className="text-3xl font-bold text-green-700">{totalPeso.toFixed(1)} kg</p>
               </div>
               <Recycle className="w-10 h-10 text-green-600" />
@@ -135,7 +137,7 @@ function ReciclajeContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">CO₂ Evitado</p>
+                <p className="text-sm text-slate-600">{t('sustain.co2','CO₂ Evitado')}</p>
                 <p className="text-3xl font-bold text-blue-700">{totalCarbono.toFixed(1)} kg</p>
               </div>
               <Leaf className="w-10 h-10 text-blue-600" />
@@ -147,7 +149,7 @@ function ReciclajeContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">% Reutilización</p>
+                <p className="text-sm text-slate-600">{t('sustain.reuse','% Reutilización')}</p>
                 <p className="text-3xl font-bold text-purple-700">{porcentajeReutilizacion.toFixed(1)}%</p>
               </div>
               <TrendingUp className="w-10 h-10 text-purple-600" />
@@ -159,7 +161,7 @@ function ReciclajeContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">Valor Recuperado</p>
+                <p className="text-sm text-slate-600">{t('sustain.recovered','Valor Recuperado')}</p>
                 <p className="text-3xl font-bold text-amber-700">₡{totalValor.toLocaleString()}</p>
               </div>
               <TrendingUp className="w-10 h-10 text-amber-600" />
@@ -172,7 +174,7 @@ function ReciclajeContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="border-0 shadow-lg">
           <CardHeader className="border-b border-slate-100">
-            <CardTitle className="text-lg font-semibold">Distribución por Tipo</CardTitle>
+            <CardTitle className="text-lg font-semibold">{t('sustain.distribution','Distribución por Tipo')}</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <ResponsiveContainer width="100%" height={250}>
@@ -199,7 +201,7 @@ function ReciclajeContent() {
 
         <Card className="lg:col-span-2 border-0 shadow-lg">
           <CardHeader className="border-b border-slate-100">
-            <CardTitle className="text-lg font-semibold">Registros Recientes</CardTitle>
+            <CardTitle className="text-lg font-semibold">{t('sustain.recent','Registros Recientes')}</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -240,7 +242,7 @@ function ReciclajeContent() {
               {registros.length === 0 && (
                 <div className="text-center py-12 text-slate-400">
                   <Recycle className="w-16 h-16 mx-auto mb-3 opacity-20" />
-                  <p>No hay registros de reciclaje</p>
+                  <p>{t('sustain.empty','No hay registros de reciclaje')}</p>
                 </div>
               )}
             </div>
@@ -346,7 +348,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
     <form onSubmit={handleFormSubmit} className="space-y-4 mt-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="tipo_residuo">Tipo de Residuo *</Label>
+          <Label htmlFor="tipo_residuo">{t('sustain.wasteType','Tipo de Residuo *')}</Label>
           <Select 
             name="tipo_residuo" 
             value={tipoResiduo}
@@ -354,7 +356,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
             required
           >
             <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
+              <SelectValue placeholder={t('sustain.select','Seleccionar')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="electronico">Electrónico</SelectItem>
@@ -389,7 +391,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
         </div>
 
         <div className="space-y-2 col-span-2">
-          <Label htmlFor="descripcion">Descripción *</Label>
+          <Label htmlFor="descripcion">{t('sustain.description','Descripción *')}</Label>
           <Textarea
             id="descripcion"
             name="descripcion"
@@ -401,7 +403,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="peso_kg">Peso (kg)</Label>
+          <Label htmlFor="peso_kg">{t('sustain.weightKg','Peso (kg)')}</Label>
           <Input
             type="text"
             id="peso_kg"
@@ -416,7 +418,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="cantidad_unidades">Cantidad Unidades</Label>
+          <Label htmlFor="cantidad_unidades">{t('sustain.units','Cantidad Unidades')}</Label>
           <Input
             type="number"
             id="cantidad_unidades"
@@ -427,10 +429,10 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="origen">Origen</Label>
+          <Label htmlFor="origen">{t('sustain.origin','Origen')}</Label>
           <Select name="origen" defaultValue={editingItem?.origen}>
             <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
+              <SelectValue placeholder={t('sustain.select','Seleccionar')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="reparacion">Reparación</SelectItem>
@@ -442,7 +444,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="destino">Destino</Label>
+          <Label htmlFor="destino">{t('sustain.destination','Destino')}</Label>
           <Input
             id="destino"
             name="destino"
@@ -452,13 +454,13 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
         </div>
 
         <div className="space-y-2 col-span-2">
-          <Label htmlFor="orden_trabajo_id">Orden de Trabajo relacionada</Label>
+          <Label htmlFor="orden_trabajo_id">{t('sustain.workOrder','Orden de Trabajo relacionada')}</Label>
           <Input id="orden_trabajo_id" name="orden_trabajo_id" defaultValue={editingItem?.orden_trabajo_id} placeholder="ID de la OT (opcional)" />
-          <p className="text-xs text-slate-500">Si el residuo nace de una reparación, enlázalo a su OT para conservar trazabilidad.</p>
+          <p className="text-xs text-slate-500">{t('sustain.traceHelp','Si el residuo nace de una reparación, enlázalo a su OT para conservar trazabilidad.')}</p>
         </div>
 
         <div className="space-y-2 col-span-2">
-          <Label htmlFor="empresa_recicladora">Empresa Recicladora</Label>
+          <Label htmlFor="empresa_recicladora">{t('sustain.recycler','Empresa Recicladora')}</Label>
           <Input
             id="empresa_recicladora"
             name="empresa_recicladora"
@@ -504,7 +506,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
         </div>
 
         <div className="space-y-2 col-span-2">
-          <Label htmlFor="notas">Notas</Label>
+          <Label htmlFor="notas">{t('sustain.notes','Notas')}</Label>
           <Textarea
             id="notas"
             name="notas"

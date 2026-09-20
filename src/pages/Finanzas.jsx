@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -56,6 +57,7 @@ function pct(number) {
 }
 
 function FinanzasContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
   const [periodoPreset, setPeriodoPreset] = useState('mes');
   const [fechaDesde, setFechaDesde] = useState('');
@@ -180,7 +182,7 @@ function FinanzasContent() {
       {/* ── HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Finanzas</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">{t('financeDash.title','Finanzas')}</h1>
           {isBranchAdmin && sucursalFijaNombre && (
             <p className="text-sm text-slate-400 mt-0.5">{sucursalFijaNombre}</p>
           )}
@@ -204,7 +206,7 @@ function FinanzasContent() {
       {isErrorMetrics && !isLoadingMetrics && (
         <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4">
           <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
-          <p className="text-sm text-slate-500">No se pudieron calcular las métricas en este momento.</p>
+          <p className="text-sm text-slate-500">{t('financeDash.error','No se pudieron calcular las métricas en este momento.')}</p>
         </div>
       )}
 
@@ -213,7 +215,7 @@ function FinanzasContent() {
         <div className="flex items-center justify-center py-24">
           <div className="text-center">
             <div className="w-9 h-9 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-slate-400 text-sm">Calculando métricas...</p>
+            <p className="text-slate-400 text-sm">{t('financeDash.calculating','Calculando métricas...')}</p>
           </div>
         </div>
       )}
@@ -234,7 +236,7 @@ function FinanzasContent() {
                 <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">
                   {fmt(revenue)}
                 </p>
-                <p className="text-sm text-slate-400 mt-2 font-medium">Ingresos</p>
+                <p className="text-sm text-slate-400 mt-2 font-medium">{t('financeDash.income','Ingresos')}</p>
               </CardContent>
             </Card>
 
@@ -249,7 +251,7 @@ function FinanzasContent() {
                 <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">
                   {pct(grossMargin)}
                 </p>
-                <p className="text-sm text-slate-400 mt-2 font-medium">Margen</p>
+                <p className="text-sm text-slate-400 mt-2 font-medium">{t('financeDash.margin','Margen')}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{fmt(marginAmount)} ganancia</p>
               </CardContent>
             </Card>
@@ -265,8 +267,8 @@ function FinanzasContent() {
                 <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">
                   {fmt(cac)}
                 </p>
-                <p className="text-sm text-slate-400 mt-2 font-medium">CAC</p>
-                <p className="text-xs text-slate-400 mt-0.5">por cliente nuevo</p>
+                <p className="text-sm text-slate-400 mt-2 font-medium">{t('financeDash.cac','CAC')}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{t('financeDash.perNew','por cliente nuevo')}</p>
               </CardContent>
             </Card>
 
@@ -281,7 +283,7 @@ function FinanzasContent() {
                 <p className="text-4xl font-bold text-slate-900 leading-none tracking-tight">
                   {salesCount}
                 </p>
-                <p className="text-sm text-slate-400 mt-2 font-medium">Ventas</p>
+                <p className="text-sm text-slate-400 mt-2 font-medium">{t('financeDash.sales','Ventas')}</p>
               </CardContent>
             </Card>
           </div>
@@ -294,7 +296,7 @@ function FinanzasContent() {
               </div>
               <div>
                 <p className="text-lg font-semibold text-slate-800">{fmt(marketingSpend)}</p>
-                <p className="text-xs text-slate-400 font-medium">Inversión Marketing</p>
+                <p className="text-xs text-slate-400 font-medium">{t('financeDash.marketing','Inversión Marketing')}</p>
               </div>
             </div>
 
@@ -304,7 +306,7 @@ function FinanzasContent() {
               </div>
               <div>
                 <p className="text-lg font-semibold text-slate-800">{newClients}</p>
-                <p className="text-xs text-slate-400 font-medium">Clientes Nuevos</p>
+                <p className="text-xs text-slate-400 font-medium">{t('financeDash.newCustomers','Clientes Nuevos')}</p>
               </div>
             </div>
           </div>
@@ -316,8 +318,8 @@ function FinanzasContent() {
                 <CalendarSearch className="w-5 h-5 text-slate-300" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-700">No hay ventas registradas en este período.</p>
-                <p className="text-sm text-slate-400">Probá ampliar el rango de fechas o seleccionar un período anterior donde sí hubo actividad.</p>
+                <p className="text-sm font-semibold text-slate-700">{t('financeDash.empty','No hay ventas registradas en este período.')}</p>
+                <p className="text-sm text-slate-400">{t('financeDash.emptyHelp','Amplía el rango de fechas o selecciona un período anterior con actividad.')}</p>
               </div>
               {periodoPreset !== 'año' && (
                 <button
@@ -379,7 +381,7 @@ function FinanzasContent() {
               ) : (
                 <div className="h-[280px] flex flex-col items-center justify-center gap-3">
                   <TrendingUp className="w-8 h-8 text-slate-200" />
-                  <p className="text-sm text-slate-400">No hay movimiento de ingresos para graficar en este período.</p>
+                  <p className="text-sm text-slate-400">{t('financeDash.noChart','No hay movimiento de ingresos para graficar en este período.')}</p>
                 </div>
               )}
             </CardContent>

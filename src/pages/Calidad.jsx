@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -39,6 +40,7 @@ export default function Calidad() {
 }
 
 function CalidadContent() {
+  const { t } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const [editingNC, setEditingNC] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
@@ -113,8 +115,8 @@ function CalidadContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Gestión de Calidad</h1>
-          <p className="text-slate-500">Control de no conformidades y mejora continua</p>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">{t('quality.title','Gestión de Calidad')}</h1>
+          <p className="text-slate-500">{t('quality.subtitle','Control de no conformidades y mejora continua')}</p>
         </div>
         <Button
           onClick={() => { setEditingNC(null); setShowModal(true); }}
@@ -131,7 +133,7 @@ function CalidadContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Total Registros</p>
+                <p className="text-sm text-slate-500">{t('quality.total','Total Registros')}</p>
                 <p className="text-3xl font-bold text-slate-900">{noConformidades.length}</p>
               </div>
               <AlertCircle className="w-10 h-10 text-slate-400" />
@@ -143,7 +145,7 @@ function CalidadContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Abiertas</p>
+                <p className="text-sm text-slate-500">{t('quality.open','Abiertas')}</p>
                 <p className="text-3xl font-bold text-orange-600">{abiertas}</p>
               </div>
               <XCircle className="w-10 h-10 text-orange-500" />
@@ -155,7 +157,7 @@ function CalidadContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Críticas</p>
+                <p className="text-sm text-slate-500">{t('quality.critical','Críticas')}</p>
                 <p className="text-3xl font-bold text-red-600">{criticas}</p>
               </div>
               <AlertCircle className="w-10 h-10 text-red-500" />
@@ -169,10 +171,10 @@ function CalidadContent() {
         <CardContent className="p-6">
           <Select value={filtroEstado} onValueChange={setFiltroEstado}>
             <SelectTrigger className="w-64">
-              <SelectValue placeholder="Filtrar por estado" />
+              <SelectValue placeholder={t('quality.filter','Filtrar por estado')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Todos los estados</SelectItem>
+              <SelectItem value="todas">{t('quality.all','Todos los estados')}</SelectItem>
               {Object.entries(estadoConfig).map(([key, value]) => (
                 <SelectItem key={key} value={key}>{value.label}</SelectItem>
               ))}
@@ -224,7 +226,7 @@ function CalidadContent() {
 
                     {nc.accion_correctiva && (
                       <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-xs text-slate-600 mb-1">Acción Correctiva:</p>
+                        <p className="text-xs text-slate-600 mb-1">{t('quality.corrective','Acción Correctiva:')}</p>
                         <p className="text-sm font-medium text-slate-900">{nc.accion_correctiva}</p>
                       </div>
                     )}
@@ -239,7 +241,7 @@ function CalidadContent() {
           <Card className="border-0 shadow-lg">
             <CardContent className="p-12 text-center">
               <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-300" />
-              <p className="text-slate-400">No hay no conformidades registradas</p>
+              <p className="text-slate-400">{t('quality.empty','No hay no conformidades registradas')}</p>
             </CardContent>
           </Card>
         )}
@@ -257,7 +259,7 @@ function CalidadContent() {
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="titulo">Título *</Label>
+                <Label htmlFor="titulo">{t('quality.name','Título *')}</Label>
                 <Input
                   id="titulo"
                   name="titulo"
@@ -267,7 +269,7 @@ function CalidadContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tipo">Tipo *</Label>
+                <Label htmlFor="tipo">{t('quality.type','Tipo *')}</Label>
                 <Select name="tipo" defaultValue={editingNC?.tipo} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar" />
@@ -283,7 +285,7 @@ function CalidadContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="severidad">Severidad *</Label>
+                <Label htmlFor="severidad">{t('quality.severity','Severidad *')}</Label>
                 <Select name="severidad" defaultValue={editingNC?.severidad || 'media'} required>
                   <SelectTrigger>
                     <SelectValue />
@@ -298,7 +300,7 @@ function CalidadContent() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="descripcion">Descripción *</Label>
+                <Label htmlFor="descripcion">{t('quality.description','Descripción *')}</Label>
                 <Textarea
                   id="descripcion"
                   name="descripcion"
@@ -311,7 +313,7 @@ function CalidadContent() {
               {editingNC && (
                 <>
                   <div className="space-y-2 col-span-2">
-                    <Label htmlFor="causa_raiz">Causa Raíz</Label>
+                    <Label htmlFor="causa_raiz">{t('quality.rootCause','Causa Raíz')}</Label>
                     <Textarea
                       id="causa_raiz"
                       name="causa_raiz"
@@ -322,7 +324,7 @@ function CalidadContent() {
                   </div>
 
                   <div className="space-y-2 col-span-2">
-                    <Label htmlFor="accion_correctiva">Acción Correctiva</Label>
+                    <Label htmlFor="accion_correctiva">{t('quality.correctiveAction','Acción Correctiva')}</Label>
                     <Textarea
                       id="accion_correctiva"
                       name="accion_correctiva"
@@ -333,7 +335,7 @@ function CalidadContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="fecha_limite">Fecha Límite</Label>
+                    <Label htmlFor="fecha_limite">{t('quality.deadline','Fecha Límite')}</Label>
                     <Input
                       type="date"
                       id="fecha_limite"
@@ -343,7 +345,7 @@ function CalidadContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="estado">Estado</Label>
+                    <Label htmlFor="estado">{t('quality.status','Estado')}</Label>
                     <Select name="estado" defaultValue={editingNC?.estado}>
                       <SelectTrigger>
                         <SelectValue />
@@ -359,13 +361,13 @@ function CalidadContent() {
               )}
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="orden_trabajo_id">Orden de Trabajo relacionada</Label>
+                <Label htmlFor="orden_trabajo_id">{t('quality.workOrder','Orden de Trabajo relacionada')}</Label>
                 <Input id="orden_trabajo_id" name="orden_trabajo_id" defaultValue={editingNC?.orden_trabajo_id} placeholder="ID de la OT (opcional)" />
-                <p className="text-xs text-slate-500">Vincula esta no conformidad con la historia operacional de la OT.</p>
+                <p className="text-xs text-slate-500">{t('quality.traceHelp','Vincula esta no conformidad con la historia operacional de la OT.')}</p>
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="reportado_por">Reportado Por</Label>
+                <Label htmlFor="reportado_por">{t('quality.reportedBy','Reportado Por')}</Label>
                 <Input
                   id="reportado_por"
                   name="reportado_por"

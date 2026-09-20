@@ -56,7 +56,8 @@
     "test:i18n-ops-finance": "node scripts/verify-i18n-ops-finance.mjs",
     "test:i18n-final-residual": "node scripts/verify-i18n-final-residual.mjs",
     "test:i18n-public-portals": "node scripts/verify-i18n-public-portals.mjs",
-    "test:i18n-ot-tech": "node scripts/verify-i18n-ot-tech.mjs"
+    "test:i18n-ot-tech": "node scripts/verify-i18n-ot-tech.mjs",
+    "test:i18n-governance": "node scripts/verify-i18n-governance.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

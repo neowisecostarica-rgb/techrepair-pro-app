@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +20,7 @@ export default function Activos() {
 }
 
 function ActivosContent() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { effectiveOrgId } = useAuthContext();
   const [search, setSearch] = React.useState('');
@@ -78,9 +80,9 @@ function ActivosContent() {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Technology Asset Operations</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Activos</h1>
-          <p className="text-slate-500 mt-1">Identidad, custodia, responsable e historial operativo de cada equipo.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{t('assets.eyebrow','Technology Asset Operations')}</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">{t('assets.title','Activos')}</h1>
+          <p className="text-slate-500 mt-1">{t('assets.subtitle','Identidad, custodia, responsable e historial operativo de cada equipo.')}</p>
         </div>
         <Button onClick={() => navigate('/OrdenesTrabajo?activation=first_work_order')}>
           <PackageOpen className="w-4 h-4 mr-2" /> Registrar recepción
@@ -95,12 +97,12 @@ function ActivosContent() {
         <CardContent className="p-4">
           <div className="relative max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input className="pl-9" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por activo, serie, marca, modelo o responsable..." />
+            <Input className="pl-9" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('assets.search','Buscar por activo, serie, marca, modelo o responsable...')} />
           </div>
         </CardContent>
       </Card>
 
-      {view === 'assets' && (isLoading ? <p className="text-slate-500">Cargando activos...</p> : (
+      {view === 'assets' && (isLoading ? <p className="text-slate-500">{t('assets.loading','Cargando activos...')}</p> : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {activos.map(equipo => {
             const historial = ordenesByEquipo[equipo.id] || [];
@@ -138,7 +140,7 @@ function ActivosContent() {
 
       {view === 'people' && (assignmentsLoading ? <p className="text-slate-500">Cargando custodia...</p> : <div className="space-y-4">{filteredPeople.map(person=><Card key={person.key} className="border-slate-200"><CardContent className="p-5"><div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4"><div><h3 className="font-semibold text-slate-950">{person.name}</h3><p className="text-sm text-slate-500">{person.email || 'Sin correo registrado'} · {person.assignments.length} activo{person.assignments.length===1?'':'s'} en custodia</p></div></div><div className="grid gap-2 md:grid-cols-2">{person.assignments.map(a=>{const e=equipoById[a.equipo_id]||{};const overdue=a.expected_return_at&&new Date(a.expected_return_at).getTime()<Date.now();return <button key={a.id} onClick={()=>navigate(`/activo/${a.equipo_id}`)} className="text-left rounded-xl border p-4 hover:bg-slate-50"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{[e.marca,e.modelo].filter(Boolean).join(' ')||e.tipo||'Activo'}</p><p className="text-xs text-slate-500 mt-1">{e.serie?`Serie ${e.serie}`:'Sin serie'} · Asignado {new Intl.DateTimeFormat('es-CR',{dateStyle:'medium'}).format(new Date(a.assigned_at))}</p></div>{overdue?<Badge className="bg-amber-100 text-amber-800 border-0"><Undo2 className="w-3 h-3 mr-1"/>Vencido</Badge>:<ArrowRight className="w-4 h-4 text-slate-400"/>}</div></button>})}</div></CardContent></Card>)}{filteredPeople.length===0&&<Card className="border-dashed"><CardContent className="py-12 text-center"><UserRoundCheck className="w-10 h-10 mx-auto text-slate-300 mb-3"/><h3 className="font-semibold">Sin custodias activas</h3><p className="text-sm text-slate-500 mt-1">Las asignaciones aparecerán aquí agrupadas por responsable.</p></CardContent></Card>}</div>)}
 
-      {view === 'assets' && !isLoading && activos.length === 0 && <Card className="border-dashed"><CardContent className="py-14 text-center"><Laptop className="w-10 h-10 mx-auto text-slate-300 mb-3" /><h3 className="font-semibold text-slate-800">No hay activos que mostrar</h3><p className="text-sm text-slate-500 mt-1">Los activos nacen de una recepción real; no necesitas mantener un catálogo paralelo.</p></CardContent></Card>}
+      {view === 'assets' && !isLoading && activos.length === 0 && <Card className="border-dashed"><CardContent className="py-14 text-center"><Laptop className="w-10 h-10 mx-auto text-slate-300 mb-3" /><h3 className="font-semibold text-slate-800">{t('assets.empty','No hay activos que mostrar')}</h3><p className="text-sm text-slate-500 mt-1">{t('assets.emptyHelp','Los activos nacen de una recepción real; no necesitas mantener un catálogo paralelo.')}</p></CardContent></Card>}
     </div>
   );
 }

@@ -35,6 +35,8 @@ export const OPERATIONAL_ENTITY_POLICIES = Object.freeze({
   EntregaLog: { read: COMMERCIAL_ROLES, create: [], update: [], delete: [], scope: 'work_order' },
   Equipo: { read: [...CUSTOMER_ROLES, 'TECHNICIAN'], create: CUSTOMER_ROLES, update: CUSTOMER_ROLES, delete: ['ORG_ADMIN'], scope: 'equipment' },
   AssetAssignment: { read: [...CUSTOMER_ROLES, 'TECHNICIAN'], create: [], update: [], delete: [], scope: 'organization' },
+  EnterpriseOffboarding: { read: ['ORG_ADMIN','BRANCH_ADMIN'], create: [], update: [], delete: [], scope: 'organization' },
+  OffboardingAccessItem: { read: ['ORG_ADMIN','BRANCH_ADMIN'], create: [], update: [], delete: [], scope: 'organization' },
   Expense: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: ADMIN_ROLES, delete: ADMIN_ROLES, scope: 'branch' },
   Garantia: { read: [...COMMERCIAL_ROLES, 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: ADMIN_ROLES, delete: [], scope: 'warranty' },
   Inventario: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: 'branch' },

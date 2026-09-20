@@ -38,7 +38,8 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "test:superadmin-lifecycle": "node scripts/verify-superadmin-lifecycle-contract.mjs",
-    "test:enterprise-asset-control": "node scripts/verify-enterprise-asset-control.mjs"
+    "test:enterprise-asset-control": "node scripts/verify-enterprise-asset-control.mjs",
+    "test:enterprise-offboarding": "node scripts/verify-enterprise-offboarding.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

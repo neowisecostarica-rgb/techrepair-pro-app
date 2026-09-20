@@ -18,6 +18,8 @@ const rawBase44 = createClient({
 const protectedOperationalEntities = new Set([
   'ActividadTecnica',
   'AssetAssignment',
+  'EnterpriseOffboarding',
+  'OffboardingAccessItem',
   'BloqueoTecnico',
   'Branch',
   'CategoriaInventario',

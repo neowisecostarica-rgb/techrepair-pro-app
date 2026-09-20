@@ -286,7 +286,7 @@ function VentasHistorialContent() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Cliente</p>
+                  <p className="text-xs text-slate-500">{t('finalI18n.customer','Cliente')}</p>
                   <p className="font-semibold text-slate-900">
                     {getClienteName(ventaSeleccionada.cliente_id)}
                   </p>

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -9,6 +10,7 @@ import { createPageUrl } from '../../utils';
 import { Link } from 'react-router-dom';
 
 export default function SenalesNegocio({ userAccount }) {
+  const { t } = useI18n();
   const { data: ordenes = [] } = useQuery({
     queryKey: ['ordenes-todas', userAccount?.organization_id],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
@@ -156,7 +158,7 @@ export default function SenalesNegocio({ userAccount }) {
               </Badge>
             </div>
             <h3 className="font-semibold text-slate-900 mb-1">Solicitudes Técnicas</h3>
-            <p className="text-sm text-slate-600">Pendientes de aprobación</p>
+            <p className="text-sm text-slate-600">{t('closure.pendingApproval','Pendientes de aprobación')}</p>
             {solicitudesPendientes > 0 && (
               <Link to={createPageUrl('OrdenesTrabajo')}>
                 <Button size="sm" variant="outline" className="mt-3 w-full">

@@ -275,7 +275,7 @@ function CalidadContent() {
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="queja_cliente">Queja Cliente</SelectItem>
+                    <SelectItem value="queja_cliente">{t('closure.customerComplaint','Queja Cliente')}</SelectItem>
                     <SelectItem value="retrabajo">Retrabajo</SelectItem>
                     <SelectItem value="error_proceso">Error de Proceso</SelectItem>
                     <SelectItem value="falla_calidad">Falla de Calidad</SelectItem>

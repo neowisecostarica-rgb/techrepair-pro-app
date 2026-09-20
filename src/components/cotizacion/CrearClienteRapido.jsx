@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,6 +11,7 @@ import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function CrearClienteRapido({ open, onClose, onClienteCreado, effectiveOrgId, clientes = [] }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     nombre_completo: '',
@@ -115,7 +117,7 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, eff
             <Alert className="bg-amber-50 border-amber-200">
               <AlertCircle className="w-4 h-4 text-amber-600" />
               <AlertDescription className="text-amber-800 text-sm">
-                <p className="font-medium mb-2">Cliente existente encontrado</p>
+                <p className="font-medium mb-2">{t('closure.existingCustomer','Cliente existente encontrado')}</p>
                 <p className="text-xs mb-2">
                   Ya existe un cliente con este teléfono: <strong>{advertencia.cliente.nombre_completo}</strong>
                 </p>

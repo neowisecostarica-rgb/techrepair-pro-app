@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import PageGuard from '../components/guards/PageGuard';
@@ -49,13 +50,14 @@ export default function Dashboard() {
 }
 
 function DashboardContent() {
+  const { t } = useI18n();
   const { effectiveRole, effectiveOrgId, user, userAccount, status } = useAuthContext();
 
   // Wait for auth to be ready
   if (status !== 'ready') {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
-        <p className="text-slate-500">Cargando dashboard...</p>
+        <p className="text-slate-500">{t('closure.loadingDashboard','Cargando dashboard...')}</p>
       </div>
     );
   }

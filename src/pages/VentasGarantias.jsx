@@ -147,7 +147,7 @@ function VentasGarantiasContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando garantías...</p>
+          <p className="text-slate-600">{t('closure.loadingWarranties','Cargando garantías...')}</p>
         </div>
       </div>
     );
@@ -297,7 +297,7 @@ function VentasGarantiasContent() {
 
               <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
                 <div>
-                  <p className="text-xs text-slate-500">Cliente</p>
+                  <p className="text-xs text-slate-500">{t('finalI18n.customer','Cliente')}</p>
                   <p className="font-semibold text-slate-900">
                     {getClienteName(garantiaSeleccionada.cliente_id)}
                   </p>

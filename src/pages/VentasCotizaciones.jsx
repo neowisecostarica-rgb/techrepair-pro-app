@@ -336,7 +336,7 @@ function VentasCotizacionesContent() {
             <div className="space-y-6 mt-4">
               <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
                 <div>
-                  <p className="text-xs text-slate-500">Cliente</p>
+                  <p className="text-xs text-slate-500">{t('finalI18n.customer','Cliente')}</p>
                   <p className="font-semibold text-slate-900">
                     {getClienteName(cotizacionSeleccionada.cliente_id)}
                   </p>

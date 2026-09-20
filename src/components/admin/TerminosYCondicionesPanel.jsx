@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -14,6 +15,7 @@ import { es } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function TerminosYCondicionesPanel({ organizationId }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [showEditor, setShowEditor] = useState(false);
   const [textoNuevo, setTextoNuevo] = useState('');
@@ -84,7 +86,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
   const hayTerminos = terminos.length > 0;
 
   if (isLoading) {
-    return <div className="p-4 text-center text-slate-500">Cargando...</div>;
+    return <div className="p-4 text-center text-slate-500">{t('closure.loading','Cargando...')}</div>;
   }
 
   return (

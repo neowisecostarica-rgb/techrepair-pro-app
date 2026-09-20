@@ -17,6 +17,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -114,6 +115,7 @@ export default function PanelOperativoDiagnostico({
   tecnico,
   smartIntake,
 }) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [wizardOpen, setWizardOpen]       = useState(false);
   const [documentoOpen, setDocumentoOpen] = useState(false);
@@ -699,11 +701,11 @@ export default function PanelOperativoDiagnostico({
 
       {/* ── Modal: Wizard Diagnóstico ────────────────────────────────────────── */}
       <Dialog open={confirmAnularOpen} onOpenChange={setConfirmAnularOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Anular documento de diagnóstico</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Esta acción es irreversible. El documento quedará anulado en el historial y podrás emitir un reemplazo después.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setConfirmAnularOpen(false)}>Cancelar</Button><Button variant="destructive" onClick={confirmarAnulacion}>Anular documento</Button></div></div></DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>{t('closure.voidDiagnosis','Anular documento de diagnóstico')}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">{t('closure.voidHelp','Esta acción es irreversible. El documento quedará anulado en el historial y podrás emitir un reemplazo después.')}</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setConfirmAnularOpen(false)}>{t('finalI18n.cancel','Cancelar')}</Button><Button variant="destructive" onClick={confirmarAnulacion}>{t('closure.voidDocument','Anular documento')}</Button></div></div></DialogContent>
       </Dialog>
 
       <Dialog open={decisionPendiente === 'CANCELADA'} onOpenChange={(open)=>{ if(!open) setDecisionPendiente(null); }}>
-        <DialogContent><DialogHeader><DialogTitle>Registrar rechazo del cliente</DialogTitle></DialogHeader><div className="space-y-4"><div><label className="text-sm font-medium text-slate-700">Motivo comunicado (opcional)</label><textarea value={motivoRechazo} onChange={e=>setMotivoRechazo(e.target.value)} rows={3} className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" placeholder="Ej. El cliente decidió no continuar con la reparación" /></div><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setDecisionPendiente(null)}>Cancelar</Button><Button variant="destructive" onClick={async()=>{ try { await registrarDecisionCliente('CANCELADA', motivoRechazo); invalidarPanel(); setDecisionPendiente(null); } catch(e){ setActionError(e.message); } }}>Registrar rechazo</Button></div></div></DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>{t('closure.customerRejection','Registrar rechazo del cliente')}</DialogTitle></DialogHeader><div className="space-y-4"><div><label className="text-sm font-medium text-slate-700">{t('closure.reasonOptional','Motivo comunicado (opcional)')}</label><textarea value={motivoRechazo} onChange={e=>setMotivoRechazo(e.target.value)} rows={3} className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" placeholder={t('closure.rejectionPlaceholder','Ej. El cliente decidió no continuar con la reparación')} /></div><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setDecisionPendiente(null)}>{t('finalI18n.cancel','Cancelar')}</Button><Button variant="destructive" onClick={async()=>{ try { await registrarDecisionCliente('CANCELADA', motivoRechazo); invalidarPanel(); setDecisionPendiente(null); } catch(e){ setActionError(e.message); } }}>{t('closure.registerRejection','Registrar rechazo')}</Button></div></div></DialogContent>
       </Dialog>
 
       <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>

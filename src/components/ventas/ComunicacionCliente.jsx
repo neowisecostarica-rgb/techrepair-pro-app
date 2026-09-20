@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ const PLANTILLAS = {
 };
 
 export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente, mensajes = [] }) {
+  const { t } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState('');
   const [asunto, setAsunto] = useState('');
@@ -180,7 +182,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Preparar Mensaje al Cliente</DialogTitle>
+            <DialogTitle>{t('closure.prepareCustomerMessage','Preparar Mensaje al Cliente')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">

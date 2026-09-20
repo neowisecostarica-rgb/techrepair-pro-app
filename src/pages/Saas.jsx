@@ -570,7 +570,7 @@ function SaasContent() {
               )}
               {healthChecks.expiredActiveWarranties > 0 && (
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <span className="text-sm text-slate-700">Garantías vencidas todavía activas</span>
+                  <span className="text-sm text-slate-700">{t('closure.expiredWarrantiesActive','Garantías vencidas todavía activas')}</span>
                   <Badge className="bg-slate-200 text-slate-800 border-0">{healthChecks.expiredActiveWarranties}</Badge>
                 </div>
               )}
@@ -880,9 +880,9 @@ function SaasContent() {
           <DialogHeader><DialogTitle>{t('saas.lifecycle','Ciclo comercial y licencia')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg bg-slate-50 p-3"><p className="text-sm text-slate-600">Organización</p><p className="font-semibold">{selectedOrg?.name}</p></div>
-            <div><Label>{t('saas.billingStatus','Estado de facturación')}</Label><select value={newBillingStatus} onChange={e=>setNewBillingStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="trial">Prueba</option><option value="active">Activa</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></div>
+            <div><Label>{t('saas.billingStatus','Estado de facturación')}</Label><select value={newBillingStatus} onChange={e=>setNewBillingStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="trial">{t('closure.trial','Prueba')}</option><option value="active">Activa</option><option value="past_due">{t('closure.pendingPayment','Pago pendiente')}</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select></div>
             <div><Label>{t('saas.licenseStatus','Estado de licencia')}</Label><select value={newLicenseStatus} onChange={e=>setNewLicenseStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="pending">Pendiente</option><option value="active">Activa</option><option value="grace">Gracia</option><option value="suspended">Suspendida</option><option value="revoked">Revocada</option><option value="expired">Vencida</option></select></div>
-            <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={cancelAtPeriodEnd} onChange={e=>setCancelAtPeriodEnd(e.target.checked)} className="mt-1"/><span><strong>Cancelar al final del período</strong><span className="mt-1 block text-xs text-slate-500">Registra la intención comercial. No suspende por sí sola el acceso operativo de la organización.</span></span></label>
+            <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={cancelAtPeriodEnd} onChange={e=>setCancelAtPeriodEnd(e.target.checked)} className="mt-1"/><span><strong>{t('closure.cancelPeriodEnd','Cancelar al final del período')}</strong><span className="mt-1 block text-xs text-slate-500">{t('closure.cancelPeriodHelp','Registra la intención comercial. No suspende por sí sola el acceso operativo de la organización.')}</span></span></label>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Facturación, licencia y acceso operativo son estados distintos. Para bloquear el acceso usa Suspender organización.</div>
             <div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setShowLifecycleModal(false)}>{t('residual.cancel','Cancelar')}</Button><Button onClick={handleCommercialLifecycle} className="bg-teal-700 hover:bg-teal-800">{t('residual.saveCycle','Guardar ciclo')}</Button></div>
           </div>
@@ -999,7 +999,7 @@ function SaasContent() {
             <div>
               <Label htmlFor="billing-status">Estado de facturación</Label>
               <select id="billing-status" value={newBillingStatus} onChange={(e) => setNewBillingStatus(e.target.value)} className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-md">
-                <option value="trial">Prueba</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="suspended">Suspendido</option><option value="cancelled">Cancelado</option>
+                <option value="trial">{t('closure.trial','Prueba')}</option><option value="active">{t('finalI18n.active','Activo')}</option><option value="past_due">{t('closure.pendingPayment','Pago pendiente')}</option><option value="suspended">{t('closure.suspended','Suspendido')}</option><option value="cancelled">{t('closure.cancelled','Cancelado')}</option>
               </select>
               <p className="text-xs text-slate-500 mt-1">Este estado comercial no cambia automáticamente el acceso operativo de la organización.</p>
             </div>
@@ -1064,7 +1064,7 @@ function SaasContent() {
                   required
                   className="w-full px-3 py-2 border border-slate-200 rounded-md bg-white"
                 >
-                  <option value="">Seleccionar país</option>
+                  <option value="">{t('closure.selectCountry','Seleccionar país')}</option>
                   {COUNTRY_CURRENCY_MAP.map(c => (
                     <option key={c.code} value={c.code}>
                       {c.flag} {c.name}
@@ -1082,7 +1082,7 @@ function SaasContent() {
                   required
                   className="w-full px-3 py-2 border border-slate-200 rounded-md bg-white"
                 >
-                  <option value="">Seleccionar moneda</option>
+                  <option value="">{t('closure.selectCurrency','Seleccionar moneda')}</option>
                   {Object.keys(CURRENCY_LABELS).map(code => (
                     <option key={code} value={code}>
                       {CURRENCY_LABELS[code]}

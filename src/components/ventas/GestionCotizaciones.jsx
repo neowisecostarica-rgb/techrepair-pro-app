@@ -643,7 +643,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
             <Alert className="bg-blue-50 border-blue-200">
               <Package className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-800 text-sm">
-                💡 <strong>Inventario informativo:</strong> El stock mostrado es referencial. Al facturar se validará disponibilidad real.
+                💡 <strong>{t('closure.inventoryInfo','Inventario informativo')}:</strong> {t('closure.inventoryHelp','El stock mostrado es referencial. Al facturar se validará disponibilidad real.')}
               </AlertDescription>
             </Alert>
 

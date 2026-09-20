@@ -28,6 +28,8 @@ function CRMContent() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
+  const [leadToConvert, setLeadToConvert] = useState(null);
+  const [convertIdentification, setConvertIdentification] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const queryClient = useQueryClient();
@@ -104,11 +106,18 @@ function CRMContent() {
   };
 
   const handleConvertToCliente = (lead) => {
-    const identificacion = window.prompt(`Identificación de ${lead.name}:`);
-    if (!identificacion?.trim()) return;
-    if (confirm(`¿Convertir "${lead.name}" a cliente?\n\nSe creará un registro en Clientes y el lead se marcará como ganado.`)) {
-      convertToClienteMutation.mutate({ lead, identificacion: identificacion.trim() });
+    setLeadToConvert(lead);
+    setConvertIdentification('');
+  };
+
+  const confirmLeadConversion = () => {
+    if (!leadToConvert || !convertIdentification.trim()) {
+      toast({ variant: 'destructive', title: 'Identificación requerida', description: 'Ingresa la identificación del cliente antes de convertir el prospecto.' });
+      return;
     }
+    convertToClienteMutation.mutate({ lead: leadToConvert, identificacion: convertIdentification.trim() });
+    setLeadToConvert(null);
+    setConvertIdentification('');
   };
 
   const handleQuickStatusChange = (lead, newStatus) => {
@@ -299,10 +308,21 @@ function CRMContent() {
       </Card>
 
       {/* Create Lead Modal */}
+      <Dialog open={!!leadToConvert} onOpenChange={(open) => { if (!open) { setLeadToConvert(null); setConvertIdentification(''); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Convertir prospecto en cliente</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">Se creará un cliente para <strong>{leadToConvert?.name}</strong> y el prospecto quedará marcado como ganado.</p>
+            <div><Label htmlFor="convert-identification">Identificación del cliente</Label><Input id="convert-identification" value={convertIdentification} onChange={(e) => setConvertIdentification(e.target.value)} placeholder="Cédula o identificación" className="mt-1" /></div>
+            <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => { setLeadToConvert(null); setConvertIdentification(''); }}>Cancelar</Button><Button onClick={confirmLeadConversion}>Crear cliente</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nuevo Lead</DialogTitle>
+            <DialogTitle>Nuevo prospecto</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateLead} className="space-y-4">
             <div className="space-y-2">
@@ -353,7 +373,7 @@ function CRMContent() {
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Lead</DialogTitle>
+            <DialogTitle>Editar prospecto</DialogTitle>
           </DialogHeader>
           {editingLead && (
             <form onSubmit={handleUpdateLead} className="space-y-4">

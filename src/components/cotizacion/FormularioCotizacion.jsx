@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -27,6 +28,7 @@ export default function FormularioCotizacion({
   onGuardar,
   onCancelar
 }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [items, setItems] = useState(cotizacionEditar?.items || [{ 
     tipo: 'servicio', 
@@ -215,7 +217,7 @@ export default function FormularioCotizacion({
       <form onSubmit={handleSubmit} className="space-y-4">
         {!clienteId && (
           <div className="space-y-2">
-            <Label>Cliente *</Label>
+            <Label>{t('quoteForm.customer','Cliente *')}</Label>
             <div className="flex gap-2">
               <Select 
                 value={clienteSeleccionadoInterno} 
@@ -223,7 +225,7 @@ export default function FormularioCotizacion({
                 disabled={!!cotizacionEditar}
               >
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Selecciona un cliente..." />
+                  <SelectValue placeholder={t('quoteForm.selectCustomer','Selecciona un cliente...')} />
                 </SelectTrigger>
                 <SelectContent>
                   {clientes.map(c => (
@@ -241,7 +243,7 @@ export default function FormularioCotizacion({
                   className="shrink-0 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Crear Cliente
+                  {t('quoteForm.createCustomer','Crear Cliente')}
                 </Button>
               )}
             </div>
@@ -265,10 +267,10 @@ export default function FormularioCotizacion({
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label>Items de la Cotización</Label>
+            <Label>{t('quoteForm.items','Items de la Cotización')}</Label>
             <Button type="button" size="sm" variant="outline" onClick={addItem}>
               <Plus className="w-4 h-4 mr-2" />
-              Agregar Item
+              {t('quoteForm.addItem','Agregar Item')}
             </Button>
           </div>
 
@@ -282,7 +284,7 @@ export default function FormularioCotizacion({
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
                     <div>
-                      <Label className="text-xs">Tipo</Label>
+                      <Label className="text-xs">{t('quoteForm.type','Tipo')}</Label>
                       <Select
                         value={item.tipo}
                         onValueChange={(value) => {
@@ -296,8 +298,8 @@ export default function FormularioCotizacion({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="producto">Producto</SelectItem>
-                          <SelectItem value="servicio">Servicio</SelectItem>
+                          <SelectItem value="producto">{t('quoteForm.product','Producto')}</SelectItem>
+                          <SelectItem value="servicio">{t('quoteForm.service','Servicio')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -454,7 +456,7 @@ export default function FormularioCotizacion({
         </div>
 
         <div className="space-y-2">
-          <Label>Válida hasta</Label>
+          <Label>{t('quoteForm.validUntil','Válida hasta')}</Label>
           <Input
             name="valida_hasta"
             type="date"
@@ -463,7 +465,7 @@ export default function FormularioCotizacion({
         </div>
 
         <div className="space-y-2">
-          <Label>Notas</Label>
+          <Label>{t('quoteForm.notes','Notas')}</Label>
           <Textarea
             name="notas"
             placeholder="Notas adicionales..."
@@ -474,10 +476,10 @@ export default function FormularioCotizacion({
 
         <div className="flex gap-3 justify-end">
           <Button type="button" variant="outline" onClick={onCancelar}>
-            Cancelar
+            {t('quoteForm.cancel','Cancelar')}
           </Button>
           <Button type="submit" disabled={createCotizacionMutation.isPending || updateCotizacionMutation.isPending}>
-            {createCotizacionMutation.isPending || updateCotizacionMutation.isPending ? 'Guardando...' : 'Guardar Cotización'}
+            {createCotizacionMutation.isPending || updateCotizacionMutation.isPending ? t('quoteForm.saving','Guardando...') : t('quoteForm.save','Guardar Cotización')}
           </Button>
         </div>
       </form>

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -33,6 +34,7 @@ export default function PuntoVenta() {
 }
 
 function PuntoVentaContent() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -484,7 +486,7 @@ function PuntoVentaContent() {
 
   const procesarVenta = async () => {
     if (carrito.length === 0) {
-      toast({ variant: 'destructive', title: 'Carrito vacío', description: 'Agrega al menos un producto o servicio antes de procesar la venta.' });
+      toast({ variant: 'destructive', title: t('pos.emptyCart','Carrito vacío'), description: 'Agrega al menos un producto o servicio antes de procesar la venta.' });
       return;
     }
 
@@ -610,7 +612,7 @@ function PuntoVentaContent() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">
-          Caja y Cobros
+          {t('pos.title','Caja y Cobros')}
         </h1>
         <p className="text-slate-600 mb-4">
           {cotizacionOrigen 
@@ -671,14 +673,14 @@ function PuntoVentaContent() {
           {!ventaId && (
             <Card className="border border-slate-200 shadow-sm">
               <CardHeader className="border-b border-slate-100">
-                <CardTitle className="text-lg font-semibold">Buscar Productos y Servicios</CardTitle>
+                <CardTitle className="text-lg font-semibold">{t('pos.searchTitle','Buscar Productos y Servicios')}</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-3">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <Input
-                      placeholder="Escanear código o buscar... (Enter para agregar)"
+                      placeholder={t('pos.search','Escanear código o buscar... (Enter para agregar)')}
                       value={searchTerm}
                       onChange={(e) => {
                         setSearchTerm(e.target.value);

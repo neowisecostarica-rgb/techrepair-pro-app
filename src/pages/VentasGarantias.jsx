@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -23,6 +24,7 @@ export default function VentasGarantias() {
 }
 
 function VentasGarantiasContent() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
   const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
@@ -156,8 +158,8 @@ function VentasGarantiasContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Garantías</h1>
-          <p className="text-slate-600">Consulta de garantías emitidas (solo lectura)</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t('warranty.title','Garantías')}</h1>
+          <p className="text-slate-600">{t('warranty.subtitle','Consulta de garantías emitidas (solo lectura)')}</p>
         </div>
       </div>
 
@@ -165,7 +167,7 @@ function VentasGarantiasContent() {
         <CardHeader className="border-b border-slate-100">
           <CardTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            Garantías Registradas ({garantiasFiltradas.length})
+            {t('warranty.registered','Garantías Registradas')} ({garantiasFiltradas.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-4">
@@ -174,7 +176,7 @@ function VentasGarantiasContent() {
             <div className="flex items-center gap-2 flex-1">
               <Search className="w-4 h-4 text-slate-400" />
               <Input
-                placeholder="Buscar por cliente u origen..."
+                placeholder={t('warranty.search','Buscar por cliente u origen...')}
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 className="flex-1"
@@ -185,10 +187,10 @@ function VentasGarantiasContent() {
               onChange={(e) => setFiltroEstado(e.target.value)}
               className="px-3 py-2 border border-slate-200 rounded-md"
             >
-              <option value="todas">Todos los estados</option>
-              <option value="ACTIVA">Activas</option>
-              <option value="VENCIDA">Vencidas</option>
-              <option value="ANULADA">Anuladas</option>
+              <option value="todas">{t('warranty.all','Todos los estados')}</option>
+              <option value="ACTIVA">{t('warranty.active','Activas')}</option>
+              <option value="VENCIDA">{t('warranty.expired','Vencidas')}</option>
+              <option value="ANULADA">{t('warranty.voided','Anuladas')}</option>
             </select>
           </div>
 
@@ -284,7 +286,7 @@ function VentasGarantiasContent() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-indigo-600" />
-              Detalle de Garantía
+              {t('warranty.detail','Detalle de Garantía')}
             </DialogTitle>
           </DialogHeader>
           {garantiaSeleccionada && (
@@ -332,7 +334,7 @@ function VentasGarantiasContent() {
 
               {/* Texto de Garantía */}
               <div>
-                <h4 className="font-semibold text-slate-900 mb-3">Términos de la Garantía</h4>
+                <h4 className="font-semibold text-slate-900 mb-3">{t('warranty.terms','Términos de la Garantía')}</h4>
                 <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                   <pre className="text-sm whitespace-pre-wrap font-sans text-slate-700">
                     {garantiaSeleccionada.texto_snapshot}

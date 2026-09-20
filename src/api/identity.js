@@ -13,6 +13,9 @@ export async function invokeIdentity(action, payload = {}) {
 }
 
 export const getIdentityContext = () => invokeIdentity('context');
+export const getPublicSiteConfig = () => invokeIdentity('getPublicSiteConfig');
+export const adminSetPublicSiteConfig = (contactEmail) =>
+  invokeIdentity('adminSetPublicSiteConfig', { contact_email: contactEmail });
 export const switchIdentityOrganization = (organizationId) =>
   invokeIdentity('switchOrganization', { organization_id: organizationId });
 export const acceptIdentityInvitation = (invitationId) =>

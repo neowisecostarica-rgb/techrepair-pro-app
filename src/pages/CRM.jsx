@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, UserPlus, Phone, Mail, ArrowRight } from 'lucide-react';
 import { crmQueryKeys, invokeCrm } from '@/api/crm';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function CRM() {
   return (
@@ -22,6 +23,7 @@ export default function CRM() {
 }
 
 function CRMContent() {
+  const { toast } = useToast();
   const { effectiveOrgId, effectiveRole, status } = useAuthContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -44,7 +46,7 @@ function CRMContent() {
       queryClient.invalidateQueries({ queryKey: ['crm'] });
       setShowCreateModal(false);
     },
-    onError: (error) => alert(`No se pudo crear el lead: ${error.message}`),
+    onError: (error) => toast({ variant: 'destructive', title: 'No se pudo crear el prospecto', description: error.message }),
   });
 
   const updateLeadMutation = useMutation({
@@ -57,7 +59,7 @@ function CRMContent() {
       setShowEditModal(false);
       setEditingLead(null);
     },
-    onError: (error) => alert(`No se pudo actualizar el lead: ${error.message}`),
+    onError: (error) => toast({ variant: 'destructive', title: 'No se pudo actualizar el prospecto', description: error.message }),
   });
 
   const convertToClienteMutation = useMutation({
@@ -69,7 +71,7 @@ function CRMContent() {
       queryClient.invalidateQueries({ queryKey: ['crm'] });
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
     },
-    onError: (error) => alert(`No se pudo convertir el lead: ${error.message}`),
+    onError: (error) => toast({ variant: 'destructive', title: 'No se pudo convertir el prospecto', description: error.message }),
   });
 
   const handleCreateLead = (e) => {

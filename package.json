@@ -46,7 +46,8 @@
     "test:i18n-foundation": "node scripts/verify-i18n-foundation.mjs",
     "test:i18n-navigation": "node scripts/verify-i18n-navigation.mjs",
     "test:i18n-dates": "node scripts/verify-i18n-dates.mjs",
-    "test:i18n-operational": "node scripts/verify-i18n-operational.mjs"
+    "test:i18n-operational": "node scripts/verify-i18n-operational.mjs",
+    "test:i18n-journeys": "node scripts/verify-i18n-journeys.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

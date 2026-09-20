@@ -21,7 +21,7 @@ import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function VentasCotizaciones() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   return (
     <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN']}>
       <VentasCotizacionesContent />
@@ -154,11 +154,11 @@ function VentasCotizacionesContent() {
   });
 
   const estadoConfig = {
-    borrador: { color: 'bg-slate-100 text-slate-700', icon: FileText, label: 'Borrador', indicador: '⚪' },
-    enviada: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Enviada', indicador: '🟢' },
-    aprobada: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2, label: 'Aprobada', indicador: '🟢' },
-    rechazada: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rechazada', indicador: '🔴' },
-    vencida: { color: 'bg-orange-100 text-orange-700', icon: XCircle, label: 'Vencida', indicador: '🔴' },
+    borrador: { color: 'bg-slate-100 text-slate-700', icon: FileText, label: 'Borrador', i18nKey: 'quotes.draft', indicador: '⚪' },
+    enviada: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Enviada', i18nKey: 'quotes.sent', indicador: '🟢' },
+    aprobada: { color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2, label: 'Aprobada', i18nKey: 'quotes.approved', indicador: '🟢' },
+    rechazada: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rechazada', i18nKey: 'quotes.rejected', indicador: '🔴' },
+    vencida: { color: 'bg-orange-100 text-orange-700', icon: XCircle, label: 'Vencida', i18nKey: 'quotes.expired', indicador: '🔴' },
   };
 
   if (isLoading) {
@@ -217,11 +217,11 @@ function VentasCotizacionesContent() {
               className="px-3 py-2 border border-slate-200 rounded-md"
             >
               <option value="todas">Todos los estados</option>
-              <option value="borrador">Borrador</option>
-              <option value="enviada">Enviada</option>
-              <option value="aprobada">Aprobada</option>
-              <option value="rechazada">Rechazada</option>
-              <option value="vencida">Vencida</option>
+              <option value="borrador">{t('quotes.draft', 'Borrador')}</option>
+              <option value="enviada">{t('quotes.sent', 'Enviada')}</option>
+              <option value="aprobada">{t('quotes.approved', 'Aprobada')}</option>
+              <option value="rechazada">{t('quotes.rejected', 'Rechazada')}</option>
+              <option value="vencida">{t('quotes.expired', 'Vencida')}</option>
             </select>
           </div>
 
@@ -327,7 +327,7 @@ function VentasCotizacionesContent() {
               <span>Detalle de Cotización</span>
               {cotizacionSeleccionada && (
                 <Badge className={estadoConfig[cotizacionSeleccionada.estado].color}>
-                  {estadoConfig[cotizacionSeleccionada.estado].label}
+                  {t(estadoConfig[cotizacionSeleccionada.estado].i18nKey, estadoConfig[cotizacionSeleccionada.estado].label)}
                 </Badge>
               )}
             </DialogTitle>
@@ -344,7 +344,7 @@ function VentasCotizacionesContent() {
                 <div>
                   <p className="text-xs text-slate-500">Estado</p>
                   <Badge className={estadoConfig[cotizacionSeleccionada.estado].color}>
-                    {estadoConfig[cotizacionSeleccionada.estado].label}
+                    {t(estadoConfig[cotizacionSeleccionada.estado].i18nKey, estadoConfig[cotizacionSeleccionada.estado].label)}
                   </Badge>
                 </div>
                 <div>

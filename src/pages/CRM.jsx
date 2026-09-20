@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '../components/contexts/AuthContext';
@@ -15,6 +16,7 @@ import { crmQueryKeys, invokeCrm } from '@/api/crm';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function CRM() {
+  const { t } = useI18n();
   return (
     <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE']}>
       <CRMContent />
@@ -174,7 +176,7 @@ function CRMContent() {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">CRM — Prospectos</h1>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">CRM — {t('crm.prospect', 'Prospectos')}</h1>
           <p className="text-slate-500">Pipeline de ventas y conversión de clientes</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>

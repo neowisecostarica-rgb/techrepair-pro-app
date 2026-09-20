@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { MENU_ITEMS } from '@/config/menuConfig';
+import { useI18n } from '@/i18n';
 
 export function isMenuItemEligible(item, { effectiveRole, capabilities }) {
   if (item.platformRoles) return item.platformRoles.includes(effectiveRole);
@@ -16,6 +17,8 @@ export function isMenuItemEligible(item, { effectiveRole, capabilities }) {
 }
 
 export default function SidebarMenu({ effectiveRole, capabilities = [], currentPageName, sidebarOpen, sectionsOpen, toggleSection }) {
+  const { t } = useI18n();
+  const categoryKey = {NEGOCIO:'cat.business',TALLER:'cat.workshop','CLIENTES Y VENTAS':'cat.sales','CONFIGURACIÓN':'cat.settings',PLATAFORMA:'cat.platform',CONTROL:'cat.control',SENSITIVE:'cat.sensitive'};
   const allowedItems = MENU_ITEMS.filter(item => isMenuItemEligible(item, { effectiveRole, capabilities }));
 
   // Agrupar por categoría manteniendo orden de aparición
@@ -48,7 +51,7 @@ export default function SidebarMenu({ effectiveRole, capabilities = [], currentP
                   ? <ChevronDown className="w-4 h-4 text-slate-500" />
                   : <ChevronRight className="w-4 h-4 text-slate-500" />}
                 <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">
-                  {category}
+                  {t(categoryKey[category], category)}
                 </p>
               </button>
             )}
@@ -72,7 +75,7 @@ export default function SidebarMenu({ effectiveRole, capabilities = [], currentP
                   <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-teal-300' : 'text-slate-500 group-hover:text-teal-300'}`} />
                   {sidebarOpen && (
                     <>
-                      <span className="flex-1 font-medium truncate">{item.label}</span>
+                      <span className="flex-1 font-medium truncate">{t(item.i18nKey, item.label)}</span>
                       {isActive && <ChevronRight className="w-4 h-4" />}
                     </>
                   )}

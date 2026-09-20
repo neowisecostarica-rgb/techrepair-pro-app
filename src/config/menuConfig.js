@@ -34,6 +34,7 @@ export const MENU_ITEMS = [
   // ── Sin categoría (siempre visible arriba) ──────────────────────────────────
   {
     label: 'Hoy',
+    i18nKey: 'nav.today',
     path: 'MiDia',
     icon: Sun,
     category: null,
@@ -43,6 +44,7 @@ export const MENU_ITEMS = [
   // ── VISIÓN DEL NEGOCIO ──────────────────────────────────────────────────────
   {
     label: 'Negocio',
+    i18nKey: 'nav.business',
     path: 'Dashboard',
     icon: LayoutDashboard,
     category: 'NEGOCIO',
@@ -51,6 +53,7 @@ export const MENU_ITEMS = [
 
   {
     label: 'Operación',
+    i18nKey: 'nav.operation',
     path: 'Operacion',
     icon: Activity,
     category: 'NEGOCIO',
@@ -59,6 +62,7 @@ export const MENU_ITEMS = [
   // ── TALLER ──────────────────────────────────────────────────────────────────
   {
     label: 'Órdenes',
+    i18nKey: 'nav.orders',
     path: 'OrdenesTrabajo',
     icon: Wrench,
     category: 'TALLER',
@@ -66,6 +70,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Activos',
+    i18nKey: 'nav.assets',
     path: 'Activos',
     icon: Laptop,
     category: 'TALLER',
@@ -73,6 +78,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Onboarding',
+    i18nKey: 'nav.onboarding',
     path: 'EnterpriseOnboarding',
     icon: UserPlus,
     category: 'TALLER',
@@ -80,6 +86,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Offboarding',
+    i18nKey: 'nav.offboarding',
     path: 'EnterpriseOffboarding',
     icon: UserMinus,
     category: 'TALLER',
@@ -87,6 +94,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Control Enterprise',
+    i18nKey: 'nav.enterpriseControl',
     path: 'EnterpriseCommand',
     icon: ShieldCheck,
     category: 'NEGOCIO',
@@ -94,6 +102,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Agenda',
+    i18nKey: 'nav.agenda',
     path: 'Agenda',
     icon: Calendar,
     category: 'TALLER',
@@ -103,6 +112,7 @@ export const MENU_ITEMS = [
   // ── CLIENTES Y VENTAS ───────────────────────────────────────────────────────
   {
     label: 'Caja y Cobros',
+    i18nKey: 'nav.checkout',
     path: 'PuntoVenta',
     icon: ShoppingCart,
     category: 'CLIENTES Y VENTAS',
@@ -110,6 +120,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Cotizaciones',
+    i18nKey: 'nav.quotes',
     path: 'VentasCotizaciones',
     icon: FileText,
     category: 'CLIENTES Y VENTAS',
@@ -117,6 +128,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Garantías',
+    i18nKey: 'nav.warranties',
     path: 'VentasGarantias',
     icon: ShieldAlert,
     category: 'CLIENTES Y VENTAS',
@@ -126,6 +138,7 @@ export const MENU_ITEMS = [
   // ── CLIENTES ────────────────────────────────────────────────────────────────
   {
     label: 'Clientes',
+    i18nKey: 'nav.customers',
     path: 'Clientes',
     icon: Users,
     category: 'CLIENTES Y VENTAS',
@@ -135,6 +148,7 @@ export const MENU_ITEMS = [
   // ── INVENTARIO ──────────────────────────────────────────────────────────────
   {
     label: 'Inventario',
+    i18nKey: 'nav.inventory',
     path: 'Inventario',
     icon: Package,
     category: 'TALLER',
@@ -144,6 +158,7 @@ export const MENU_ITEMS = [
   // ── CONFIGURACIÓN (siempre al final) ────────────────────────────────────────
   {
     label: 'Configuración',
+    i18nKey: 'nav.settings',
     path: 'Settings',
     icon: Settings,
     category: 'CONFIGURACIÓN',
@@ -153,6 +168,7 @@ export const MENU_ITEMS = [
   // ── SUPER_ADMIN — TRP Platform Console ──────────────────────────────────────
   {
     label: 'Resumen',
+    i18nKey: 'nav.overview',
     path: 'Saas',
     hash: 'overview',
     icon: LayoutDashboard,
@@ -161,6 +177,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Organizaciones',
+    i18nKey: 'nav.organizations',
     path: 'Saas',
     hash: 'organizations',
     icon: Building2,
@@ -169,6 +186,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Comercial y planes',
+    i18nKey: 'nav.commercial',
     path: 'Saas',
     hash: 'commercial',
     icon: CreditCard,
@@ -177,6 +195,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Estado de plataforma',
+    i18nKey: 'nav.health',
     path: 'Saas',
     hash: 'health',
     icon: HeartPulse,
@@ -185,6 +204,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Auditoría',
+    i18nKey: 'nav.audit',
     path: 'Saas',
     hash: 'audit',
     icon: ScrollText,
@@ -193,6 +213,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Control de piloto',
+    i18nKey: 'nav.pilot',
     path: 'Saas',
     hash: 'pilot',
     icon: FlaskConical,
@@ -201,6 +222,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Restablecimiento admin',
+    i18nKey: 'nav.adminReset',
     path: 'AdminReset',
     icon: AlertCircle,
     category: 'SENSITIVE',

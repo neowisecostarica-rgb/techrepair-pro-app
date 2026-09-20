@@ -14,9 +14,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarMenu from '@/components/layout/SidebarMenu';
+import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
+import { useI18n } from '@/i18n';
 import { endIdentityImpersonation, getIdentityOrganization } from '@/api/identity';
 
 function LayoutContent({ children, currentPageName }) {
+  const { t } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth, identityStatus, multiOrgAccounts, selectOrganization, capabilities, authorizationReady } = useAuthContext();
 
@@ -84,7 +87,7 @@ function LayoutContent({ children, currentPageName }) {
       <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Cargando plataforma...</p>
+          <p className="text-slate-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -204,6 +207,7 @@ function LayoutContent({ children, currentPageName }) {
             </div>
 
             <nav className="flex-1 overflow-y-auto p-4">
+              <div className="px-3 pb-3"><LanguageSwitcher compact={!sidebarOpen}/></div>
               <SidebarMenu
                 effectiveRole="SUPER_ADMIN"
                 capabilities={[]}

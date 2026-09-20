@@ -24,6 +24,7 @@ function ProveedoresContent() {
   const { effectiveOrgId, userAccount, user } = useAuthContext();
   const [showModal, setShowModal] = useState(false);
   const [proveedorEditar, setProveedorEditar] = useState(null);
+  const [proveedorEliminar, setProveedorEliminar] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const queryClient = useQueryClient();
 
@@ -240,11 +241,7 @@ function ProveedoresContent() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        if (window.confirm('¿Eliminar este proveedor?')) {
-                          deleteMutation.mutate(proveedor.id);
-                        }
-                      }}
+                      onClick={() => setProveedorEliminar(proveedor)}
                     >
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </Button>
@@ -255,6 +252,8 @@ function ProveedoresContent() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!proveedorEliminar} onOpenChange={(open) => { if (!open) setProveedorEliminar(null); }}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>Eliminar proveedor</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Vas a eliminar <strong>{proveedorEliminar?.name}</strong>. Revisa que sea el proveedor correcto antes de continuar.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setProveedorEliminar(null)}>Cancelar</Button><Button variant="destructive" onClick={() => { deleteMutation.mutate(proveedorEliminar.id); setProveedorEliminar(null); }}>Eliminar proveedor</Button></div></div></DialogContent></Dialog>
 
       {/* Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>

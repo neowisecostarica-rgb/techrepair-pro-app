@@ -11,8 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building2, FileText, CheckCircle2, Upload, AlertCircle } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function ConfiguracionNegocio() {
+  const { toast } = useToast();
   const { effectiveOrgId } = useAuthContext();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
@@ -45,7 +47,7 @@ export default function ConfiguracionNegocio() {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       updateOrgMutation.mutate({ logo_url: file_url });
     } catch (error) {
-      alert('Error al subir el logo');
+      toast({ variant: 'destructive', title: 'No se pudo subir el logo', description: 'Revisa el archivo e inténtalo nuevamente.' });
     } finally {
       setUploading(false);
     }

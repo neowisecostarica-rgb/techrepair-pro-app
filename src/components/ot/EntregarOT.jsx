@@ -8,11 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, Loader2, Package, ShieldCheck } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 const TEXTO_LEGAL_CHECKBOX = 'Confirmo que he recibido el equipo y el servicio descrito en esta orden de trabajo, y que el equipo ha sido entregado en las condiciones acordadas.';
 const newOperationKey = () => `delivery_${crypto.randomUUID()}`;
 
 export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
+  const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [acceptance, setAcceptance] = useState(false);
   const [note, setNote] = useState('');
@@ -52,7 +54,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
       onSuccess?.(result);
     },
     onError: error => {
-      alert(`Error al entregar: ${error.message}`);
+      toast({ variant: 'destructive', title: 'No se pudo completar la entrega', description: error.message });
     },
   });
 

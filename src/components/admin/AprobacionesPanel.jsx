@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { CheckCircle, XCircle, FileText, Package, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function AprobacionesPanel({ userAccount }) {
+  const { toast } = useToast();
   const [showRechazoModal, setShowRechazoModal] = useState(false);
   const [itemActual, setItemActual] = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState('');
@@ -111,7 +113,7 @@ export default function AprobacionesPanel({ userAccount }) {
 
   const handleConfirmarRechazo = () => {
     if (!motivoRechazo.trim()) {
-      alert('Debes indicar el motivo del rechazo');
+      toast({ title: 'Motivo requerido', description: 'Indica el motivo del rechazo antes de continuar.' });
       return;
     }
 

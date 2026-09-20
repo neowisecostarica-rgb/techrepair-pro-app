@@ -12,11 +12,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Trash2, Search, Package, AlertCircle, UserPlus } from 'lucide-react';
 import { withOrgId } from '@/components/hooks/useOrgData';
 import CrearClienteRapido from './CrearClienteRapido';
+import { useToast } from '@/components/ui/use-toast';
 
 // Debe coincidir con la política canónica del operationalGateway.
 const DESCUENTO_MAXIMO_SIN_APROBACION = 20;
 
 export default function FormularioCotizacion({ 
+  const { toast } = useToast();
   clienteId, 
   ordenTrabajoId, 
   user, 
@@ -176,7 +178,7 @@ export default function FormularioCotizacion({
     e.preventDefault();
 
     if (!clienteActual) {
-      alert('Por favor selecciona un cliente antes de guardar la cotización');
+      toast({ title: 'Selecciona un cliente', description: 'La cotización necesita un cliente antes de guardarse.' });
       return;
     }
 

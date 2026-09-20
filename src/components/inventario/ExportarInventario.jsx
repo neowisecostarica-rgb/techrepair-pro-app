@@ -1,11 +1,13 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function ExportarInventario({ items, organizationName }) {
+  const { toast } = useToast();
   const handleExport = () => {
     if (items.length === 0) {
-      alert('No hay items para exportar');
+      toast({ title: 'Sin datos para exportar', description: 'No hay ítems de inventario disponibles para exportar.' });
       return;
     }
 

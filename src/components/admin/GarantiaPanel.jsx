@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Shield, Save, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function GarantiaPanel({ organizationId }) {
+  const { toast } = useToast();
   const [textoVentas, setTextoVentas] = useState('');
   const [textoReparaciones, setTextoReparaciones] = useState('');
   const [mesesVigenciaVentas, setMesesVigenciaVentas] = useState(12);
@@ -45,13 +47,13 @@ export default function GarantiaPanel({ organizationId }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['config-garantia'] });
       setEditando(false);
-      alert('Configuración de garantía guardada');
+      toast({ title: 'Garantía guardada', description: 'La configuración de garantía se actualizó correctamente.' });
     },
   });
 
   const handleGuardar = () => {
     if (!textoVentas.trim() || !textoReparaciones.trim()) {
-      alert('Ambos textos de garantía son requeridos');
+      toast({ title: 'Textos requeridos', description: 'Completa ambos textos de garantía antes de guardar.' });
       return;
     }
 

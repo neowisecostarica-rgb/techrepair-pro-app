@@ -8,12 +8,14 @@ import { Calendar, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { listIdentityAccounts } from '@/api/identity';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/components/ui/use-toast';
 
 /**
  * P0.4 TENANT ZERO: Componente para agendar desde OT
  * Permite crear eventos de calendario ligados a una orden de trabajo
  */
 export default function AgendarDesdeOT({ ordenTrabajo, effectiveOrgId, onSuccess }) {
+  const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [creando, setCreando] = useState(false);
   const queryClient = useQueryClient();
@@ -62,10 +64,10 @@ export default function AgendarDesdeOT({ ordenTrabajo, effectiveOrgId, onSuccess
       
       setShowModal(false);
       if (onSuccess) onSuccess();
-      alert('✅ Evento agendado correctamente');
+      toast({ title: 'Evento agendado', description: 'La actividad quedó registrada correctamente.' });
     } catch (error) {
       console.error('Error al agendar:', error);
-      alert('Error al agendar: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo agendar', description: error.message });
     } finally {
       setCreando(false);
     }

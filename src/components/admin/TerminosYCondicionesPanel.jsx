@@ -11,8 +11,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileText, Plus, CheckCircle2, AlertCircle, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function TerminosYCondicionesPanel({ organizationId }) {
+  const { toast } = useToast();
   const [showEditor, setShowEditor] = useState(false);
   const [textoNuevo, setTextoNuevo] = useState('');
   const [activarVersion, setActivarVersion] = useState(true);
@@ -63,7 +65,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
 
   const handleGuardar = () => {
     if (!textoNuevo.trim()) {
-      alert('El texto de términos no puede estar vacío');
+      toast({ title: 'Texto requerido', description: 'El texto de términos y condiciones no puede estar vacío.' });
       return;
     }
 

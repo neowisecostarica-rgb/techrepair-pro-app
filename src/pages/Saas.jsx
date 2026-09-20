@@ -237,18 +237,6 @@ function SaasContent() {
   const requestReactivarOrg = async (organization) => {
     setPendingAdminAction({ type: 'reactivate', organization });
     setShowActionConfirm(true);
-    return;
-
-    try {
-      await toggleOrgStatusMutation.mutateAsync({
-        orgId: organization.id,
-        newStatus: 'active'
-      });
-
-    } catch (error) {
-      console.error('Error reactivando org:', error);
-      toast({ variant: 'destructive', title: 'No se pudo reactivar la organización', description: error?.message || 'Inténtalo nuevamente.' });
-    }
   };
 
   const handleChangePlan = async () => {
@@ -290,14 +278,6 @@ function SaasContent() {
   const requestActivateLicense = async (organization) => {
     setPendingAdminAction({ type: 'activateLicense', organization });
     setShowActionConfirm(true);
-    return;
-    try {
-      await adminActivateIdentityLicense(organization.id, 'admin');
-      queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
-    } catch (error) {
-      console.error('Error activando licencia:', error);
-      toast({ variant: 'destructive', title: 'No se pudo activar la licencia', description: error?.message || 'Inténtalo nuevamente.' });
-    }
   };
 
 
@@ -314,13 +294,14 @@ function SaasContent() {
       }
     } catch (error) {
       console.error('Error en acción administrativa:', error);
+      toast({ variant: 'destructive', title: action.type === 'reactivate' ? 'No se pudo reactivar la organización' : 'No se pudo activar la licencia', description: error?.message || 'La operación no se completó. Inténtalo nuevamente.' });
     } finally {
       setPendingAdminAction(null);
     }
   };
 
   const getOrgStats = (orgId) => {
-    const users = allUserAccounts.filter(u => u.organization_id === orgId && u.active).length;
+    const users = allUserAccounts.filter(u => u.organization_id === orgId && u.status === 'active').length;
     const branches = allSucursales.filter(b => b.organization_id === orgId).length;
 
     return { users, branches };
@@ -741,7 +722,7 @@ function SaasContent() {
                     const partner = partners.find(p => p.id === org.partner_id);
                     const provisioningReady = org.provisioning_status === 'READY';
                     const hasPrimaryBranch = stats.branches > 0;
-                    const hasAdmin = allUserAccounts.some(a => a.organization_id === org.id && a.role === 'ORG_ADMIN' && (a.active || a.status === 'active'));
+                    const hasAdmin = allUserAccounts.some(a => a.organization_id === org.id && a.role === 'ORG_ADMIN' && a.status === 'active');
                     const commercialReady = entitlementSource === 'legacy_compatibility' || Boolean(entitlement?.package_id);
                     const licenseReady = licenseStatus === 'active';
                     const operationalReady = org.status === 'active';
@@ -905,7 +886,7 @@ function SaasContent() {
           <Card className="border border-slate-200 shadow-sm bg-white">
             <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <p className="font-medium text-slate-900">Unidad comercial: organización / tenant</p>
+                <p className="font-medium text-slate-900">Unidad comercial: organización</p>
                 <p className="text-sm text-slate-600 mt-1">Usuarios no son el medidor primario. Escala por sucursales, activos y alcance Enterprise se resolverá mediante entitlements configurables.</p>
               </div>
               <Button variant="outline" onClick={() => { window.location.hash = 'organizations'; }}>Administrar paquetes</Button>
@@ -1195,7 +1176,7 @@ function SaasContent() {
                 {creating ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Creando tenant...
+                    Creando organización...
                   </>
                 ) : (
                   'Crear organización'

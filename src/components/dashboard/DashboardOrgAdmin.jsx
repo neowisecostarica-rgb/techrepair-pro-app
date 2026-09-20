@@ -218,7 +218,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
       <div className="max-w-4xl mx-auto p-6 rounded-2xl border border-amber-200 bg-amber-50">
         <h1 className="text-xl font-bold text-amber-900">Sucursal no asignada</h1>
         <p className="mt-2 text-amber-800">
-          Tu cuenta BRANCH_ADMIN no tiene una sucursal canónica asignada. El acceso operativo permanece bloqueado.
+          Tu cuenta de administración de sucursal no tiene una sucursal asignada. El acceso operativo permanece bloqueado hasta corregir la asignación.
         </p>
       </div>
     );

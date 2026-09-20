@@ -210,12 +210,12 @@ function InventarioContent() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Inventario</h1>
           <p className="text-slate-500">Control de repuestos y productos</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {effectiveRole === 'ORG_ADMIN' && (
             <>
               <ExportarInventario 
@@ -228,7 +228,7 @@ function InventarioContent() {
                 className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                Nuevo Item
+                Nuevo artículo
               </Button>
             </>
           )}
@@ -236,7 +236,7 @@ function InventarioContent() {
           {effectiveRole !== 'ORG_ADMIN' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
               <p className="text-sm text-blue-800">
-                👀 Vista de solo lectura - la gestión de inventario requiere ORG_ADMIN
+                👀 Vista de solo lectura. La edición está reservada a la administración principal.
               </p>
             </div>
           )}
@@ -251,7 +251,7 @@ function InventarioContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Total Items</p>
+                <p className="text-sm text-slate-500">Total de artículos</p>
                 <p className="text-3xl font-bold text-slate-900">{items.length}</p>
               </div>
               <Package className="w-10 h-10 text-emerald-500" />
@@ -318,7 +318,7 @@ function InventarioContent() {
       {/* Tabla de Inventario */}
       <Card className="border border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100">
-          <CardTitle className="text-lg font-semibold">Items en Stock</CardTitle>
+          <CardTitle className="text-lg font-semibold">Artículos en inventario</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -563,7 +563,7 @@ function InventarioContent() {
                 <p className="text-xs text-slate-500">
                   {effectiveRole === 'ORG_ADMIN' 
                     ? 'Define el tipo de ítem (POS usará esto para inferir el concepto de venta)' 
-                    : '⚠️ Solo ORG_ADMIN puede modificar este campo'}
+                    : 'Solo la administración principal puede modificar este campo'}
                 </p>
               </div>
 

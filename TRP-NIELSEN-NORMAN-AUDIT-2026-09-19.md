@@ -37,3 +37,7 @@ Human validation will happen after autonomous product + website remediation. It 
 
 - State/CTA pass: CRM now uses prospect-facing language, responsive primary-action/filter layout and an actionable true-empty state; inventory empty/form states are clearer and mobile-safe; user management exposes human role labels and specific loading context.
 - Super Admin active-user metric now reads canonical `UserAccount.status` instead of legacy `active`, aligning visible system status with authorization truth.
+
+- Internal-jargon pass: removed remaining operator-visible `ORG_ADMIN`, `BRANCH_ADMIN`, `tenant` and sales `Lead` terminology from priority surfaces while preserving internal authorization identifiers.
+- Canonical-status pass: inventory/user-management/Super Admin actions and counts now use `UserAccount.status` rather than legacy `active` where discovered.
+- Super Admin control recovery: removed unreachable post-confirmation code from reactivation/license request handlers and added explicit failure feedback to the designed confirmation flow.

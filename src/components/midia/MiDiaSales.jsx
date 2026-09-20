@@ -119,7 +119,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg text-slate-800">
-            Leads Pendientes de Contacto
+            Prospectos pendientes de contacto
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -237,12 +237,12 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
           <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
             <Calendar className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Mi Agenda Hoy</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Mi agenda hoy</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg text-slate-800">
-            Reuniones y Visitas Programadas
+            Reuniones y visitas programadas
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -261,7 +261,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
               ))}
               <Link to={createPageUrl('Agenda')}>
                 <Button variant="outline" className="w-full mt-2">
-                  Ver Agenda Completa
+                  Ver agenda completa
                 </Button>
               </Link>
             </div>

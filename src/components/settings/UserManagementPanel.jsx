@@ -45,7 +45,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   const inviteUserMutation = useMutation({
     mutationFn: async (data) => {
       if (!organizationId) {
-        throw new Error('No se puede invitar usuarios sin un tenant válido');
+        throw new Error('No se puede invitar usuarios sin una organización activa');
       }
       const response = await base44.functions.invoke('manageOrgUser', {
         action: 'invite',
@@ -122,7 +122,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
 
   const handleDeactivate = (user) => {
     if (isLastActiveOrgAdmin(user)) {
-      toast({ variant: 'destructive', title: 'Administrador principal requerido', description: 'Invita o activa otro ORG_ADMIN antes de suspender este acceso.' });
+      toast({ variant: 'destructive', title: 'Administrador principal requerido', description: 'Invita o activa otro administrador principal antes de suspender este acceso.' });
       return;
     }
     setPendingSuspendUser(user);
@@ -217,7 +217,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                     <td className="px-4 py-3 text-sm text-slate-900">{user.user_email}</td>
                     <td className="px-4 py-3">
                       <Badge className="bg-purple-100 text-purple-700 border-0 text-xs">
-                        {user.role}
+                        {availableRoles.find(r => r.value === user.role)?.label || user.role}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">
@@ -249,7 +249,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        {user.active ? (
+                        {user.status === 'active' ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -347,7 +347,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogTitle>Editar usuario</DialogTitle>
           </DialogHeader>
           {editingUser && (
             <form onSubmit={handleUpdateUser} className="space-y-4">

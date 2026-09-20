@@ -66,7 +66,7 @@ export default function PlatformActivityMetrics({ organizations }) {
           Platform Activity — Uso del Sistema
         </CardTitle>
         <p className="text-xs text-slate-400 mt-1">
-          Métricas de actividad transaccional agregada. No representa finanzas ni rentabilidad de los tenants.
+          Métricas agregadas de actividad transaccional. No representan finanzas ni rentabilidad de las organizaciones.
         </p>
       </CardHeader>
       <CardContent>

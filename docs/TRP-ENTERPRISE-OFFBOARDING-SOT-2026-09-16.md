@@ -1,3 +1,5 @@
+> **Status update — 2026-09-19:** the originally future concept below has now been implemented in source as Enterprise Asset Control + Onboarding + Offboarding + Command & Evidence. It remains pending staging/runtime/human release validation. The historical design text below is retained for traceability; current status authority is `TRP-MB4-ENTERPRISE-RECONCILIATION-2026-09-19.md`.
+
 # TRP — ENTERPRISE OFFBOARDING SOT
 
 Fecha: 2026-09-16

@@ -25,6 +25,7 @@ import {
   HeartPulse,
   ScrollText,
   FlaskConical,
+  UserMinus,
 } from 'lucide-react';
 
 export const MENU_ITEMS = [
@@ -67,6 +68,13 @@ export const MENU_ITEMS = [
     icon: Laptop,
     category: 'TALLER',
     anyCapabilities: ['RECEPTION_OPERATIONS', 'TECHNICAL_WORK', 'TECHNICAL_SUPERVISION'],
+  },
+  {
+    label: 'Offboarding',
+    path: 'EnterpriseOffboarding',
+    icon: UserMinus,
+    category: 'TALLER',
+    anyCapabilities: ['ORG_ADMINISTRATION'],
   },
   {
     label: 'Agenda',

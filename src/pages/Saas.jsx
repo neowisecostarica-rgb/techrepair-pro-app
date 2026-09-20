@@ -499,7 +499,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="w-5 h-5 text-blue-600" />
-              <p className="text-xs font-semibold text-slate-600">Active Orgs</p>
+              <p className="text-xs font-semibold text-slate-600">Organizaciones activas</p>
             </div>
             <p className="text-3xl font-bold text-slate-900">
               {organizations.filter(o => o.status === 'active').length}
@@ -527,7 +527,7 @@ function SaasContent() {
             </div>
             <div className="text-xs space-y-1 mt-2">
               <p className="text-slate-700">Core: <span className="font-bold">{planDistribution.core}</span></p>
-              <p className="text-slate-700">Advanced: <span className="font-bold">{planDistribution.advanced}</span></p>
+              <p className="text-slate-700">Business: <span className="font-bold">{planDistribution.advanced}</span></p>
               <p className="text-slate-700">Enterprise: <span className="font-bold">{planDistribution.enterprise}</span></p>
             </div>
           </CardContent>
@@ -540,7 +540,7 @@ function SaasContent() {
               <p className="text-xs font-semibold text-slate-600">Usuarios activos</p>
             </div>
             <p className="text-3xl font-bold text-slate-900">{totalActiveUsuarios}</p>
-            <p className="text-xs text-slate-600 mt-1">In active orgs</p>
+            <p className="text-xs text-slate-600 mt-1">En organizaciones activas</p>
           </CardContent>
         </Card>
 
@@ -548,7 +548,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className={`w-5 h-5 ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-slate-600'}`} />
-              <p className="text-xs font-semibold text-slate-600">Health Issues</p>
+              <p className="text-xs font-semibold text-slate-600">Alertas de integridad</p>
             </div>
             <p className={`text-3xl font-bold ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-green-600'}`}>
               {totalHealthIssues}
@@ -570,7 +570,7 @@ function SaasContent() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-600" />
-              System Health — Data Integrity Issues
+              Estado de plataforma — alertas de integridad
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -583,19 +583,19 @@ function SaasContent() {
               )}
               {healthChecks.usersWithoutOrg > 0 && (
                 <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                  <span className="text-sm text-slate-700">UserAccounts without organization_id</span>
+                  <span className="text-sm text-slate-700">Cuentas de usuario sin organización</span>
                   <Badge className="bg-amber-200 text-amber-800 border-0">{healthChecks.usersWithoutOrg}</Badge>
                 </div>
               )}
               {healthChecks.otsWithoutCliente > 0 && (
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <span className="text-sm text-slate-700">Work Orders without cliente_id</span>
+                  <span className="text-sm text-slate-700">Órdenes de trabajo sin cliente</span>
                   <Badge className="bg-slate-200 text-slate-800 border-0">{healthChecks.otsWithoutCliente}</Badge>
                 </div>
               )}
               {healthChecks.expiredActiveWarranties > 0 && (
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <span className="text-sm text-slate-700">Expired warranties still active</span>
+                  <span className="text-sm text-slate-700">Garantías vencidas todavía activas</span>
                   <Badge className="bg-slate-200 text-slate-800 border-0">{healthChecks.expiredActiveWarranties}</Badge>
                 </div>
               )}
@@ -783,7 +783,7 @@ function SaasContent() {
                               disabled={authIsImpersonating}
                               className="text-xs"
                             >
-                              Facturación Paquete
+                              Plan y facturación
                             </Button>
                             {licenseStatus !== 'active' && entitlementSource === 'explicit_policy' && (
                               <Button size="sm" variant="outline" onClick={() => requestActivateLicense(org)} disabled={authIsImpersonating} className="text-xs border-teal-300 text-teal-700 hover:bg-teal-50">
@@ -949,7 +949,7 @@ function SaasContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Facturación Paquete */}
+      {/* Modal Plan y facturación */}
       <Dialog open={showChangePlanModal} onOpenChange={setShowChangePlanModal}>
         <DialogContent>
           <DialogHeader>

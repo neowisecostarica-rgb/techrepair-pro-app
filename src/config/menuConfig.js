@@ -26,6 +26,7 @@ import {
   ScrollText,
   FlaskConical,
   UserMinus,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const MENU_ITEMS = [
@@ -74,6 +75,13 @@ export const MENU_ITEMS = [
     path: 'EnterpriseOffboarding',
     icon: UserMinus,
     category: 'TALLER',
+    anyCapabilities: ['ORG_ADMINISTRATION'],
+  },
+  {
+    label: 'Control Enterprise',
+    path: 'EnterpriseCommand',
+    icon: ShieldCheck,
+    category: 'NEGOCIO',
     anyCapabilities: ['ORG_ADMINISTRATION'],
   },
   {

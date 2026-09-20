@@ -83,6 +83,7 @@ import Reciclaje from './pages/Reciclaje';
 import ResumenDiagnostico from './pages/ResumenDiagnostico';
 import Saas from './pages/Saas';
 import EnterpriseOffboarding from './pages/EnterpriseOffboarding';
+import EnterpriseCommand from './pages/EnterpriseCommand';
 import Settings from './pages/Settings';
 import VentasCotizaciones from './pages/VentasCotizaciones';
 import VentasGarantias from './pages/VentasGarantias';
@@ -129,6 +130,7 @@ export const PAGES = {
     "ResumenDiagnostico": ResumenDiagnostico,
     "Saas": Saas,
     "EnterpriseOffboarding": EnterpriseOffboarding,
+    "EnterpriseCommand": EnterpriseCommand,
     "Settings": Settings,
     "VentasCotizaciones": VentasCotizaciones,
     "VentasGarantias": VentasGarantias,

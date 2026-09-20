@@ -124,6 +124,8 @@ function SaasContent() {
   const [showModal, setShowModal] = useState(false);
   const [showSuspenderModal, setShowSuspenderModal] = useState(false);
   const [showChangePlanModal, setShowChangePlanModal] = useState(false);
+  const [showActionConfirm, setShowActionConfirm] = useState(false);
+  const [pendingAdminAction, setPendingAdminAction] = useState(null);
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [suspendReason, setSuspenderReason] = useState('');
   const [newPlan, setNewPlan] = useState('');
@@ -226,8 +228,10 @@ function SaasContent() {
     }
   };
 
-  const handleReactivarOrg = async (organization) => {
-    if (!confirm(`¿Reactivar organización "${organization.name}"?`)) return;
+  const requestReactivarOrg = async (organization) => {
+    setPendingAdminAction({ type: 'reactivate', organization });
+    setShowActionConfirm(true);
+    return;
 
     try {
       await toggleOrgStatusMutation.mutateAsync({
@@ -266,14 +270,35 @@ function SaasContent() {
     }
   };
 
-  const handleActivateLicense = async (organization) => {
-    if (!confirm(`¿Activar la licencia TRP de "${organization.name}"?`)) return;
+  const requestActivateLicense = async (organization) => {
+    setPendingAdminAction({ type: 'activateLicense', organization });
+    setShowActionConfirm(true);
+    return;
     try {
       await adminActivateIdentityLicense(organization.id, 'admin');
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
     } catch (error) {
       console.error('Error activando licencia:', error);
       alert(error?.message || 'Error al activar licencia');
+    }
+  };
+
+
+  const executePendingAdminAction = async () => {
+    const action = pendingAdminAction;
+    if (!action?.organization) return;
+    setShowActionConfirm(false);
+    try {
+      if (action.type === 'reactivate') {
+        await toggleOrgStatusMutation.mutateAsync({ orgId: action.organization.id, newStatus: 'active' });
+      } else if (action.type === 'activateLicense') {
+        await adminActivateIdentityLicense(action.organization.id, 'admin');
+        queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
+      }
+    } catch (error) {
+      console.error('Error en acción administrativa:', error);
+    } finally {
+      setPendingAdminAction(null);
     }
   };
 
@@ -759,7 +784,7 @@ function SaasContent() {
                               Facturación Paquete
                             </Button>
                             {licenseStatus !== 'active' && entitlementSource === 'explicit_policy' && (
-                              <Button size="sm" variant="outline" onClick={() => handleActivateLicense(org)} disabled={authIsImpersonating} className="text-xs border-teal-300 text-teal-700 hover:bg-teal-50">
+                              <Button size="sm" variant="outline" onClick={() => requestActivateLicense(org)} disabled={authIsImpersonating} className="text-xs border-teal-300 text-teal-700 hover:bg-teal-50">
                                 Activar licencia
                               </Button>
                             )}
@@ -780,7 +805,7 @@ function SaasContent() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleReactivarOrg(org)}
+                                onClick={() => requestReactivarOrg(org)}
                                 disabled={authIsImpersonating}
                                 className="text-xs border-green-300 text-green-600 hover:bg-green-50"
                               >
@@ -897,6 +922,26 @@ function SaasContent() {
               >
                 Confirmar suspensión
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showActionConfirm} onOpenChange={(open) => { setShowActionConfirm(open); if (!open) setPendingAdminAction(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{pendingAdminAction?.type === 'reactivate' ? 'Reactivar organización' : 'Activar licencia TRP'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              {pendingAdminAction?.type === 'reactivate'
+                ? `La organización ${pendingAdminAction?.organization?.name || ''} recuperará su estado activo.`
+                : `La licencia de ${pendingAdminAction?.organization?.name || ''} quedará activa según su configuración comercial.`}
+            </p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Revisa la organización antes de confirmar. Esta acción afecta su estado administrativo.</div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => { setShowActionConfirm(false); setPendingAdminAction(null); }}>Cancelar</Button>
+              <Button onClick={executePendingAdminAction} className="bg-teal-700 hover:bg-teal-800">Confirmar</Button>
             </div>
           </div>
         </DialogContent>

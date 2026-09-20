@@ -26,6 +26,7 @@ import {
   ScrollText,
   FlaskConical,
   UserMinus,
+  UserPlus,
   ShieldCheck,
 } from 'lucide-react';
 
@@ -69,6 +70,13 @@ export const MENU_ITEMS = [
     icon: Laptop,
     category: 'TALLER',
     anyCapabilities: ['RECEPTION_OPERATIONS', 'TECHNICAL_WORK', 'TECHNICAL_SUPERVISION'],
+  },
+  {
+    label: 'Onboarding',
+    path: 'EnterpriseOnboarding',
+    icon: UserPlus,
+    category: 'TALLER',
+    anyCapabilities: ['ENTERPRISE_ONBOARDING'],
   },
   {
     label: 'Offboarding',

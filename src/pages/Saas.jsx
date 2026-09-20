@@ -246,7 +246,7 @@ function SaasContent() {
       alert('Debes seleccionar un paquete comercial');
       return;
     }
-    if (!confirm(`¿Aplicar paquete ${newPaquete.toUpperCase()} a "${selectedOrg.name}"? El plan legacy no se modificará.`)) return;
+    
     try {
       await adminSetIdentityEntitlement(selectedOrg.id, {
         package_id: newPaquete,
@@ -733,7 +733,7 @@ function SaasContent() {
                           <Badge className={org.status === 'active'
                             ? 'bg-teal-50 text-teal-800 border border-teal-200'
                             : 'bg-red-50 text-red-700 border border-red-200'}>
-                            {org.status}
+                            {org.status === 'active' ? 'Activa' : org.status === 'suspended' ? 'Suspendida' : org.status}
                           </Badge>
                         </td>
                         <td className="hidden xl:table-cell p-3 text-xs text-slate-600">

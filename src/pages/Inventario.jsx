@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -30,6 +31,7 @@ export default function Inventario() {
 }
 
 function InventarioContent() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [showQuickCreateCategoria, setShowQuickCreateCategoria] = useState(false);
@@ -86,7 +88,7 @@ function InventarioContent() {
       setCodigoInternoPreview('');
     },
     onError: (error) => {
-      toast({ variant: 'destructive', title: 'No se pudo completar la operación', description: error.message });
+      toast({ variant: 'destructive', title: t('common.error','No se pudo completar la operación'), description: error.message });
     }
   });
 
@@ -105,7 +107,7 @@ function InventarioContent() {
       setSelectedCategoriaId('');
     },
     onError: (error) => {
-      toast({ variant: 'destructive', title: 'No se pudo completar la operación', description: error.message });
+      toast({ variant: 'destructive', title: t('common.error','No se pudo completar la operación'), description: error.message });
     }
   });
 

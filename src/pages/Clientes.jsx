@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,6 +31,7 @@ export default function Clientes() {
 }
 
 function ClientesContent() {
+  const { t } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const [editingCliente, setEditingCliente] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,15 +83,15 @@ function ClientesContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Clientes</h1>
-          <p className="text-slate-500">Expedientes de clientes y contexto operativo</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">{t('customers.title','Clientes')}</h1>
+          <p className="text-slate-500">{t('customers.subtitle','Expedientes de clientes y contexto operativo')}</p>
         </div>
         <Button
           onClick={() => { setEditingCliente(null); setShowModal(true); }}
           className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5 mr-2" />
-          Nuevo Cliente
+          {t('customers.new','Nuevo Cliente')}
         </Button>
       </div>
 
@@ -99,7 +101,7 @@ function ClientesContent() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <Input
-              placeholder="Buscar por nombre, email o teléfono..."
+              placeholder={t('customers.search','Buscar por nombre, email o teléfono...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -126,10 +128,10 @@ function ClientesContent() {
                 </div>
                 <div className="flex items-center gap-2">
                   {cliente.tipo_cliente === 'empresa' && (
-                    <Badge className="bg-blue-100 text-blue-700 border-0">Empresa</Badge>
+                    <Badge className="bg-blue-100 text-blue-700 border-0">{t('customers.company','Empresa')}</Badge>
                   )}
                   {cliente.tipo_cliente === 'institucional' && (
-                    <Badge className="bg-purple-100 text-purple-700 border-0">Institucional</Badge>
+                    <Badge className="bg-purple-100 text-purple-700 border-0">{t('customers.institutional','Institucional')}</Badge>
                   )}
                   <button
                     onClick={(e) => {
@@ -138,7 +140,7 @@ function ClientesContent() {
                       setShowModal(true);
                     }}
                     className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors"
-                    title="Editar cliente"
+                    title={t('customers.edit','Editar cliente')}
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
@@ -164,7 +166,7 @@ function ClientesContent() {
 
               <div className="flex items-center justify-end mt-4 pt-4 border-t border-slate-100">
                 <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 group-hover:gap-2 transition-all">
-                  Ver expediente
+                  {t('customers.view','Ver expediente')}
                   <ChevronRight className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -178,7 +180,7 @@ function ClientesContent() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              {editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}
+              {editingCliente ? t('customers.edit','Editar Cliente') : t('customers.new','Nuevo Cliente')}
             </DialogTitle>
           </DialogHeader>
 
@@ -201,14 +203,14 @@ function ClientesContent() {
       <Dialog open={showDetalleModal} onOpenChange={setShowDetalleModal}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Perfil del Cliente</DialogTitle>
+            <DialogTitle>{t('customers.profile','Perfil del Cliente')}</DialogTitle>
           </DialogHeader>
           {customer360Loading && (
-            <div className="py-8 text-center text-sm text-slate-500">Cargando expediente del cliente...</div>
+            <div className="py-8 text-center text-sm text-slate-500">{t('customers.loading','Cargando expediente del cliente...')}</div>
           )}
           {customer360Error && (
             <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
-              {customer360Failure?.message || 'No se pudo cargar el expediente del cliente.'}
+              {customer360Failure?.message || t('customers.loadError','No se pudo cargar el expediente del cliente.')}
             </div>
           )}
           {selectedCliente && user && !customer360Loading && !customer360Error && customer360 && (

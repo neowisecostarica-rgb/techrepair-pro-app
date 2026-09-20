@@ -1,4 +1,3 @@
-import { useI18n } from '@/i18n';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, AlertTriangle, RefreshCw } from 'lucide-react';

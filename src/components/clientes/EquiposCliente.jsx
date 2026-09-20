@@ -1,4 +1,3 @@
-import { useI18n } from '@/i18n';
 import React from 'react';
 import { Laptop, Smartphone, Monitor, Printer, Tablet, HelpCircle } from 'lucide-react';
 

@@ -1,4 +1,3 @@
-import { useI18n } from '@/i18n';
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Briefcase, CheckCircle, Zap } from 'lucide-react';

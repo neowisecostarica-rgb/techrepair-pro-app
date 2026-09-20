@@ -10,7 +10,6 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2, Lock, Send, FileText, Archive } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

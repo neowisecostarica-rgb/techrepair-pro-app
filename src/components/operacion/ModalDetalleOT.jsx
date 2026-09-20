@@ -26,7 +26,6 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';

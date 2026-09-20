@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -26,6 +27,7 @@ export default function ColaRevision() {
 }
 
 function ColaRevisionContent() {
+  const { t } = useI18n();
   const [showAsignarModal, setShowAsignarModal] = useState(false);
   const [selectedOT, setSelectedOT] = useState(null);
   const [tecnicoSeleccionado, setTecnicoSeleccionado] = useState('');
@@ -154,7 +156,7 @@ function ColaRevisionContent() {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mr-3" />
-        <span className="text-slate-500">Cargando órdenes...</span>
+        <span className="text-slate-500">{t('reviewQueue.loading','Cargando órdenes...')}</span>
       </div>
     );
   }
@@ -163,15 +165,15 @@ function ColaRevisionContent() {
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Cola de Revisión</h1>
-        <p className="text-slate-500">Asignación de órdenes a técnicos</p>
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">{t('reviewQueue.title','Cola de Revisión')}</h1>
+        <p className="text-slate-500">{t('reviewQueue.subtitle','Asignación de órdenes a técnicos')}</p>
       </div>
 
       {/* Sección EN COLA */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Inbox className="w-6 h-6 text-slate-700" />
-          <h2 className="text-xl font-bold text-slate-900">En Cola de Revisión</h2>
+          <h2 className="text-xl font-bold text-slate-900">{t('reviewQueue.queued','En Cola de Revisión')}</h2>
           <Badge variant="outline" className="ml-auto">{ordenesCola.length}</Badge>
         </div>
 
@@ -201,7 +203,7 @@ function ColaRevisionContent() {
             <Card className="border-0 shadow-md">
               <CardContent className="p-12 text-center">
                 <Inbox className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-400">No hay órdenes en cola</p>
+                <p className="text-slate-400">{t('reviewQueue.emptyQueue','No hay órdenes en cola')}</p>
               </CardContent>
             </Card>
           )}
@@ -212,7 +214,7 @@ function ColaRevisionContent() {
       <div>
         <div className="flex items-center gap-2 mb-4">
           <UserPlus className="w-6 h-6 text-blue-700" />
-          <h2 className="text-xl font-bold text-slate-900">Asignadas</h2>
+          <h2 className="text-xl font-bold text-slate-900">{t('reviewQueue.assigned','Asignadas')}</h2>
           <Badge variant="outline" className="ml-auto">{ordenesAsignadas.length}</Badge>
         </div>
 
@@ -242,7 +244,7 @@ function ColaRevisionContent() {
       <Dialog open={showAsignarModal} onOpenChange={(open) => { if (!open) { setShowAsignarModal(false); setSelectedOT(null); setTecnicoSeleccionado(''); setMotivoReasignacion(''); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Asignar Técnico</DialogTitle>
+            <DialogTitle>{t('reviewQueue.assignTech','Asignar Técnico')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-4">

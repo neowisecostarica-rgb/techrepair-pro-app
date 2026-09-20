@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -29,6 +30,7 @@ export default function CuentasPorPagar() {
 }
 
 function CuentasPorPagarContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, userAccount, effectiveRole, user } = useAuthContext();
   const [showModalFactura, setShowModalFactura] = useState(false);
   const [showModalPago, setShowModalPago] = useState(false);
@@ -177,7 +179,7 @@ function CuentasPorPagarContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando cuentas por pagar...</p>
+          <p className="text-slate-600">{t('finance.loadingPayables','Cargando cuentas por pagar...')}</p>
         </div>
       </div>
     );
@@ -187,8 +189,8 @@ function CuentasPorPagarContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Cuentas por Pagar</h1>
-          <p className="text-slate-600">Control de facturas y pagos a proveedores</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t('finance.payables','Cuentas por Pagar')}</h1>
+          <p className="text-slate-600">{t('finance.payablesHelp','Control de facturas y pagos a proveedores')}</p>
         </div>
         <Button
           onClick={() => setShowModalFactura(true)}
@@ -208,7 +210,7 @@ function CuentasPorPagarContent() {
                 <DollarSign className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-600 mb-1">Total Pendiente</p>
+                <p className="text-xs text-slate-600 mb-1">{t('finance.pendingTotal','Total Pendiente')}</p>
                 <p className="text-2xl font-bold text-slate-900">₡{totalPendiente.toLocaleString()}</p>
               </div>
             </div>
@@ -222,7 +224,7 @@ function CuentasPorPagarContent() {
                 <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-600 mb-1">Vence Esta Semana</p>
+                <p className="text-xs text-slate-600 mb-1">{t('finance.dueWeek','Vence Esta Semana')}</p>
                 <p className="text-2xl font-bold text-slate-900">₡{venceProximo.toLocaleString()}</p>
                 {venceProximo > 0 && (
                   <Badge className="bg-amber-200 text-amber-800 border-0 text-xs mt-1">
@@ -241,7 +243,7 @@ function CuentasPorPagarContent() {
                 <AlertCircle className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-600 mb-1">Vencidas</p>
+                <p className="text-xs text-slate-600 mb-1">{t('finance.overdue','Vencidas')}</p>
                 <p className="text-2xl font-bold text-slate-900">₡{totalVencido.toLocaleString()}</p>
                 <Badge className="bg-red-200 text-red-800 border-0 text-xs mt-1">
                   🔴 {vencidas.length} facturas
@@ -256,7 +258,7 @@ function CuentasPorPagarContent() {
       <Card className="border-0 shadow-lg">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
-            <Label className="font-semibold">Filtrar por Estado:</Label>
+            <Label className="font-semibold">{t('finance.filterStatus','Filtrar por Estado:')}</Label>
             <div className="flex gap-2 flex-wrap">
               <Button
                 size="sm"
@@ -356,7 +358,7 @@ function CuentasPorPagarContent() {
       <Dialog open={showModalFactura} onOpenChange={setShowModalFactura}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar Factura de Compra</DialogTitle>
+            <DialogTitle>{t('finance.registerInvoice','Registrar Factura de Compra')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmitFactura} className="space-y-4">
             <div>
@@ -449,7 +451,7 @@ function CuentasPorPagarContent() {
       <Dialog open={showModalPago} onOpenChange={setShowModalPago}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar Pago</DialogTitle>
+            <DialogTitle>{t('finance.registerPayment','Registrar Pago')}</DialogTitle>
           </DialogHeader>
           {facturaSeleccionada && (
             <form onSubmit={handleSubmitPago} className="space-y-4">

@@ -52,7 +52,8 @@
     "test:i18n-commercial-surfaces": "node scripts/verify-i18n-commercial-surfaces.mjs",
     "test:i18n-tech-journey": "node scripts/verify-i18n-tech-journey.mjs",
     "test:i18n-admin-inventory": "node scripts/verify-i18n-admin-inventory.mjs",
-    "test:i18n-residual-priority": "node scripts/verify-i18n-residual-priority.mjs"
+    "test:i18n-residual-priority": "node scripts/verify-i18n-residual-priority.mjs",
+    "test:i18n-ops-finance": "node scripts/verify-i18n-ops-finance.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

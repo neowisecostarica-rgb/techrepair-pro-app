@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -20,6 +21,7 @@ export default function VentasMetricas() {
 }
 
 function VentasMetricasContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, userAccount, user } = useAuthContext();
   const [rangoPreset, setRangoPreset] = useState('mes');
   const [fechaDesde, setFechaDesde] = useState('');
@@ -154,7 +156,7 @@ function VentasMetricasContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando métricas...</p>
+          <p className="text-slate-600">{t('salesOps.loadingMetrics','Cargando métricas...')}</p>
         </div>
       </div>
     );
@@ -165,8 +167,8 @@ function VentasMetricasContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Métricas de Ventas</h1>
-          <p className="text-slate-600">Indicadores operativos para seguimiento diario (solo lectura)</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t('salesOps.metrics','Métricas de Ventas')}</h1>
+          <p className="text-slate-600">{t('salesOps.metricsHelp','Indicadores operativos para seguimiento diario (solo lectura)')}</p>
         </div>
       </div>
 
@@ -191,7 +193,7 @@ function VentasMetricasContent() {
                 <DollarSign className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-slate-600">Total Cobrado</p>
+                <p className="text-sm text-slate-600">{t('salesOps.collected','Total Cobrado')}</p>
                 <p className="text-2xl font-bold text-slate-900">₡{totalVentas.toLocaleString()}</p>
               </div>
             </div>
@@ -208,7 +210,7 @@ function VentasMetricasContent() {
                 <ShoppingCart className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-slate-600">Número de Ventas</p>
+                <p className="text-sm text-slate-600">{t('salesOps.count','Número de Ventas')}</p>
                 <p className="text-2xl font-bold text-slate-900">{numeroVentas}</p>
               </div>
             </div>
@@ -225,7 +227,7 @@ function VentasMetricasContent() {
                 <Receipt className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-slate-600">Ticket Promedio</p>
+                <p className="text-sm text-slate-600">{t('salesOps.average','Ticket Promedio')}</p>
                 <p className="text-2xl font-bold text-slate-900">₡{ticketPromedio.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
               </div>
             </div>
@@ -317,7 +319,7 @@ function VentasMetricasContent() {
         {/* Ratio Cotizaciones */}
         <Card className="border-0 shadow-xl">
           <CardHeader>
-            <CardTitle className="text-lg">Conversión de Cotizaciones</CardTitle>
+            <CardTitle className="text-lg">{t('salesOps.conversion','Conversión de Cotizaciones')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">

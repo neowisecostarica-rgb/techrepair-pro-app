@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -23,6 +24,7 @@ export default function VentasHistorial() {
 }
 
 function VentasHistorialContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
   const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
   const branchFilter = !isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {};
@@ -108,7 +110,7 @@ function VentasHistorialContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando historial...</p>
+          <p className="text-slate-600">{t('salesOps.loadingHistory','Cargando historial...')}</p>
         </div>
       </div>
     );
@@ -119,8 +121,8 @@ function VentasHistorialContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Historial de Ventas</h1>
-          <p className="text-slate-600">Consulta de ventas realizadas</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t('salesOps.history','Historial de Ventas')}</h1>
+          <p className="text-slate-600">{t('salesOps.historyHelp','Consulta de ventas realizadas')}</p>
         </div>
       </div>
 
@@ -184,7 +186,7 @@ function VentasHistorialContent() {
           <div className="flex items-center gap-2">
             <Search className="w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Buscar por cliente, OT o monto..."
+              placeholder={t('salesOps.search','Buscar por cliente, OT o monto...')}
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className="flex-1"
@@ -256,7 +258,7 @@ function VentasHistorialContent() {
             {ventasFiltradas.length === 0 && (
               <div className="text-center py-12">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500">No se encontraron ventas</p>
+                <p className="text-slate-500">{t('salesOps.empty','No se encontraron ventas')}</p>
                 <p className="text-xs text-slate-400 mt-1">Intenta ajustar los filtros</p>
               </div>
             )}
@@ -268,7 +270,7 @@ function VentasHistorialContent() {
       <Dialog open={!!ventaSeleccionada} onOpenChange={() => setVentaSeleccionada(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Detalle de Venta</DialogTitle>
+            <DialogTitle>{t('salesOps.detail','Detalle de Venta')}</DialogTitle>
           </DialogHeader>
           {ventaSeleccionada && (
             <div className="space-y-6 mt-4">

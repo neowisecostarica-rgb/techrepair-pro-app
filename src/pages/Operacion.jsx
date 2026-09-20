@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -22,6 +23,7 @@ export default function Operacion() {
 }
 
 function OperacionContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
   const [periodoPreset, setPeriodoPreset] = useState('mes');
   const [fechaDesde, setFechaDesde] = useState('');
@@ -243,7 +245,7 @@ function OperacionContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando métricas operativas...</p>
+          <p className="text-slate-600">{t('operation.loading','Cargando métricas operativas...')}</p>
         </div>
       </div>
     );
@@ -254,8 +256,8 @@ function OperacionContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Operación</h1>
-          <p className="text-slate-600">Supervisa, detecta excepciones y entra al expediente para resolver.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">{t('operation.title','Operación')}</h1>
+          <p className="text-slate-600">{t('operation.subtitle','Supervisa, detecta excepciones y entra al expediente para resolver.')}</p>
         </div>
         <Badge className={isBranchAdmin ? 'bg-blue-100 text-blue-700 border-0' : 'bg-emerald-100 text-emerald-700 border-0'}>
           {isBranchAdmin ? 'Tu Sucursal' : 'Vista Completa'}
@@ -287,7 +289,7 @@ function OperacionContent() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Wrench className="w-5 h-5 text-blue-600" />
-              <p className="text-xs text-slate-600">OTs Activas</p>
+              <p className="text-xs text-slate-600">{t('operation.active','OTs Activas')}</p>
             </div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{otsActivas.length}</p>
           </CardContent>
@@ -297,7 +299,7 @@ function OperacionContent() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Clock className="w-5 h-5 text-red-600" />
-              <p className="text-xs text-slate-600">Demoradas (+48h)</p>
+              <p className="text-xs text-slate-600">{t('operation.delayed','Demoradas (+48h)')}</p>
             </div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{otsDemoradas.length}</p>
             <p className="text-xs text-slate-500 mt-1">Días desde última actividad</p>
@@ -308,7 +310,7 @@ function OperacionContent() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
-              <p className="text-xs text-slate-600">En Cola Revisión</p>
+              <p className="text-xs text-slate-600">{t('operation.queue','En Cola Revisión')}</p>
             </div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{otsEnCola}</p>
             {otsEnCola > 10 && (
@@ -321,7 +323,7 @@ function OperacionContent() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-5 h-5 text-purple-600" />
-              <p className="text-xs text-slate-600">Técnicos Activos</p>
+              <p className="text-xs text-slate-600">{t('operation.technicians','Técnicos Activos')}</p>
             </div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{tecnicosConCarga}</p>
           </CardContent>
@@ -331,7 +333,7 @@ function OperacionContent() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-5 h-5 text-yellow-600" />
-              <p className="text-xs text-slate-600">Cotizaciones Pendientes</p>
+              <p className="text-xs text-slate-600">{t('operation.pendingQuotes','Cotizaciones Pendientes')}</p>
             </div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{cotizacionesPendientes}</p>
             {cotizacionesPendientes > 20 && (
@@ -344,7 +346,7 @@ function OperacionContent() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="w-5 h-5 text-indigo-600" />
-              <p className="text-xs text-slate-600">Garantías por Vencer</p>
+              <p className="text-xs text-slate-600">{t('operation.warranties','Garantías por Vencer')}</p>
             </div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{garantiasPorVencer}</p>
             {garantiasPorVencer > 5 && (

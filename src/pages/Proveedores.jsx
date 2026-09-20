@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -21,6 +22,7 @@ export default function Proveedores() {
 }
 
 function ProveedoresContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, userAccount, user } = useAuthContext();
   const [showModal, setShowModal] = useState(false);
   const [proveedorEditar, setProveedorEditar] = useState(null);
@@ -98,7 +100,7 @@ function ProveedoresContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando proveedores...</p>
+          <p className="text-slate-600">{t('suppliers.loading','Cargando proveedores...')}</p>
         </div>
       </div>
     );
@@ -108,8 +110,8 @@ function ProveedoresContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Proveedores</h1>
-          <p className="text-slate-600">Gestión de proveedores y condiciones de pago</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t('suppliers.title','Proveedores')}</h1>
+          <p className="text-slate-600">{t('suppliers.subtitle','Gestión de proveedores y condiciones de pago')}</p>
         </div>
         <Button
           onClick={() => {
@@ -131,7 +133,7 @@ function ProveedoresContent() {
             <Input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre, teléfono, email o cédula..."
+              placeholder={t('suppliers.search','Buscar por nombre, teléfono, email o cédula...')}
               className="pl-10"
             />
           </div>
@@ -259,7 +261,7 @@ function ProveedoresContent() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{proveedorEditar ? 'Editar Proveedor' : 'Nuevo Proveedor'}</DialogTitle>
+            <DialogTitle>{proveedorEditar ? t('suppliers.edit','Editar Proveedor') : t('suppliers.new','Nuevo Proveedor')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

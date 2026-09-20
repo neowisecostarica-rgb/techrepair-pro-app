@@ -37,6 +37,8 @@ export const OPERATIONAL_ENTITY_POLICIES = Object.freeze({
   AssetAssignment: { read: [...CUSTOMER_ROLES, 'TECHNICIAN'], create: [], update: [], delete: [], scope: 'organization' },
   EnterpriseOffboarding: { read: ['ORG_ADMIN','BRANCH_ADMIN'], create: [], update: [], delete: [], scope: 'organization' },
   OffboardingAccessItem: { read: ['ORG_ADMIN','BRANCH_ADMIN'], create: [], update: [], delete: [], scope: 'organization' },
+  EnterpriseOnboarding: { read: ['ORG_ADMIN','BRANCH_ADMIN'], create: [], update: [], delete: [], scope: 'organization' },
+  OnboardingAccessItem: { read: ['ORG_ADMIN','BRANCH_ADMIN'], create: [], update: [], delete: [], scope: 'organization' },
   Expense: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: ADMIN_ROLES, delete: ADMIN_ROLES, scope: 'branch' },
   Garantia: { read: [...COMMERCIAL_ROLES, 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: ADMIN_ROLES, delete: [], scope: 'warranty' },
   Inventario: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: 'branch' },

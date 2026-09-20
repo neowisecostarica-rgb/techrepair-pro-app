@@ -20,6 +20,8 @@ const protectedOperationalEntities = new Set([
   'AssetAssignment',
   'EnterpriseOffboarding',
   'OffboardingAccessItem',
+  'EnterpriseOnboarding',
+  'OnboardingAccessItem',
   'BloqueoTecnico',
   'Branch',
   'CategoriaInventario',

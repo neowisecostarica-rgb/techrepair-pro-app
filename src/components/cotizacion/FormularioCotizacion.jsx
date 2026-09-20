@@ -18,7 +18,6 @@ import { useToast } from '@/components/ui/use-toast';
 const DESCUENTO_MAXIMO_SIN_APROBACION = 20;
 
 export default function FormularioCotizacion({ 
-  const { toast } = useToast();
   clienteId, 
   ordenTrabajoId, 
   user, 
@@ -28,6 +27,7 @@ export default function FormularioCotizacion({
   onGuardar,
   onCancelar
 }) {
+  const { toast } = useToast();
   const [items, setItems] = useState(cotizacionEditar?.items || [{ 
     tipo: 'servicio', 
     descripcion: '', 

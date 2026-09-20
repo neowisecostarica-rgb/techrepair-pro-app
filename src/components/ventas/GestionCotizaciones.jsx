@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -24,6 +25,7 @@ import { issuePublicLink } from '@/api/publicLinks';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, userAccount, clientes = [], openDirectly = false }) {
+  const { t } = useI18n();
   const [showModal, setShowModal] = useState(openDirectly);
   const [editingCotizacion, setEditingCotizacion] = useState(null);
   const [items, setItems] = useState([{ tipo: 'servicio', descripcion: '', cantidad: 1, precio_unitario: 0, descuento_porcentaje: 0, subtotal: 0 }]);
@@ -553,7 +555,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                       {cot.estado === 'borrador' && (
                         <>
                           <button onClick={() => handleEditar(cot)}
-                            className="text-[10px] text-slate-500 hover:text-slate-800 underline">Editar</button>
+                            className="text-[10px] text-slate-500 hover:text-slate-800 underline">{t('quoteManage.edit','Editar')}</button>
                           <span className="text-slate-300">·</span>
                           <button onClick={() => handleEnviar(cot)}
                             className="text-[10px] text-blue-600 hover:text-blue-800 underline">Enviar</button>
@@ -599,7 +601,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       </div>
 
       <Dialog open={Boolean(pendingConversion)} onOpenChange={(open) => { if (!open) setPendingConversion(null); }}>
-        <DialogContent><DialogHeader><DialogTitle>Convertir cotización en venta</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Se abrirá Punto de Venta con el cliente y los ítems de esta cotización precargados. La venta no queda finalizada hasta completar el flujo del POS.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingConversion(null)}>Cancelar</Button><Button onClick={confirmarConversion}>Continuar al POS</Button></div></div></DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>{t('quoteManage.convert','Convertir cotización en venta')}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Se abrirá Punto de Venta con el cliente y los ítems de esta cotización precargados. La venta no queda finalizada hasta completar el flujo del POS.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingConversion(null)}>{t('quoteManage.cancel','Cancelar')}</Button><Button onClick={confirmarConversion}>{t('quoteManage.continuePos','Continuar al POS')}</Button></div></div></DialogContent>
       </Dialog>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -610,14 +612,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
           <form onSubmit={handleSubmit} className="space-y-4">
             {!clienteId && (
               <div className="space-y-2">
-                <Label>Cliente *</Label>
+                <Label>{t('quoteManage.customer','Cliente *')}</Label>
                 <Select 
                   value={clienteSeleccionadoInterno} 
                   onValueChange={setClienteSeleccionadoInterno}
                   disabled={!!editingCotizacion}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un cliente..." />
+                    <SelectValue placeholder={t('quoteManage.selectCustomer','Selecciona un cliente...')} />
                   </SelectTrigger>
                   <SelectContent>
                     {clientes.map(c => (
@@ -647,7 +649,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Items de la Cotización</Label>
+                <Label>{t('quoteManage.items','Items de la Cotización')}</Label>
                 <Button type="button" size="sm" variant="outline" onClick={addItem}>
                   <Plus className="w-4 h-4 mr-2" />
                   Agregar Item
@@ -684,7 +686,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                           </Select>
                         </div>
                         <div className="col-span-2 relative">
-                          <Label className="text-xs">Buscar Producto / Descripción</Label>
+                          <Label className="text-xs">{t('quoteManage.searchProduct','Buscar Producto / Descripción')}</Label>
                           <div className="relative">
                             <Search className="absolute left-2 top-2 w-4 h-4 text-slate-400" />
                             <Input
@@ -732,7 +734,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                           <Input
                             value={item.descripcion}
                             onChange={(e) => updateItem(idx, 'descripcion', e.target.value)}
-                            placeholder="Descripción que aparecerá en la cotización"
+                            placeholder={t('quoteManage.description','Descripción que aparecerá en la cotización')}
                             className="h-9"
                           />
                         </div>
@@ -855,7 +857,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
               <Label>Notas</Label>
               <Textarea
                 name="notas"
-                placeholder="Notas adicionales..."
+                placeholder={t('quoteManage.notes','Notas adicionales...')}
                 defaultValue={editingCotizacion?.notas}
                 rows={2}
               />

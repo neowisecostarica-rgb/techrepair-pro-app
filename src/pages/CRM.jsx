@@ -153,11 +153,11 @@ function CRMContent() {
   const getLeadsByStatus = (status) => leads.filter(l => l.status === status).length;
 
   if (status !== 'ready') {
-    return <div className="p-6 text-center">Cargando CRM...</div>;
+    return <div className="p-6 text-center">{t('residual.crmLoading','Cargando CRM...')}</div>;
   }
 
   if (isLoading) {
-    return <div className="max-w-7xl mx-auto p-6 text-center">Cargando prospectos...</div>;
+    return <div className="max-w-7xl mx-auto p-6 text-center">{t('residual.prospectsLoading','Cargando prospectos...')}</div>;
   }
 
   if (isError) {
@@ -366,7 +366,7 @@ function CRMContent() {
               <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Crear prospecto</Button>
+              <Button type="submit">{t('residual.createProspect','Crear prospecto')}</Button>
             </div>
           </form>
         </DialogContent>
@@ -376,7 +376,7 @@ function CRMContent() {
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar prospecto</DialogTitle>
+            <DialogTitle>{t('residual.editProspect','Editar prospecto')}</DialogTitle>
           </DialogHeader>
           {editingLead && (
             <form onSubmit={handleUpdateLead} className="space-y-4">
@@ -427,7 +427,7 @@ function CRMContent() {
                 <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">Guardar Cambios</Button>
+                <Button type="submit">{t('residual.saveChanges','Guardar Cambios')}</Button>
               </div>
             </form>
           )}

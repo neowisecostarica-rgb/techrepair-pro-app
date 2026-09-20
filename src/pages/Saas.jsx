@@ -393,7 +393,7 @@ function SaasContent() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-3"></div>
-          <p className="text-slate-600">Cargando administración de plataforma...</p>
+          <p className="text-slate-600">{t('residual.platformLoading','Cargando administración de plataforma...')}</p>
         </div>
       </div>
     );
@@ -512,7 +512,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <ShieldAlert className="w-5 h-5 text-green-600" />
-              <p className="text-xs font-semibold text-slate-600">Usuarios activos</p>
+              <p className="text-xs font-semibold text-slate-600">{t('residual.activeUsers','Usuarios activos')}</p>
             </div>
             <p className="text-3xl font-bold text-slate-900">{totalActiveUsuarios}</p>
             <p className="text-xs text-slate-600 mt-1">En organizaciones activas</p>
@@ -679,8 +679,8 @@ function SaasContent() {
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Acceso operativo</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Preparación</th>
                     <th className="hidden xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Creada</th>
-                    <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Usuarios</th>
-                    <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Sucursales</th>
+                    <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">{t('residual.users','Usuarios')}</th>
+                    <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">{t('residual.branches','Sucursales')}</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Acciones</th>
                   </tr>
                 </thead>
@@ -884,7 +884,7 @@ function SaasContent() {
             <div><Label>{t('saas.licenseStatus','Estado de licencia')}</Label><select value={newLicenseStatus} onChange={e=>setNewLicenseStatus(e.target.value)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"><option value="pending">Pendiente</option><option value="active">Activa</option><option value="grace">Gracia</option><option value="suspended">Suspendida</option><option value="revoked">Revocada</option><option value="expired">Vencida</option></select></div>
             <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={cancelAtPeriodEnd} onChange={e=>setCancelAtPeriodEnd(e.target.checked)} className="mt-1"/><span><strong>Cancelar al final del período</strong><span className="mt-1 block text-xs text-slate-500">Registra la intención comercial. No suspende por sí sola el acceso operativo de la organización.</span></span></label>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Facturación, licencia y acceso operativo son estados distintos. Para bloquear el acceso usa Suspender organización.</div>
-            <div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setShowLifecycleModal(false)}>Cancelar</Button><Button onClick={handleCommercialLifecycle} className="bg-teal-700 hover:bg-teal-800">Guardar ciclo</Button></div>
+            <div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setShowLifecycleModal(false)}>{t('residual.cancel','Cancelar')}</Button><Button onClick={handleCommercialLifecycle} className="bg-teal-700 hover:bg-teal-800">{t('residual.saveCycle','Guardar ciclo')}</Button></div>
           </div>
         </DialogContent>
       </Dialog>
@@ -953,7 +953,7 @@ function SaasContent() {
             </p>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Revisa la organización antes de confirmar. Esta acción afecta su estado administrativo.</div>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => { setShowActionConfirm(false); setPendingAdminAction(null); }}>Cancelar</Button>
+              <Button variant="outline" onClick={() => { setShowActionConfirm(false); setPendingAdminAction(null); }}>{t('residual.cancel','Cancelar')}</Button>
               <Button onClick={executePendingAdminAction} className="bg-teal-700 hover:bg-teal-800">Confirmar</Button>
             </div>
           </div>

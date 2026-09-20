@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -14,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Plus, Search, UserX, Edit, UserCheck } from 'lucide-react';
 
 export default function UserManagementPanel({ organizationId, currentUserId, branches }) {
+  const { t } = useI18n();
   const { effectiveRole, status } = useAuthContext();
   const { toast } = useToast();
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -172,7 +174,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   const availableRoles = getAvailableRoles();
 
   if (!isReady) {
-    return <div className="p-6 text-center text-slate-500">Cargando usuarios y permisos...</div>;
+    return <div className="p-6 text-center text-slate-500">{t('userAdmin.loading','Cargando usuarios y permisos...')}</div>;
   }
 
   return (
@@ -180,7 +182,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b border-slate-100">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Gestión de Usuarios</CardTitle>
+            <CardTitle>{t('userAdmin.title','Gestión de Usuarios')}</CardTitle>
             <Button onClick={() => setShowInviteModal(true)} size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Invitar usuario
@@ -192,7 +194,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <Input
-              placeholder="Buscar por email o rol..."
+              placeholder={t('userAdmin.search','Buscar por email o rol...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -206,7 +208,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Email</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rol</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Sucursal</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('userAdmin.branch','Sucursal')}</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Estado</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Acciones</th>
                 </tr>
@@ -287,7 +289,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
           <div className="space-y-4">
             <p className="text-sm text-slate-600">{pendingSuspendUser?.user_email} dejará de tener acceso operativo a esta organización. Su historial y las acciones ya registradas se conservan.</p>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Esto suspende una membresía de TRP. No ejecuta offboarding laboral ni revoca accesos en sistemas externos.</div>
-            <div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingSuspendUser(null)}>Cancelar</Button><Button onClick={confirmDeactivate} className="bg-orange-600 hover:bg-orange-700">Suspender acceso</Button></div>
+            <div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingSuspendUser(null)}>{t('userAdmin.cancel','Cancelar')}</Button><Button onClick={confirmDeactivate} className="bg-orange-600 hover:bg-orange-700">{t('userAdmin.suspend','Suspender acceso')}</Button></div>
           </div>
         </DialogContent>
       </Dialog>
@@ -307,7 +309,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
               <Label htmlFor="role">Rol *</Label>
               <Select name="role" required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar rol" />
+                  <SelectValue placeholder={t('userAdmin.selectRole','Seleccionar rol')} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableRoles.map(role => (
@@ -319,7 +321,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch_id">Sucursal (Opcional)</Label>
+              <Label htmlFor="branch_id">{t('userAdmin.branchOptional','Sucursal (Opcional)')}</Label>
               <Select name="branch_id">
                 <SelectTrigger>
                   <SelectValue placeholder="Sin sucursal" />
@@ -347,7 +349,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar usuario</DialogTitle>
+            <DialogTitle>{t('userAdmin.edit','Editar usuario')}</DialogTitle>
           </DialogHeader>
           {editingUser && (
             <form onSubmit={handleUpdateUser} className="space-y-4">

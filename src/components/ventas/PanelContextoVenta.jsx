@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -22,6 +23,7 @@ import { es } from 'date-fns/locale';
 import { generarResumenTrabajo } from './utils/generarResumenTrabajo';
 
 export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
 
   const { data: cliente } = useQuery({
@@ -135,7 +137,7 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
           <div className="p-4 bg-white rounded-lg border border-slate-200">
             <div className="flex items-center gap-2 mb-3">
               <Wrench className="w-5 h-5 text-emerald-600" />
-              <h3 className="font-semibold text-slate-900">Orden de Trabajo</h3>
+              <h3 className="font-semibold text-slate-900">{t('saleContext.workOrder','Orden de Trabajo')}</h3>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -154,13 +156,13 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
               </div>
               {tecnico && (
                 <div>
-                  <p className="text-slate-500">Técnico</p>
+                  <p className="text-slate-500">{t('saleContext.technician','Técnico')}</p>
                   <p className="font-medium">{tecnico.user_email}</p>
                 </div>
               )}
               {branch && (
                 <div>
-                  <p className="text-slate-500">Sucursal</p>
+                  <p className="text-slate-500">{t('saleContext.branch','Sucursal')}</p>
                   <p className="font-medium">{branch.name}</p>
                 </div>
               )}
@@ -172,7 +174,7 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
             <div className="p-4 bg-white rounded-lg border border-slate-200">
               <div className="flex items-center gap-2 mb-3">
                 <User className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-slate-900">Cliente</h3>
+                <h3 className="font-semibold text-slate-900">{t('saleContext.customer','Cliente')}</h3>
               </div>
               <div className="space-y-1 text-sm">
                 <p className="font-medium">{cliente.nombre_completo}</p>
@@ -187,7 +189,7 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
             <div className="p-4 bg-white rounded-lg border border-slate-200">
               <div className="flex items-center gap-2 mb-3">
                 <Laptop className="w-5 h-5 text-purple-600" />
-                <h3 className="font-semibold text-slate-900">Equipo</h3>
+                <h3 className="font-semibold text-slate-900">{t('saleContext.equipment','Equipo')}</h3>
               </div>
               <div className="space-y-1 text-sm">
                 <p className="font-medium">{equipo.marca} {equipo.modelo}</p>
@@ -204,7 +206,7 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
             <div className="p-4 bg-white rounded-lg border border-slate-200">
               <div className="flex items-center gap-2 mb-3">
                 <FileSearch className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-semibold text-slate-900">Diagnóstico Técnico</h3>
+                <h3 className="font-semibold text-slate-900">{t('saleContext.diagnosis','Diagnóstico Técnico')}</h3>
               </div>
               <div className="space-y-2 text-sm">
                 {resumenTrabajo && (
@@ -231,7 +233,7 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
             <div className="p-4 bg-white rounded-lg border border-slate-200">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-5 h-5 text-orange-600" />
-                <h3 className="font-semibold text-slate-900">Cotización</h3>
+                <h3 className="font-semibold text-slate-900">{t('saleContext.quote','Cotización')}</h3>
               </div>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
@@ -276,12 +278,12 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
             <div className="p-4 bg-indigo-50 rounded-lg border-2 border-indigo-200">
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-semibold text-indigo-900">Garantía a Emitir</h3>
+                <h3 className="font-semibold text-indigo-900">{t('saleContext.warranty','Garantía a Emitir')}</h3>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Tipo:</span>
-                  <Badge variant="outline" className="border-indigo-300">Reparación</Badge>
+                  <Badge variant="outline" className="border-indigo-300">{t('saleContext.repair','Reparación')}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Vigencia:</span>

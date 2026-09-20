@@ -45,7 +45,7 @@ function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId, clienteId, onOTCha
 
   return (
     <div className="space-y-2 col-span-2">
-      <Label htmlFor="orden_trabajo_id">Orden de Trabajo asociada *</Label>
+      <Label htmlFor="orden_trabajo_id">{t('residual.agendaWorkOrder','Orden de Trabajo asociada *')}</Label>
       <Select 
         name="orden_trabajo_id" 
         value={defaultValue} 
@@ -53,7 +53,7 @@ function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId, clienteId, onOTCha
         required
       >
         <SelectTrigger>
-          <SelectValue placeholder="Selecciona la OT correspondiente" />
+          <SelectValue placeholder={t('residual.selectWorkOrder','Selecciona la OT correspondiente')} />
         </SelectTrigger>
         <SelectContent>
           {otsFiltradas.length > 0 ? (
@@ -416,7 +416,7 @@ function AgendaContent() {
                   <Label htmlFor="tecnico_asignado_id">{t('agenda.technician','Técnico Asignado *')}</Label>
                   <Select name="tecnico_asignado_id" defaultValue={editingCita?.tecnico_asignado_id} required>
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar técnico" />
+                      <SelectValue placeholder={t('residual.selectTech','Seleccionar técnico')} />
                     </SelectTrigger>
                     <SelectContent>
                       {tecnicos.map(t => (
@@ -540,7 +540,7 @@ function AgendaContent() {
                   id="motivo"
                   name="motivo"
                   defaultValue={editingCita?.motivo}
-                  placeholder="Descripción del evento..."
+                  placeholder={t('residual.description','Descripción del evento...')}
                   rows={2}
                 />
               </div>
@@ -551,7 +551,7 @@ function AgendaContent() {
                   id="notas"
                   name="notas"
                   defaultValue={editingCita?.notas}
-                  placeholder="Notas adicionales..."
+                  placeholder={t('residual.notes','Notas adicionales...')}
                   rows={2}
                 />
               </div>

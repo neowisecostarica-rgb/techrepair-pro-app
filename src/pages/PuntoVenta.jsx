@@ -836,12 +836,12 @@ function PuntoVentaContent() {
         <div className="space-y-6">
           <Card className="border border-slate-200 shadow-sm">
             <CardHeader className="border-b border-slate-100">
-              <CardTitle className="text-lg font-semibold">Detalles de Venta</CardTitle>
+              <CardTitle className="text-lg font-semibold">{t('residual.saleDetails','Detalles de Venta')}</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               {!ventaId && (
                 <div className="space-y-2">
-                  <Label>Origen de Venta</Label>
+                  <Label>{t('residual.saleOrigin','Origen de Venta')}</Label>
                   <Select value={origenVenta} onValueChange={setOrigenVenta}>
                     <SelectTrigger>
                       <SelectValue />
@@ -893,7 +893,7 @@ function PuntoVentaContent() {
               </div>
 
               <div className="space-y-2">
-                <Label>Orden de Trabajo (Opcional)</Label>
+                <Label>{t('residual.workOrderOptional','Orden de Trabajo (Opcional)')}</Label>
                 <Select 
                   value={otSeleccionada} 
                   onValueChange={setOtSeleccionada}
@@ -927,7 +927,7 @@ function PuntoVentaContent() {
               </div>
 
               <div className="space-y-2">
-                <Label>Método de Pago</Label>
+                <Label>{t('residual.paymentMethod','Método de Pago')}</Label>
                 <Select value={metodoPago} onValueChange={setMetodoPago}>
                   <SelectTrigger>
                     <SelectValue />
@@ -945,7 +945,7 @@ function PuntoVentaContent() {
 
           <Card className="border border-slate-200 shadow-sm bg-white">
             <CardHeader className="border-b border-slate-200">
-              <CardTitle className="text-lg font-semibold">Resumen de Pago</CardTitle>
+              <CardTitle className="text-lg font-semibold">{t('residual.paymentSummary','Resumen de Pago')}</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-3">
               <div className="flex justify-between text-sm">
@@ -1013,7 +1013,7 @@ function PuntoVentaContent() {
       <Dialog open={!!ventaCompletada} onOpenChange={() => setVentaCompletada(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Comprobante de Venta</DialogTitle>
+            <DialogTitle>{t('residual.salesReceipt','Comprobante de Venta')}</DialogTitle>
           </DialogHeader>
           
           {ventaCompletada && (() => {

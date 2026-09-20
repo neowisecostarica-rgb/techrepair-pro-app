@@ -512,7 +512,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         </Button>
                       )}
 
-                      {/* EN_REPARACION → Finalizar Reparación */}
+                      {/* EN_REPARACION → {t('residual.finishRepair','Finalizar Reparación')} */}
                       {ordenActiva.estado === 'EN_REPARACION' && (
                         <Button
                           onClick={() => handleTransicion(ordenActiva, 'PRUEBAS', 'finalizar_reparacion')}
@@ -522,7 +522,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                           {botonesDeshabilitados[`finalizar_reparacion_${ordenActiva.id}`] ? (
                             <><Clock className="w-4 h-4 mr-2 animate-spin" />Finalizando...</>
                           ) : (
-                            <><CheckCircle className="w-4 h-4 mr-2" />Finalizar Reparación</>
+                            <><CheckCircle className="w-4 h-4 mr-2" />{t('residual.finishRepair','Finalizar Reparación')}</>
                           )}
                         </Button>
                       )}
@@ -657,7 +657,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         {botonesDeshabilitados[`finalizar_reparacion_${orden.id}`] ? (
                           <><Clock className="w-4 h-4 mr-2 animate-spin" />Finalizando...</>
                         ) : (
-                          <><CheckCircle className="w-4 h-4 mr-2" />Finalizar Reparación</>
+                          <><CheckCircle className="w-4 h-4 mr-2" />{t('residual.finishRepair','Finalizar Reparación')}</>
                         )}
                       </Button>
                     )}
@@ -897,7 +897,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       </Dialog>
 
       <Dialog open={Boolean(pendingPaymentOT)} onOpenChange={(open) => { if (!open) setPendingPaymentOT(null); }}>
-        <DialogContent><DialogHeader><DialogTitle>Diagnóstico pendiente de cobro</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">El diagnóstico debe cobrarse antes de iniciar. Puedes ir a Caja y Cobros para procesarlo ahora.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingPaymentOT(null)}>Ahora no</Button><Button onClick={() => { const id=pendingPaymentOT?.id; setPendingPaymentOT(null); if(id) window.location.href=createPageUrl('PuntoVenta')+`?ot_id=${id}&concepto=revision_diagnostico`; }}>Ir a Caja y Cobros</Button></div></div></DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>{t('residual.pendingCharge','Diagnóstico pendiente de cobro')}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">El diagnóstico debe cobrarse antes de iniciar. Puedes ir a Caja y Cobros para procesarlo ahora.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingPaymentOT(null)}>Ahora no</Button><Button onClick={() => { const id=pendingPaymentOT?.id; setPendingPaymentOT(null); if(id) window.location.href=createPageUrl('PuntoVenta')+`?ot_id=${id}&concepto=revision_diagnostico`; }}>Ir a Caja y Cobros</Button></div></div></DialogContent>
       </Dialog>
 
       <Dialog open={showPauseModal} onOpenChange={setShowPauseModal}>
@@ -974,7 +974,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       <Dialog open={showDetalleOT} onOpenChange={setShowDetalleOT}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalle de Orden de Trabajo</DialogTitle>
+            <DialogTitle>{t('residual.workOrderDetail','Detalle de Orden de Trabajo')}</DialogTitle>
           </DialogHeader>
           {selectedOT && (
             <Tabs defaultValue="general" className="w-full">

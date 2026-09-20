@@ -915,7 +915,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="esperando_repuesto">Esperando Repuesto</SelectItem>
-                  <SelectItem value="esperando_cliente">Esperando Cliente</SelectItem>
+                  <SelectItem value="esperando_cliente">{t('otTech.waitingCustomer','Esperando Cliente')}</SelectItem>
                   <SelectItem value="interrupcion">Interrupción</SelectItem>
                   <SelectItem value="otro">Otro</SelectItem>
                 </SelectContent>
@@ -1003,11 +1003,11 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                   <CardContent className="p-6">
                     <div className="space-y-3">
                       <div>
-                        <p className="text-sm text-slate-500">Cliente</p>
+                        <p className="text-sm text-slate-500">{t('finalI18n.customer','Cliente')}</p>
                         <p className="font-medium text-slate-900">{getClienteName(selectedOT.cliente_id)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-slate-500">Equipo</p>
+                        <p className="text-sm text-slate-500">{t('finalI18n.equipment','Equipo')}</p>
                         <p className="font-medium text-slate-900">{getEquipoInfo(selectedOT.equipo_id)}</p>
                       </div>
                       <div>

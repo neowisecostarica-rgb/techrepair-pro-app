@@ -202,7 +202,7 @@ function CRMContent() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <Input
-            placeholder="Buscar por nombre, email o teléfono..."
+            placeholder={t('crm.search','Buscar por nombre, email o teléfono...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -229,7 +229,7 @@ function CRMContent() {
               <div className="text-center py-12">
                 <UserPlus className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                 <p className="text-slate-500">No hay prospectos que coincidan con esta vista</p>
-                {!searchTerm && statusFilter === 'all' && <Button className="mt-4" onClick={() => setShowCreateModal(true)}><Plus className="w-4 h-4 mr-2" />Crear primer prospecto</Button>}
+                {!searchTerm && statusFilter === 'all' && <Button className="mt-4" onClick={() => setShowCreateModal(true)}><Plus className="w-4 h-4 mr-2" />{t('residual.createProspect','Crear primer prospecto')}</Button>}
               </div>
             ) : (
               filteredLeads.map(lead => (
@@ -317,7 +317,7 @@ function CRMContent() {
           <div className="space-y-4">
             <p className="text-sm text-slate-600">Se creará un cliente para <strong>{leadToConvert?.name}</strong> y el prospecto quedará marcado como ganado.</p>
             <div><Label htmlFor="convert-identification">Identificación del cliente</Label><Input id="convert-identification" value={convertIdentification} onChange={(e) => setConvertIdentification(e.target.value)} placeholder="Cédula o identificación" className="mt-1" /></div>
-            <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => { setLeadToConvert(null); setConvertIdentification(''); }}>Cancelar</Button><Button onClick={confirmLeadConversion}>Crear cliente</Button></div>
+            <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => { setLeadToConvert(null); setConvertIdentification(''); }}>{t('finalI18n.cancel','Cancelar')}</Button><Button onClick={confirmLeadConversion}>{t('crm.convert','Crear cliente')}</Button></div>
           </div>
         </DialogContent>
       </Dialog>

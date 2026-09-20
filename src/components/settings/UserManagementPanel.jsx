@@ -391,7 +391,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="branch_id">Sucursal</Label>
+                <Label htmlFor="branch_id">{t('userAdmin.branch','Sucursal')}</Label>
                 <Select name="branch_id" defaultValue={editingUser.branch_id || ''}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sin sucursal" />
@@ -416,7 +416,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Activo</SelectItem>
+                    <SelectItem value="active">{t('finalI18n.active','Activo')}</SelectItem>
                     <SelectItem value="invited">Invitado (pendiente)</SelectItem>
                     <SelectItem value="suspended">Suspendido</SelectItem>
                   </SelectContent>

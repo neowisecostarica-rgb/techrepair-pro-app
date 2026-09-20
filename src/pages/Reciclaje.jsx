@@ -385,7 +385,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
               <SelectItem value="reutilizado">Reutilizado</SelectItem>
               <SelectItem value="donado">Donado</SelectItem>
               <SelectItem value="desecho_seguro">Desecho Seguro</SelectItem>
-              <SelectItem value="pendiente">Pendiente</SelectItem>
+              <SelectItem value="pendiente">{t('sustain.pending','Pendiente')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -396,7 +396,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
             id="descripcion"
             name="descripcion"
             defaultValue={editingItem?.descripcion}
-            placeholder="Descripción del residuo..."
+            placeholder={t('sustain.description','Descripción del residuo...')}
             rows={2}
             required
           />
@@ -435,9 +435,9 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
               <SelectValue placeholder={t('sustain.select','Seleccionar')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="reparacion">Reparación</SelectItem>
-              <SelectItem value="desecho_cliente">Desecho Cliente</SelectItem>
-              <SelectItem value="equipo_obsoleto">Equipo Obsoleto</SelectItem>
+              <SelectItem value="reparacion">{t('sustain.repair','Reparación')}</SelectItem>
+              <SelectItem value="desecho_cliente">{t('sustain.customerWaste','Desecho Cliente')}</SelectItem>
+              <SelectItem value="equipo_obsoleto">{t('sustain.obsolete','Equipo Obsoleto')}</SelectItem>
               <SelectItem value="otros">Otros</SelectItem>
             </SelectContent>
           </Select>

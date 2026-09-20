@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -80,7 +81,7 @@ export default function FiltrosFinanzas({
             <div className="lg:border-l lg:pl-6 space-y-3">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-4 h-4 text-slate-500" />
-                <Label className="font-semibold">Sucursal</Label>
+                <Label className="font-semibold">{t('tail.branch','Sucursal')}</Label>
               </div>
 
               {sucursalFija ? (
@@ -93,7 +94,7 @@ export default function FiltrosFinanzas({
                   onChange={(e) => onSucursalChange(e.target.value === 'todas' ? null : e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-md"
                 >
-                  <option value="todas">Todas las Sucursales</option>
+                  <option value="todas">{t('tail.allBranches','Todas las Sucursales')}</option>
                   {sucursales.map((suc) => (
                     <option key={suc.id} value={suc.id}>
                       {suc.name}

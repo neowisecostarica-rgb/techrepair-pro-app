@@ -256,10 +256,10 @@ function ColaRevisionContent() {
             )}
 
             <div className="space-y-2">
-              <Label>Seleccionar Técnico *</Label>
+              <Label>{t('finalI18n.assignedTechnician','Seleccionar Técnico *')}</Label>
               <Select value={tecnicoSeleccionado} onValueChange={setTecnicoSeleccionado}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un técnico" />
+                  <SelectValue placeholder={t('residual.selectTech','Selecciona un técnico')} />
                 </SelectTrigger>
                 <SelectContent>
                   {tecnicos.map(t => (

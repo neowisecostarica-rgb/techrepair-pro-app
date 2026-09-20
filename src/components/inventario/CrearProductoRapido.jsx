@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 
 export default function CrearProductoRapido({ open, onClose, codigoBarras, onProductoCreado }) {
+  const { toast } = useToast();
   const { effectiveOrgId } = useAuthContext();
   const queryClient = useQueryClient();
 
@@ -58,7 +60,7 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
     e.preventDefault();
     
     if (!formData.codigo_barras || !formData.nombre || !formData.precio_venta || !formData.costo_unitario || !formData.categoria_id) {
-      alert('Completar campos obligatorios (incluyendo categoría)');
+      toast({ title: 'Completa los campos obligatorios', description: 'Código, nombre, categoría, costo y precio de venta son requeridos.' });
       return;
     }
 

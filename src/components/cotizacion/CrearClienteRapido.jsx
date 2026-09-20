@@ -7,8 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserPlus, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function CrearClienteRapido({ open, onClose, onClienteCreado, effectiveOrgId, clientes = [] }) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     nombre_completo: '',
     telefono: '',
@@ -49,17 +51,17 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, eff
     e.preventDefault();
 
     if (!formData.nombre_completo || !formData.telefono) {
-      alert('Nombre y teléfono son obligatorios');
+      toast({ title: 'Datos requeridos', description: 'Nombre y teléfono son obligatorios.' });
       return;
     }
 
     if (formData.telefono.length < 8) {
-      alert('El teléfono debe tener al menos 8 dígitos');
+      toast({ title: 'Teléfono incompleto', description: 'El teléfono debe tener al menos 8 dígitos.' });
       return;
     }
 
     if (!effectiveOrgId) {
-      alert('Organization no definida');
+      toast({ variant: 'destructive', title: 'Organización no disponible', description: 'No se pudo determinar la organización para crear el cliente.' });
       return;
     }
 
@@ -85,7 +87,7 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, eff
       onClienteCreado(nuevoCliente);
       handleClose();
     } catch (error) {
-      alert('Error al crear cliente: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo crear el cliente', description: error.message });
     } finally {
       setSaving(false);
     }

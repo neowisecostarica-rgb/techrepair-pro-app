@@ -6,8 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function QuickCreateCategoria({ open, onOpenChange, organizationId, onCreated }) {
+  const { toast } = useToast();
   const [nombre, setNombre] = useState('');
   const [permiteStock, setPermiteStock] = useState(true);
   const [permitePrecio, setPermitePrecio] = useState(true);
@@ -18,12 +20,12 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
     e.preventDefault();
     
     if (!nombre.trim()) {
-      alert('El nombre es requerido');
+      toast({ title: 'Nombre requerido', description: 'Ingresa un nombre para la categoría.' });
       return;
     }
 
     if (!organizationId) {
-      alert('Error: no se pudo determinar la organización. Intenta recargar la página.');
+      toast({ variant: 'destructive', title: 'Organización no disponible', description: 'No se pudo determinar la organización. Recarga la página e inténtalo nuevamente.' });
       return;
     }
 
@@ -37,7 +39,7 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
       });
 
       if (existing.length > 0) {
-        alert('Ya existe una categoría con ese nombre');
+        toast({ title: 'Categoría existente', description: 'Ya existe una categoría con ese nombre.' });
         setSaving(false);
         return;
       }
@@ -62,7 +64,7 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
       onOpenChange(false);
     } catch (error) {
       console.error('Error creando categoría:', error);
-      alert('Error al crear la categoría: ' + error.message);
+      toast({ variant: 'destructive', title: 'No se pudo crear la categoría', description: error.message });
     } finally {
       setSaving(false);
     }

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -32,6 +33,7 @@ export default function WizardDiagnosticoTecnico({
   onClose, 
   onComplete 
 }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [paso, setPaso] = useState(0); // 0 = contexto, 1-4 = wizard
   const [saving, setSaving] = useState(false);
@@ -243,7 +245,7 @@ export default function WizardDiagnosticoTecnico({
         <Alert className="bg-orange-50 border-orange-300">
           <AlertCircle className="w-5 h-5 text-orange-600" />
           <AlertDescription className="text-orange-900">
-            <p className="font-semibold mb-2">🔒 Diagnóstico Bloqueado</p>
+            <p className="font-semibold mb-2">🔒 {t('docResidual.locked','Diagnóstico Bloqueado')}</p>
             <p className="text-sm mb-3">
               El diagnóstico debe cobrarse antes de iniciar la revisión técnica.
             </p>
@@ -293,7 +295,7 @@ export default function WizardDiagnosticoTecnico({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Diagnóstico Técnico</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{t('diagnosis.title','Diagnóstico Técnico')}</h2>
           <p className="text-sm text-slate-500">
             Evaluación profesional y recomendaciones técnicas
           </p>
@@ -318,7 +320,7 @@ export default function WizardDiagnosticoTecnico({
           {smartIntake ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Pre-Diagnóstico de Recepción</CardTitle>
+                <CardTitle className="text-lg">{t('docResidual.preDiagnosis','Pre-Diagnóstico de Recepción')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -327,7 +329,7 @@ export default function WizardDiagnosticoTecnico({
                     <p className="font-medium">{smartIntake.mainUse || 'No especificado'}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Equipo crítico:</p>
+                    <p className="text-slate-500">{t('docResidual.criticalEquipment','Equipo crítico:')}</p>
                     <p className="font-medium">{smartIntake.isCriticalEquipment ? 'Sí' : 'No'}</p>
                   </div>
                   <div>
@@ -379,7 +381,7 @@ export default function WizardDiagnosticoTecnico({
       {paso === 1 && (
         <Card>
           <CardHeader>
-            <CardTitle>Alcance Técnico</CardTitle>
+            <CardTitle>{t('docResidual.scope','Alcance Técnico')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
@@ -389,7 +391,7 @@ export default function WizardDiagnosticoTecnico({
                 onValueChange={(value) => setFormData({...formData, tipo_intervencion: value})}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar tipo" />
+                  <SelectValue placeholder={t('otTech.selectType','Seleccionar tipo')} />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(TIPOS_INTERVENCION).map(([key, label]) => (
@@ -503,7 +505,7 @@ export default function WizardDiagnosticoTecnico({
       {paso === 3 && (
         <Card>
           <CardHeader>
-            <CardTitle>Hallazgos Técnicos</CardTitle>
+            <CardTitle>{t('docResidual.technicalFindings','Hallazgos Técnicos')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
@@ -582,7 +584,7 @@ export default function WizardDiagnosticoTecnico({
                 <div key={index} className="flex gap-2 items-start border p-3 rounded-lg">
                   <div className="flex-1 space-y-2">
                     <Input
-                      placeholder="Descripción del repuesto"
+                      placeholder={t('docResidual.partDescription','Descripción del repuesto')}
                       value={repuesto.descripcion}
                       onChange={(e) => actualizarRepuesto(index, 'descripcion', e.target.value)}
                     />

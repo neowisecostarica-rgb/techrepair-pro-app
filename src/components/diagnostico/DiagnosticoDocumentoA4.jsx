@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ export default function DiagnosticoDocumentoA4({
   equipo, 
   tecnico 
 }) {
+  const { t } = useI18n();
   if (!ordenTrabajo || !diagnostico) return null;
 
   const handleGenerarPDF = () => {
@@ -72,7 +74,7 @@ export default function DiagnosticoDocumentoA4({
           <div className="border-b border-slate-200 pb-6 mb-6">
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 mb-2">Diagnóstico Técnico</h1>
+                <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('diagnosis.title','Diagnóstico Técnico')}</h1>
                 <p className="text-slate-600">Evaluación profesional del equipo</p>
               </div>
               <div className="text-right">
@@ -87,7 +89,7 @@ export default function DiagnosticoDocumentoA4({
 
             <div className="grid grid-cols-2 gap-4 mt-6 p-4 bg-slate-50 rounded-lg">
               <div>
-                <p className="text-xs text-slate-500">Cliente</p>
+                <p className="text-xs text-slate-500">{t('diagnosisSummary.customer','Cliente')}</p>
                 <p className="font-semibold text-slate-900">{cliente?.nombre_completo || 'N/A'}</p>
               </div>
               <div>
@@ -95,13 +97,13 @@ export default function DiagnosticoDocumentoA4({
                 <p className="font-medium text-slate-900">{cliente?.telefono || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Equipo</p>
+                <p className="text-xs text-slate-500">{t('diagnosisSummary.equipment','Equipo')}</p>
                 <p className="font-medium text-slate-900">
                   {equipo ? `${equipo.marca} ${equipo.modelo} (${equipo.tipo})` : 'N/A'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Fecha de Diagnóstico</p>
+                <p className="text-xs text-slate-500">{t('publicDocs.date','Fecha de Diagnóstico')}</p>
                 <p className="font-medium text-slate-900">
                   {diagnostico.fecha_completado 
                     ? format(new Date(diagnostico.fecha_completado), 'dd MMM yyyy HH:mm', { locale: es })
@@ -115,7 +117,7 @@ export default function DiagnosticoDocumentoA4({
                 </Badge>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Técnico Responsable</p>
+                <p className="text-xs text-slate-500">{t('saleContext.technician','Técnico Responsable')}</p>
                 <p className="font-medium text-slate-900">{tecnico?.user_email || 'N/A'}</p>
               </div>
             </div>
@@ -174,7 +176,7 @@ export default function DiagnosticoDocumentoA4({
 
                 {diagnostico.hallazgos?.problemas && (
                   <div>
-                    <h4 className="font-semibold text-slate-900 mb-2">Hallazgos Técnicos Detallados</h4>
+                    <h4 className="font-semibold text-slate-900 mb-2">{t('docResidual.findings','Hallazgos Técnicos Detallados')}</h4>
                     <p className="text-slate-700 whitespace-pre-wrap bg-white p-3 rounded border">
                       {diagnostico.hallazgos.problemas}
                     </p>
@@ -196,7 +198,7 @@ export default function DiagnosticoDocumentoA4({
           {/* SECCIÓN CLIENTE (SE IMPRIME) */}
           <div className="seccion-cliente space-y-6">
             <div className="border-l-4 border-emerald-500 pl-4">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Diagnóstico y Recomendación</h2>
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">{t('docResidual.recommendation','Diagnóstico y Recomendación')}</h2>
             </div>
 
             {diagnostico.trabajo_recomendado && (
@@ -282,18 +284,18 @@ export default function DiagnosticoDocumentoA4({
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-2">Técnico Responsable</p>
+                <p className="text-xs text-slate-500 mb-2">{t('saleContext.technician','Técnico Responsable')}</p>
                 <p className="font-medium text-slate-900">{tecnico?.user_email || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-2">Código de Diagnóstico</p>
+                <p className="text-xs text-slate-500 mb-2">{t('docResidual.diagnosisCode','Código de Diagnóstico')}</p>
                 <p className="font-mono text-xs text-slate-700">{diagnostico.id}</p>
               </div>
             </div>
 
             <div className="border-t border-slate-200 pt-6 space-y-4">
               <div>
-                <p className="text-xs text-slate-500 mb-3">Firma del Técnico</p>
+                <p className="text-xs text-slate-500 mb-3">{t('docResidual.signature','Firma del Técnico')}</p>
                 <div className="border-b border-slate-300 w-64 h-16" />
               </div>
             </div>

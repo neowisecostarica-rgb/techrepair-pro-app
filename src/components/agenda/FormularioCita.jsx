@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -34,6 +35,7 @@ export default function FormularioCita({
   onSubmit,
   onCancel
 }) {
+  const { t } = useI18n();
   const esEdicion = !!cita;
 
   const [formData, setFormData] = useState({
@@ -172,7 +174,7 @@ export default function FormularioCita({
           disabled={esEdicion}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Selecciona el tipo" />
+            <SelectValue placeholder={t('docResidual.selectType','Selecciona el tipo')} />
           </SelectTrigger>
           <SelectContent>
             {tiposPermitidos().map((tipo) => (
@@ -187,13 +189,13 @@ export default function FormularioCita({
       {/* Técnico */}
       {effectiveRole !== 'TECHNICIAN' && (
         <div className="space-y-2">
-          <Label>Técnico Asignado *</Label>
+          <Label>{t('agenda.technician','Técnico Asignado *')}</Label>
           <Select
             value={formData.tecnico_asignado_id}
             onValueChange={(value) => setFormData({ ...formData, tecnico_asignado_id: value })}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Selecciona un técnico" />
+              <SelectValue placeholder={t('residual.selectTech','Selecciona un técnico')} />
             </SelectTrigger>
             <SelectContent>
               {tecnicos.map((t) => (
@@ -242,13 +244,13 @@ export default function FormularioCita({
       {/* OT (condicional) - UX FIX APLICADO */}
       {requiereOT && (
         <div className="space-y-2">
-          <Label>Orden de Trabajo asociada *</Label>
+          <Label>{t('residual.agendaWorkOrder','Orden de Trabajo asociada *')}</Label>
           <Select
             value={formData.orden_trabajo_id}
             onValueChange={(value) => setFormData({ ...formData, orden_trabajo_id: value })}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Selecciona la OT correspondiente" />
+              <SelectValue placeholder={t('residual.selectWorkOrder','Selecciona la OT correspondiente')} />
             </SelectTrigger>
             <SelectContent>
               {ordenesTrabajo
@@ -269,13 +271,13 @@ export default function FormularioCita({
       {/* Cliente */}
       {!requiereOT && (
         <div className="space-y-2">
-          <Label>Cliente (opcional)</Label>
+          <Label>{t('agenda.customer','Cliente (opcional)')}</Label>
           <Select
             value={formData.cliente_id}
             onValueChange={(value) => setFormData({ ...formData, cliente_id: value })}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Selecciona un cliente" />
+              <SelectValue placeholder={t('quoteManage.selectCustomer','Selecciona un cliente')} />
             </SelectTrigger>
             <SelectContent>
               {clientes.map((c) => (

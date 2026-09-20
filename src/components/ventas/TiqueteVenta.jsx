@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -11,6 +12,7 @@ import DiagnosticoDocumentoA4 from '@/components/diagnostico/DiagnosticoDocument
 import { generarResumenTrabajo } from './utils/generarResumenTrabajo';
 
 export default function TiqueteVenta({ venta, onClose }) {
+  const { t } = useI18n();
   const [vistaActiva, setVistaActiva] = useState('tiquete'); // 'tiquete' | '80mm' | 'a4'
   const { data: cliente } = useQuery({
     queryKey: ['cliente-tiquete', venta?.cliente_id],
@@ -205,7 +207,7 @@ export default function TiqueteVenta({ venta, onClose }) {
           {organization?.telefono_negocio && (
             <p className="text-sm text-slate-600">📞 {organization.telefono_negocio}</p>
           )}
-          <p className="text-sm text-slate-600 mt-1">Comprobante de Venta</p>
+          <p className="text-sm text-slate-600 mt-1">{t('publicDocs.receipt','Comprobante de Venta')}</p>
         </div>
 
         {/* Info Venta */}
@@ -215,12 +217,12 @@ export default function TiqueteVenta({ venta, onClose }) {
             <p>{format(new Date(venta.created_date), "dd 'de' MMMM, yyyy", { locale: es })}</p>
           </div>
           <div>
-            <p className="font-semibold">Método de Pago:</p>
+            <p className="font-semibold">{t('publicDocs.paymentMethod','Método de Pago')}:</p>
             <p className="capitalize">{venta.metodo_pago}</p>
           </div>
           {ordenTrabajo && (
             <div className="col-span-2">
-              <p className="font-semibold">Orden de Trabajo:</p>
+              <p className="font-semibold">{t('publicDocs.workOrder','Orden de Trabajo')}:</p>
               <p>{ordenTrabajo.codigo_ot}</p>
             </div>
           )}
@@ -229,7 +231,7 @@ export default function TiqueteVenta({ venta, onClose }) {
         {/* Cliente */}
         {cliente && (
           <div className="mb-6 p-3 bg-slate-50 rounded">
-            <p className="font-semibold text-sm mb-1">Cliente:</p>
+            <p className="font-semibold text-sm mb-1">{t('publicDocs.customer','Cliente')}:</p>
             <p className="text-sm">{cliente.nombre_completo}</p>
             <p className="text-sm text-slate-600">{cliente.telefono}</p>
           </div>
@@ -288,7 +290,7 @@ export default function TiqueteVenta({ venta, onClose }) {
           <div className="mb-6 p-4 border-2 border-indigo-200 bg-indigo-50 rounded">
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-bold text-indigo-900">Garantía del Producto</h3>
+              <h3 className="font-bold text-indigo-900">{t('docResidual.productWarranty','Garantía del Producto')}</h3>
             </div>
             
             <div className="space-y-2 text-sm">

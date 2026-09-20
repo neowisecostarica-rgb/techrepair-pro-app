@@ -335,7 +335,7 @@ function InventarioContent() {
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Ubicación</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Precio</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Margen</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Garantía Prov.</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('docResidual.supplierWarrantyShort','Garantía Prov.')}</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">Acciones</th>
                 </tr>
               </thead>
@@ -517,7 +517,7 @@ function InventarioContent() {
                     onValueChange={setSelectedCategoriaId}
                   >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Seleccionar categoría" />
+                      <SelectValue placeholder={t('docResidual.selectCategory','Seleccionar categoría')} />
                     </SelectTrigger>
                     <SelectContent>
                       {categorias.length === 0 && (
@@ -558,7 +558,7 @@ function InventarioContent() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="producto">Producto</SelectItem>
-                    <SelectItem value="servicio_diagnostico">Servicio / Diagnóstico</SelectItem>
+                    <SelectItem value="servicio_diagnostico">{t('docResidual.serviceDiagnosis','Servicio / Diagnóstico')}</SelectItem>
                     <SelectItem value="servicio_estandar">Servicio Estándar</SelectItem>
                   </SelectContent>
                 </Select>
@@ -679,7 +679,7 @@ function InventarioContent() {
 
               {selectedCategoriaId && categorias.find(c => c.id === selectedCategoriaId)?.es_vendible && (
                 <div className="space-y-2">
-                  <Label htmlFor="precio_venta">Precio de Venta (₡) *</Label>
+                  <Label htmlFor="precio_venta">{t('docResidual.salePrice','Precio de Venta (₡) *')}</Label>
                   <Input
                     type="number"
                     id="precio_venta"
@@ -769,7 +769,7 @@ function InventarioContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="proveedor">Proveedor</Label>
+                <Label htmlFor="proveedor">{t('docResidual.supplier','Proveedor')}</Label>
                 <Input
                   id="proveedor"
                   name="proveedor"
@@ -808,7 +808,7 @@ function InventarioContent() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="garantia_proveedor_meses">Garantía del Proveedor (meses)</Label>
+                    <Label htmlFor="garantia_proveedor_meses">{t('docResidual.supplierWarranty','Garantía del Proveedor (meses)')}</Label>
                     <Input
                       type="number"
                       id="garantia_proveedor_meses"
@@ -824,7 +824,7 @@ function InventarioContent() {
 
                   {editingItem?.garantia_proveedor_vence && (
                     <div className="space-y-2">
-                      <Label>Estado de Garantía</Label>
+                      <Label>{t('docResidual.warrantyStatus','Estado de Garantía')}</Label>
                       <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-slate-200">
                         <Badge className={`${
                           new Date(editingItem.garantia_proveedor_vence) >= new Date()

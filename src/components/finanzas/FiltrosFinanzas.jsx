@@ -20,6 +20,7 @@ export default function FiltrosFinanzas({
   mostrarSelectorSucursal = true,
   sucursalFija = null
 }) {
+  const { t } = useI18n();
   const presetsPeriodo = [
     { value: 'mes', label: 'Este Mes' },
     { value: 'mes_anterior', label: 'Mes Anterior' },

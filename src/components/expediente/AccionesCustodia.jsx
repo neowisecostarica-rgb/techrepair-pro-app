@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function AccionesCustodia({ ot, onUpdated }) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 

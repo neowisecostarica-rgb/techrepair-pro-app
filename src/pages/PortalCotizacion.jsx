@@ -16,6 +16,8 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import jsPDF from 'jspdf';
 
 const estadoConfig = {
@@ -53,6 +55,8 @@ const estadoConfig = {
 
 export default function PortalCotizacion() {
   const [token, setToken] = useState('');
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -411,10 +415,7 @@ export default function PortalCotizacion() {
                   Aprobar cotización
                 </Button>
                 <Button
-                  onClick={() => {
-                    const reason = window.prompt('Motivo del rechazo (opcional):') || '';
-                    decisionMutation.mutate({ newStatus: 'CANCELADA', rejectionReason: reason });
-                  }}
+                  onClick={() => setShowRejectDialog(true)}
                   disabled={decisionMutation.isPending}
                   variant="outline"
                   className="border-red-300 text-red-700 hover:bg-red-50"
@@ -426,6 +427,10 @@ export default function PortalCotizacion() {
             </CardContent>
           </Card>
         )}
+
+        <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+          <DialogContent className="max-w-md"><DialogHeader><DialogTitle>Rechazar cotización</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Puedes indicar un motivo para que el taller tenga contexto. Es opcional.</p><Textarea value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Motivo del rechazo (opcional)" /><div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setShowRejectDialog(false)}>Volver</Button><Button variant="destructive" disabled={decisionMutation.isPending} onClick={() => { decisionMutation.mutate({ newStatus: 'CANCELADA', rejectionReason: rejectionReason.trim() }); setShowRejectDialog(false); }}>Confirmar rechazo</Button></div></div></DialogContent>
+        </Dialog>
 
         {cotizacion.estado === 'enviada' && !customerDecisionEnabled && (
           <Alert className="border-blue-200 bg-blue-50">

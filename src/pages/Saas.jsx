@@ -702,6 +702,7 @@ function SaasContent() {
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Facturación</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Licencia</th>
                     <th className="text-left p-3 text-xs font-semibold text-slate-600">Acceso operativo</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Preparación</th>
                     <th className="hidden xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Creada</th>
                     <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Usuarios</th>
                     <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Sucursales</th>
@@ -723,6 +724,15 @@ function SaasContent() {
                     const licenseStatus = entitlement?.license_status || (entitlementSource === 'legacy_compatibility' ? 'active' : 'pending');
                     const renewalAt = entitlement?.renewal_at || entitlement?.current_period_end || null;
                     const partner = partners.find(p => p.id === org.partner_id);
+                    const provisioningReady = org.provisioning_status === 'READY';
+                    const hasPrimaryBranch = stats.branches > 0;
+                    const hasAdmin = allUserAccounts.some(a => a.organization_id === org.id && a.role === 'ORG_ADMIN' && (a.active || a.status === 'active'));
+                    const commercialReady = entitlementSource === 'legacy_compatibility' || Boolean(entitlement?.package_id);
+                    const licenseReady = licenseStatus === 'active';
+                    const operationalReady = org.status === 'active';
+                    const readinessSteps = [provisioningReady, hasPrimaryBranch, hasAdmin, commercialReady, licenseReady, operationalReady];
+                    const readinessCount = readinessSteps.filter(Boolean).length;
+                    const tenantReady = readinessCount === readinessSteps.length;
 
                     return (
                       <tr
@@ -762,6 +772,12 @@ function SaasContent() {
                             : 'bg-red-50 text-red-700 border border-red-200'}>
                             {org.status === 'active' ? 'Activa' : org.status === 'suspended' ? 'Suspendida' : org.status}
                           </Badge>
+                        </td>
+                        <td className="p-3">
+                          <Badge className={tenantReady ? 'bg-teal-50 text-teal-800 border border-teal-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
+                            {tenantReady ? 'Lista' : `${readinessCount}/6`}
+                          </Badge>
+                          {!tenantReady && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? 'Provisioning pendiente' : !hasPrimaryBranch ? 'Falta sucursal' : !hasAdmin ? 'Falta ORG_ADMIN' : !commercialReady ? 'Falta paquete' : !licenseReady ? 'Licencia pendiente' : 'Acceso suspendido'}</p>}
                         </td>
                         <td className="hidden xl:table-cell p-3 text-xs text-slate-600">
                           {new Date(org.created_date).toLocaleDateString('es-ES')}

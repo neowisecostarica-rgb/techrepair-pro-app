@@ -243,7 +243,7 @@ function CRMContent() {
                         </Badge>
                         {lead.converted_to_cliente_id && (
                           <Badge className="bg-green-100 text-green-700 border-0 text-xs">
-                            Cliente
+                            {t('crm.customer', 'Cliente')}
                           </Badge>
                         )}
                       </div>

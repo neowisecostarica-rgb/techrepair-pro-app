@@ -88,7 +88,7 @@ const estadoCitaConfig = {
 };
 
 export default function Agenda() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   return (
     <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'CUSTOMER_SERVICE']}>
       <AgendaContent />
@@ -265,8 +265,8 @@ function AgendaContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">Agenda de Citas</h1>
-          <p className="text-slate-500">Programación de diagnósticos y soportes</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">{t('agenda.title','Agenda de Citas')}</h1>
+          <p className="text-slate-500">{t('agenda.subtitle','Programación de diagnósticos y soportes')}</p>
         </div>
         {/* P0.3 RBAC: Solo ADMIN y TECHNICIAN pueden crear */}
         {['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(effectiveRole) && (
@@ -275,7 +275,7 @@ function AgendaContent() {
             className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Nuevo Evento
+            {t('agenda.newEvent','Nuevo Evento')}
           </Button>
         )}
       </div>
@@ -284,7 +284,7 @@ function AgendaContent() {
       <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
-            <Label>Fecha:</Label>
+            <Label>{t('agenda.date','Fecha:')}</Label>
             <Input
               type="date"
               value={fechaFiltro}
@@ -292,7 +292,7 @@ function AgendaContent() {
               className="w-64"
             />
             <Badge variant="outline" className="ml-auto">
-              {citasFiltradas.length} citas programadas
+              {citasFiltradas.length} {t('agenda.scheduled','citas programadas')}
             </Badge>
           </div>
         </CardContent>
@@ -413,7 +413,7 @@ function AgendaContent() {
               {/* P0.3 RBAC: Admin puede asignar técnico */}
               {['ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole) && (
                 <div className="space-y-2 col-span-2">
-                  <Label htmlFor="tecnico_asignado_id">Técnico Asignado *</Label>
+                  <Label htmlFor="tecnico_asignado_id">{t('agenda.technician','Técnico Asignado *')}</Label>
                   <Select name="tecnico_asignado_id" defaultValue={editingCita?.tecnico_asignado_id} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar técnico" />
@@ -430,7 +430,7 @@ function AgendaContent() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="tipo">Tipo de Evento *</Label>
+                <Label htmlFor="tipo">{t('agenda.eventType','Tipo de Evento *')}</Label>
                 <Select 
                   name="tipo" 
                   defaultValue={editingCita?.tipo} 
@@ -454,7 +454,7 @@ function AgendaContent() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="cliente_id">Cliente (opcional)</Label>
+                <Label htmlFor="cliente_id">{t('agenda.customer','Cliente (opcional)')}</Label>
                 <Select 
                   name="cliente_id" 
                   value={clienteSeleccionado || editingCita?.cliente_id}
@@ -488,7 +488,7 @@ function AgendaContent() {
               />
 
               <div className="space-y-2">
-                <Label htmlFor="estado">Estado</Label>
+                <Label htmlFor="estado">{t('agenda.status','Estado')}</Label>
                 <Select name="estado" defaultValue={editingCita?.estado || 'programada'}>
                   <SelectTrigger>
                     <SelectValue />
@@ -535,7 +535,7 @@ function AgendaContent() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="motivo">Motivo / Descripción</Label>
+                <Label htmlFor="motivo">{t('agenda.reason','Motivo / Descripción')}</Label>
                 <Textarea
                   id="motivo"
                   name="motivo"
@@ -546,7 +546,7 @@ function AgendaContent() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="notas">Notas</Label>
+                <Label htmlFor="notas">{t('agenda.notes','Notas')}</Label>
                 <Textarea
                   id="notas"
                   name="notas"

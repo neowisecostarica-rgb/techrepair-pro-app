@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -41,7 +42,8 @@ import BadgeEstadoPago from '@/components/ot/BadgeEstadoPago';
 import { retomarOrdenTrabajo } from '@/components/ot/retomarOrdenTrabajo';
 import { useToast } from '@/components/ui/use-toast';
 
-export default function MiDiaTech({ user, userAccount, effectiveOrgId, effectiveRole }) {
+export default function MiDiaTech({
+  const { t } = useI18n(); user, userAccount, effectiveOrgId, effectiveRole }) {
   const { toast } = useToast();
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
@@ -384,7 +386,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             <Wrench className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Hoy</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">{t('techDay.today','Hoy')}</h1>
             <p className="text-slate-600">Tu trabajo activo, lo siguiente y lo que está bloqueado.</p>
           </div>
         </div>
@@ -404,7 +406,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-xl font-semibold tracking-tight text-slate-950">Actividad en Curso</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('techDay.currentActivity','Actividad en Curso')}</h2>
           </div>
           <ActividadActiva 
             actividad={actividadActiva} 
@@ -420,7 +422,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
             <Play className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Trabajo Activo</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('techDay.activeWork','Trabajo Activo')}</h2>
           <Badge variant="outline" className="ml-auto border-red-300 text-red-700">1 máximo</Badge>
         </div>
 
@@ -583,7 +585,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
             <Play className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Por Iniciar</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('techDay.toStart','Por Iniciar')}</h2>
           <Badge variant="outline" className="ml-auto border-emerald-300 text-emerald-700 font-semibold">
             {ordenesPorIniciar.length}
           </Badge>
@@ -704,7 +706,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
             <Pause className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Trabajos Pausados</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('techDay.paused','Trabajos Pausados')}</h2>
           <Badge variant="outline" className="ml-auto border-yellow-300 text-yellow-700 font-semibold">
             {ordenesPausadas.length}
           </Badge>
@@ -832,7 +834,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <Clock className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">En Espera</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('techDay.waiting','En Espera')}</h2>
           <Badge variant="outline" className="ml-auto border-blue-300 text-blue-700 font-semibold">
             {ordenesEsperando.length}
           </Badge>
@@ -891,7 +893,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
       {/* Modal Pausar */}
       <Dialog open={Boolean(pendingSwitchOT)} onOpenChange={(open) => { if (!open) setPendingSwitchOT(null); }}>
-        <DialogContent><DialogHeader><DialogTitle>Cambiar de trabajo activo</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Ya tienes una orden activa. TRP pausará el trabajo actual antes de retomar la orden seleccionada.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingSwitchOT(null)}>Cancelar</Button><Button onClick={() => { const ot=pendingSwitchOT; setPendingSwitchOT(null); if (ot) handleRetomar(ot); }}>Pausar y retomar</Button></div></div></DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>{t('techDay.switchTitle','Cambiar de trabajo activo')}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-slate-600">Ya tienes una orden activa. TRP pausará el trabajo actual antes de retomar la orden seleccionada.</p><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setPendingSwitchOT(null)}>Cancelar</Button><Button onClick={() => { const ot=pendingSwitchOT; setPendingSwitchOT(null); if (ot) handleRetomar(ot); }}>Pausar y retomar</Button></div></div></DialogContent>
       </Dialog>
 
       <Dialog open={Boolean(pendingPaymentOT)} onOpenChange={(open) => { if (!open) setPendingPaymentOT(null); }}>
@@ -901,12 +903,12 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       <Dialog open={showPauseModal} onOpenChange={setShowPauseModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Pausar Trabajo</DialogTitle>
+            <DialogTitle>{t('techDay.pauseTitle','Pausar Trabajo')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label>Motivo de la pausa</Label>
+              <Label>{t('techDay.pauseReason','Motivo de la pausa')}</Label>
               <Select value={motivoPausa} onValueChange={setMotivoPausa}>
                 <SelectTrigger>
                   <SelectValue />
@@ -921,7 +923,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             </div>
 
             <div className="space-y-2">
-              <Label>Observaciones (opcional)</Label>
+              <Label>{t('techDay.notes','Observaciones (opcional)')}</Label>
               <Textarea
                 value={observacionesPausa}
                 onChange={(e) => setObservacionesPausa(e.target.value)}

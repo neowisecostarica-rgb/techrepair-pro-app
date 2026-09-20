@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -68,6 +69,7 @@ const CHECKLIST_CATEGORIAS = {
 };
 
 export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete }) {
+  const { t } = useI18n();
   const [currentStep, setCurrentStep] = useState(1);
   const [diagnostico, setDiagnostico] = useState(null);
   const [tipoDiagnostico, setTipoDiagnostico] = useState('completo');
@@ -291,17 +293,17 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-slate-900">
-            Diagnóstico Técnico
+            {t('diagnosis.title','Diagnóstico Técnico')}
           </h2>
           <Badge variant="outline">
-            Paso {currentStep} de {totalSteps}
+            {t('diagnosis.step','Paso')} {currentStep} {t('diagnosis.of','de')} {totalSteps}
           </Badge>
         </div>
         <Progress value={progress} className="h-2" />
         {saving && (
           <p className="text-xs text-slate-500 flex items-center gap-2">
             <Loader2 className="w-3 h-3 animate-spin" />
-            Guardando...
+            {t('diagnosis.saving','Guardando...')}
           </p>
         )}
       </div>
@@ -312,8 +314,8 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Tipo de Diagnóstico</h3>
-              <p className="text-slate-500">Selecciona el tipo de diagnóstico a realizar</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{t('diagnosis.type','Tipo de Diagnóstico')}</h3>
+              <p className="text-slate-500">{t('diagnosis.selectType','Selecciona el tipo de diagnóstico a realizar')}</p>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
@@ -476,7 +478,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Conclusión Técnica *</Label>
+                <Label>{t('diagnosis.technicalConclusion','Conclusión Técnica *')}</Label>
                 <Textarea
                   value={conclusionData.conclusion_tecnica}
                   onChange={(e) => setConclusionData(prev => ({ ...prev, conclusion_tecnica: e.target.value }))}
@@ -487,7 +489,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
               </div>
 
               <div className="space-y-2">
-                <Label>Resumen para el Cliente *</Label>
+                <Label>{t('diagnosis.customerSummary','Resumen para el Cliente *')}</Label>
                 <Textarea
                   value={conclusionData.resumen_cliente}
                   onChange={(e) => setConclusionData(prev => ({ ...prev, resumen_cliente: e.target.value }))}
@@ -498,7 +500,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
               </div>
 
               <div className="space-y-2">
-                <Label>Nivel de Riesgo *</Label>
+                <Label>{t('diagnosis.risk','Nivel de Riesgo *')}</Label>
                 <Select
                   value={conclusionData.nivel_riesgo}
                   onValueChange={(value) => setConclusionData(prev => ({ ...prev, nivel_riesgo: value }))}
@@ -716,7 +718,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         )}
       </div>
     </div>
-      <Dialog open={notaOpen} onOpenChange={setNotaOpen}><DialogContent><DialogHeader><DialogTitle>Agregar nota al diagnóstico</DialogTitle></DialogHeader><div className="space-y-4"><Textarea value={notaTexto} onChange={(e)=>setNotaTexto(e.target.value)} placeholder="Escribe la observación técnica" rows={4} autoFocus /><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setNotaOpen(false)}>Cancelar</Button><Button onClick={confirmarNota} disabled={!notaTexto.trim()}>Agregar nota</Button></div></div></DialogContent></Dialog>
+      <Dialog open={notaOpen} onOpenChange={setNotaOpen}><DialogContent><DialogHeader><DialogTitle>{t('diagnosis.addNote','Agregar nota al diagnóstico')}</DialogTitle></DialogHeader><div className="space-y-4"><Textarea value={notaTexto} onChange={(e)=>setNotaTexto(e.target.value)} placeholder="Escribe la observación técnica" rows={4} autoFocus /><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setNotaOpen(false)}>Cancelar</Button><Button onClick={confirmarNota} disabled={!notaTexto.trim()}>Agregar nota</Button></div></div></DialogContent></Dialog>
     </>
   );
 }

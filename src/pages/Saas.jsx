@@ -12,6 +12,7 @@ import PlatformActivityMetrics from '@/components/superadmin/PlatformActivityMet
 import { useNavigate } from 'react-router-dom';
 import PageGuard from '../components/guards/PageGuard';
 import { useAuthContext } from '../components/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 import {
   adminCreateIdentityOrganization,
   adminUpdateIdentityOrganization,
@@ -119,6 +120,7 @@ export default function Saas() {
 }
 
 function SaasContent() {
+  const { toast } = useToast();
   const [consoleSection, setConsoleSection] = useState(() => typeof window !== 'undefined' ? (window.location.hash.replace('#', '') || 'overview') : 'overview');
   const [user, setUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -209,7 +211,7 @@ function SaasContent() {
 
   const handleSuspenderOrg = async () => {
     if (!selectedOrg || !suspendReason.trim()) {
-      alert('Debes proporcionar un motivo de suspensión');
+      toast({ variant: 'destructive', title: 'Motivo requerido', description: 'Explica por qué se suspende la organización antes de continuar.' });
       return;
     }
 
@@ -224,7 +226,7 @@ function SaasContent() {
       setSelectedOrg(null);
     } catch (error) {
       console.error('Error suspendiendo org:', error);
-      alert('Error al suspender organización');
+      toast({ variant: 'destructive', title: 'No se pudo suspender la organización', description: error?.message || 'Inténtalo nuevamente.' });
     }
   };
 
@@ -241,13 +243,13 @@ function SaasContent() {
 
     } catch (error) {
       console.error('Error reactivando org:', error);
-      alert('Error al reactivar organización');
+      toast({ variant: 'destructive', title: 'No se pudo reactivar la organización', description: error?.message || 'Inténtalo nuevamente.' });
     }
   };
 
   const handleChangePlan = async () => {
     if (!selectedOrg || !newPaquete) {
-      alert('Debes seleccionar un paquete comercial');
+      toast({ variant: 'destructive', title: 'Selecciona un paquete', description: 'Elige el paquete comercial antes de aplicar cambios.' });
       return;
     }
     
@@ -266,7 +268,7 @@ function SaasContent() {
       setSelectedOrg(null);
     } catch (error) {
       console.error('Error cambiando entitlement:', error);
-      alert('Error al cambiar paquete comercial');
+      toast({ variant: 'destructive', title: 'No se pudo cambiar el paquete', description: error?.message || 'Inténtalo nuevamente.' });
     }
   };
 
@@ -279,7 +281,7 @@ function SaasContent() {
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
     } catch (error) {
       console.error('Error activando licencia:', error);
-      alert(error?.message || 'Error al activar licencia');
+      toast({ variant: 'destructive', title: 'No se pudo activar la licencia', description: error?.message || 'Inténtalo nuevamente.' });
     }
   };
 
@@ -338,7 +340,7 @@ function SaasContent() {
       setTimeout(() => setJustCreadaOrgId(null), 5000);
 
       // P0: Feedback visual
-      alert(`✅ Tenant "${newOrg.name}" creado exitosamente`);
+      toast({ title: 'Organización creada', description: `${newOrg.name} quedó disponible en la plataforma.` });
 
       setShowModal(false);
       setCreating(false);
@@ -348,7 +350,7 @@ function SaasContent() {
       isCreatingRef.current = false;
 
       console.error('Error creando tenant:', error);
-      alert(`❌ Error al crear tenant: ${error.message || 'Error desconocido'}`);
+      toast({ variant: 'destructive', title: 'No se pudo crear la organización', description: error.message || 'Ocurrió un error inesperado.' });
       setCreating(false);
     },
   });

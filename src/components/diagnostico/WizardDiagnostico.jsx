@@ -557,7 +557,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                 {precioData.items.map((item, idx) => (
                   <Card key={idx} className="border-0 shadow-md">
                     <CardContent className="p-4">
-                      <div className="grid grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div className="col-span-2">
                           <Label>Descripción</Label>
                           <Input

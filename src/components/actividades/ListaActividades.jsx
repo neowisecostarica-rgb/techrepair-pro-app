@@ -106,7 +106,7 @@ export default function ListaActividades({ ordenTrabajoId }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="grid grid-cols-4 gap-3 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
               <p className="text-lg font-bold text-slate-900">{actividades.length}</p>
               <p className="text-xs text-slate-500 mt-0.5">Total</p>

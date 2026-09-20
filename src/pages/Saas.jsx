@@ -461,11 +461,11 @@ function SaasContent() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">TRP Platform Console</h1>
-            <p className="text-slate-600">Administración multi-tenant, comercial y salud de plataforma</p>
+            <p className="text-slate-600">Administración de organizaciones, operación comercial y estado de plataforma</p>
             {user && (
               <div className="flex items-center gap-2 mt-3">
                 <Badge className="bg-slate-800 text-white border-0">
-                  🔒 SUPER_ADMIN
+                  🔒 Administración de plataforma
                 </Badge>
                 <span className="text-sm text-slate-600 font-mono">{user.email}</span>
               </div>
@@ -509,7 +509,7 @@ function SaasContent() {
       </Card>}
 
       {/* Platform Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <Card className="border border-slate-200 shadow-sm bg-white">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
@@ -792,7 +792,7 @@ function SaasContent() {
                           <Badge className={tenantReady ? 'bg-teal-50 text-teal-800 border border-teal-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
                             {tenantReady ? 'Lista' : `${readinessCount}/6`}
                           </Badge>
-                          {!tenantReady && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? 'Provisioning pendiente' : !hasPrimaryBranch ? 'Falta sucursal' : !hasAdmin ? 'Falta ORG_ADMIN' : !commercialReady ? 'Falta paquete' : !licenseReady ? 'Licencia pendiente' : 'Acceso suspendido'}</p>}
+                          {!tenantReady && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? 'Provisioning pendiente' : !hasPrimaryBranch ? 'Falta sucursal' : !hasAdmin ? 'Falta administrador principal' : !commercialReady ? 'Falta paquete' : !licenseReady ? 'Licencia pendiente' : 'Acceso suspendido'}</p>}
                         </td>
                         <td className="hidden xl:table-cell p-3 text-xs text-slate-600">
                           {new Date(org.created_date).toLocaleDateString('es-ES')}

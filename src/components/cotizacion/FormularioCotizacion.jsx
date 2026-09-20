@@ -280,7 +280,7 @@ export default function FormularioCotizacion({
             <Card key={idx} className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <div className="space-y-3">
-                  <div className="grid grid-cols-6 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
                     <div>
                       <Label className="text-xs">Tipo</Label>
                       <Select
@@ -355,7 +355,7 @@ export default function FormularioCotizacion({
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-6 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
                     <div>
                       <Label className="text-xs">Cant.</Label>
                       <Input

@@ -25,3 +25,12 @@ A screen can leave the remediation block only when it has: explicit status feedb
 
 ## Human QA deferred
 Human validation will happen after autonomous product + website remediation. It must use realistic role journeys rather than page-by-page visual inspection only.
+
+
+## Remediation checkpoint — 2026-09-19
+- Native browser dialogs: CLOSED. Full `src` sweep has zero `alert()`, `confirm()` or `prompt()` usages; high-risk decisions use designed dialogs and contextual feedback.
+- Responsive density pass: improved high-density tabs/KPI grids and quote/diagnostic row grids for mobile/tablet breakpoints.
+- Public website: removed duplicated role-section heading discovered during consistency sweep.
+- Super Admin visible terminology: replaced platform-internal `multi-tenant`, `SUPER_ADMIN` and `ORG_ADMIN` labels with operator-facing language while preserving canonical role identifiers in authorization code.
+- Automated build/lint and role/navigation contracts remain release gates.
+- Human role-journey QA remains deferred until autonomous remediation is complete.

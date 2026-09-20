@@ -976,7 +976,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           </DialogHeader>
           {selectedOT && (
             <Tabs defaultValue="general" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                 <TabsTrigger value="general">General</TabsTrigger>
                 <TabsTrigger value="solicitudes">
                   <Package className="w-4 h-4 mr-2" />

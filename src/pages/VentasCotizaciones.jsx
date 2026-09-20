@@ -21,7 +21,6 @@ import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function VentasCotizaciones() {
-  const { locale, t } = useI18n();
   return (
     <PageGuard allowedRoles={['SALES', 'ORG_ADMIN', 'BRANCH_ADMIN']}>
       <VentasCotizacionesContent />
@@ -30,6 +29,7 @@ export default function VentasCotizaciones() {
 }
 
 function VentasCotizacionesContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, user, userAccount } = useAuthContext();
   const { toast } = useToast();
   const { data: organization } = useQuery({
@@ -166,7 +166,7 @@ function VentasCotizacionesContent() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Cargando cotizaciones...</p>
+          <p className="text-slate-600">{t('quotes.loading','Cargando cotizaciones...')}</p>
         </div>
       </div>
     );
@@ -177,8 +177,8 @@ function VentasCotizacionesContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Cotizaciones</h1>
-          <p className="text-slate-600">Gestión de cotizaciones comerciales</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t('quotes.title','Cotizaciones')}</h1>
+          <p className="text-slate-600">{t('quotes.subtitle','Gestión de cotizaciones comerciales')}</p>
         </div>
         <Button
           onClick={() => {
@@ -205,7 +205,7 @@ function VentasCotizacionesContent() {
             <div className="flex items-center gap-2 flex-1">
               <Search className="w-4 h-4 text-slate-400" />
               <Input
-                placeholder="Buscar por cliente, OT o monto..."
+                placeholder={t('quotes.search','Buscar por cliente, OT o monto...')}
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 className="flex-1"
@@ -216,7 +216,7 @@ function VentasCotizacionesContent() {
               onChange={(e) => setFiltroEstado(e.target.value)}
               className="px-3 py-2 border border-slate-200 rounded-md"
             >
-              <option value="todas">Todos los estados</option>
+              <option value="todas">{t('quotes.allStates','Todos los estados')}</option>
               <option value="borrador">{t('quotes.draft', 'Borrador')}</option>
               <option value="enviada">{t('quotes.sent', 'Enviada')}</option>
               <option value="aprobada">{t('quotes.approved', 'Aprobada')}</option>
@@ -312,7 +312,7 @@ function VentasCotizacionesContent() {
             {cotizacionesFiltradas.length === 0 && (
               <div className="text-center py-12">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500">No se encontraron cotizaciones</p>
+                <p className="text-slate-500">{t('quotes.empty','No se encontraron cotizaciones')}</p>
               </div>
             )}
           </div>
@@ -324,7 +324,7 @@ function VentasCotizacionesContent() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
-              <span>Detalle de Cotización</span>
+              <span>{t('quotes.detail','Detalle de Cotización')}</span>
               {cotizacionSeleccionada && (
                 <Badge className={estadoConfig[cotizacionSeleccionada.estado].color}>
                   {t(estadoConfig[cotizacionSeleccionada.estado].i18nKey, estadoConfig[cotizacionSeleccionada.estado].label)}
@@ -361,7 +361,7 @@ function VentasCotizacionesContent() {
 
               {/* Items */}
               <div>
-                <h4 className="font-semibold text-slate-900 mb-3">Ítems de la Cotización</h4>
+                <h4 className="font-semibold text-slate-900 mb-3">{t('quotes.items','Ítems de la Cotización')}</h4>
                 <div className="space-y-2">
                   {cotizacionSeleccionada.items?.map((item, idx) => (
                     <div key={idx} className="p-3 bg-slate-50 rounded-lg">
@@ -424,7 +424,7 @@ function VentasCotizacionesContent() {
 
               {/* Acciones según estado */}
               <div className="border-t pt-6">
-                <h4 className="font-semibold text-slate-900 mb-4">Acciones Disponibles</h4>
+                <h4 className="font-semibold text-slate-900 mb-4">{t('quotes.actions','Acciones Disponibles')}</h4>
                 <div className="flex flex-wrap gap-3">
                   {cotizacionSeleccionada.estado === 'borrador' && (
                     <>
@@ -537,7 +537,7 @@ function VentasCotizacionesContent() {
       }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{cotizacionEditar ? 'Editar Cotización' : 'Nueva Cotización'}</DialogTitle>
+            <DialogTitle>{cotizacionEditar ? t('quotes.edit','Editar Cotización') : t('quotes.new','Nueva Cotización')}</DialogTitle>
           </DialogHeader>
           
           <FormularioCotizacion

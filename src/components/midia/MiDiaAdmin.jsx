@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -23,6 +24,7 @@ import { createPageUrl } from '../../utils';
 import { Link } from 'react-router-dom';
 
 export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
+  const { t } = useI18n();
   const { data: todasOrdenes = [] } = useQuery({
     queryKey: ['todas-ordenes', effectiveOrgId],
     queryFn: async () => {
@@ -184,8 +186,8 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Hoy</h1>
-            <p className="text-slate-600">Lo que requiere atención y acción ahora.</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">{t('adminDay.today','Hoy')}</h1>
+            <p className="text-slate-600">{t('adminDay.subtitle','Lo que requiere atención y acción ahora.')}</p>
           </div>
         </div>
       </div>
@@ -199,8 +201,8 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
               <Wrench className="w-5 h-5 text-amber-700" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold tracking-tight text-slate-950">Diagnósticos por activar</h2>
-              <p className="text-sm text-slate-500">Cobra la revisión o inicia el trabajo cuando ya esté habilitado.</p>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('adminDay.diagnostics','Diagnósticos por activar')}</h2>
+              <p className="text-sm text-slate-500">{t('adminDay.diagnosticsHelp','Cobra la revisión o inicia el trabajo cuando ya esté habilitado.')}</p>
             </div>
             <Badge variant="outline" className="ml-auto border-amber-300 text-amber-700">
               {otsFlujoDiagnostico.length}
@@ -271,7 +273,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
           <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
             <AlertCircle className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Prioridades del Día</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('adminDay.priorities','Prioridades del Día')}</h2>
         </div>
       <Card className="border-2 border-red-200 bg-red-50/30">
         <CardHeader className="pb-3">
@@ -294,7 +296,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
                         <p className="text-sm text-slate-500">{getClienteName(ot.cliente_id)} - Vencida</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline">Abrir expediente</Button>
+                    <Button size="sm" variant="outline">{t('adminDay.openRecord','Abrir expediente')}</Button>
                   </div>
                 </Link>
               ))}
@@ -305,13 +307,13 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
                     <div className="flex items-center gap-3">
                       <FileText className="w-5 h-5 text-orange-500" />
                       <div>
-                        <p className="font-medium text-slate-900">Cotización pendiente</p>
+                        <p className="font-medium text-slate-900">{t('adminDay.pendingQuote','Cotización pendiente')}</p>
                         <p className="text-sm text-slate-500">
                           Vence: {cot.valida_hasta ? format(new Date(cot.valida_hasta), 'dd/MM/yyyy') : 'N/A'}
                         </p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline">Seguimiento</Button>
+                    <Button size="sm" variant="outline">{t('adminDay.followUp','Seguimiento')}</Button>
                   </div>
                   </Link>
                   ))}
@@ -322,13 +324,13 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
                     <div className="flex items-center gap-3">
                       <AlertCircle className="w-5 h-5 text-amber-500" />
                       <div>
-                        <p className="font-medium text-slate-900">Garantía por vencer</p>
+                        <p className="font-medium text-slate-900">{t('adminDay.warrantyExpiring','Garantía por vencer')}</p>
                         <p className="text-sm text-slate-500">
                           Cliente: {getClienteName(g.cliente_id)} - Vence: {format(new Date(g.fecha_fin), 'dd/MM/yyyy')}
                         </p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline">Ver Garantías</Button>
+                    <Button size="sm" variant="outline">{t('adminDay.viewWarranties','Ver Garantías')}</Button>
                   </div>
                   </Link>
                   ))}
@@ -343,7 +345,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
           <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
             <Wrench className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Taller Hoy</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('adminDay.workshop','Taller Hoy')}</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -410,7 +412,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
           )}
 
           {otsColaRevision.length === 0 && otsCriticas.length === 0 && otsPropias.length === 0 && (
-            <p className="text-sm text-slate-500">No hay OTs pendientes</p>
+            <p className="text-sm text-slate-500">{t('adminDay.noWorkOrders','No hay OTs pendientes')}</p>
           )}
         </CardContent>
       </Card>
@@ -421,7 +423,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
           <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
             <DollarSign className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Ventas Hoy</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('adminDay.sales','Ventas Hoy')}</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -456,7 +458,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
               </Link>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No hay ventas registradas hoy</p>
+            <p className="text-sm text-slate-500">{t('adminDay.noSales','No hay ventas registradas hoy')}</p>
           )}
         </CardContent>
       </Card>
@@ -467,7 +469,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <Calendar className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-950">Agenda Hoy</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('adminDay.agenda','Agenda Hoy')}</h2>
         </div>
       <Card>
         <CardHeader className="pb-3">
@@ -496,7 +498,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
               </Link>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No hay citas programadas hoy</p>
+            <p className="text-sm text-slate-500">{t('adminDay.noAppointments','No hay citas programadas hoy')}</p>
           )}
         </CardContent>
       </Card>

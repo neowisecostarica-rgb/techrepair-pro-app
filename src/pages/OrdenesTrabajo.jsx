@@ -400,8 +400,8 @@ function OrdenesTrabajoContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-2">Órdenes</h1>
-          <p className="text-slate-500">Recibe, encuentra y abre el expediente de cada trabajo.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-2">{t('workOrders.title','Órdenes')}</h1>
+          <p className="text-slate-500">{t('workOrders.subtitle','Recibe, encuentra y abre el expediente de cada trabajo.')}</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -440,7 +440,7 @@ function OrdenesTrabajoContent() {
 
       {/* Tabs de navegación */}
       <TabsList className="mb-2">
-        <TabsTrigger value="todas">Todas las OTs</TabsTrigger>
+        <TabsTrigger value="todas">{t('workOrders.all','Todas las OTs')}</TabsTrigger>
         <TabsTrigger value="pendiente-cliente">
           Pendiente Cliente
           {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length > 0 && (
@@ -457,7 +457,7 @@ function OrdenesTrabajoContent() {
       {isLoadingOrdenes && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-8 h-8 animate-spin text-teal-700 mr-3" />
-          <span className="text-slate-500">Cargando órdenes...</span>
+          <span className="text-slate-500">{t('workOrders.loading','Cargando órdenes...')}</span>
         </div>
       )}
 
@@ -468,7 +468,7 @@ function OrdenesTrabajoContent() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <Input
-                placeholder="Buscar por código OT, motivo u observaciones..."
+                placeholder={t('workOrders.search','Buscar por código OT, motivo u observaciones...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -476,10 +476,10 @@ function OrdenesTrabajoContent() {
             </div>
             <Select value={filtroEstado} onValueChange={setFiltroEstado}>
               <SelectTrigger className="w-full md:w-64">
-                <SelectValue placeholder="Filtrar por estado" />
+                <SelectValue placeholder={t('workOrders.filter','Filtrar por estado')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todas">Todos los estados</SelectItem>
+                <SelectItem value="todas">{t('workOrders.allStates','Todos los estados')}</SelectItem>
                 {Object.entries(estadoConfig).map(([key, value]) => (
                   <SelectItem key={key} value={key}>{t(value.i18nKey, value.label)}</SelectItem>
                 ))}
@@ -566,9 +566,9 @@ function OrdenesTrabajoContent() {
           <Card className="border border-slate-200 shadow-sm">
             <CardContent className="p-12 text-center">
               <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4"><FileText className="w-6 h-6 text-slate-400" /></div>
-              <p className="font-semibold text-slate-800">No hay órdenes para esta vista</p>
-              <p className="text-sm text-slate-500 mt-1">Ajusta los filtros o registra una nueva recepción.</p>
-              <Button size="sm" className="mt-5" onClick={() => setShowNuevaOrden(true)}>Nueva OT</Button>
+              <p className="font-semibold text-slate-800">{t('workOrders.empty','No hay órdenes para esta vista')}</p>
+              <p className="text-sm text-slate-500 mt-1">{t('workOrders.emptyHelp','Ajusta los filtros o registra una nueva recepción.')}</p>
+              <Button size="sm" className="mt-5" onClick={() => setShowNuevaOrden(true)}>{t('workOrders.new','Nueva OT')}</Button>
             </CardContent>
           </Card>
         )}
@@ -581,7 +581,7 @@ function OrdenesTrabajoContent() {
         {isLoadingOrdenes && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-teal-700 mr-3" />
-            <span className="text-slate-500">Cargando órdenes...</span>
+            <span className="text-slate-500">{t('workOrders.loading','Cargando órdenes...')}</span>
           </div>
         )}
         {!isLoadingOrdenes && (
@@ -706,7 +706,7 @@ function OrdenesTrabajoContent() {
 
             {/* Cliente con búsqueda + Quick Create */}
             <div className="space-y-2">
-              <Label>Cliente *</Label>
+              <Label>{t('workOrders.customer','Cliente *')}</Label>
               {!editingOT ? (
                 <ClienteSearchInput
                   clientes={clientes}
@@ -728,7 +728,7 @@ function OrdenesTrabajoContent() {
 
             {/* Equipo con Inline Create */}
             <div className="space-y-3">
-              <Label>Equipo *</Label>
+              <Label>{t('workOrders.equipment','Equipo *')}</Label>
               
               {!showInlineEquipo ? (
                 <div className="flex gap-2">
@@ -895,7 +895,7 @@ function OrdenesTrabajoContent() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="branch_id">Sucursal *</Label>
+                <Label htmlFor="branch_id">{t('workOrders.branch','Sucursal *')}</Label>
                 <Select name="branch_id" defaultValue={editingOT?.branch_id || userAccount?.branch_id} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar sucursal" />
@@ -909,7 +909,7 @@ function OrdenesTrabajoContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prioridad">Prioridad *</Label>
+                <Label htmlFor="prioridad">{t('workOrders.priority','Prioridad *')}</Label>
                 <Select value={selectedPrioridad} onValueChange={setSelectedPrioridad}>
                   <SelectTrigger>
                     <SelectValue />
@@ -924,7 +924,7 @@ function OrdenesTrabajoContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tipo_ingreso">Tipo de Ingreso *</Label>
+                <Label htmlFor="tipo_ingreso">{t('workOrders.entryType','Tipo de Ingreso *')}</Label>
                 <Select name="tipo_ingreso" defaultValue={editingOT?.tipo_ingreso || 'presencial'}>
                   <SelectTrigger>
                     <SelectValue />
@@ -949,7 +949,7 @@ function OrdenesTrabajoContent() {
             </div>
 
             <div className="space-y-2">
-              <Label>Motivo de Ingreso *</Label>
+              <Label>{t('workOrders.reason','Motivo de Ingreso *')}</Label>
               <MotivoIngresoInput
                 value={motivoIngreso}
                 onChange={setMotivoIngreso}
@@ -957,7 +957,7 @@ function OrdenesTrabajoContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="observaciones_ingreso">Observaciones Adicionales</Label>
+              <Label htmlFor="observaciones_ingreso">{t('workOrders.notes','Observaciones Adicionales')}</Label>
               <Textarea
                 id="observaciones_ingreso"
                 name="observaciones_ingreso"

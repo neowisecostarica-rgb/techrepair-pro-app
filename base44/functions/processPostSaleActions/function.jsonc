@@ -1,0 +1,4 @@
+{
+  "name": "processPostSaleActions",
+  "entry": "entry.ts"
+}

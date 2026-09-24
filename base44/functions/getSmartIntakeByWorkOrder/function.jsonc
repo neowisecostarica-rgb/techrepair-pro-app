@@ -1,0 +1,4 @@
+{
+  "name": "getSmartIntakeByWorkOrder",
+  "entry": "entry.ts"
+}

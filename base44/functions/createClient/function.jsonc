@@ -1,0 +1,4 @@
+{
+  "name": "createClient",
+  "entry": "entry.ts"
+}

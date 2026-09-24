@@ -1,0 +1,4 @@
+{
+  "name": "changeWorkOrderStatus",
+  "entry": "entry.ts"
+}

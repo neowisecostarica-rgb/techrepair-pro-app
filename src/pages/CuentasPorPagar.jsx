@@ -45,7 +45,7 @@ function CuentasPorPagarContent() {
   // Queries
   const { data: proveedores = [] } = useQuery({
     queryKey: ['proveedores', effectiveOrgId],
-    queryFn: () => base44.entities.Supplier.filter({ organization_id: effectiveOrgId, active: true }),
+    queryFn: () => base44.entities.Supplier.filter({ organization_id: effectiveOrgId, active: true }, '-created_date', 200),
     enabled: !!effectiveOrgId,
     staleTime: 300000
   });
@@ -56,7 +56,7 @@ function CuentasPorPagarContent() {
       let query = { organization_id: effectiveOrgId };
       if (branchIdFijo) query.branch_id = branchIdFijo;
 
-      const allInvoices = await base44.entities.PurchaseInvoice.filter(query);
+      const allInvoices = await base44.entities.PurchaseInvoice.filter(query, '-created_date', 200);
       return aplicarStatusInvoices(allInvoices).sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
     },
     enabled: !!effectiveOrgId,

@@ -30,7 +30,7 @@ export default function MisVentas() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: () => base44.entities.Cliente.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 

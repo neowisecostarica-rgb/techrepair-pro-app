@@ -33,7 +33,7 @@ function InventarioInvertidoContent() {
       let query = { organization_id: effectiveOrgId };
       if (branchIdFijo) query.branch_id = branchIdFijo;
 
-      return base44.entities.Inventario.filter(query);
+      return base44.entities.Inventario.filter(query, '-created_date', 500);
     },
     enabled: !!effectiveOrgId,
     staleTime: 300000
@@ -53,7 +53,7 @@ function InventarioInvertidoContent() {
   // Query categorías
   const { data: categorias = [] } = useQuery({
     queryKey: ['categorias-inventario', effectiveOrgId],
-    queryFn: () => base44.entities.CategoriaInventario.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.CategoriaInventario.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
     staleTime: 600000
   });

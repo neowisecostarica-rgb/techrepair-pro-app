@@ -27,7 +27,7 @@ function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId, clienteId, onOTCha
     queryKey: ['ordenes-trabajo', effectiveOrgId],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId && requiereOT,
   });
 
@@ -117,7 +117,7 @@ function AgendaContent() {
     queryFn: async () => {
       const todasCitas = await base44.entities.Cita.filter({
         organization_id: effectiveOrgId
-      });
+      }, '-created_date', 200);
 
       // TECHNICIAN: solo su agenda
       if (effectiveRole === 'TECHNICIAN') {

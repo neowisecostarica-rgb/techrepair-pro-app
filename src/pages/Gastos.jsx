@@ -48,7 +48,7 @@ function GastosContent() {
       let query = { organization_id: effectiveOrgId };
       if (branchIdFijo) query.branch_id = branchIdFijo;
 
-      const allGastos = await base44.entities.Expense.filter(query);
+      const allGastos = await base44.entities.Expense.filter(query, '-created_date', 200);
       
       return allGastos.filter(g => {
         const fecha = new Date(g.date);

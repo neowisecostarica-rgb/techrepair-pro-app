@@ -15,7 +15,7 @@ export default function SenalesNegocio({ userAccount }) {
     queryKey: ['ordenes-todas', userAccount?.organization_id],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
       organization_id: userAccount.organization_id
-    }),
+    }, '-created_date', 200),
     enabled: !!userAccount?.organization_id,
   });
 
@@ -23,7 +23,7 @@ export default function SenalesNegocio({ userAccount }) {
     queryKey: ['cotizaciones-todas', userAccount?.organization_id],
     queryFn: () => base44.entities.Cotizacion.filter({
       organization_id: userAccount.organization_id
-    }),
+    }, '-created_date', 200),
     enabled: !!userAccount?.organization_id,
   });
 
@@ -32,7 +32,7 @@ export default function SenalesNegocio({ userAccount }) {
     queryFn: () => base44.entities.SolicitudTecnica.filter({
       organization_id: userAccount.organization_id,
       estado: 'requested'
-    }),
+    }, '-created_date', 200),
     enabled: !!userAccount?.organization_id,
   });
 

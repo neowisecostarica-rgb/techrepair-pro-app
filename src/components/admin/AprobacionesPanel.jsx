@@ -27,7 +27,7 @@ export default function AprobacionesPanel({ userAccount }) {
         organization_id: userAccount.organization_id,
         requiere_aprobacion: true,
         estado: 'borrador'
-      });
+      }, '-created_date', 200);
       return records.filter(cotizacion =>
         !cotizacion.aprobada_por && cotizacion.aprobacion_interna_status !== 'RECHAZADA'
       );

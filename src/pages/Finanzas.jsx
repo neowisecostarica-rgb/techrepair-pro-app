@@ -121,7 +121,7 @@ function FinanzasContent() {
       let query = { organization_id: effectiveOrgId, estado: 'pagada' };
       if (branchIdFijo) query.branch_id = branchIdFijo;
       else if (sucursalId) query.branch_id = sucursalId;
-      const all = await base44.entities.Venta.filter(query);
+      const all = await base44.entities.Venta.filter(query, '-created_date', 500);
       return all.filter(v => {
         const d = new Date(v.created_date);
         const desde = new Date(fechaDesde);
@@ -135,7 +135,7 @@ function FinanzasContent() {
 
   const { data: sucursales = [] } = useQuery({
     queryKey: ['branches-finanzas', effectiveOrgId],
-    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }, '-created_date', 100),
     enabled: !!effectiveOrgId && !isBranchAdmin,
   });
 

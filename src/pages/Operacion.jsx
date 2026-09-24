@@ -80,7 +80,7 @@ function OperacionContent() {
         query.tecnico_asignado_id = tecnicoId;
       }
 
-      const allOTs = await base44.entities.OrdenTrabajo.filter(query);
+      const allOTs = await base44.entities.OrdenTrabajo.filter(query, '-created_date', 500);
 
       return allOTs.filter(ot => {
         const otFecha = new Date(ot.created_date);
@@ -96,7 +96,7 @@ function OperacionContent() {
   // Clientes
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-op', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId
   });
 
@@ -117,7 +117,7 @@ function OperacionContent() {
   // Sucursales
   const { data: sucursales = [] } = useQuery({
     queryKey: ['branches-op', effectiveOrgId],
-    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }, '-created_date', 100),
     enabled: !!effectiveOrgId && !isBranchAdmin
   });
 

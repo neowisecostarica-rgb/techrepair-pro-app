@@ -23,7 +23,7 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
       const all = await base44.entities.Notificacion.filter({
         organization_id: userAccount.organization_id,
         estado: 'pendiente'
-      });
+      }, '-created_date', 200);
       
       // P1.4: Filtrar por usuario o rol + alinear con rol efectivo
       const filtered = all.filter(n => 

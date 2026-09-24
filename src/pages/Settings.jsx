@@ -55,7 +55,7 @@ function SettingsContent() {
 
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', effectiveOrgId],
-    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }, '-created_date', 100),
     enabled: !!effectiveOrgId,
   });
 

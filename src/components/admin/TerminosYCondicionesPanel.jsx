@@ -26,7 +26,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
     queryKey: ['terminos', organizationId],
     queryFn: () => base44.entities.TerminosYCondiciones.filter({
       organization_id: organizationId
-    }),
+    }, '-created_date', 100),
     enabled: !!organizationId,
   });
 

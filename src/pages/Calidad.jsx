@@ -54,8 +54,7 @@ function CalidadContent() {
     queryFn: () => base44.entities.NoConformidad.filter({
       organization_id: effectiveOrgId,
       ...branchFilter
-    }),
-    select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 

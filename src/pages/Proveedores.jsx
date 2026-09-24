@@ -32,7 +32,7 @@ function ProveedoresContent() {
 
   const { data: proveedores = [], isLoading } = useQuery({
     queryKey: ['proveedores', effectiveOrgId],
-    queryFn: () => base44.entities.Supplier.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Supplier.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
     staleTime: 300000
   });

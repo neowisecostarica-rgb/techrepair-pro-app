@@ -21,7 +21,11 @@ import {
   adminActivateIdentityLicense,
   adminSetIdentityCommercialLifecycle,
   getIdentityAdminOverview,
+  startIdentityImpersonation,
 } from '@/api/identity';
+import TenantManageDialog from '@/components/superadmin/TenantManageDialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { LogOut as LogOutIcon, UserCog, MoreHorizontal } from 'lucide-react';
 
 // P1: COUNTRY-CURRENCY MAP (ISO codes normalizados)
 const COUNTRY_CURRENCY_MAP = [
@@ -122,6 +126,8 @@ function SaasContent() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
   const [justCreadaOrgId, setJustCreadaOrgId] = useState(null);
+  const [manageOrg, setManageOrg] = useState(null);
+  const [impersonating, setImpersonating] = useState(false);
 
   // P1: Estado para selects del modal
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -276,6 +282,20 @@ function SaasContent() {
       toast({ variant: 'destructive', title: action.type === 'reactivate' ? 'No se pudo reactivar la organización' : 'No se pudo activar la licencia', description: error?.message || 'La operación no se completó. Inténtalo nuevamente.' });
     } finally {
       setPendingAdminAction(null);
+    }
+  };
+
+  const handleImpersonate = async (organization) => {
+    if (impersonating) return;
+    setImpersonating(true);
+    try {
+      await startIdentityImpersonation(organization.id);
+      toast({ title: 'Entrando al contexto', description: `Operando como ${organization.name}. Usa "Terminar soporte" para salir.` });
+      // Reload so AuthContext re-fetches with impersonated identity
+      setTimeout(() => { window.location.href = '/'; }, 600);
+    } catch (error) {
+      setImpersonating(false);
+      toast({ variant: 'destructive', title: 'No se pudo entrar al contexto', description: error?.message || 'Inténtalo nuevamente.' });
     }
   };
 
@@ -760,56 +780,58 @@ function SaasContent() {
                         <td className="hidden 2xl:table-cell p-3 text-sm text-slate-700">{stats.users}</td>
                         <td className="hidden 2xl:table-cell p-3 text-sm text-slate-700">{stats.branches}</td>
                         <td className="p-3">
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedOrg(org);
-                                setNewPaquete(entitlementsByOrg[org.id]?.package_id || 'core');
-                                setNewBillingInterval(entitlementsByOrg[org.id]?.billing_interval || 'monthly');
-                                setNewBillingStatus(entitlementsByOrg[org.id]?.billing_status || 'active');
-                                setShowChangePlanModal(true);
-                              }}
-                              disabled={authIsImpersonating}
-                              className="text-xs"
+                              onClick={() => handleImpersonate(org)}
+                              disabled={authIsImpersonating || impersonating || org.status !== 'active'}
+                              className="text-xs bg-slate-800 hover:bg-slate-900"
+                              title={org.status !== 'active' ? 'La organización debe estar activa' : 'Entrar al contexto de la organización'}
                             >
-                              Plan y facturación
+                              <UserCog className="w-3.5 h-3.5 mr-1" />
+                              Entrar
                             </Button>
-                            {entitlementSource === 'explicit_policy' && (
-                              <Button size="sm" variant="outline" onClick={() => { setSelectedOrg(org); setNewBillingStatus(billingStatus); setNewLicenseStatus(licenseStatus); setCancelAtPeriodEnd(Boolean(entitlement?.cancel_at_period_end)); setShowLifecycleModal(true); }} disabled={authIsImpersonating} className="text-xs">
-                                Ciclo comercial
-                              </Button>
-                            )}
-                            {licenseStatus !== 'active' && entitlementSource === 'explicit_policy' && (
-                              <Button size="sm" variant="outline" onClick={() => requestActivateLicense(org)} disabled={authIsImpersonating} className="text-xs border-teal-300 text-teal-700 hover:bg-teal-50">
-                                Activar licencia
-                              </Button>
-                            )}
-                            {org.status === 'active' ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="outline" className="text-xs px-2" disabled={authIsImpersonating}>
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setManageOrg(org)}>
+                                  <Building2 className="w-4 h-4 mr-2" />Gestionar tenant
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
                                   setSelectedOrg(org);
-                                  setShowSuspenderModal(true);
-                                }}
-                                disabled={authIsImpersonating}
-                                className="text-xs border-red-300 text-red-600 hover:bg-red-50"
-                              >
-                                Suspender
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => requestReactivarOrg(org)}
-                                disabled={authIsImpersonating}
-                                className="text-xs border-green-300 text-green-600 hover:bg-green-50"
-                              >
-                                Reactivar
-                              </Button>
-                            )}
+                                  setNewPaquete(entitlementsByOrg[org.id]?.package_id || 'core');
+                                  setNewBillingInterval(entitlementsByOrg[org.id]?.billing_interval || 'monthly');
+                                  setNewBillingStatus(entitlementsByOrg[org.id]?.billing_status || 'active');
+                                  setShowChangePlanModal(true);
+                                }}>
+                                  Plan y facturación
+                                </DropdownMenuItem>
+                                {entitlementSource === 'explicit_policy' && (
+                                  <DropdownMenuItem onClick={() => { setSelectedOrg(org); setNewBillingStatus(billingStatus); setNewLicenseStatus(licenseStatus); setCancelAtPeriodEnd(Boolean(entitlement?.cancel_at_period_end)); setShowLifecycleModal(true); }}>
+                                    Ciclo comercial
+                                  </DropdownMenuItem>
+                                )}
+                                {licenseStatus !== 'active' && entitlementSource === 'explicit_policy' && (
+                                  <DropdownMenuItem onClick={() => requestActivateLicense(org)}>
+                                    Activar licencia
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                {org.status === 'active' ? (
+                                  <DropdownMenuItem className="text-red-600" onClick={() => { setSelectedOrg(org); setShowSuspenderModal(true); }}>
+                                    Suspender
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem className="text-green-600" onClick={() => requestReactivarOrg(org)}>
+                                    Reactivar
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </td>
                       </tr>
@@ -1150,6 +1172,8 @@ function SaasContent() {
             </Dialog>
       </div>
       </div>
+
+      <TenantManageDialog organization={manageOrg} onClose={() => setManageOrg(null)} />
     </>
   );
 }

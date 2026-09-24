@@ -31,6 +31,7 @@ export default function CuentasPorPagar() {
 
 function CuentasPorPagarContent() {
   const { t } = useI18n();
+  const { toast } = useToast();
   const { effectiveOrgId, userAccount, effectiveRole, user } = useAuthContext();
   const [showModalFactura, setShowModalFactura] = useState(false);
   const [showModalPago, setShowModalPago] = useState(false);

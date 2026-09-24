@@ -19,6 +19,7 @@ export default function AnalisisTrabajo() {
 }
 
 function AnalisisTrabajoContent() {
+  const { t } = useI18n();
   const [days, setDays] = useState(30);
   const { metrics, raw, isLoading } = useOrgAdminMetrics({ days });
 

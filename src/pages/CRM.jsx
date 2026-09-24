@@ -25,6 +25,7 @@ export default function CRM() {
 }
 
 function CRMContent() {
+  const { t } = useI18n();
   const { toast } = useToast();
   const { effectiveOrgId, effectiveRole, status } = useAuthContext();
   const [showCreateModal, setShowCreateModal] = useState(false);

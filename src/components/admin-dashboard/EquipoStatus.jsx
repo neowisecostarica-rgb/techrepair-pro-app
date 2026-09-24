@@ -1,8 +1,10 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, UserCheck } from 'lucide-react';
 
 export default function EquipoStatus({ metrics }) {
+  const { t } = useI18n();
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader className="border-b border-slate-100">

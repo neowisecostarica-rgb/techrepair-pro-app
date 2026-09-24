@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui/button';
 import { Phone, Mail, MessageCircle, Pencil, Building2, User, CreditCard, Calendar, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
@@ -55,6 +56,7 @@ function BadgeTipo({ tipo }) {
 }
 
 export default function ClientePerfilHeader({ cliente, ordenes = [], onEditarCliente }) {
+  const { t } = useI18n();
   // OT activa más reciente (orden por fecha_ingreso desc)
   const otActiva = ordenes
     .filter(o => ESTADOS_OT_ACTIVA.includes(o.estado))

@@ -1,8 +1,10 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Briefcase, CheckCircle, Zap } from 'lucide-react';
 
 export default function ResumenOperativo({ metrics }) {
+  const { t } = useI18n();
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <Card className="border-0 shadow-lg">

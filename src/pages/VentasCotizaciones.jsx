@@ -29,7 +29,7 @@ export default function VentasCotizaciones() {
 }
 
 function VentasCotizacionesContent() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { effectiveOrgId, user, userAccount } = useAuthContext();
   const { toast } = useToast();
   const { data: organization } = useQuery({

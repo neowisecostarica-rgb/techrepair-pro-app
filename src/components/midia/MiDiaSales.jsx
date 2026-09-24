@@ -1,10 +1,11 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   TrendingUp,
   DollarSign,
   Calendar,
@@ -18,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { crmQueryKeys, invokeCrm } from '@/api/crm';
 
 export default function MiDiaSales({ user, effectiveOrgId }) {
+  const { t } = useI18n();
   const { data: crmData } = useQuery({
     queryKey: crmQueryKeys.list(effectiveOrgId),
     queryFn: () => invokeCrm('list', effectiveOrgId),

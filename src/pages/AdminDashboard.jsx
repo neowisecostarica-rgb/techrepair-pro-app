@@ -21,6 +21,7 @@ export default function AdminDashboard() {
 }
 
 function AdminDashboardContent() {
+  const { t } = useI18n();
   const [days, setDays] = useState(7);
   const { metrics, raw, isLoading, error } = useOrgAdminMetrics({ days });
 

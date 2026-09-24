@@ -20,6 +20,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 // Componente inline para selector de OT (UX FIX + BUG FIX: filtrado por cliente)
 function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId, clienteId, onOTChange }) {
+  const { t } = useI18n();
   const requiereOT = ['diagnostico', 'reparacion', 'entrega'].includes(tipo);
 
   const { data: ordenesTrabajo = [] } = useQuery({
@@ -97,6 +98,7 @@ export default function Agenda() {
 }
 
 function AgendaContent() {
+  const { t, locale } = useI18n();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [editingCita, setEditingCita] = useState(null);

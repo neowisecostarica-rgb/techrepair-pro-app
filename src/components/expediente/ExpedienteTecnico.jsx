@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import ListaActividades from '@/components/actividades/ListaActividades';
 import PanelOperativoDiagnostico from '@/components/expediente/PanelOperativoDiagnostico';
 import AccionesCustodia from '@/components/expediente/AccionesCustodia';
+import RevealDeviceCredential from '@/components/expediente/RevealDeviceCredential';
 
 // ── Bloque colapsable reutilizable ─────────────────────────────────────────
 function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge, children }) {
@@ -112,6 +113,9 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
   return (
     <div className="space-y-3">
+
+      {/* ── Revelación controlada de PIN/contraseña del dispositivo ──────── */}
+      <RevealDeviceCredential ot={ot} effectiveRole={effectiveRole} />
 
       {/* ── Panel Operativo de Diagnóstico — P0.2-C ───────────────────────── */}
       <PanelOperativoDiagnostico

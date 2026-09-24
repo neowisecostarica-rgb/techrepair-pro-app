@@ -1,10 +1,11 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Building2, Users, Wrench, Eye, UserCog, Power } from 'lucide-react';
 
-export default function OrganizationCard({ 
+export default function OrganizationCard({
   organization, 
   stats, 
   planInfo,
@@ -13,6 +14,7 @@ export default function OrganizationCard({
   onImpersonate,
   onToggleStatus 
 }) {
+  const { t } = useI18n();
   return (
     <Card className="border-0 shadow-md hover:shadow-xl transition-all">
       <CardContent className="p-6">

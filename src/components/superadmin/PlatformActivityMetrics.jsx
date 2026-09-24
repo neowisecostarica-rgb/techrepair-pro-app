@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +7,7 @@ import { Activity, Zap, Globe, Users } from 'lucide-react';
 import { getIdentityAdminOverview } from '@/api/identity';
 
 export default function PlatformActivityMetrics({ organizations }) {
+  const { t } = useI18n();
   const { data: allVentas = [], isLoading } = useQuery({
     queryKey: ['super-admin-platform-activity'],
     queryFn: () => base44.entities.Venta.filter({ estado: 'pagada' }),

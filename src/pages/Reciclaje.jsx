@@ -274,6 +274,7 @@ function ReciclajeContent() {
 // COMPONENTE: Formulario de Reciclaje con cálculo automático
 // =====================================================
 function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
+  const { t } = useI18n();
   const [tipoResiduo, setTipoResiduo] = useState(editingItem?.tipo_residuo || '');
   const [pesoKg, setPesoKg] = useState(editingItem?.peso_kg || 0);
   const [accion, setAccion] = useState(editingItem?.accion || 'pendiente');

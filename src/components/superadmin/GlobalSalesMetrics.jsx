@@ -1,10 +1,12 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, DollarSign, ShoppingCart, BarChart2 } from 'lucide-react';
 
 export default function GlobalSalesMetrics({ organizations }) {
+  const { t } = useI18n();
   const { data: allVentas = [], isLoading } = useQuery({
     queryKey: ['super-admin-ventas'],
     queryFn: () => base44.entities.Venta.filter({ estado: 'pagada' }),

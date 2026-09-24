@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useI18n } from '@/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +35,7 @@ function dateKey(value) {
 }
 
 export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branchId = null }) {
+  const { t } = useI18n();
   const hoy = new Date();
   const isBranchAdmin = effectiveRole === 'BRANCH_ADMIN';
   const canonicalBranchId = isBranchAdmin ? branchId : null;

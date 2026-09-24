@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useI18n } from '@/i18n';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getIdentityOrganization, updateIdentityOrganization } from '@/api/identity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 export default function GarantiaPanel({ organizationId }) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [textoVentas, setTextoVentas] = useState('');
   const [textoReparaciones, setTextoReparaciones] = useState('');
   const [mesesVigenciaVentas, setMesesVigenciaVentas] = useState(12);

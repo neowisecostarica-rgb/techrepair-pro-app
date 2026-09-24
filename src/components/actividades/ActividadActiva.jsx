@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useI18n } from '@/i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ export default function ActividadActiva({ actividad, onUpdated }) {
   const [causaBloqueo, setCausaBloqueo] = useState('');
   const queryClient = useQueryClient();
   const { user, effectiveOrgId } = useAuthContext();
+  const { t } = useI18n();
 
   // Actualizar duración visual cada minuto
   useEffect(() => {

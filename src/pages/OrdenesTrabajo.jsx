@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Search, FileText, AlertCircle, CheckCircle2, Loader2, User, ExternalLink } from 'lucide-react';
+import { Plus, Search, FileText, AlertCircle, CheckCircle2, Loader2, User, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserAccount } from '@/components/hooks/useOrgData';
 
@@ -56,6 +56,7 @@ function OrdenesTrabajoContent() {
   const [showQuickCreateCliente, setShowQuickCreateCliente] = useState(false);
   const [showQuickCreateEquipo, setShowQuickCreateEquipo] = useState(false);
   const [showInlineEquipo, setShowInlineEquipo] = useState(false);
+  const [showPinField, setShowPinField] = useState(false);
   const [selectedClienteId, setSelectedClienteId] = useState('');
   const [selectedEquipoId, setSelectedEquipoId] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState('normal');
@@ -857,14 +858,26 @@ function OrdenesTrabajoContent() {
 
                     <div className="space-y-2">
                       <Label className="text-sm">Contraseña / PIN</Label>
-                      <Input
-                        type="text"
-                        value={newEquipoData.contrasena_ingreso}
-                        onChange={(e) => setNewEquipoData({...newEquipoData, contrasena_ingreso: e.target.value})}
-                        placeholder="Si aplica"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          type={showPinField ? "text" : "password"}
+                          value={newEquipoData.contrasena_ingreso}
+                          onChange={(e) => setNewEquipoData({...newEquipoData, contrasena_ingreso: e.target.value})}
+                          placeholder="Si aplica"
+                          autoComplete="off"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowPinField(s => !s)}
+                          className="shrink-0 px-2"
+                        >
+                          {showPinField ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                      </div>
                       <p className="text-xs text-slate-500">
-                        El PIN se muestra sin enmascarar para validación rápida
+                        Dato sensible: solo visible para validación en recepción. Queda protegido y se revela al técnico mediante autorización auditada.
                       </p>
                     </div>
 

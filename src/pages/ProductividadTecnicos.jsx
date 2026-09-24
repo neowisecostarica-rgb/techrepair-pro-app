@@ -17,6 +17,7 @@ export default function ProductividadTecnicos() {
 }
 
 function ProductividadTecnicosContent() {
+  const { t } = useI18n();
   const [days, setDays] = useState(30);
   const { tecnicos, isLoading } = useTecnicoMetrics({ days });
 

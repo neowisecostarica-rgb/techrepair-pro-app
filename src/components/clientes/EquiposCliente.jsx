@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { Laptop, Smartphone, Monitor, Printer, Tablet, HelpCircle } from 'lucide-react';
 
 const TIPO_ICON = {
@@ -31,6 +32,7 @@ function EquipoRow({ equipo }) {
 }
 
 export default function EquiposCliente({ equipos = [], isLoading = false }) {
+  const { t } = useI18n();
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mt-4">
       <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">

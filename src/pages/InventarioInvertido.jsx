@@ -20,6 +20,7 @@ export default function InventarioInvertido() {
 }
 
 function InventarioInvertidoContent() {
+  const { t } = useI18n();
   const { effectiveOrgId, effectiveRole, userAccount } = useAuthContext();
 
   const isBranchRestricted = effectiveRole === 'BRANCH_ADMIN';

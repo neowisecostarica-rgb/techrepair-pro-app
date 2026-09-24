@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { createPageUrl } from '../../utils';
 import { Button } from '@/components/ui/button';
 
 export default function DashboardTechnician({ effectiveOrgId, userId }) {
+  const { t } = useI18n();
   const { data: ordenes = [], isLoading } = useQuery({
     queryKey: ['ordenes', effectiveOrgId, userId],
     queryFn: () => base44.entities.OrdenTrabajo.filter({ 

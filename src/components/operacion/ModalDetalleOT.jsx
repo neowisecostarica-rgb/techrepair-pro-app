@@ -27,6 +27,7 @@
  */
 
 import React, { useState } from 'react';
+import { useI18n } from '@/i18n';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,7 @@ function Dato({ label, children }) {
 }
 
 export default function ModalDetalleOT({ ot, cliente, tecnico, onClose }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   if (!ot) return null;
 

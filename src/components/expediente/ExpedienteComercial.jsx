@@ -10,6 +10,7 @@
  */
 
 import React, { useState } from 'react';
+import { useI18n } from '@/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
@@ -69,6 +70,7 @@ const CONCEPTO_LABELS = {
 };
 
 export default function ExpedienteComercial({ ot, ventas = [], cotizaciones = [], effectiveRole }) {
+  const { t } = useI18n();
   // ── Cargar items de ventas para detallar pagos ────────────────────────────
   const ventasIds = ventas.map(v => v.id);
   const { data: ventaItems = [] } = useQuery({

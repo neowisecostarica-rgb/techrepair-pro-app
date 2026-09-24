@@ -11,6 +11,7 @@
  */
 
 import React, { useState } from 'react';
+import { useI18n } from '@/i18n';
 import { AlertCircle, CheckCircle2, Clock, Wrench, CreditCard, FlaskConical, Package, User, ShieldAlert, Timer, Play, Loader2, Lock, Send, FileText, Archive } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { differenceInHours, differenceInDays } from 'date-fns';
@@ -102,6 +103,7 @@ const DOC_ESTADO_CONFIG = {
 const CANAL_LABEL = { WHATSAPP: 'WhatsApp', EMAIL: 'Correo', MANUAL: 'Manual' };
 
 export default function CentroMando({ ot, effectiveRole }) {
+  const { t } = useI18n();
   const [iniciando, setIniciando] = useState(false);
   const [errorInicio, setErrorInicio] = useState(null);
   const [bloqueoPendiente, setBloqueoPendiente] = useState(null);

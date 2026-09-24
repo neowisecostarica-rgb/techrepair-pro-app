@@ -12,12 +12,12 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function ActividadActiva({ actividad, onUpdated }) {
+  const { t } = useI18n();
   const [duracionVista, setDuracionVista] = useState(0);
   const [showBloqueoModal, setShowBloqueoModal] = useState(false);
   const [causaBloqueo, setCausaBloqueo] = useState('');
   const queryClient = useQueryClient();
   const { user, effectiveOrgId } = useAuthContext();
-  const { t } = useI18n();
 
   // Actualizar duración visual cada minuto
   useEffect(() => {

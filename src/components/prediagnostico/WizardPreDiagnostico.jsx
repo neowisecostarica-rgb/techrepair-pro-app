@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useI18n } from '@/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -184,6 +185,7 @@ function FieldLabel({ children, optional }) {
 // ─── Wizard Principal ─────────────────────────────────────────────────────────
 
 export default function WizardPreDiagnostico({ ordenTrabajo, effectiveOrgId, userId, onClose, onComplete }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);

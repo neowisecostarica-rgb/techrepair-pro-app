@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle2, Building2, ArrowRight } from 'lucide-react';
+import { Loader2, Building2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,12 +13,15 @@ import {
   getIdentityContext,
 } from '@/api/identity';
 import { useToast } from '@/components/ui/use-toast';
+import GuidedOnboardingWizard from '@/components/onboarding/GuidedOnboardingWizard';
 
 export default function Onboarding() {
   const { toast } = useToast();
-  const [mode, setMode] = useState('checking'); // checking | invited | new_company | success
+  const [mode, setMode] = useState('checking'); // checking | invited | new_company | wizard
   const [user, setUser] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [createdOrg, setCreatedOrg] = useState(null);
+  const [effectiveOrgId, setEffectiveOrgId] = useState(null);
   
   // Estados controlados para Selects (P0: hardening)
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -126,19 +129,15 @@ export default function Onboarding() {
         return;
       }
 
-      await bootstrapIdentityOrganization({
+      const result = await bootstrapIdentityOrganization({
         name: companyName,
         country: selectedCountry,
         currency: selectedCurrency,
       });
       isCreatingOrgRef.current = false;
-      setMode('success');
-      // Product SOT: llevar al primer valor, no a configuración exhaustiva.
-      // Cliente y equipo pueden crearse inline desde la recepción de la primera OT.
-      setTimeout(() => {
-        window.location.href = `${createPageUrl('OrdenesTrabajo')}?activation=first_work_order`;
-      }, 1500);
-      
+      setCreatedOrg(result?.organization || null);
+      setEffectiveOrgId(result?.organization?.id || null);
+      setMode('wizard');
     } catch (err) {
       console.error('❌ Error creating company:', err);
       isCreatingOrgRef.current = false;
@@ -174,17 +173,12 @@ export default function Onboarding() {
     );
   }
 
-  if (mode === 'success') {
+  if (mode === 'wizard') {
     return (
-      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-6">
-        <Card className="w-full max-w-md border-0 shadow-2xl">
-          <CardContent className="p-8 text-center">
-            <CheckCircle2 className="w-16 h-16 text-teal-700 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Tu espacio TRP está listo</h2>
-            <p className="text-teal-700 font-medium">Vamos directo a tu primera recepción.</p>
-          </CardContent>
-        </Card>
-      </div>
+      <GuidedOnboardingWizard
+        organization={createdOrg}
+        effectiveOrgId={effectiveOrgId}
+      />
     );
   }
 

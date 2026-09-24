@@ -17,7 +17,7 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
     queryFn: () => base44.entities.ActividadTecnica.filter({
       organization_id: effectiveOrgId,
       soft_deleted: false
-    }),
+    }, '-created_date', 500),
     enabled: !!effectiveOrgId && effectiveRole === 'ORG_ADMIN',
     staleTime: 5 * 60 * 1000 // 5 min
   });
@@ -27,7 +27,7 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
     queryKey: ['ordenes_metrics', effectiveOrgId, branchId],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 500),
     enabled: !!effectiveOrgId && effectiveRole === 'ORG_ADMIN',
     staleTime: 5 * 60 * 1000
   });
@@ -37,7 +37,7 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
     queryKey: ['inventario_metrics', effectiveOrgId, branchId],
     queryFn: () => base44.entities.Inventario.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 500),
     enabled: !!effectiveOrgId && effectiveRole === 'ORG_ADMIN',
     staleTime: 30 * 60 * 1000 // 30 min
   });

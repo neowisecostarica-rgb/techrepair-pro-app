@@ -16,7 +16,7 @@ export function useTecnicoMetrics({ days = 30 }) {
     queryFn: () => base44.entities.ActividadTecnica.filter({
       organization_id: effectiveOrgId,
       soft_deleted: false
-    }),
+    }, '-created_date', 500),
     enabled: !!effectiveOrgId && effectiveRole === 'ORG_ADMIN',
     staleTime: 5 * 60 * 1000
   });

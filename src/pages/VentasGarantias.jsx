@@ -43,26 +43,26 @@ function VentasGarantiasContent() {
     queryFn: () => base44.entities.Garantia.filter({
       organization_id: effectiveOrgId,
       ...branchFilter
-    }),
+    }, '-created_date', 500),
     select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
     enabled: !!effectiveOrgId
   });
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId, ...branchFilter }),
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
     queryKey: ['ot-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId, ...branchFilter }),
+    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 
   const { data: ventas = [] } = useQuery({
     queryKey: ['ventas-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
-    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId, ...branchFilter }),
+    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 

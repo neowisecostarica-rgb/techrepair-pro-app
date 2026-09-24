@@ -16,7 +16,7 @@ export default function DashboardTechnician({ effectiveOrgId, userId }) {
     queryFn: () => base44.entities.OrdenTrabajo.filter({ 
       organization_id: effectiveOrgId,
       tecnico_asignado_id: userId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId && !!userId,
   });
 

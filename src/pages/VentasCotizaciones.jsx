@@ -81,20 +81,20 @@ function VentasCotizacionesContent() {
     queryKey: ['cotizaciones-ventas', effectiveOrgId],
     queryFn: () => base44.entities.Cotizacion.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 500),
     select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
     enabled: !!effectiveOrgId
   });
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-cot', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
     queryKey: ['ot-cot', effectiveOrgId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 

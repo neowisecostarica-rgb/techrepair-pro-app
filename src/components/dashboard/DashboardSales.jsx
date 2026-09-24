@@ -13,19 +13,19 @@ export default function DashboardSales({ effectiveOrgId }) {
   const { t } = useI18n();
   const { data: ventas = [], isLoading: loadingVentas } = useQuery({
     queryKey: ['ventas', effectiveOrgId],
-    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
   const { data: clientes = [], isLoading: loadingClientes } = useQuery({
     queryKey: ['clientes', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
   const { data: garantias = [] } = useQuery({
     queryKey: ['garantias', effectiveOrgId],
-    queryFn: () => base44.entities.Garantia.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Garantia.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 

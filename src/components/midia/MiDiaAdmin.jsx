@@ -92,7 +92,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: () => base44.entities.Cliente.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
@@ -103,13 +103,13 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
   const { data: equipos = [] } = useQuery({
     queryKey: ['equipos', effectiveOrgId],
-    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
   const { data: garantias = [] } = useQuery({
     queryKey: ['garantias-midia', effectiveOrgId],
-    queryFn: () => base44.entities.Garantia.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Garantia.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 

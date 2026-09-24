@@ -70,7 +70,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       organization_id: effectiveOrgId,
       tecnico_asignado_id: user.id,
       estado: { $in: ['ASIGNADA', 'EN_REVISION', 'EN_REPARACION', 'PRUEBAS'] }
-    }),
+    }, '-created_date', 200),
     enabled: !!user?.id && !!effectiveOrgId,
     refetchInterval: 10 * 1000,
     refetchIntervalInBackground: false,
@@ -102,7 +102,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     queryKey: ['diagnosticos', effectiveOrgId],
     queryFn: () => base44.entities.DiagnosticoTecnico.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
@@ -110,13 +110,13 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     queryKey: ['clientes', effectiveOrgId],
     queryFn: () => base44.entities.Cliente.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
   const { data: equipos = [] } = useQuery({
     queryKey: ['equipos', effectiveOrgId],
-    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
@@ -127,7 +127,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       tecnico_id: user.id,
       estado: 'en_progreso',
       soft_deleted: false
-    }),
+    }, '-created_date', 10),
     enabled: !!user?.id && !!effectiveOrgId,
     select: (data) => data[0] || null
   });

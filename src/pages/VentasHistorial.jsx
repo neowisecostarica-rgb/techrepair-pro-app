@@ -45,7 +45,7 @@ function VentasHistorialContent() {
       const allVentas = await base44.entities.Venta.filter({
         organization_id: effectiveOrgId,
         ...branchFilter
-      });
+      }, '-created_date', 500);
       
       // Filtrar por fecha
       return allVentas.filter(v => {
@@ -62,13 +62,13 @@ function VentasHistorialContent() {
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-hist', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId, ...branchFilter }),
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
     queryKey: ['ot-hist', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId, ...branchFilter }),
+    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 

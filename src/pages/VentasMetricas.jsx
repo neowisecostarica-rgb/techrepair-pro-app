@@ -69,7 +69,7 @@ function VentasMetricasContent() {
         query.branch_id = userAccount.branch_id;
       }
 
-      const allVentas = await base44.entities.Venta.filter(query);
+      const allVentas = await base44.entities.Venta.filter(query, '-created_date', 500);
 
       // Filtrar por fecha — solo contar ventas pagadas como "cobradas"
       return allVentas.filter(v => {
@@ -91,7 +91,7 @@ function VentasMetricasContent() {
       if (alcance === 'yo') {
         query.vendedor_id = user?.id;
       }
-      return await base44.entities.Cotizacion.filter(query);
+      return await base44.entities.Cotizacion.filter(query, '-created_date', 500);
     },
     enabled: !!effectiveOrgId
   });
@@ -101,7 +101,7 @@ function VentasMetricasContent() {
     queryFn: () => base44.entities.Garantia.filter({
       organization_id: effectiveOrgId,
       estado: 'ACTIVA'
-    }),
+    }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 

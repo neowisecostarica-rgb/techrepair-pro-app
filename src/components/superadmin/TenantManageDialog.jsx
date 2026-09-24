@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Building2, Users, MapPin, Save, Plus, Power, RotateCcw, UserCog } from 'lucide-react';
+import { Building2, Users, MapPin, Save, Plus, Power, RotateCcw } from 'lucide-react';
 
 const ROLES = [
   { value: 'ORG_ADMIN', label: 'Administrador' },

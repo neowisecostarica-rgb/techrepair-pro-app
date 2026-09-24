@@ -25,7 +25,7 @@ import {
 } from '@/api/identity';
 import TenantManageDialog from '@/components/superadmin/TenantManageDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { LogOut as LogOutIcon, UserCog, MoreHorizontal } from 'lucide-react';
+import { UserCog, MoreHorizontal } from 'lucide-react';
 
 // P1: COUNTRY-CURRENCY MAP (ISO codes normalizados)
 const COUNTRY_CURRENCY_MAP = [

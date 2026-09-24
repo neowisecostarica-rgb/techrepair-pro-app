@@ -98,6 +98,7 @@ export default function Agenda() {
 }
 
 function AgendaContent() {
+  const { t, locale } = useI18n();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [editingCita, setEditingCita] = useState(null);

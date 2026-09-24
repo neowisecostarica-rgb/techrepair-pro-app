@@ -12,8 +12,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function GarantiaPanel({ organizationId }) {
-  const { t } = useI18n();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [textoVentas, setTextoVentas] = useState('');
   const [textoReparaciones, setTextoReparaciones] = useState('');
   const [mesesVigenciaVentas, setMesesVigenciaVentas] = useState(12);

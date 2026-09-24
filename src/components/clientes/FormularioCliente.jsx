@@ -32,8 +32,8 @@ export default function FormularioCliente({
   onCancelar,
   mode = 'full'
 }) {
-  const { t } = useI18n();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [apiError, setApiError] = useState(null);

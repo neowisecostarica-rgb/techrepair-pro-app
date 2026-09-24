@@ -138,7 +138,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const data = await base44.entities.Cliente.filter({ organization_id: effectiveOrgId });
+      const data = await base44.entities.Cliente.filter({ organization_id: effectiveOrgId }, '-created_date', 500);
       return (data || []).map(normalizarCliente);
     },
     enabled: !!effectiveOrgId,
@@ -149,7 +149,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['equipos', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      const data = await base44.entities.Equipo.filter({ organization_id: effectiveOrgId });
+      const data = await base44.entities.Equipo.filter({ organization_id: effectiveOrgId }, '-created_date', 500);
       return (data || []).map(normalizarEquipo);
     },
     enabled: !!effectiveOrgId,
@@ -159,7 +159,7 @@ function OrdenesTrabajoContent() {
   // branches y tecnicos aún desde base44 (no migrados)
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', effectiveOrgId],
-    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
@@ -180,7 +180,7 @@ function OrdenesTrabajoContent() {
     queryFn: () => base44.entities.TerminosYCondiciones.filter({
       organization_id: effectiveOrgId,
       activo: true
-    }),
+    }, '-created_date', 50),
     enabled: !!effectiveOrgId,
   });
 

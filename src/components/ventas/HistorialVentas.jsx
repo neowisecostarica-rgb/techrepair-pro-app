@@ -23,13 +23,13 @@ export default function HistorialVentas() {
     queryKey: ['historial-ventas', effectiveOrgId],
     queryFn: () => base44.entities.Venta.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 500),
     select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
   });
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-hist', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId })
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }, '-created_date', 500)
   });
 
   const getClienteName = (clienteId) => {

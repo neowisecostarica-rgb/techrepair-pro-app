@@ -46,14 +46,17 @@ export default function FormularioCotizacion({
 
   const clienteActual = clienteId || clienteSeleccionadoInterno;
 
+  const organizationId = userAccount?.organization_id;
   const { data: inventario = [] } = useQuery({
-    queryKey: ['inventario-disponible'],
-    queryFn: () => base44.entities.Inventario.filter({ estado: 'activo' }),
+    queryKey: ['inventario-disponible', organizationId],
+    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo' }, '-created_date', 500),
+    enabled: !!organizationId,
   });
 
   const { data: servicios = [] } = useQuery({
-    queryKey: ['servicios-disponibles'],
-    queryFn: () => base44.entities.Servicio.filter({ activo: true }),
+    queryKey: ['servicios-disponibles', organizationId],
+    queryFn: () => base44.entities.Servicio.filter({ organization_id: organizationId, activo: true }, '-created_date', 200),
+    enabled: !!organizationId,
   });
 
   const createCotizacionMutation = useMutation({

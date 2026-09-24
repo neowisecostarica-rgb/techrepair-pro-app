@@ -42,19 +42,19 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['cotizaciones', clienteActual],
-    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteActual }),
+    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteActual }, '-created_date', 200),
     enabled: !!clienteActual,
   });
 
   const { data: inventario = [] } = useQuery({
     queryKey: ['inventario-disponible'],
-    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo' }),
+    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo' }, '-created_date', 500),
     enabled: !!organizationId,
   });
 
   const { data: servicios = [] } = useQuery({
     queryKey: ['servicios-disponibles'],
-    queryFn: () => base44.entities.Servicio.filter({ organization_id: organizationId, activo: true }),
+    queryFn: () => base44.entities.Servicio.filter({ organization_id: organizationId, activo: true }, '-created_date', 200),
     enabled: !!organizationId,
   });
 

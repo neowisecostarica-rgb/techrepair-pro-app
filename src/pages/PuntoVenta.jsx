@@ -113,7 +113,7 @@ function PuntoVentaContent() {
     queryKey: ['inventario', userAccount?.organization_id],
     queryFn: () => base44.entities.Inventario.filter({
       organization_id: userAccount.organization_id
-    }),
+    }, '-created_date', 500),
     enabled: !!userAccount?.organization_id,
   });
 
@@ -144,7 +144,7 @@ function PuntoVentaContent() {
     queryFn: () => base44.entities.Servicio.filter({
       organization_id: userAccount.organization_id,
       activo: true
-    }),
+    }, '-created_date', 200),
     enabled: !!userAccount?.organization_id,
   });
 
@@ -152,7 +152,7 @@ function PuntoVentaContent() {
     queryKey: ['clientes', userAccount?.organization_id],
     queryFn: () => base44.entities.Cliente.filter({
       organization_id: userAccount.organization_id
-    }),
+    }, '-created_date', 500),
     enabled: !!userAccount?.organization_id,
   });
 
@@ -160,7 +160,7 @@ function PuntoVentaContent() {
     queryKey: ['ordenes-trabajo', userAccount?.organization_id],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
       organization_id: userAccount.organization_id
-    }),
+    }, '-created_date', 200),
     enabled: !!userAccount?.organization_id,
   });
 
@@ -168,7 +168,7 @@ function PuntoVentaContent() {
     queryKey: ['equipos-venta', userAccount?.organization_id],
     queryFn: () => base44.entities.Equipo.filter({
       organization_id: userAccount.organization_id
-    }),
+    }, '-created_date', 200),
     enabled: !!userAccount?.organization_id,
   });
 
@@ -176,7 +176,7 @@ function PuntoVentaContent() {
     queryKey: ['diagnosticos-venta', effectiveOrgId],
     queryFn: () => base44.entities.DiagnosticoTecnico.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
@@ -184,7 +184,7 @@ function PuntoVentaContent() {
     queryKey: ['cotizaciones-venta', effectiveOrgId],
     queryFn: () => base44.entities.Cotizacion.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 
@@ -192,7 +192,7 @@ function PuntoVentaContent() {
     queryKey: ['garantias-venta', effectiveOrgId],
     queryFn: () => base44.entities.Garantia.filter({
       organization_id: effectiveOrgId
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 

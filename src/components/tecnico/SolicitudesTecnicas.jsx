@@ -31,7 +31,7 @@ export default function SolicitudesTecnicas({ ordenTrabajoId, userAccount }) {
 
   const { data: inventory = [] } = useQuery({
     queryKey: ['technical-request-inventory', userAccount?.organization_id],
-    queryFn: () => base44.entities.Inventario.filter({ organization_id: userAccount.organization_id, estado: 'activo' }),
+    queryFn: () => base44.entities.Inventario.filter({ organization_id: userAccount.organization_id, estado: 'activo' }, '-created_date', 500),
     enabled: showModal && !!userAccount?.organization_id,
   });
 

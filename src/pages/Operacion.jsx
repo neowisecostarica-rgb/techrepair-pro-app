@@ -131,7 +131,7 @@ function OperacionContent() {
       } else if (sucursalId) {
         query.branch_id = sucursalId;
       }
-      return await base44.entities.Cotizacion.filter(query);
+      return await base44.entities.Cotizacion.filter(query, '-created_date', 500);
     },
     enabled: !!effectiveOrgId
   });
@@ -142,7 +142,7 @@ function OperacionContent() {
     queryFn: () => base44.entities.Garantia.filter({
       organization_id: effectiveOrgId,
       estado: 'ACTIVA'
-    }),
+    }, '-created_date', 500),
     enabled: !!effectiveOrgId
   });
 

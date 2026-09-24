@@ -569,7 +569,7 @@ function OrdenesTrabajoContent() {
               <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4"><FileText className="w-6 h-6 text-slate-400" /></div>
               <p className="font-semibold text-slate-800">{t('workOrders.empty','No hay órdenes para esta vista')}</p>
               <p className="text-sm text-slate-500 mt-1">{t('workOrders.emptyHelp','Ajusta los filtros o registra una nueva recepción.')}</p>
-              <Button size="sm" className="mt-5" onClick={() => setShowNuevaOrden(true)}>{t('workOrders.new','Nueva OT')}</Button>
+              <Button size="sm" className="mt-5" onClick={() => setShowModal(true)}>{t('workOrders.new','Nueva OT')}</Button>
             </CardContent>
           </Card>
         )}

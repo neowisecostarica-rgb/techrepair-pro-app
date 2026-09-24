@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Building2, Users, Wrench, Eye, UserCog, Power } from 'lucide-react';
 
-export default function OrganizationCard({
+export default function OrganizationCard({ 
   organization, 
   stats, 
   planInfo,

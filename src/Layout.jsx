@@ -15,13 +15,19 @@ import {
 import { Button } from '@/components/ui/button';
 import SidebarMenu from '@/components/layout/SidebarMenu';
 import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
+import GlobalSearch from '@/components/search/GlobalSearch';
+import useGlobalSearchShortcut from '@/components/search/useGlobalSearchShortcut';
+import { Search } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { endIdentityImpersonation, getIdentityOrganization } from '@/api/identity';
 
 function LayoutContent({ children, currentPageName }) {
   const { t } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth, identityStatus, multiOrgAccounts, selectOrganization, capabilities, authorizationReady } = useAuthContext();
+
+  useGlobalSearchShortcut(setSearchOpen);
 
   // Query organization (MUST be before any conditional returns)
   const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({
@@ -204,6 +210,18 @@ function LayoutContent({ children, currentPageName }) {
                   <p className="text-xs text-slate-500">Platform Administration</p>
                 </div>
               </div>
+            </div>
+
+            {/* Global search trigger */}
+            <div className="px-4 pb-2">
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 hover:text-white hover:border-slate-600 transition-colors text-sm"
+              >
+                <Search className="w-4 h-4" />
+                <span>Buscar...</span>
+                <kbd className="ml-auto text-[10px] font-medium text-slate-500">⌘K</kbd>
+              </button>
             </div>
 
             <nav className="flex-1 overflow-y-auto p-4">
@@ -431,6 +449,20 @@ function LayoutContent({ children, currentPageName }) {
             </div>
           </div>
 
+          {/* Global search trigger */}
+          <div className="px-4 pb-2">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 hover:text-white hover:border-slate-600 transition-colors text-sm ${
+                sidebarOpen ? '' : 'justify-center'
+              }`}
+            >
+              <Search className="w-4 h-4 flex-shrink-0" />
+              {sidebarOpen && <span>Buscar...</span>}
+              {sidebarOpen && <kbd className="ml-auto text-[10px] font-medium text-slate-500">⌘K</kbd>}
+            </button>
+          </div>
+
           {/* Navigation — declarativa */}
           <nav className="flex-1 overflow-y-auto p-4">
             <SidebarMenu
@@ -487,6 +519,8 @@ function LayoutContent({ children, currentPageName }) {
         </div>
       </main>
     </div>
+
+    <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
   </>
   );
 }

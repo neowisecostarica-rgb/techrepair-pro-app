@@ -16,9 +16,11 @@ export default function TiqueteVenta({ venta, onClose }) {
   const [vistaActiva, setVistaActiva] = useState('tiquete'); // 'tiquete' | '80mm' | 'a4'
   const { data: cliente } = useQuery({
     queryKey: ['cliente-tiquete', venta?.cliente_id],
-    queryFn: () => base44.entities.Cliente.list(),
+    queryFn: async () => {
+      const clientes = await base44.entities.Cliente.filter({ id: venta.cliente_id });
+      return clientes[0];
+    },
     enabled: !!venta?.cliente_id,
-    select: (data) => data.find(c => c.id === venta.cliente_id),
   });
 
   const { data: items = [] } = useQuery({

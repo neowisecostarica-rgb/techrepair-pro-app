@@ -28,17 +28,17 @@ function ActivosContent() {
 
   const { data: equipos = [], isLoading } = useQuery({
     queryKey: ['asset-lifecycle-equipos', effectiveOrgId],
-    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Equipo.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
   const { data: clientes = [] } = useQuery({
     queryKey: ['asset-lifecycle-clientes', effectiveOrgId],
-    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
   const { data: ordenes = [] } = useQuery({
     queryKey: ['asset-lifecycle-ordenes', effectiveOrgId],
-    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }),
+    queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({

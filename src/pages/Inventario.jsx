@@ -59,7 +59,7 @@ function InventarioContent() {
     queryFn: () => base44.entities.Inventario.filter({
       organization_id: userAccount.organization_id,
       ...(!isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {})
-    }),
+    }, '-created_date', 200),
     enabled: !!userAccount?.organization_id,
   });
 
@@ -69,7 +69,7 @@ function InventarioContent() {
     queryFn: () => base44.entities.CategoriaInventario.filter({
       organization_id: effectiveOrgId,
       activo: true
-    }),
+    }, '-created_date', 200),
     enabled: !!effectiveOrgId,
   });
 

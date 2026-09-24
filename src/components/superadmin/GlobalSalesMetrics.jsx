@@ -9,7 +9,7 @@ export default function GlobalSalesMetrics({ organizations }) {
   const { t } = useI18n();
   const { data: allVentas = [], isLoading } = useQuery({
     queryKey: ['super-admin-ventas'],
-    queryFn: () => base44.entities.Venta.filter({ estado: 'pagada' }),
+    queryFn: () => base44.entities.Venta.filter({ estado: 'pagada' }, '-created_date', 500),
     enabled: organizations?.length > 0,
     staleTime: 60000,
   });

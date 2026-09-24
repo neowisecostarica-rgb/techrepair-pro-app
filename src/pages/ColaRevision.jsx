@@ -73,7 +73,7 @@ function ColaRevisionContent() {
     queryKey: ['clientes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      return base44.entities.Cliente.filter({ organization_id: effectiveOrgId });
+      return base44.entities.Cliente.filter({ organization_id: effectiveOrgId }, '-created_date', 200);
     },
     enabled: !!effectiveOrgId,
     staleTime: 2 * 60 * 1000,
@@ -83,7 +83,7 @@ function ColaRevisionContent() {
     queryKey: ['equipos', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      return base44.entities.Equipo.filter({ organization_id: effectiveOrgId });
+      return base44.entities.Equipo.filter({ organization_id: effectiveOrgId }, '-created_date', 200);
     },
     enabled: !!effectiveOrgId,
     staleTime: 2 * 60 * 1000,

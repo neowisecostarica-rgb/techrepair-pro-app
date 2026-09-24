@@ -29,8 +29,8 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
   const { data: cliente } = useQuery({
     queryKey: ['cliente-contexto', ordenTrabajo?.cliente_id],
     queryFn: async () => {
-      const clientes = await base44.entities.Cliente.list();
-      return clientes.find(c => c.id === ordenTrabajo.cliente_id);
+      const clientes = await base44.entities.Cliente.filter({ id: ordenTrabajo.cliente_id });
+      return clientes[0];
     },
     enabled: !!ordenTrabajo?.cliente_id,
   });
@@ -38,8 +38,8 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
   const { data: equipo } = useQuery({
     queryKey: ['equipo-contexto', ordenTrabajo?.equipo_id],
     queryFn: async () => {
-      const equipos = await base44.entities.Equipo.list();
-      return equipos.find(e => e.id === ordenTrabajo.equipo_id);
+      const equipos = await base44.entities.Equipo.filter({ id: ordenTrabajo.equipo_id });
+      return equipos[0];
     },
     enabled: !!ordenTrabajo?.equipo_id,
   });
@@ -83,8 +83,8 @@ export default function PanelContextoVenta({ ordenTrabajo, effectiveOrgId }) {
   const { data: branch } = useQuery({
     queryKey: ['branch-contexto', ordenTrabajo?.branch_id],
     queryFn: async () => {
-      const branches = await base44.entities.Branch.list();
-      return branches.find(b => b.id === ordenTrabajo.branch_id);
+      const branches = await base44.entities.Branch.filter({ id: ordenTrabajo.branch_id });
+      return branches[0];
     },
     enabled: !!ordenTrabajo?.branch_id,
   });

@@ -48,7 +48,7 @@ function ClientesContent() {
       return base44.entities.Cliente.filter({
         organization_id: effectiveOrgId,
         ...(!isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {})
-      });
+      }, '-created_date', 200);
     },
     enabled: !!effectiveOrgId,
   });

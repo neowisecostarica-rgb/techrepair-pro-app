@@ -218,8 +218,8 @@ function OrdenesTrabajoContent() {
       setGuardandoOT(false);
       receptionSubmitInFlightRef.current = false;
       toast({
-        title: result?.idempotent ? 'Recepción recuperada' : 'Orden de trabajo creada',
-        description: 'La recepción del equipo fue registrada correctamente.',
+        title: result?.idempotent ? t('workOrders.receptionRecovered','Recepción recuperada') : t('workOrders.receptionCreated','Orden de trabajo creada'),
+        description: t('workOrders.receptionRegistered','La recepción del equipo fue registrada correctamente.'),
       });
       // Time-to-Value: después de la primera recepción, llevar al usuario al
       // expediente recién creado para que vea inmediatamente el valor de TRP.
@@ -237,14 +237,14 @@ function OrdenesTrabajoContent() {
       setGuardandoOT(false);
       receptionSubmitInFlightRef.current = false;
       const payload = error?.data || error?.response?.data || {};
-      const msg = payload.message || error?.message || 'No se pudo registrar la recepción.';
+      const msg = payload.message || error?.message || t('workOrders.receptionError','No se pudo registrar la recepción.');
       const structuredError = {
         message: msg,
         code: payload.code || error?.code || 'RECEPTION_UNKNOWN_ERROR',
         correlationId: payload.correlation_id || receptionCorrelationRef.current,
       };
       setReceptionError(structuredError);
-      toast({ variant: 'destructive', title: 'Error al crear la orden', description: msg });
+      toast({ variant: 'destructive', title: t('workOrders.createError','Error al crear la orden'), description: msg });
     },
   });
 
@@ -293,11 +293,11 @@ function OrdenesTrabajoContent() {
       queryClient.invalidateQueries({ queryKey: ['ordenes', effectiveOrgId] });
       setShowModal(false);
       setEditingOT(null);
-      toast({ title: '✅ Orden de trabajo actualizada correctamente' });
+      toast({ title: t('workOrders.updatedOk','✅ Orden de trabajo actualizada correctamente') });
     },
     onError: (error) => {
       console.error('Error actualizando OT:', error);
-      toast({ variant: 'destructive', title: 'Error al actualizar la orden', description: error.message });
+      toast({ variant: 'destructive', title: t('workOrders.updateError','Error al actualizar la orden'), description: error.message });
     },
   });
 
@@ -306,7 +306,7 @@ function OrdenesTrabajoContent() {
     
     // Validar términos configurados
     if (!editingOT && !terminosActivos) {
-      toast({ variant: 'destructive', title: 'No se pueden crear órdenes sin términos configurados' });
+      toast({ variant: 'destructive', title: t('workOrders.noTermsConfigured','No se pueden crear órdenes sin términos configurados') });
       return;
     }
 
@@ -353,7 +353,7 @@ function OrdenesTrabajoContent() {
 
     if (editingOT) {
       if (!motivoIngreso.trim()) {
-        toast({ variant: 'destructive', title: 'El motivo de ingreso es obligatorio' });
+        toast({ variant: 'destructive', title: t('workOrders.receptionReasonRequired','El motivo de ingreso es obligatorio') });
         return;
       }
       data.motivo_ingreso = motivoIngreso.trim();
@@ -380,20 +380,20 @@ function OrdenesTrabajoContent() {
 
   // P0.2-A: helper para mostrar nombre del técnico asignado desde workforce oficial
   const getTecnicoName = (tecnicoId) => {
-    if (!tecnicoId) return 'Sin asignar';
+    if (!tecnicoId) return t('workOrders.unassigned','Sin asignar');
     const tec = tecnicos.find(t => t.user_id === tecnicoId);
-    return tec ? (tec.user_email?.split('@')[0] || tec.user_email) : 'Técnico no encontrado';
+    return tec ? (tec.user_email?.split('@')[0] || tec.user_email) : t('workOrders.techNotFound','Técnico no encontrado');
   };
 
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nombre_completo || cliente?.full_name || cliente?.name || 'Cliente sin identificar';
+    return cliente?.nombre_completo || cliente?.full_name || cliente?.name || t('workOrders.unidentifiedClient','Cliente sin identificar');
   };
 
   const getEquipoInfo = (equipoId) => {
     const equipo = equipos.find(e => e.id === equipoId);
-    if (!equipo) return 'Equipo desconocido';
-    return `${equipo.marca || equipo.brand || ''} ${equipo.modelo || equipo.model || ''}`.trim() || 'Equipo sin identificar';
+    if (!equipo) return t('workOrders.unknownEquipment','Equipo desconocido');
+    return `${equipo.marca || equipo.brand || ''} ${equipo.modelo || equipo.model || ''}`.trim() || t('workOrders.unidentifiedEquipment','Equipo sin identificar');
   };
 
   return (
@@ -410,14 +410,14 @@ function OrdenesTrabajoContent() {
             onClick={() => setVistaActiva('lista')}
             size="sm"
           >
-            Lista
+            {t('workOrders.list','Lista')}
           </Button>
           <Button
             variant={vistaActiva === 'kanban' ? 'default' : 'outline'}
             onClick={() => setVistaActiva('kanban')}
             size="sm"
           >
-            Kanban
+            {t('workOrders.kanban','Kanban')}
           </Button>
           {effectiveRole !== 'TECHNICIAN' && (
             <Button
@@ -425,7 +425,7 @@ function OrdenesTrabajoContent() {
               className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
             >
               <Plus className="w-5 h-5 mr-2" />
-              Nueva OT
+              {t('workOrders.new','Nueva OT')}
             </Button>
           )}
         </div>
@@ -443,7 +443,7 @@ function OrdenesTrabajoContent() {
       <TabsList className="mb-2">
         <TabsTrigger value="todas">{t('workOrders.all','Todas las OTs')}</TabsTrigger>
         <TabsTrigger value="pendiente-cliente">
-          Pendiente Cliente
+          {t('workOrders.pendingClient','Pendiente Cliente')}
           {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length > 0 && (
             <span className="ml-2 bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
               {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length}
@@ -520,7 +520,7 @@ function OrdenesTrabajoContent() {
                           {getEquipoInfo(orden.equipo_id)}
                         </p>
                         <p className="text-xs text-slate-400">
-                          Ingreso: {formatDateTime(orden.fecha_ingreso || orden.created_date, locale)}
+                          {t('workOrders.intakeLabel','Ingreso')}: {formatDateTime(orden.fecha_ingreso || orden.created_date, locale)}
                         </p>
                       </div>
                     </div>
@@ -554,7 +554,7 @@ function OrdenesTrabajoContent() {
                       onClick={(e) => { e.stopPropagation(); navigate(`/expediente/${orden.id}`); }}
                     >
                       <ExternalLink className="w-3 h-3 mr-1" />
-                      Abrir expediente
+                      {t('workOrders.openRecord','Abrir expediente')}
                     </Button>
                   </div>
                 </div>
@@ -590,7 +590,7 @@ function OrdenesTrabajoContent() {
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-2 text-amber-800 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>
-                Estas órdenes tienen diagnóstico técnico completo y están esperando decisión del cliente (aprobación o rechazo).
+                {t('workOrders.pendingClientHelp','Estas órdenes tienen diagnóstico técnico completo y están esperando decisión del cliente (aprobación o rechazo).')}
               </span>
             </div>
 
@@ -658,7 +658,7 @@ function OrdenesTrabajoContent() {
               <Card className="border border-slate-200 shadow-sm">
                 <CardContent className="p-12 text-center">
                   <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-emerald-300" />
-                  <p className="text-slate-400">No hay órdenes esperando decisión del cliente</p>
+                  <p className="text-slate-400">{t('workOrders.noPendingClient','No hay órdenes esperando decisión del cliente')}</p>
                 </CardContent>
               </Card>
             )}
@@ -680,7 +680,7 @@ function OrdenesTrabajoContent() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              {editingOT ? 'Editar recepción' : 'Nueva recepción'}
+              {editingOT ? t('workOrders.editReception','Editar recepción') : t('workOrders.newReception','Nueva recepción')}
             </DialogTitle>
           </DialogHeader>
 
@@ -701,7 +701,7 @@ function OrdenesTrabajoContent() {
               <AlertCircle className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
                 <strong>{t('tail.equipmentIntake','Recepción de Equipo')}:</strong> {t('tail.intakeHelp','Esta orden registra la recepción del equipo para diagnóstico.') }
-                La aprobación del trabajo se solicitará al cliente después del diagnóstico.
+                {t('workOrders.approvalAfterDiagnosis','La aprobación del trabajo se solicitará al cliente después del diagnóstico.')}
               </AlertDescription>
             </Alert>
 
@@ -739,7 +739,7 @@ function OrdenesTrabajoContent() {
                     disabled={!selectedClienteId || !!editingOT}
                   >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder={selectedClienteId ? "Seleccionar equipo existente" : "Primero selecciona un cliente"} />
+                      <SelectValue placeholder={selectedClienteId ? t('workOrders.selectExistingEquipment','Seleccionar equipo existente') : t('workOrders.selectClientFirst','Primero selecciona un cliente')} />
                     </SelectTrigger>
                     <SelectContent>
                       {equiposDelCliente.map(e => (
@@ -761,7 +761,7 @@ function OrdenesTrabajoContent() {
                       className="shrink-0"
                     >
                       <Plus className="w-4 h-4 mr-1" />
-                      Nuevo Equipo
+                      {t('workOrders.newEquipment','Nuevo Equipo')}
                     </Button>
                   )}
                 </div>
@@ -786,60 +786,60 @@ function OrdenesTrabajoContent() {
                         });
                       }}
                     >
-                      Cancelar
+                      {t('workOrders.cancel','Cancelar')}
                     </Button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label className="text-sm">Tipo *</Label>
+                      <Label className="text-sm">{t('workOrders.equipmentType','Tipo *')}</Label>
                       <Select 
                         value={newEquipoData.tipo} 
                         onValueChange={(value) => setNewEquipoData({...newEquipoData, tipo: value})}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Tipo" />
+                          <SelectValue placeholder={t('workOrders.equipmentTypePlaceholder','Tipo')} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="laptop">Laptop</SelectItem>
                           <SelectItem value="desktop">Desktop</SelectItem>
                           <SelectItem value="tablet">Tablet</SelectItem>
                           <SelectItem value="smartphone">Smartphone</SelectItem>
-                          <SelectItem value="impresora">Impresora</SelectItem>
-                          <SelectItem value="otro">Otro</SelectItem>
+                          <SelectItem value="impresora">{t('otTech.printer','Impresora')}</SelectItem>
+                          <SelectItem value="otro">{t('otTech.other','Otro')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm">Marca *</Label>
+                      <Label className="text-sm">{t('workOrders.brand','Marca *')}</Label>
                       <Input
                         value={newEquipoData.marca}
                         onChange={(e) => setNewEquipoData({...newEquipoData, marca: e.target.value})}
-                        placeholder="Ej: Dell, HP"
+                        placeholder={t('workOrders.brandPlaceholder','Ej: Dell, HP')}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm">Modelo</Label>
+                      <Label className="text-sm">{t('workOrders.model','Modelo')}</Label>
                       <Input
                         value={newEquipoData.modelo}
                         onChange={(e) => setNewEquipoData({...newEquipoData, modelo: e.target.value})}
-                        placeholder="Opcional"
+                        placeholder={t('workOrders.optional','Opcional')}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm">Serie / IMEI</Label>
+                      <Label className="text-sm">{t('workOrders.serialIMEI','Serie / IMEI')}</Label>
                       <Input
                         value={newEquipoData.serie_ingreso}
                         onChange={(e) => setNewEquipoData({...newEquipoData, serie_ingreso: e.target.value})}
-                        placeholder="Número de serie"
+                        placeholder={t('workOrders.serialPlaceholder','Número de serie')}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm">Estado Físico</Label>
+                      <Label className="text-sm">{t('workOrders.physicalCondition','Estado Físico')}</Label>
                       <Select 
                         value={newEquipoData.estado_fisico_ingreso} 
                         onValueChange={(value) => setNewEquipoData({...newEquipoData, estado_fisico_ingreso: value})}
@@ -848,22 +848,22 @@ function OrdenesTrabajoContent() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="excelente">Excelente</SelectItem>
-                          <SelectItem value="bueno">Bueno</SelectItem>
-                          <SelectItem value="regular">Regular</SelectItem>
-                          <SelectItem value="malo">Malo</SelectItem>
+                          <SelectItem value="excelente">{t('workOrders.conditionExcellent','Excelente')}</SelectItem>
+                          <SelectItem value="bueno">{t('workOrders.conditionGood','Bueno')}</SelectItem>
+                          <SelectItem value="regular">{t('workOrders.conditionRegular','Regular')}</SelectItem>
+                          <SelectItem value="malo">{t('workOrders.conditionBad','Malo')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm">Contraseña / PIN</Label>
+                      <Label className="text-sm">{t('workOrders.passwordPIN','Contraseña / PIN')}</Label>
                       <div className="flex gap-2">
                         <Input
                           type={showPinField ? "text" : "password"}
                           value={newEquipoData.contrasena_ingreso}
                           onChange={(e) => setNewEquipoData({...newEquipoData, contrasena_ingreso: e.target.value})}
-                          placeholder="Si aplica"
+                          placeholder={t('workOrders.passwordPlaceholder','Si aplica')}
                           autoComplete="off"
                         />
                         <Button
@@ -877,7 +877,7 @@ function OrdenesTrabajoContent() {
                         </Button>
                       </div>
                       <p className="text-xs text-slate-500">
-                        Dato sensible: solo visible para validación en recepción. Queda protegido y se revela al técnico mediante autorización auditada.
+                        {t('workOrders.passwordHelp','Dato sensible: solo visible para validación en recepción. Queda protegido y se revela al técnico mediante autorización auditada.')}
                       </p>
                     </div>
 
@@ -886,7 +886,7 @@ function OrdenesTrabajoContent() {
                       <Textarea
                         value={newEquipoData.accesorios_ingreso}
                         onChange={(e) => setNewEquipoData({...newEquipoData, accesorios_ingreso: e.target.value})}
-                        placeholder="Ej: Cargador, funda, audífonos"
+                        placeholder={t('workOrders.accessoriesPlaceholder','Ej: Cargador, funda, audífonos')}
                         rows={2}
                       />
                     </div>
@@ -896,12 +896,12 @@ function OrdenesTrabajoContent() {
               
               {!selectedClienteId && (
                 <p className="text-xs text-slate-500">
-                  Debes seleccionar un cliente primero
+                  {t('workOrders.selectClientFirstHelp','Debes seleccionar un cliente primero')}
                 </p>
               )}
               {editingOT && (
                 <p className="text-xs text-slate-500">
-                  Equipo no editable para mantener integridad de datos
+                  {t('workOrders.equipmentLocked','Equipo no editable para mantener integridad de datos')}
                 </p>
               )}
             </div>
@@ -928,10 +928,10 @@ function OrdenesTrabajoContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Baja (+7 días)</SelectItem>
-                    <SelectItem value="normal">Normal (+3 días)</SelectItem>
-                    <SelectItem value="high">Alta (+1 día)</SelectItem>
-                    <SelectItem value="urgente">Urgente (hoy)</SelectItem>
+                    <SelectItem value="low">{t('workOrders.priorityLow','Baja (+7 días)')}</SelectItem>
+                    <SelectItem value="normal">{t('workOrders.priorityNormal','Normal (+3 días)')}</SelectItem>
+                    <SelectItem value="high">{t('workOrders.priorityHigh','Alta (+1 día)')}</SelectItem>
+                    <SelectItem value="urgente">{t('workOrders.priorityUrgent','Urgente (hoy)')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -943,20 +943,20 @@ function OrdenesTrabajoContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="presencial">Presencial</SelectItem>
-                    <SelectItem value="mensajeria">Mensajería</SelectItem>
-                    <SelectItem value="retiro">Retiro</SelectItem>
+                    <SelectItem value="presencial">{t('workOrders.entryPresencial','Presencial')}</SelectItem>
+                    <SelectItem value="mensajeria">{t('workOrders.entryMensajeria','Mensajería')}</SelectItem>
+                    <SelectItem value="retiro">{t('workOrders.entryRetiro','Retiro')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tracking_code">Código de Seguimiento</Label>
+                <Label htmlFor="tracking_code">{t('workOrders.trackingCode','Código de Seguimiento')}</Label>
                 <Input
                   id="tracking_code"
                   name="tracking_code"
                   defaultValue={editingOT?.tracking_code}
-                  placeholder="Opcional (para mensajería)"
+                  placeholder={t('workOrders.trackingPlaceholder','Opcional (para mensajería)')}
                 />
               </div>
             </div>
@@ -975,21 +975,21 @@ function OrdenesTrabajoContent() {
                 id="observaciones_ingreso"
                 name="observaciones_ingreso"
                 defaultValue={editingOT?.observaciones_ingreso}
-                placeholder="Observaciones adicionales, estado del equipo, etc..."
+                placeholder={t('workOrders.notesPlaceholder','Observaciones adicionales, estado del equipo, etc...')}
                 rows={3}
               />
             </div>
 
             {editingOT && (
               <div className="space-y-2">
-                <Label htmlFor="estado">Estado (solo lectura)</Label>
+                <Label htmlFor="estado">{t('workOrders.statusReadonly','Estado (solo lectura)')}</Label>
                 <Input 
                   value={t(estadoConfig[editingOT?.estado]?.i18nKey, estadoConfig[editingOT?.estado]?.label || editingOT?.estado)}
                   disabled
                   className="bg-slate-100 cursor-not-allowed"
                 />
                 <p className="text-xs text-slate-500">
-                  Los cambios de estado se gestionan automáticamente según el flujo de trabajo
+                  {t('workOrders.statusAutoManaged','Los cambios de estado se gestionan automáticamente según el flujo de trabajo')}
                 </p>
               </div>
             )}
@@ -999,7 +999,7 @@ function OrdenesTrabajoContent() {
               <div className="space-y-3 border-t border-slate-200 pt-6">
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                   <p className="text-sm text-slate-700 mb-2">
-                    Los Términos y Condiciones de la empresa están disponibles para consulta del cliente.
+                    {t('workOrders.termsAvailable','Los Términos y Condiciones de la empresa están disponibles para consulta del cliente.')}
                   </p>
                   {terminosActivos ? (
                     <a 
@@ -1012,7 +1012,7 @@ function OrdenesTrabajoContent() {
                       }}
                       className="text-sm text-blue-600 hover:text-blue-800 underline"
                     >
-                      📄 Ver Términos y Condiciones
+                      {t('workOrders.viewTerms','📄 Ver Términos y Condiciones')}
                     </a>
                   ) : (
                     <Alert className="mt-3">
@@ -1021,7 +1021,7 @@ function OrdenesTrabajoContent() {
                         {effectiveRole === 'ORG_ADMIN' ? (
                           <div className="space-y-3">
                             <p className="text-sm">
-                              Antes de recibir equipos, debes configurar los Términos y Condiciones de tu taller.
+                              {t('workOrders.termsConfigRequired','Antes de recibir equipos, debes configurar los Términos y Condiciones de tu taller.')}
                             </p>
                             <Button
                               type="button"
@@ -1031,13 +1031,12 @@ function OrdenesTrabajoContent() {
                               className="bg-teal-700 hover:bg-teal-800"
                               size="sm"
                             >
-                              Configurar Términos y Condiciones
+                              {t('workOrders.configureTerms','Configurar Términos y Condiciones')}
                             </Button>
                           </div>
                         ) : (
                           <p className="text-sm">
-                            El sistema aún no tiene Términos y Condiciones configurados.
-                            Un administrador debe completar esta configuración para continuar.
+                            {t('workOrders.termsNotConfigured','El sistema aún no tiene Términos y Condiciones configurados. Un administrador debe completar esta configuración para continuar.')}
                           </p>
                         )}
                       </AlertDescription>
@@ -1052,7 +1051,7 @@ function OrdenesTrabajoContent() {
                 setShowModal(false);
                 resetForm();
               }}>
-                Cancelar
+                {t('workOrders.cancel','Cancelar')}
               </Button>
               <Button 
                 type="submit" 
@@ -1060,9 +1059,9 @@ function OrdenesTrabajoContent() {
                 disabled={guardandoOT || createMutation.isPending || (!editingOT && (!terminosActivos || !selectedClienteId || (!selectedEquipoId && !showInlineEquipo) || (showInlineEquipo && (!newEquipoData.tipo || !newEquipoData.marca)) || !motivoIngreso))}
               >
                 {(guardandoOT || createMutation.isPending) ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('workOrders.saving','Guardando...')}</>
                 ) : (
-                  editingOT ? 'Actualizar' : 'Registrar Recepción'
+                  editingOT ? t('workOrders.update','Actualizar') : t('workOrders.registerReception','Registrar Recepción')
                 )}
               </Button>
             </div>

@@ -349,7 +349,7 @@ function PuntoVentaContent() {
       setIdempotencyKey(`ik_${crypto.randomUUID()}`);
     },
     onError: (error) => {
-      toast({ variant: 'destructive', title: 'No se pudo completar la venta', description: error.message || 'Ocurrió un error inesperado. La venta no se marcó como completada.' });
+      toast({ variant: 'destructive', title: t('pos.saleError','No se pudo completar la venta'), description: error.message || t('pos.saleErrorDesc','Ocurrió un error inesperado. La venta no se marcó como completada.') });
     }
   });
 
@@ -417,7 +417,7 @@ function PuntoVentaContent() {
         const nuevaCantidad = cantidadActualCarrito + 1;
 
         if (nuevaCantidad > item.cantidad_disponible) {
-          toast({ variant: 'destructive', title: 'Stock insuficiente', description: `${item.nombre}: disponible ${item.cantidad_disponible}.` });
+          toast({ variant: 'destructive', title: t('pos.stockInsufficient','Stock insuficiente'), description: `${item.nombre}: ${item.cantidad_disponible}` });
           return;
         }
       }
@@ -460,7 +460,7 @@ function PuntoVentaContent() {
         
         // Solo validar stock si permite_stock = true
         if (categoria?.permite_stock !== false && cantidad > producto.cantidad_disponible) {
-          toast({ variant: 'destructive', title: 'Stock insuficiente', description: `${producto.nombre}: disponible ${producto.cantidad_disponible}.` });
+          toast({ variant: 'destructive', title: t('pos.stockInsufficient','Stock insuficiente'), description: `${producto.nombre}: ${producto.cantidad_disponible}` });
           return;
         }
       }
@@ -486,13 +486,13 @@ function PuntoVentaContent() {
 
   const procesarVenta = async () => {
     if (carrito.length === 0) {
-      toast({ variant: 'destructive', title: t('pos.emptyCart','Carrito vacío'), description: 'Agrega al menos un producto o servicio antes de procesar la venta.' });
+      toast({ variant: 'destructive', title: t('pos.emptyCart','Carrito vacío'), description: t('pos.addItemsFirst','Agrega al menos un producto o servicio antes de procesar la venta.') });
       return;
     }
 
     // Validaciones P0
     if (validacionesPendientes.length > 0) {
-      toast({ variant: 'destructive', title: 'La venta necesita información', description: validacionesPendientes.join(' · ') });
+      toast({ variant: 'destructive', title: t('pos.saleNeedsInfo','La venta necesita información'), description: validacionesPendientes.join(' · ') });
       return;
     }
 
@@ -515,7 +515,7 @@ function PuntoVentaContent() {
         if (branches.length === 1) {
           branchIdFinal = branches[0].id;
         } else if (branches.length > 1) {
-          toast({ variant: 'destructive', title: 'Sucursal requerida', description: 'Tu cuenta no tiene una sucursal asignada. Contacta a tu administrador antes de procesar la venta.' });
+          toast({ variant: 'destructive', title: t('pos.branchRequired','Sucursal requerida'), description: t('pos.branchRequiredDesc','Tu cuenta no tiene una sucursal asignada. Contacta a tu administrador antes de procesar la venta.') });
           return;
         }
       } catch (error) {
@@ -525,7 +525,7 @@ function PuntoVentaContent() {
 
     // P0: Validar campos requeridos
     if (!effectiveOrgId || !branchIdFinal || !user?.id) {
-      toast({ variant: 'destructive', title: 'No pudimos validar tu contexto', description: 'Cierra sesión y vuelve a ingresar antes de intentar la venta nuevamente.' });
+      toast({ variant: 'destructive', title: t('pos.contextError','No pudimos validar tu contexto'), description: t('pos.contextErrorDesc','Cierra sesión y vuelve a ingresar antes de intentar la venta nuevamente.') });
       return;
     }
 
@@ -539,7 +539,7 @@ function PuntoVentaContent() {
       });
 
       if (!validacionPrevia.valido) {
-        toast({ variant: 'destructive', title: 'Revisa la venta', description: validacionPrevia.mensaje });
+        toast({ variant: 'destructive', title: t('pos.reviewSale','Revisa la venta'), description: validacionPrevia.mensaje });
         return;
       }
     }
@@ -554,7 +554,7 @@ function PuntoVentaContent() {
           
           // Solo validar stock si permite_stock = true
           if (categoria?.permite_stock !== false && item.cantidad > producto.cantidad_disponible) {
-            toast({ variant: 'destructive', title: 'Stock insuficiente', description: `${producto.nombre}: disponible ${producto.cantidad_disponible}, solicitado ${item.cantidad}.` });
+            toast({ variant: 'destructive', title: t('pos.stockInsufficient','Stock insuficiente'), description: `${producto.nombre}: ${producto.cantidad_disponible} / ${item.cantidad}` });
             return;
           }
         }
@@ -616,10 +616,10 @@ function PuntoVentaContent() {
         </h1>
         <p className="text-slate-600 mb-4">
           {cotizacionOrigen 
-            ? `💼 Facturando cotización aprobada`
+            ? t('pos.billingQuote','💼 Facturando cotización aprobada')
             : ventaId 
-            ? '💳 Cobrar trabajo de taller' 
-            : 'Registra ventas que impactan caja e inventario inmediatamente'
+            ? t('pos.chargingWorkshop','💳 Cobrar trabajo de taller') 
+            : t('pos.registerSales','Registra ventas que impactan caja e inventario inmediatamente')
           }
         </p>
         {cotizacionOrigen && (
@@ -638,7 +638,7 @@ function PuntoVentaContent() {
           <Alert className="bg-blue-50 border-blue-200">
             <AlertCircle className="w-4 h-4 text-blue-600" />
             <AlertDescription className="text-blue-800">
-              💡 <strong>¿Necesitas cotizar primero?</strong> Usa el módulo "Cotizaciones" en el menú lateral para crear propuestas sin impactar inventario.
+              💡 <strong>{t('pos.needQuote','¿Necesitas cotizar primero? Usa el módulo "Cotizaciones" en el menú lateral para crear propuestas sin impactar inventario.')}</strong>
             </AlertDescription>
           </Alert>
         )}
@@ -657,7 +657,7 @@ function PuntoVentaContent() {
         <Alert className="bg-red-50 border-red-200">
           <AlertCircle className="w-4 h-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            <div className="font-semibold mb-2">No se puede procesar la venta:</div>
+            <div className="font-semibold mb-2">{t('pos.cannotProcess','No se puede procesar la venta:')}</div>
             <ul className="list-disc list-inside space-y-1">
               {validacionesPendientes.map((val, idx) => (
                 <li key={idx}>{val}</li>
@@ -695,7 +695,7 @@ function PuntoVentaContent() {
                   {codigoNoEncontrado && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
                       <span className="text-sm text-red-700">
-                        ❌ Producto no encontrado: <strong>{codigoNoEncontrado}</strong>
+                        {t('pos.productNotFound','❌ Producto no encontrado:')} <strong>{codigoNoEncontrado}</strong>
                       </span>
                       {(effectiveRole === 'ORG_ADMIN' || effectiveRole === 'BRANCH_ADMIN') && (
                         <Button
@@ -705,7 +705,7 @@ function PuntoVentaContent() {
                           }}
                           className="bg-red-600 hover:bg-red-700"
                         >
-                          Crear Producto
+                          {t('pos.createProduct','Crear Producto')}
                         </Button>
                       )}
                     </div>
@@ -761,14 +761,14 @@ function PuntoVentaContent() {
             <CardHeader className="border-b border-slate-100">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" />
-                Carrito ({carrito.length} items)
+                {t('pos.cart','Carrito')} ({carrito.length} {t('pos.items','items')})
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               {carrito.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
                   <ShoppingCart className="w-16 h-16 mx-auto mb-3 opacity-20" />
-                  <p>El carrito está vacío</p>
+                  <p>{t('pos.cartEmpty','El carrito está vacío')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -801,7 +801,7 @@ function PuntoVentaContent() {
 
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <Label className="text-xs">Cantidad</Label>
+                          <Label className="text-xs">{t('pos.quantity','Cantidad')}</Label>
                           <Input
                             type="number"
                             value={item.cantidad}
@@ -812,13 +812,13 @@ function PuntoVentaContent() {
                           />
                         </div>
                         <div>
-                          <Label className="text-xs">Precio Unit.</Label>
+                          <Label className="text-xs">{t('pos.unitPrice','Precio Unit.')}</Label>
                           <p className="font-semibold text-slate-900 mt-2">
                             ₡{(item.precio_unitario || 0).toLocaleString()}
                           </p>
                         </div>
                         <div>
-                          <Label className="text-xs">Subtotal</Label>
+                          <Label className="text-xs">{t('pos.subtotal','Subtotal')}</Label>
                           <p className="font-bold text-emerald-600 mt-2">
                             ₡{(item.subtotal ?? 0).toLocaleString()}
                           </p>
@@ -847,15 +847,15 @@ function PuntoVentaContent() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tienda">Tienda</SelectItem>
-                      <SelectItem value="taller">Taller</SelectItem>
+                      <SelectItem value="tienda">{t('pos.shop','Tienda')}</SelectItem>
+                      <SelectItem value="taller">{t('pos.workshop','Taller')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label>Tipo de Concepto *</Label>
+                <Label>{t('pos.conceptType','Tipo de Concepto *')}</Label>
                 <Select value={tipoConcepto} onValueChange={setTipoConcepto}>
                   <SelectTrigger>
                     <SelectValue />
@@ -864,21 +864,21 @@ function PuntoVentaContent() {
                     <SelectItem value="revision_diagnostico">{t('sweep.reviewDiagnosis','Revisión / Diagnóstico')}</SelectItem>
                     <SelectItem value="reparacion">{t('finalI18n.repair','Reparación')}</SelectItem>
                     <SelectItem value="venta_producto">{t('sweep.productSale','Venta de Producto')}</SelectItem>
-                    <SelectItem value="otro">Otro</SelectItem>
+                    <SelectItem value="otro">{t('pos.other','Otro')}</SelectItem>
                   </SelectContent>
                 </Select>
                 {tipoConcepto === 'revision_diagnostico' && (
                   <p className="text-xs text-blue-600 mt-1">
-                    ⚡ Este pago habilitará el diagnóstico técnico
+                    {t('pos.paymentEnablesDiagnosis','⚡ Este pago habilitará el diagnóstico técnico')}
                   </p>
                 )}
                 <p className="text-xs text-slate-500">
-                  💡 Se infiere automáticamente al agregar items de diagnóstico al carrito
+                  {t('pos.autoInfer','💡 Se infiere automáticamente al agregar items de diagnóstico al carrito')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label>Cliente {!ventaId && '(opcional)'}</Label>
+                <Label>{t('saleContext.customer','Cliente')} {!ventaId && t('workOrders.optional','(opcional)')}</Label>
                 <ClienteSearchInput
                   clientes={clientes}
                   selectedClienteId={clienteSeleccionado}
@@ -900,10 +900,10 @@ function PuntoVentaContent() {
                   disabled={!clienteSeleccionado}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={clienteSeleccionado ? "Selecciona OT del cliente" : "Primero selecciona un cliente"} />
+                    <SelectValue placeholder={clienteSeleccionado ? t('pos.selectClientOT','Selecciona OT del cliente') : t('pos.selectClientFirstOT','Primero selecciona un cliente')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>Sin OT</SelectItem>
+                    <SelectItem value={null}>{t('pos.noOT','Sin OT')}</SelectItem>
                     {ordenesTrabajo
                       .filter(ot => {
                         // Filtrar por cliente si está seleccionado
@@ -921,7 +921,7 @@ function PuntoVentaContent() {
                 </Select>
                 {clienteSeleccionado && (
                   <p className="text-xs text-slate-500">
-                    Mostrando solo OTs activas del cliente seleccionado
+                    {t('pos.showingActiveOTs','Mostrando solo OTs activas del cliente seleccionado')}
                   </p>
                 )}
               </div>
@@ -933,10 +933,10 @@ function PuntoVentaContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="efectivo">Efectivo</SelectItem>
-                    <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                    <SelectItem value="transferencia">Transferencia</SelectItem>
-                    <SelectItem value="mixto">Mixto</SelectItem>
+                    <SelectItem value="efectivo">{t('pos.cash','Efectivo')}</SelectItem>
+                    <SelectItem value="tarjeta">{t('pos.card','Tarjeta')}</SelectItem>
+                    <SelectItem value="transferencia">{t('pos.transfer','Transferencia')}</SelectItem>
+                    <SelectItem value="mixto">{t('pos.mixed','Mixto')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -949,18 +949,18 @@ function PuntoVentaContent() {
             </CardHeader>
             <CardContent className="p-6 space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Subtotal:</span>
+                <span className="text-slate-600">{t('pos.subtotalLabel','Subtotal:')}</span>
                 <span className="font-semibold">₡{(totales.subtotal || 0).toLocaleString()}</span>
               </div>
 
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">IVA (13%):</span>
+                <span className="text-slate-600">{t('pos.tax','IVA (13%):')}</span>
                 <span className="font-semibold">₡{(totales.impuesto || 0).toLocaleString()}</span>
               </div>
 
               <div className="border-t border-slate-200 pt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-slate-900">Total:</span>
+                  <span className="text-lg font-bold text-slate-900">{t('pos.total','Total:')}</span>
                   <span className="text-2xl font-bold text-emerald-600">
                     ₡{(totales.total || 0).toLocaleString()}
                   </span>
@@ -977,7 +977,7 @@ function PuntoVentaContent() {
                 className="w-full h-11 disabled:opacity-50"
               >
                 <DollarSign className="w-5 h-5 mr-2" />
-                {createVentaMutation.isPending ? 'Procesando...' : ventaId ? 'Confirmar Cobro' : 'Registrar Venta'}
+                {createVentaMutation.isPending ? t('pos.processing','Procesando...') : ventaId ? t('pos.confirmCharge','Confirmar Cobro') : t('pos.registerSale','Registrar Venta')}
               </Button>
             </CardContent>
           </Card>
@@ -999,12 +999,12 @@ function PuntoVentaContent() {
 
       <Dialog open={showConversionAntigua} onOpenChange={setShowConversionAntigua}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Conversión pendiente</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('pos.conversionPending','Conversión pendiente')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">Esta venta en borrador proviene de una cotización y tiene más de 2 horas. Puedes continuar con la conversión o cancelarla y volver a la cotización.</p>
+            <p className="text-sm text-slate-600">{t('pos.conversionBody','Esta venta en borrador proviene de una cotización y tiene más de 2 horas. Puedes continuar con la conversión o cancelarla y volver a la cotización.')}</p>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={async () => { try { await base44.entities.Venta.delete(preloadedVenta.id); setShowConversionAntigua(false); toast({ title: 'Conversión cancelada', description: 'Volvemos a la cotización sin crear una venta.' }); window.history.back(); } catch (error) { console.error('Error al cancelar conversión:', error); toast({ variant: 'destructive', title: 'No se pudo cancelar la conversión', description: 'La venta borrador se mantiene sin cambios. Intenta nuevamente.' }); } }}>{t('sweep.cancelConversion','Cancelar conversión')}</Button>
-              <Button onClick={() => setShowConversionAntigua(false)}>Continuar conversión</Button>
+              <Button variant="outline" onClick={async () => { try { await base44.entities.Venta.delete(preloadedVenta.id); setShowConversionAntigua(false); toast({ title: t('pos.conversionPending','Conversión cancelada'), description: 'Volvemos a la cotización sin crear una venta.' }); window.history.back(); } catch (error) { console.error('Error al cancelar conversión:', error); toast({ variant: 'destructive', title: 'No se pudo cancelar la conversión', description: 'La venta borrador se mantiene sin cambios. Intenta nuevamente.' }); } }}>{t('sweep.cancelConversion','Cancelar conversión')}</Button>
+              <Button onClick={() => setShowConversionAntigua(false)}>{t('pos.continueConversion','Continuar conversión')}</Button>
             </div>
           </div>
         </DialogContent>
@@ -1085,12 +1085,12 @@ function PuntoVentaContent() {
           <DialogHeader>
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <AlertCircle className="w-6 h-6" />
-              ⚠️ Confirmar Venta
+              {t('pos.confirmSale','⚠️ Confirmar Venta')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-slate-700">
-              Estás a punto de <strong>REGISTRAR UNA VENTA</strong> por un total de:
+              {t('pos.aboutToRegister','Estás a punto de')} <strong>REGISTRAR UNA VENTA</strong>:
             </p>
             <p className="text-3xl font-semibold tracking-tight text-teal-700 text-center py-4">
               ₡{(totales.total || 0).toLocaleString()}
@@ -1098,17 +1098,17 @@ function PuntoVentaContent() {
             <Alert className="bg-amber-50 border-amber-200">
               <AlertCircle className="w-4 h-4 text-amber-600" />
               <AlertDescription className="text-amber-800">
-                <strong>Esta acción:</strong>
+                <strong>{t('pos.thisAction','Esta acción:')}</strong>
                 <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Impactará la caja y reportes financieros</li>
-                  <li>Descontará inventario de stock</li>
-                  <li>Generará un comprobante de venta</li>
-                  <li><strong>NO puede deshacerse</strong></li>
+                  <li>{t('pos.impactCash','Impactará la caja y reportes financieros')}</li>
+                  <li>{t('pos.deductInventory','Descontará inventario de stock')}</li>
+                  <li>{t('pos.generateReceipt','Generará un comprobante de venta')}</li>
+                  <li><strong>{t('pos.cannotUndo','NO puede deshacerse')}</strong></li>
                 </ul>
               </AlertDescription>
             </Alert>
             <p className="text-sm text-slate-600 text-center">
-              ¿Deseas continuar con la venta?
+              {t('pos.continueQuestion','¿Deseas continuar con la venta?')}
             </p>
           </div>
           <div className="flex gap-3 justify-end pt-4">
@@ -1116,13 +1116,13 @@ function PuntoVentaContent() {
               variant="outline" 
               onClick={() => setShowConfirmacionVenta(false)}
             >
-              Cancelar
+              {t('workOrders.cancel','Cancelar')}
             </Button>
             <Button 
               onClick={confirmarYProcesarVenta}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              Sí, Procesar Venta
+              {t('pos.yesProcess','Sí, Procesar Venta')}
             </Button>
           </div>
         </DialogContent>

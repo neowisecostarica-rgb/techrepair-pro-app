@@ -65,15 +65,15 @@ function CitaSelectorOT({ tipo, defaultValue, effectiveOrgId, clienteId, onOTCha
             ))
           ) : (
             <SelectItem value={null} disabled>
-              {clienteId ? 'No hay OTs activas para este cliente' : 'No hay OTs activas'}
+              {clienteId ? t('agenda.noOTsForClient','No hay OTs activas para este cliente') : t('agenda.noOTsActive','No hay OTs activas')}
             </SelectItem>
           )}
         </SelectContent>
       </Select>
       <p className="text-xs text-slate-500">
         {clienteId 
-          ? 'Mostrando solo OTs del cliente seleccionado' 
-          : 'Selecciona la OT correspondiente al diagnóstico o reparación.'}
+          ? t('agenda.showingClientOTs','Mostrando solo OTs del cliente seleccionado') 
+          : t('agenda.selectOTHelp','Selecciona la OT correspondiente al diagnóstico o reparación.')}
       </p>
     </div>
   );

@@ -254,7 +254,7 @@ export default function FormularioCotizacion({
               <Alert className="bg-amber-50 border-amber-200">
                 <AlertCircle className="w-4 h-4 text-amber-600" />
                 <AlertDescription className="text-amber-800 text-sm">
-                  Selecciona un cliente o crea uno nuevo antes de guardar
+                  {t('quote.selectCustomerOrNew','Selecciona un cliente o crea uno nuevo antes de guardar')}
                 </AlertDescription>
               </Alert>
             )}
@@ -313,7 +313,7 @@ export default function FormularioCotizacion({
                         <Input
                           value={busquedaProductos[idx] || ''}
                           onChange={(e) => buscarProducto(e.target.value, idx)}
-                          placeholder={item.tipo === 'producto' ? 'Buscar producto...' : 'Descripción...'}
+                          placeholder={item.tipo === 'producto' ? t('quote.searchProduct','Buscar producto...') : t('quote.descriptionPlaceholder','Descripción...')}
                           className="h-9 pl-8"
                         />
                       </div>
@@ -331,7 +331,7 @@ export default function FormularioCotizacion({
                                   <div className="flex items-center gap-2 mb-1">
                                     <p className="text-sm font-medium text-slate-900">{item.nombre}</p>
                                     <Badge className={item.origen === 'inventario' ? 'bg-blue-100 text-blue-700 border-0' : 'bg-purple-100 text-purple-700 border-0'}>
-                                      {item.origen === 'inventario' ? 'Producto' : 'Servicio'}
+                                      {item.origen === 'inventario' ? t('quote.productBadge','Producto') : t('quote.serviceBadge','Servicio')}
                                     </Badge>
                                   </div>
                                   {item.codigo_interno && (
@@ -341,7 +341,7 @@ export default function FormularioCotizacion({
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-emerald-600">₡{item.precio_venta?.toLocaleString()}</p>
                                   {item.cantidad_disponible !== null && (
-                                    <p className="text-xs text-slate-500">Stock: {item.cantidad_disponible}</p>
+                                    <p className="text-xs text-slate-500">{t('quote.stock','Stock:')} {item.cantidad_disponible}</p>
                                   )}
                                 </div>
                               </div>
@@ -351,18 +351,18 @@ export default function FormularioCotizacion({
                       )}
                     </div>
                     <div className="col-span-3">
-                      <Label className="text-xs">Descripción Final</Label>
+                      <Label className="text-xs">{t('quote.finalDescription','Descripción Final')}</Label>
                       <Input
                         value={item.descripcion}
                         onChange={(e) => updateItem(idx, 'descripcion', e.target.value)}
-                        placeholder="Lo que aparecerá en la cotización"
+                        placeholder={t('quote.finalDescriptionPlaceholder','Lo que aparecerá en la cotización')}
                         className="h-9"
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
                     <div>
-                      <Label className="text-xs">Cant.</Label>
+                      <Label className="text-xs">{t('quote.qty','Cant.')}</Label>
                       <Input
                         type="number"
                         value={item.cantidad}
@@ -372,7 +372,7 @@ export default function FormularioCotizacion({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Precio</Label>
+                      <Label className="text-xs">{t('quote.price','Precio')}</Label>
                       <Input
                         type="number"
                         value={item.precio_unitario}
@@ -381,7 +381,7 @@ export default function FormularioCotizacion({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Desc. %</Label>
+                      <Label className="text-xs">{t('quote.discountPct','Desc. %')}</Label>
                       <Input
                         type="number"
                         value={item.descuento_porcentaje}

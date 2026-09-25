@@ -242,15 +242,15 @@ function ClientesContent() {
               <TabsList className="grid w-full grid-cols-3 mt-4">
                 <TabsTrigger value="seguimiento">
                   <History className="w-4 h-4 mr-2" />
-                  Seguimiento
+                  {t('cust.tabTracking','Seguimiento')}
                 </TabsTrigger>
                 <TabsTrigger value="cotizaciones">
                   <FileText className="w-4 h-4 mr-2" />
-                  Cotizaciones
+                  {t('cust.tabQuotes','Cotizaciones')}
                 </TabsTrigger>
                 <TabsTrigger value="comunicacion">
                   <MessageSquare className="w-4 h-4 mr-2" />
-                  Comunicación
+                  {t('cust.tabCommunication','Comunicación')}
                 </TabsTrigger>
               </TabsList>
 

@@ -123,7 +123,7 @@ function InventarioContent() {
         i.id !== editingItem?.id
       );
       if (duplicado) {
-        toast({ variant: 'destructive', title: 'Código de barras duplicado', description: `Ya está asignado a ${duplicado.nombre}.` });
+        toast({ variant: 'destructive', title: t('inv.barcodeDuplicate','Código de barras duplicado'), description: `${t('inv.barcodeDuplicateDesc','Ya está asignado a')} ${duplicado.nombre}.` });
         return;
       }
     }
@@ -215,7 +215,7 @@ function InventarioContent() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">{t('inventory.title','Inventario')}</h1>
-          <p className="text-slate-500">Control de repuestos y productos</p>
+          <p className="text-slate-500">{t('inv.subtitle','Control de repuestos y productos')}</p>
         </div>
         <div className="flex flex-wrap gap-3">
           {effectiveRole === 'ORG_ADMIN' && (
@@ -230,7 +230,7 @@ function InventarioContent() {
                 className="bg-teal-700 hover:bg-teal-800 hover:shadow-lg transition-all"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                Nuevo artículo
+                {t('inv.newArticle','Nuevo artículo')}
               </Button>
             </>
           )}
@@ -238,7 +238,7 @@ function InventarioContent() {
           {effectiveRole !== 'ORG_ADMIN' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
               <p className="text-sm text-blue-800">
-                👀 Vista de solo lectura. La edición está reservada a la administración principal.
+                {t('inv.readOnlyView','👀 Vista de solo lectura. La edición está reservada a la administración principal.')}
               </p>
             </div>
           )}
@@ -253,7 +253,7 @@ function InventarioContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Total de artículos</p>
+                <p className="text-sm text-slate-500">{t('inv.totalArticles','Total de artículos')}</p>
                 <p className="text-3xl font-bold text-slate-900">{items.length}</p>
               </div>
               <Package className="w-10 h-10 text-emerald-500" />
@@ -265,7 +265,7 @@ function InventarioContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Valor en Stock</p>
+                <p className="text-sm text-slate-500">{t('inv.stockValue','Valor en Stock')}</p>
                 <p className="text-3xl font-bold text-slate-900">₡{valorTotal.toLocaleString()}</p>
               </div>
               <DollarSign className="w-10 h-10 text-blue-500" />
@@ -277,7 +277,7 @@ function InventarioContent() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Bajo Stock</p>
+                <p className="text-sm text-slate-500">{t('inv.lowStock','Bajo Stock')}</p>
                 <p className="text-3xl font-bold text-orange-600">{itemsBajoStock}</p>
               </div>
               <AlertTriangle className="w-10 h-10 text-orange-500" />
@@ -305,7 +305,7 @@ function InventarioContent() {
                 <SelectValue placeholder={t('inventory.category','Filtrar por categoría')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todas">Todas las categorías</SelectItem>
+                <SelectItem value="todas">{t('inv.allCategories','Todas las categorías')}</SelectItem>
                 {categorias.map(cat => (
                   <SelectItem key={cat.id} value={cat.id}>
                     {cat.nombre}
@@ -327,16 +327,16 @@ function InventarioContent() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Código Interno</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Código/SKU</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Producto</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Categoría</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Stock</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Ubicación</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Precio</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Margen</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colCode','Código Interno')}</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colCodeSKU','Código/SKU')}</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colProduct','Producto')}</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colCategory','Categoría')}</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colStock','Stock')}</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colLocation','Ubicación')}</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colPrice','Precio')}</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colMargin','Margen')}</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('docResidual.supplierWarrantyShort','Garantía Prov.')}</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">Acciones</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colActions','Acciones')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -379,7 +379,7 @@ function InventarioContent() {
                       </td>
                       <td className="p-4">
                         <Badge variant="outline" className="capitalize">
-                          {categoria?.nombre || 'Sin categoría'}
+                          {categoria?.nombre || t('inv.noCategory','Sin categoría')}
                         </Badge>
                       </td>
                       <td className="p-4">
@@ -401,7 +401,7 @@ function InventarioContent() {
                       </td>
                       <td className="p-4">
                         <p className="font-bold text-emerald-600">₡{item.precio_venta?.toLocaleString()}</p>
-                        <p className="text-xs text-slate-500">Costo: ₡{item.costo_unitario?.toLocaleString()}</p>
+                        <p className="text-xs text-slate-500">{t('inv.cost','Costo:')} ₡{item.costo_unitario?.toLocaleString()}</p>
                       </td>
                       <td className="p-4">
                         <span className={`font-semibold ${margen > 30 ? 'text-green-600' : 'text-slate-600'}`}>
@@ -420,7 +420,7 @@ function InventarioContent() {
                             ) : (
                               <XCircle className="w-3 h-3" />
                             )}
-                            {estadoGarantiaProveedor === 'ACTIVA' ? 'Activa' : 'Vencida'}
+                            {estadoGarantiaProveedor === 'ACTIVA' ? t('inv.warrantyActive','Activa') : t('inv.warrantyExpired','Vencida')}
                           </Badge>
                         ) : (
                           <span className="text-xs text-slate-400">-</span>
@@ -434,7 +434,7 @@ function InventarioContent() {
                               size="sm"
                               onClick={() => { setEditingItem(item); setShowModal(true); }}
                             >
-                              Editar
+                              {t('inv.edit','Editar')}
                             </Button>
                             {categoria?.permite_stock && (
                               <Button
@@ -444,13 +444,13 @@ function InventarioContent() {
                                 className="gap-1 text-slate-600 hover:text-emerald-700 hover:border-emerald-400"
                               >
                                 <SlidersHorizontal className="w-3 h-3" />
-                                Ajustar
+                                {t('inv.adjust','Ajustar')}
                               </Button>
                             )}
                           </div>
                         ) : (
                           <Badge variant="outline" className="text-slate-400">
-                            Solo lectura
+                            {t('inv.readOnly','Solo lectura')}
                           </Badge>
                         )}
                       </td>
@@ -463,8 +463,8 @@ function InventarioContent() {
             {itemsFiltrados.length === 0 && (
               <div className="p-12 text-center">
                 <Package className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-400">No se encontraron artículos</p>
-                <p className="mt-1 text-sm text-slate-500">Ajusta los filtros o crea un artículo nuevo si tienes permisos de edición.</p>
+                <p className="text-slate-400">{t('inv.noItems','No se encontraron artículos')}</p>
+                <p className="mt-1 text-sm text-slate-500">{t('inv.noItemsDesc','Ajusta los filtros o crea un artículo nuevo si tienes permisos de edición.')}</p>
               </div>
             )}
           </div>
@@ -476,7 +476,7 @@ function InventarioContent() {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              {editingItem ? 'Editar artículo' : 'Nuevo artículo de inventario'}
+              {editingItem ? t('inv.editArticle','Editar artículo') : t('inv.newArticleFull','Nuevo artículo de inventario')}
             </DialogTitle>
           </DialogHeader>
 
@@ -485,14 +485,14 @@ function InventarioContent() {
               {/* CÓDIGO INTERNO - AUTO GENERADO */}
               {!editingItem && (
                 <div className="space-y-2 col-span-2">
-                  <Label>Código Interno del Sistema</Label>
+                  <Label>{t('inv.internalCode','Código Interno del Sistema')}</Label>
                   <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
                     <span className="font-mono text-sm font-bold text-emerald-600">
                       {codigoInternoPreview}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500">
-                    Este código se generará automáticamente al crear el producto
+                    {t('inv.internalCodeHelp','Este código se generará automáticamente al crear el producto')}
                   </p>
                 </div>
               )}

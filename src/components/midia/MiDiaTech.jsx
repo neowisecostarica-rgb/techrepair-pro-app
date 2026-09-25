@@ -170,12 +170,12 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nombre_completo || 'Cliente sin identificar';
+    return cliente?.nombre_completo || t('workOrders.unidentifiedClient','Cliente sin identificar');
   };
 
   const getEquipoInfo = (equipoId) => {
     const equipo = equipos.find(e => e.id === equipoId);
-    return equipo ? `${equipo.marca} ${equipo.modelo}` : 'Equipo desconocido';
+    return equipo ? `${equipo.marca} ${equipo.modelo}` : t('workOrders.unknownEquipment','Equipo desconocido');
   };
 
   const handlePausar = () => {
@@ -201,7 +201,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       setShowPauseModal(false);
       setObservacionesPausa('');
     } catch (error) {
-      toast({ variant: 'destructive', title: 'No se pudo pausar el trabajo', description: error.message });
+      toast({ variant: 'destructive', title: t('midia.pauseError','No se pudo pausar el trabajo'), description: error.message });
     }
   };
 
@@ -223,7 +223,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           action: 'PAUSE',
           work_order_id: ordenActiva.id,
           pause_reason: 'interrupcion',
-          reason: 'Trabajo pausado por cambio de OT',
+          reason: t('midia.pauseSwitchReason','Trabajo pausado por cambio de OT'),
           correlation_id: crypto.randomUUID(),
         });
         if (pauseResponse?.data?.error) throw new Error(pauseResponse.data.error);
@@ -244,7 +244,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
       setTransicionEnCurso(false);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'No se pudo retomar el trabajo', description: error.message });
+      toast({ variant: 'destructive', title: t('midia.resumeError','No se pudo retomar el trabajo'), description: error.message });
       setBotonesDeshabilitados(prev => ({ ...prev, [`retomar_${orden.id}`]: false }));
       setTransicionEnCurso(false);
     }
@@ -252,18 +252,18 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
 
   const handleIniciarDiagnostico = async (orden) => {
     if (orden.tecnico_asignado_id !== user?.id) {
-      toast({ variant: 'destructive', title: 'Orden no asignada', description: 'No estás asignado a esta orden de trabajo.' });
+      toast({ variant: 'destructive', title: t('midia.notAssigned','Orden no asignada'), description: t('midia.notAssignedDesc','No estás asignado a esta orden de trabajo.') });
       return;
     }
 
     if (orden.estado !== 'EN_REVISION') {
-      toast({ variant: 'destructive', title: 'Diagnóstico no disponible', description: 'La orden debe estar en revisión para realizar el diagnóstico.' });
+      toast({ variant: 'destructive', title: t('midia.diagNotAvailable','Diagnóstico no disponible'), description: t('midia.diagNotAvailableDesc','La orden debe estar en revisión para realizar el diagnóstico.') });
       return;
     }
 
     if (!orden.diagnostico_habilitado) {
       if (effectiveRole === 'TECHNICIAN') {
-        toast({ title: 'Diagnóstico pendiente de pago', description: 'Contacta a administración o ventas para procesar el pago antes de continuar.' });
+        toast({ title: t('midia.diagPendingPayment','Diagnóstico pendiente de pago'), description: t('midia.diagPendingPaymentDesc','Contacta a administración o ventas para procesar el pago antes de continuar.') });
         return;
       } else {
         setPendingPaymentOT(orden);
@@ -287,7 +287,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     if (botonesDeshabilitados[`iniciar_revision_${orden.id}`] || transicionEnCurso) return;
     
     if (!['ASIGNADA', 'EN_REVISION'].includes(orden.estado)) {
-      toast({ variant: 'destructive', title: 'No se puede iniciar la revisión', description: 'La orden debe estar asignada o en revisión sin actividad.' });
+      toast({ variant: 'destructive', title: t('midia.cannotStartRevision','No se puede iniciar la revisión'), description: t('midia.cannotStartRevisionDesc','La orden debe estar asignada o en revisión sin actividad.') });
       return;
     }
 
@@ -299,21 +299,21 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
         orden_trabajo_id: orden.id,
         tecnico_id: user.id,
         tipo_actividad: 'diagnostico',
-        subtipo: 'Inicio de revisión técnica',
+        subtipo: t('midia.revisionStart','Inicio de revisión técnica'),
       });
 
       if (!response?.data?.success) {
         const codigo = response?.data?.codigo;
-        const errorMsg = response?.data?.error || 'Error al iniciar la revisión';
+        const errorMsg = response?.data?.error || t('midia.revisionStartError','Error al iniciar la revisión');
 
         if (codigo === 'DIAGNOSTICO_NO_HABILITADO') {
           if (effectiveRole === 'TECHNICIAN') {
-            toast({ title: 'Diagnóstico bloqueado', description: `${response?.data?.descripcion_bloqueo || 'Procesa el pago antes de continuar.'} Contacta a administración o ventas.` });
+            toast({ title: t('midia.diagBlocked','Diagnóstico bloqueado'), description: `${response?.data?.descripcion_bloqueo || t('midia.diagBlockedDesc','Procesa el pago antes de continuar.')} ${t('midia.contactAdmin','Contacta a administración o ventas.')}` });
           } else {
             setPendingPaymentOT(orden);
           }
         } else {
-          toast({ variant: 'destructive', title: 'No se pudo iniciar la revisión', description: errorMsg });
+          toast({ variant: 'destructive', title: t('midia.startRevisionError','No se pudo iniciar la revisión'), description: errorMsg });
         }
         setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: false }));
         setTransicionEnCurso(false);
@@ -327,7 +327,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       
       setTransicionEnCurso(false);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'No se pudo iniciar la revisión', description: error.message });
+      toast({ variant: 'destructive', title: t('midia.startRevisionError','No se pudo iniciar la revisión'), description: error.message });
       setBotonesDeshabilitados(prev => ({ ...prev, [`iniciar_revision_${orden.id}`]: false }));
       setTransicionEnCurso(false);
     }
@@ -352,7 +352,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       await queryClient.invalidateQueries({ queryKey: ['mis-ordenes'] });
       setTransicionEnCurso(false);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'No se pudo cambiar el estado', description: error.message });
+      toast({ variant: 'destructive', title: t('midia.statusChangeError','No se pudo cambiar el estado'), description: error.message });
       setBotonesDeshabilitados(prev => ({ ...prev, [key]: false }));
       setTransicionEnCurso(false);
     }
@@ -369,10 +369,10 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   };
 
   const motivoPausaLabels = {
-    esperando_repuesto: 'Esperando Repuesto',
-    esperando_cliente: 'Esperando Cliente',
-    interrupcion: 'Interrupción',
-    otro: 'Otro'
+    esperando_repuesto: t('midia.pauseWaitingPart','Esperando Repuesto'),
+    esperando_cliente: t('midia.pauseWaitingClient','Esperando Cliente'),
+    interrupcion: t('midia.pauseInterruption','Interrupción'),
+    otro: t('midia.pauseOther','Otro')
   };
 
   useNotificacionesAutomaticas(transicionEnCurso ? null : userAccount);
@@ -387,7 +387,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950">{t('techDay.today','Hoy')}</h1>
-            <p className="text-slate-600">Tu trabajo activo, lo siguiente y lo que está bloqueado.</p>
+            <p className="text-slate-600">{t('midia.subtitle','Tu trabajo activo, lo siguiente y lo que está bloqueado.')}</p>
           </div>
         </div>
       </div>

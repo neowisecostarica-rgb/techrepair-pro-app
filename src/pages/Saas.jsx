@@ -199,7 +199,7 @@ function SaasContent() {
 
   const handleSuspenderOrg = async () => {
     if (!selectedOrg || !suspendReason.trim()) {
-      toast({ variant: 'destructive', title: 'Motivo requerido', description: 'Explica por qué se suspende la organización antes de continuar.' });
+      toast({ variant: 'destructive', title: t('saas.reasonRequired','Motivo requerido'), description: t('saas.reasonRequiredDesc','Explica por qué se suspende la organización antes de continuar.') });
       return;
     }
 
@@ -215,7 +215,7 @@ function SaasContent() {
       setSelectedOrg(null);
     } catch (error) {
       console.error('Error suspendiendo org:', error);
-      toast({ variant: 'destructive', title: 'No se pudo suspender la organización', description: error?.message || 'Inténtalo nuevamente.' });
+      toast({ variant: 'destructive', title: t('saas.suspendError','No se pudo suspender la organización'), description: error?.message || t('saas.actionErrorDesc','Inténtalo nuevamente.') });
     }
   };
 
@@ -226,7 +226,7 @@ function SaasContent() {
 
   const handleChangePlan = async () => {
     if (!selectedOrg || !newPaquete) {
-      toast({ variant: 'destructive', title: 'Selecciona un paquete', description: 'Elige el paquete comercial antes de aplicar cambios.' });
+      toast({ variant: 'destructive', title: t('saas.selectPackage','Selecciona un paquete'), description: t('saas.selectPackageDesc','Elige el paquete comercial antes de aplicar cambios.') });
       return;
     }
     
@@ -245,7 +245,7 @@ function SaasContent() {
       setSelectedOrg(null);
     } catch (error) {
       console.error('Error cambiando entitlement:', error);
-      toast({ variant: 'destructive', title: 'No se pudo cambiar el paquete', description: error?.message || 'Inténtalo nuevamente.' });
+      toast({ variant: 'destructive', title: t('saas.packageChangeError','No se pudo cambiar el paquete'), description: error?.message || t('saas.actionErrorDesc','Inténtalo nuevamente.') });
     }
   };
 
@@ -255,9 +255,9 @@ function SaasContent() {
     try {
       await adminSetIdentityCommercialLifecycle(selectedOrg.id, { billing_status: newBillingStatus, license_status: newLicenseStatus, cancel_at_period_end: cancelAtPeriodEnd });
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
-      toast({ title: 'Ciclo comercial actualizado', description: 'Facturación y licencia quedaron actualizadas sin alterar por sí solas el acceso operativo.' });
+      toast({ title: t('saas.lifecycleUpdated','Ciclo comercial actualizado'), description: t('saas.lifecycleUpdatedDesc','Facturación y licencia quedaron actualizadas sin alterar por sí solas el acceso operativo.') });
       setShowLifecycleModal(false); setSelectedOrg(null); setCancelAtPeriodEnd(false);
-    } catch (error) { toast({ variant: 'destructive', title: 'No se pudo actualizar el ciclo comercial', description: error?.message || 'Inténtalo nuevamente.' }); }
+    } catch (error) { toast({ variant: 'destructive', title: t('saas.lifecycleError','No se pudo actualizar el ciclo comercial'), description: error?.message || t('saas.actionErrorDesc','Inténtalo nuevamente.') }); }
   };
 
   const requestActivateLicense = async (organization) => {
@@ -279,7 +279,7 @@ function SaasContent() {
       }
     } catch (error) {
       console.error('Error en acción administrativa:', error);
-      toast({ variant: 'destructive', title: action.type === 'reactivate' ? 'No se pudo reactivar la organización' : 'No se pudo activar la licencia', description: error?.message || 'La operación no se completó. Inténtalo nuevamente.' });
+      toast({ variant: 'destructive', title: action.type === 'reactivate' ? t('saas.reactivateError','No se pudo reactivar la organización') : t('saas.licenseActivateError','No se pudo activar la licencia'), description: error?.message || t('saas.actionErrorDesc','La operación no se completó. Inténtalo nuevamente.') });
     } finally {
       setPendingAdminAction(null);
     }
@@ -290,12 +290,12 @@ function SaasContent() {
     setImpersonating(true);
     try {
       await startIdentityImpersonation(organization.id);
-      toast({ title: 'Entrando al contexto', description: `Operando como ${organization.name}. Usa "Terminar soporte" para salir.` });
+      toast({ title: t('saas.enteringContext','Entrando al contexto'), description: `${t('saas.enteringContextDesc','Operando como')} ${organization.name}. ${t('saas.enteringContextDesc2','Usa "Terminar soporte" para salir.')}` });
       // Reload so AuthContext re-fetches with impersonated identity
       setTimeout(() => { window.location.href = '/'; }, 600);
     } catch (error) {
       setImpersonating(false);
-      toast({ variant: 'destructive', title: 'No se pudo entrar al contexto', description: error?.message || 'Inténtalo nuevamente.' });
+      toast({ variant: 'destructive', title: t('saas.impersonateError','No se pudo entrar al contexto'), description: error?.message || t('saas.actionErrorDesc','Inténtalo nuevamente.') });
     }
   };
 
@@ -335,7 +335,7 @@ function SaasContent() {
       setTimeout(() => setJustCreadaOrgId(null), 5000);
 
       // P0: Feedback visual
-      toast({ title: 'Organización creada', description: `${newOrg.name} quedó disponible en la plataforma.` });
+      toast({ title: t('saas.orgCreated','Organización creada'), description: `${newOrg.name} ${t('saas.orgCreatedDesc','quedó disponible en la plataforma.')}` });
 
       setShowModal(false);
       setCreating(false);
@@ -345,7 +345,7 @@ function SaasContent() {
       isCreatingRef.current = false;
 
       console.error('Error creando tenant:', error);
-      toast({ variant: 'destructive', title: 'No se pudo crear la organización', description: error.message || 'Ocurrió un error inesperado.' });
+      toast({ variant: 'destructive', title: t('saas.orgCreateError','No se pudo crear la organización'), description: error.message || t('common.error','Ocurrió un error inesperado.') });
       setCreating(false);
     },
   });
@@ -427,7 +427,7 @@ function SaasContent() {
             <ShieldAlert className="w-8 h-8 text-red-600" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('saas.restricted','Acceso restringido')}</h1>
-          <p className="text-slate-600 mb-6">Este panel está reservado para la administración de plataforma.</p>
+          <p className="text-slate-600 mb-6">{t('saas.restrictedDesc','Este panel está reservado para la administración de plataforma.')}</p>
         </div>
       </div>
     );
@@ -440,12 +440,12 @@ function SaasContent() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">TRP Platform Console</h1>
-            <p className="text-slate-600">Administración de organizaciones, operación comercial y estado de plataforma</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">{t('saas.consoleTitle','TRP Platform Console')}</h1>
+            <p className="text-slate-600">{t('saas.consoleSubtitle','Administración de organizaciones, operación comercial y estado de plataforma')}</p>
             {user && (
               <div className="flex items-center gap-2 mt-3">
                 <Badge className="bg-slate-800 text-white border-0">
-                  🔒 Administración de plataforma
+                  {t('saas.platformAdmin','🔒 Administración de plataforma')}
                 </Badge>
                 <span className="text-sm text-slate-600 font-mono">{user.email}</span>
               </div>
@@ -457,7 +457,7 @@ function SaasContent() {
               variant="outline"
               className="border-slate-300"
             >
-              Cerrar Sesión
+              {t('saas.logout','Cerrar Sesión')}
             </Button>
             <Button
               onClick={() => setShowModal(true)}
@@ -465,7 +465,7 @@ function SaasContent() {
               disabled={authIsImpersonating}
             >
               <Plus className="w-5 h-5 mr-2" />
-              Crear organización
+              {t('saas.createOrg','Crear organización')}
             </Button>
           </div>
         </div>
@@ -473,13 +473,13 @@ function SaasContent() {
       <div id="commercial" className="scroll-mt-6" />
       {consoleSection === 'overview' && <Card className="border border-slate-200 shadow-sm bg-white">
         <CardContent className="p-4 flex flex-wrap gap-2 items-center">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-2">Platform Console</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-2">{t('saas.consoleNav','Platform Console')}</span>
           {[
-            ['organizations', 'Organizaciones'],
-            ['commercial', 'Comercial y planes'],
-            ['health', 'Estado de plataforma'],
-            ['audit', 'Auditoría'],
-            ['pilot', 'Control de piloto'],
+            ['organizations', t('saas.navOrganizations','Organizaciones')],
+            ['commercial', t('saas.navCommercial','Comercial y planes')],
+            ['health', t('saas.navHealth','Estado de plataforma')],
+            ['audit', t('saas.navAudit','Auditoría')],
+            ['pilot', t('saas.navPilot','Control de piloto')],
           ].map(([target, label]) => (
             <Button key={target} variant="outline" size="sm" onClick={() => { window.location.hash = target; document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
               {label}
@@ -494,7 +494,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="w-5 h-5 text-blue-600" />
-              <p className="text-xs font-semibold text-slate-600">Organizaciones activas</p>
+              <p className="text-xs font-semibold text-slate-600">{t('saas.activeOrgs','Organizaciones activas')}</p>
             </div>
             <p className="text-3xl font-bold text-slate-900">
               {organizations.filter(o => o.status === 'active').length}
@@ -506,7 +506,7 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-xs font-semibold text-slate-600">Suspendidas</p>
+              <p className="text-xs font-semibold text-slate-600">{t('saas.suspended','Suspendidas')}</p>
             </div>
             <p className="text-3xl font-bold text-slate-900">
               {organizations.filter(o => o.status === 'suspended').length}
@@ -518,12 +518,12 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <ShieldAlert className="w-5 h-5 text-purple-600" />
-              <p className="text-xs font-semibold text-slate-600">Paquetes comerciales</p>
+              <p className="text-xs font-semibold text-slate-600">{t('saas.commercialPackages','Paquetes comerciales')}</p>
             </div>
             <div className="text-xs space-y-1 mt-2">
-              <p className="text-slate-700">Core: <span className="font-bold">{planDistribution.core}</span></p>
-              <p className="text-slate-700">Business: <span className="font-bold">{planDistribution.advanced}</span></p>
-              <p className="text-slate-700">Enterprise: <span className="font-bold">{planDistribution.enterprise}</span></p>
+              <p className="text-slate-700">{t('saas.core','Core')}: <span className="font-bold">{planDistribution.core}</span></p>
+              <p className="text-slate-700">{t('saas.business','Business')}: <span className="font-bold">{planDistribution.advanced}</span></p>
+              <p className="text-slate-700">{t('saas.enterprise','Enterprise')}: <span className="font-bold">{planDistribution.enterprise}</span></p>
             </div>
           </CardContent>
         </Card>
@@ -535,7 +535,7 @@ function SaasContent() {
               <p className="text-xs font-semibold text-slate-600">{t('residual.activeUsers','Usuarios activos')}</p>
             </div>
             <p className="text-3xl font-bold text-slate-900">{totalActiveUsuarios}</p>
-            <p className="text-xs text-slate-600 mt-1">En organizaciones activas</p>
+            <p className="text-xs text-slate-600 mt-1">{t('saas.inActiveOrgs','En organizaciones activas')}</p>
           </CardContent>
         </Card>
 
@@ -543,12 +543,12 @@ function SaasContent() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className={`w-5 h-5 ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-slate-600'}`} />
-              <p className="text-xs font-semibold text-slate-600">Alertas de integridad</p>
+              <p className="text-xs font-semibold text-slate-600">{t('saas.integrityAlerts','Alertas de integridad')}</p>
             </div>
             <p className={`text-3xl font-bold ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-green-600'}`}>
               {totalHealthIssues}
             </p>
-            <p className="text-xs text-slate-600 mt-1">Data integrity</p>
+            <p className="text-xs text-slate-600 mt-1">{t('saas.dataIntegrity','Data integrity')}</p>
           </CardContent>
         </Card>
       </div>
@@ -565,26 +565,26 @@ function SaasContent() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-600" />
-              Estado de plataforma — alertas de integridad
+              {t('saas.healthTitle','Estado de plataforma — alertas de integridad')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {healthChecks.orgsWithoutSucursales > 0 && (
                 <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                  <span className="text-sm text-slate-700">Organizaciones sin sucursales</span>
+                  <span className="text-sm text-slate-700">{t('saas.orgsWithoutBranches','Organizaciones sin sucursales')}</span>
                   <Badge className="bg-amber-200 text-amber-800 border-0">{healthChecks.orgsWithoutSucursales}</Badge>
                 </div>
               )}
               {healthChecks.usersWithoutOrg > 0 && (
                 <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                  <span className="text-sm text-slate-700">Cuentas de usuario sin organización</span>
+                  <span className="text-sm text-slate-700">{t('saas.usersWithoutOrg','Cuentas de usuario sin organización')}</span>
                   <Badge className="bg-amber-200 text-amber-800 border-0">{healthChecks.usersWithoutOrg}</Badge>
                 </div>
               )}
               {healthChecks.otsWithoutCliente > 0 && (
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <span className="text-sm text-slate-700">Órdenes de trabajo sin cliente</span>
+                  <span className="text-sm text-slate-700">{t('saas.otsWithoutClient','Órdenes de trabajo sin cliente')}</span>
                   <Badge className="bg-slate-200 text-slate-800 border-0">{healthChecks.otsWithoutCliente}</Badge>
                 </div>
               )}
@@ -663,19 +663,19 @@ function SaasContent() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2 border border-slate-200 rounded-md"
             >
-              <option value="all">Todos los estados</option>
-              <option value="active">Activas</option>
-              <option value="suspended">Suspendidas</option>
+              <option value="all">{t('saas.allStatuses','Todos los estados')}</option>
+              <option value="active">{t('saas.activeF','Activas')}</option>
+              <option value="suspended">{t('saas.suspendedF','Suspendidas')}</option>
             </select>
             <select
               value={planFilter}
               onChange={(e) => setPlanFilter(e.target.value)}
               className="px-4 py-2 border border-slate-200 rounded-md"
             >
-              <option value="all">Todos los paquetes</option>
-              <option value="core">Core</option>
-              <option value="advanced">Business</option>
-              <option value="enterprise">Enterprise</option>
+              <option value="all">{t('saas.allPackages','Todos los paquetes')}</option>
+              <option value="core">{t('saas.core','Core')}</option>
+              <option value="advanced">{t('saas.business','Business')}</option>
+              <option value="enterprise">{t('saas.enterprise','Enterprise')}</option>
             </select>
           </div>
         </CardContent>
@@ -684,7 +684,7 @@ function SaasContent() {
       {/* Tenant Management Table */}
       <Card className="border border-slate-200 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Gestión de organizaciones ({filteredOrgs.length})</CardTitle>
+          <CardTitle className="text-lg">{t('saas.orgManagement','Gestión de organizaciones')} ({filteredOrgs.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredOrgs.length > 0 ? (
@@ -692,12 +692,12 @@ function SaasContent() {
               <table className="w-full">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Organización</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Paquete</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Facturación</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Licencia</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Acceso operativo</th>
-                    <th className="text-left p-3 text-xs font-semibold text-slate-600">Preparación</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('saas.colOrg','Organización')}</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('saas.colPackage','Paquete')}</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('saas.colBilling','Facturación')}</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('saas.colLicense','Licencia')}</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('saas.colAccess','Acceso operativo')}</th>
+                    <th className="text-left p-3 text-xs font-semibold text-slate-600">{t('saas.colReadiness','Preparación')}</th>
                     <th className="hidden xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">Creada</th>
                     <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">{t('residual.users','Usuarios')}</th>
                     <th className="hidden 2xl:table-cell text-left p-3 text-xs font-semibold text-slate-600">{t('residual.branches','Sucursales')}</th>

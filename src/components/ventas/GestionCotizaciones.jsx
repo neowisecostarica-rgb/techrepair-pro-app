@@ -245,7 +245,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     e.preventDefault();
 
     if (!clienteActual) {
-      toast({ variant: 'destructive', title: 'Selecciona un cliente', description: 'La cotización necesita un cliente antes de guardarse.' });
+      toast({ variant: 'destructive', title: t('quote.selectCustomer','Selecciona un cliente'), description: t('quote.needsCustomerSave','La cotización necesita un cliente antes de guardarse.') });
       return;
     }
 
@@ -277,7 +277,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const handleEnviar = async (cotizacion) => {
     if (!clienteActual) {
-      toast({ variant: 'destructive', title: 'Selecciona un cliente', description: 'La cotización necesita un cliente antes de enviarse.' });
+      toast({ variant: 'destructive', title: t('quote.selectCustomer','Selecciona un cliente'), description: t('quote.needsCustomerSend','La cotización necesita un cliente antes de enviarse.') });
       return;
     }
 
@@ -287,14 +287,14 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
         canal_envio: 'link',
       });
       if (response.data?.error) {
-        toast({ variant: 'destructive', title: 'No se pudo enviar la cotización', description: response.data.error });
+        toast({ variant: 'destructive', title: t('quote.sendError','No se pudo enviar la cotización'), description: response.data.error });
         return;
       }
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
     } catch (error) {
-      toast({ variant: 'destructive', title: 'No se pudo enviar la cotización', description: error.message });
+      toast({ variant: 'destructive', title: t('quote.sendError','No se pudo enviar la cotización'), description: error.message });
     }
   };
 
@@ -302,7 +302,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     const baseUrl = organization?.public_base_url || window.location.origin;
     const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
     navigator.clipboard.writeText(link);
-    toast({ title: 'Enlace copiado', description: 'El enlace público de la cotización está en el portapapeles.' });
+    toast({ title: t('quote.linkCopied','Enlace copiado'), description: t('quote.linkCopiedDesc','El enlace público de la cotización está en el portapapeles.') });
   };
 
   const descargarPDF = (cotizacion, cliente, organization) => {
@@ -313,7 +313,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     // Header
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('COTIZACIÓN COMERCIAL', pageWidth / 2, y, { align: 'center' });
+    doc.text(t('quote.pdfTitle','COTIZACIÓN COMERCIAL'), pageWidth / 2, y, { align: 'center' });
     
     y += 10;
     doc.setFontSize(10);

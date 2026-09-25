@@ -1,52 +1,24 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, Clock, AlertCircle, CreditCard, Wrench, ClipboardList, Package, FlaskConical, Truck } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 // ── Timeline definition ────────────────────────────────────────────────────
-const TIMELINE_STEPS = [
-  {
-    id: 'recepcion',
-    label: 'Recepción',
-    icon: ClipboardList,
-    estados: ['EN_COLA_REVISION'],
-  },
-  {
-    id: 'diagnostico',
-    label: 'Diagnóstico',
-    icon: FlaskConical,
-    estados: ['ASIGNADA', 'EN_REVISION', 'DIAGNOSTICADA'],
-  },
-  {
-    id: 'cotizacion',
-    label: 'Cotización',
-    icon: CreditCard,
-    estados: ['COTIZADA', 'APROBADA'],
-  },
-  {
-    id: 'reparacion',
-    label: 'Reparación',
-    icon: Wrench,
-    estados: ['EN_REPARACION'],
-  },
-  {
-    id: 'pruebas',
-    label: 'Pruebas',
-    icon: Package,
-    estados: ['PRUEBAS', 'FINALIZADA'],
-  },
-  {
-    id: 'entrega',
-    label: 'Entrega',
-    icon: Truck,
-    estados: ['ENTREGADA'],
-  },
+const TIMELINE_STEPS_BASE = [
+  { id: 'recepcion', labelKey: 'otTimeline.recepcion', labelFallback: 'Recepción', icon: ClipboardList, estados: ['EN_COLA_REVISION'] },
+  { id: 'diagnostico', labelKey: 'otTimeline.diagnostico', labelFallback: 'Diagnóstico', icon: FlaskConical, estados: ['ASIGNADA', 'EN_REVISION', 'DIAGNOSTICADA'] },
+  { id: 'cotizacion', labelKey: 'otTimeline.cotizacion', labelFallback: 'Cotización', icon: CreditCard, estados: ['COTIZADA', 'APROBADA'] },
+  { id: 'reparacion', labelKey: 'otTimeline.reparacion', labelFallback: 'Reparación', icon: Wrench, estados: ['EN_REPARACION'] },
+  { id: 'pruebas', labelKey: 'otTimeline.pruebas', labelFallback: 'Pruebas', icon: Package, estados: ['PRUEBAS', 'FINALIZADA'] },
+  { id: 'entrega', labelKey: 'otTimeline.entrega', labelFallback: 'Entrega', icon: Truck, estados: ['ENTREGADA'] },
 ];
+function getTimelineSteps(t) { return TIMELINE_STEPS_BASE.map(s => ({ ...s, label: t(s.labelKey, s.labelFallback) })); }
 
 // Determine which step index is "current" based on OT estado
 function getStepStatus(step, estadoActual) {
-  const allEstados = TIMELINE_STEPS.flatMap(s => s.estados);
+  const allEstados = TIMELINE_STEPS_BASE.flatMap(s => s.estados);
   const currentIndex = allEstados.indexOf(estadoActual);
 
   for (const estado of step.estados) {
@@ -139,16 +111,19 @@ const NEXT_ACTION_MAP = {
 };
 
 // ── Indicadores críticos para variant="card" ─────────────────────────────────
-const CRITICAL_BADGE = {
-  EN_COLA_REVISION: { label: 'Sin asignar',           className: 'bg-blue-100 text-blue-700'    },
-  ASIGNADA:         { label: 'En espera de revisión',  className: 'bg-amber-100 text-amber-700'  },
-  COTIZADA:         { label: 'Esperando cliente',      className: 'bg-blue-100 text-blue-700'    },
-  FINALIZADA:       { label: 'Lista para entrega',     className: 'bg-emerald-100 text-emerald-700' },
-  CANCELADA:        { label: 'Cancelada',              className: 'bg-red-100 text-red-700'      },
-};
+function getCriticalBadge(t) {
+  return {
+    EN_COLA_REVISION: { label: t('otBadge.unassigned','Sin asignar'),           className: 'bg-blue-100 text-blue-700'    },
+    ASIGNADA:         { label: t('otLayer.waitingReview','En espera de revisión'),  className: 'bg-amber-100 text-amber-700'  },
+    COTIZADA:         { label: t('otBadge.waitingCustomer','Esperando cliente'),      className: 'bg-blue-100 text-blue-700'    },
+    FINALIZADA:       { label: t('otLayer.readyForDelivery','Lista para entrega'),     className: 'bg-emerald-100 text-emerald-700' },
+    CANCELADA:        { label: t('otBadge.cancelled','Cancelada'),              className: 'bg-red-100 text-red-700'      },
+  };
+}
 
 // ── Shared: Timeline visual ───────────────────────────────────────────────────
-function OTTimeline({ ot }) {
+function OTTimeline({ ot, t }) {
+  const TIMELINE_STEPS = getTimelineSteps(t);
   return (
     <div className="flex items-center gap-0 w-full">
       {TIMELINE_STEPS.map((step, index) => {
@@ -189,11 +164,12 @@ function OTTimeline({ ot }) {
 }
 
 export default function OTOperationalLayer({ ot, variant = 'default' }) {
+  const { t } = useI18n();
   if (!ot) return null;
 
   // ── variant="card": Vista Ejecutiva ─────────────────────────────────────────
   if (variant === 'card') {
-    const criticalBadge = CRITICAL_BADGE[ot.estado];
+    const criticalBadge = getCriticalBadge(t)[ot.estado];
     const showPagoPendiente = !ot.diagnostico_habilitado &&
       ['EN_COLA_REVISION', 'ASIGNADA'].includes(ot.estado);
 
@@ -201,7 +177,7 @@ export default function OTOperationalLayer({ ot, variant = 'default' }) {
       <div className="space-y-1.5">
         {/* Timeline visual */}
         <div className="rounded-md border border-slate-100 bg-slate-50/60 px-2 py-1.5">
-          <OTTimeline ot={ot} />
+          <OTTimeline ot={ot} t={t} />
         </div>
 
         {/* Indicadores críticos — solo cuando hay algo relevante */}
@@ -209,7 +185,7 @@ export default function OTOperationalLayer({ ot, variant = 'default' }) {
           <div className="flex items-center gap-1.5 flex-wrap">
             {showPagoPendiente && (
               <Badge className="bg-orange-100 text-orange-700 border-0 text-[10px] px-1.5 py-0">
-                ⚠ Pago pendiente
+                {t('otLayer.paymentPendingBadge','⚠ Pago pendiente')}
               </Badge>
             )}
             {criticalBadge && !showPagoPendiente && (
@@ -246,7 +222,7 @@ export default function OTOperationalLayer({ ot, variant = 'default' }) {
       {/* ── Timeline compacta (una sola línea) ──────────────────────────────── */}
       <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-1.5">
         <div className="flex items-center gap-0">
-          <OTTimeline ot={ot} />
+          <OTTimeline ot={ot} t={t} />
         </div>
       </div>
 
@@ -256,13 +232,13 @@ export default function OTOperationalLayer({ ot, variant = 'default' }) {
           ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
           : <Circle className="w-3.5 h-3.5 text-slate-300 shrink-0" />
         }
-        <span className="text-xs text-slate-600">Revisión:</span>
+        <span className="text-xs text-slate-600">{t('otLayer.review','Revisión:')}</span>
         <Badge className={`border-0 text-[10px] px-1.5 py-0 ${
           ot.diagnostico_habilitado
             ? 'bg-emerald-100 text-emerald-700'
             : 'bg-slate-100 text-slate-500'
         }`}>
-          {ot.diagnostico_habilitado ? '✓ Habilitado' : 'Pendiente de pago'}
+          {ot.diagnostico_habilitado ? t('otLayer.enabled','✓ Habilitado') : t('otLayer.pendingPayment','Pendiente de pago')}
         </Badge>
         {ot.revision_pagada_at && (
           <span className="text-[10px] text-slate-400 ml-auto">

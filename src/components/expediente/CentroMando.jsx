@@ -42,19 +42,21 @@ function evaluarRiesgos(ot, t) {
   const diasEnTaller = differenceInDays(ahora, fechaIngreso);
 
   if (diasEnTaller > 7) {
-    riesgos.push({ nivel: 'alto', texto: `${diasEnTaller} días en taller sin cierre` });
+    riesgos.push({ nivel: 'alto', texto: t('ops.daysInWorkshopNoClose', '{n} días en taller sin cierre').replace('{n}', diasEnTaller) });
   } else if (diasEnTaller > 3) {
-    riesgos.push({ nivel: 'medio', texto: `${diasEnTaller} días en taller` });
+    riesgos.push({ nivel: 'medio', texto: t('ops.daysInWorkshop', '{n} días en taller').replace('{n}', diasEnTaller) });
   }
 
   if (ot.estado_atencion === 'PAUSADO') {
-    riesgos.push({ nivel: 'medio', texto: `Atención pausada: ${(ot.motivo_pausa || '').replace(/_/g, ' ')}` });
+    const motivoPausa = (ot.motivo_pausa || '').replace(/_/g, ' ');
+    riesgos.push({ nivel: 'medio', texto: t('ops.attentionPaused', 'Atención pausada: {reason}').replace('{reason}', motivoPausa) });
   }
 
   if (ot.estado === 'COTIZADA' && ot.fecha_diagnostico) {
     const horasEsperando = differenceInHours(ahora, new Date(ot.fecha_diagnostico));
     if (horasEsperando > 48) {
-      riesgos.push({ nivel: 'alto', texto: `Cliente sin respuesta hace ${Math.floor(horasEsperando / 24)}d` });
+      const dias = Math.floor(horasEsperando / 24);
+      riesgos.push({ nivel: 'alto', texto: t('ops.customerNoResponse', 'Cliente sin respuesta hace {n}d').replace('{n}', dias) });
     }
   }
 

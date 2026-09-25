@@ -104,7 +104,7 @@ function ColaRevisionContent() {
       const data = res?.data ?? {};
       console.log('[asignarMutation] → salida mutationFn success:', data?.success);
       if (!data?.success) {
-        const errMsg = typeof data?.error === 'string' ? data.error : 'La asignación no fue confirmada por el servidor';
+        const errMsg = typeof data?.error === 'string' ? data.error : t('reviewQueue.assignNotConfirmed','La asignación no fue confirmada por el servidor');
         throw new Error(errMsg);
       }
       // Retornar objeto plano serializable — nunca el objeto res de Axios
@@ -135,8 +135,8 @@ function ColaRevisionContent() {
         ? backendMessage
         : typeof error?.message === 'string' && error.message
           ? error.message
-          : 'Error al asignar técnico';
-      toast({ variant: 'destructive', title: 'Error al asignar técnico', description: msg, duration: 4000 });
+          : t('reviewQueue.errorAssign','Error al asignar técnico');
+      toast({ variant: 'destructive', title: t('reviewQueue.errorAssign','Error al asignar técnico'), description: msg, duration: 4000 });
     },
   });
 
@@ -233,7 +233,7 @@ function ColaRevisionContent() {
           {ordenesAsignadas.length === 0 && (
             <Card className="border-0 shadow-md">
               <CardContent className="p-8 text-center">
-                <p className="text-slate-400">No hay órdenes asignadas</p>
+                <p className="text-slate-400">{t('reviewQueue.noAssigned','No hay órdenes asignadas')}</p>
               </CardContent>
             </Card>
           )}
@@ -272,11 +272,11 @@ function ColaRevisionContent() {
             </div>
 
             <div className="space-y-2">
-              <Label>Motivo de reasignación <span className="text-slate-400 font-normal">(opcional)</span></Label>
+              <Label>{t('reviewQueue.reason','Motivo de reasignación')} <span className="text-slate-400 font-normal">({t('common.optional','opcional')})</span></Label>
               <Textarea
                 value={motivoReasignacion}
                 onChange={e => setMotivoReasignacion(e.target.value)}
-                placeholder="Ej: Técnico con mayor especialización, carga de trabajo..."
+                placeholder={t('reviewQueue.reasonPlaceholder','Ej: Técnico con mayor especialización, carga de trabajo...')}
                 rows={2}
                 className="resize-none text-sm"
               />
@@ -284,7 +284,7 @@ function ColaRevisionContent() {
 
             <div className="flex gap-3 justify-end pt-4">
               <Button variant="outline" onClick={() => { setShowAsignarModal(false); setSelectedOT(null); setTecnicoSeleccionado(''); setMotivoReasignacion(''); }}>
-                Cancelar
+                {t('common.cancel','Cancelar')}
               </Button>
               <Button
                 onClick={confirmAsignar}
@@ -292,8 +292,8 @@ function ColaRevisionContent() {
                 className="bg-gradient-to-r from-emerald-500 to-blue-500"
               >
                 {asignarMutation.isPending ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Asignando...</>
-                ) : 'Asignar Técnico'}
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('reviewQueue.assigning','Asignando...')}</>
+                ) : t('reviewQueue.assignTech','Asignar Técnico')}
               </Button>
             </div>
           </div>

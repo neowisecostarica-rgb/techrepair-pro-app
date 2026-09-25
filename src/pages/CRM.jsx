@@ -211,7 +211,7 @@ function CRMContent() {
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filtrar por estado" />
+            <SelectValue placeholder={t('quality.filter','Filtrar por estado')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los estados</SelectItem>
@@ -317,7 +317,7 @@ function CRMContent() {
           <DialogHeader><DialogTitle>Convertir prospecto en cliente</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-slate-600">Se creará un cliente para <strong>{leadToConvert?.name}</strong> y el prospecto quedará marcado como ganado.</p>
-            <div><Label htmlFor="convert-identification">Identificación del cliente</Label><Input id="convert-identification" value={convertIdentification} onChange={(e) => setConvertIdentification(e.target.value)} placeholder="Cédula o identificación" className="mt-1" /></div>
+            <div><Label htmlFor="convert-identification">Identificación del cliente</Label><Input id="convert-identification" value={convertIdentification} onChange={(e) => setConvertIdentification(e.target.value)} placeholder={t('crm.idPlaceholder','Cédula o identificación')} className="mt-1" /></div>
             <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => { setLeadToConvert(null); setConvertIdentification(''); }}>{t('finalI18n.cancel','Cancelar')}</Button><Button onClick={confirmLeadConversion}>{t('crm.convert','Crear cliente')}</Button></div>
           </div>
         </DialogContent>

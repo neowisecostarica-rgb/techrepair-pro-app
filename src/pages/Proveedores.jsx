@@ -181,10 +181,10 @@ function ProveedoresContent() {
             <div className="text-center py-12">
               <Building2 className="w-16 h-16 text-slate-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                {busqueda ? 'No se encontraron proveedores' : 'No hay proveedores registrados'}
+                {busqueda ? t('suppliers.notFound','No se encontraron proveedores') : t('suppliers.empty','No hay proveedores registrados')}
               </h3>
               <p className="text-slate-500">
-                {busqueda ? 'Intenta con otra búsqueda' : 'Registra tu primer proveedor usando el botón superior'}
+                {busqueda ? t('suppliers.tryOtherSearch','Intenta con otra búsqueda') : t('suppliers.registerFirst','Registra tu primer proveedor usando el botón superior')}
               </p>
             </div>
           ) : (

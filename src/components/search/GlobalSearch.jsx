@@ -69,7 +69,7 @@ export default function GlobalSearch({ open, onOpenChange }) {
         type: 'page',
         id: `page-${item.path}-${item.label}`,
         label: t(item.i18nKey, item.label),
-        subtitle: 'Página',
+        subtitle: t('search.page','Página'),
         icon: item.icon,
         action: () => {
           navigate(`${createPageUrl(item.path)}${item.hash ? `#${item.hash}` : ''}`);
@@ -218,11 +218,11 @@ export default function GlobalSearch({ open, onOpenChange }) {
   // ── Grouped results ──
   const grouped = useMemo(() => {
     const groups = [];
-    if (pageResults.length) groups.push({ title: 'Páginas', items: pageResults });
-    if (otResults.length) groups.push({ title: 'Órdenes de Trabajo', items: otResults });
-    if (clienteResults.length) groups.push({ title: 'Clientes', items: clienteResults });
-    if (equipoResults.length) groups.push({ title: 'Equipos', items: equipoResults });
-    if (inventarioResults.length) groups.push({ title: 'Inventario', items: inventarioResults });
+    if (pageResults.length) groups.push({ title: t('search.pages','Páginas'), items: pageResults });
+    if (otResults.length) groups.push({ title: t('search.workOrders','Órdenes de Trabajo'), items: otResults });
+    if (clienteResults.length) groups.push({ title: t('search.customers','Clientes'), items: clienteResults });
+    if (equipoResults.length) groups.push({ title: t('search.equipment','Equipos'), items: equipoResults });
+    if (inventarioResults.length) groups.push({ title: t('search.inventory','Inventario'), items: inventarioResults });
     return groups;
   }, [pageResults, otResults, clienteResults, equipoResults, inventarioResults]);
 
@@ -263,7 +263,7 @@ export default function GlobalSearch({ open, onOpenChange }) {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Buscar órdenes, clientes, equipos, inventario o páginas..."
+            placeholder={t('search.placeholder','Buscar órdenes, clientes, equipos, inventario o páginas...')}
             className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 outline-none text-base"
           />
           <kbd className="hidden sm:inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-400">
@@ -276,14 +276,14 @@ export default function GlobalSearch({ open, onOpenChange }) {
           {!needle && (
             <div className="px-4 py-10 text-center text-slate-400">
               <Search className="w-10 h-10 mx-auto mb-3 text-slate-200" />
-              <p className="text-sm font-medium">Escribe para buscar en toda la plataforma</p>
-              <p className="text-xs mt-1 text-slate-400">Órdenes · Clientes · Equipos · Inventario · Páginas</p>
+              <p className="text-sm font-medium">{t('search.typeToSearch','Escribe para buscar en toda la plataforma')}</p>
+              <p className="text-xs mt-1 text-slate-400">{t('search.scopeHint','Órdenes · Clientes · Equipos · Inventario · Páginas')}</p>
             </div>
           )}
 
           {isEmpty && (
             <div className="px-4 py-10 text-center text-slate-400">
-              <p className="text-sm">Sin resultados para "{debouncedQuery}"</p>
+              <p className="text-sm">{t('search.noResults','Sin resultados para "{q}"').replace('{q}', debouncedQuery)}</p>
             </div>
           )}
 

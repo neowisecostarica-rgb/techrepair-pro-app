@@ -64,10 +64,10 @@ function SettingsContent() {
       try {
         const response = await base44.functions.invoke('manageBranchLifecycle', /** @type {any} */ (data));
         const result = response?.data ?? response;
-        if (!result?.success) throw branchLifecycleError(result, 'No se pudo crear la sucursal');
+        if (!result?.success) throw branchLifecycleError(result, t('settings.errorCreateBranch','No se pudo crear la sucursal'));
         return result;
       } catch (error) {
-        throw branchLifecycleError(error, 'No se pudo crear la sucursal');
+        throw branchLifecycleError(error, t('settings.errorCreateBranch','No se pudo crear la sucursal'));
       }
     },
     onSuccess: () => {
@@ -81,10 +81,10 @@ function SettingsContent() {
       try {
         const response = await base44.functions.invoke('manageBranchLifecycle', /** @type {any} */ (data));
         const result = response?.data ?? response;
-        if (!result?.success) throw branchLifecycleError(result, 'No se pudo cambiar la sucursal');
+        if (!result?.success) throw branchLifecycleError(result, t('settings.errorChangeBranch','No se pudo cambiar la sucursal'));
         return result;
       } catch (error) {
-        throw branchLifecycleError(error, 'No se pudo cambiar la sucursal');
+        throw branchLifecycleError(error, t('settings.errorChangeBranch','No se pudo cambiar la sucursal'));
       }
     },
     onSuccess: () => {

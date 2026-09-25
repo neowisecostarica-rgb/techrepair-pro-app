@@ -565,7 +565,7 @@ function InventarioContent() {
                 <p className="text-xs text-slate-500">
                   {effectiveRole === 'ORG_ADMIN' 
                     ? 'Define el tipo de ítem (POS usará esto para inferir el concepto de venta)' 
-                    : 'Solo la administración principal puede modificar este campo'}
+                    : t('inventory.adminOnlyField','Solo la administración principal puede modificar este campo')}
                 </p>
               </div>
 

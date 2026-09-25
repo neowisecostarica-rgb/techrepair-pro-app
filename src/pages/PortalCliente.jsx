@@ -62,7 +62,7 @@ export default function PortalCliente() {
           token,
         });
         if (!response?.data?.success) {
-          throw new Error(response?.data?.error || 'Orden no encontrada');
+          throw new Error(response?.data?.error || t('customerPortal.orderNotFound','Orden no encontrada'));
         }
         return response.data.data;
       } catch (requestError) {
@@ -97,7 +97,7 @@ export default function PortalCliente() {
         newStatus: 'APROBADA',
       });
       if (!response?.data?.success) {
-        throw new Error(response?.data?.error || 'No se pudo registrar la aprobación');
+        throw new Error(response?.data?.error || t('customerPortal.errorApproval','No se pudo registrar la aprobación'));
       }
     },
     onSuccess: () => {
@@ -123,7 +123,7 @@ export default function PortalCliente() {
         rejection_reason: motivoRechazo,
       });
       if (!response?.data?.success) {
-        throw new Error(response?.data?.error || 'No se pudo registrar el rechazo');
+        throw new Error(response?.data?.error || t('customerPortal.errorRejection','No se pudo registrar el rechazo'));
       }
     },
     onSuccess: () => {

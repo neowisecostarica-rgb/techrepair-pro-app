@@ -7,15 +7,15 @@ import { Wrench, Calendar, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-const TIPOS_INTERVENCION_LABELS = {
-  diagnostico_tecnico: 'Diagnóstico técnico completo',
-  mantenimiento_preventivo: 'Mantenimiento preventivo',
-  mantenimiento_correctivo: 'Mantenimiento correctivo',
-  limpieza: 'Limpieza y mantenimiento',
-  reparacion_puntual: 'Reparación puntual',
-  revision_general: 'Revisión general',
-  otro: 'Otro'
-};
+const getTiposIntervencionLabels = (t) => ({
+  diagnostico_tecnico: t('diagDoc.fullDiagnosis','Diagnóstico técnico completo'),
+  mantenimiento_preventivo: t('diagDoc.maintenance','Mantenimiento preventivo'),
+  mantenimiento_correctivo: t('diagDoc.corrective','Mantenimiento correctivo'),
+  limpieza: t('diagDoc.cleaningMaintenance','Limpieza y mantenimiento'),
+  reparacion_puntual: t('diagDoc.punctualRepair','Reparación puntual'),
+  revision_general: t('diagDoc.generalReview','Revisión general'),
+  otro: t('diagDoc.other','Otro')
+});
 
 export default function DiagnosticoDocumentoA4({ 
   ordenTrabajo, 
@@ -75,7 +75,7 @@ export default function DiagnosticoDocumentoA4({
             <div className="flex items-start justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('diagnosis.title','Diagnóstico Técnico')}</h1>
-                <p className="text-slate-600">Evaluación profesional del equipo</p>
+                <p className="text-slate-600">{t('diagDoc.professionalEvaluation','Evaluación profesional del equipo')}</p>
               </div>
               <div className="text-right">
                 <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold mb-2">
@@ -93,7 +93,7 @@ export default function DiagnosticoDocumentoA4({
                 <p className="font-semibold text-slate-900">{cliente?.nombre_completo || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Teléfono</p>
+                <p className="text-xs text-slate-500">{t('diagDoc.phone','Teléfono')}</p>
                 <p className="font-medium text-slate-900">{cliente?.telefono || 'N/A'}</p>
               </div>
               <div>
@@ -134,9 +134,9 @@ export default function DiagnosticoDocumentoA4({
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-2">Tipo de Intervención</h4>
+                  <h4 className="font-semibold text-slate-900 mb-2">{t('diagDoc.interventionType','Tipo de Intervención')}</h4>
                   <p className="text-slate-700">
-                    {TIPOS_INTERVENCION_LABELS[diagnostico.tipo_intervencion] || diagnostico.tipo_intervencion}
+                    {getTiposIntervencionLabels(t)[diagnostico.tipo_intervencion] || diagnostico.tipo_intervencion}
                   </p>
                 </div>
 
@@ -155,7 +155,7 @@ export default function DiagnosticoDocumentoA4({
 
                 {diagnostico.pruebas_realizadas && Object.keys(diagnostico.pruebas_realizadas).length > 0 && (
                   <div>
-                    <h4 className="font-semibold text-slate-900 mb-3">Pruebas Técnicas Realizadas</h4>
+                    <h4 className="font-semibold text-slate-900 mb-3">{t('diagDoc.techTestsPerformed','Pruebas Técnicas Realizadas')}</h4>
                     <div className="space-y-2 text-sm">
                       {Object.entries(diagnostico.pruebas_realizadas).map(([key, prueba]) => (
                         <div key={key} className="flex items-center justify-between p-2 bg-white rounded border">
@@ -185,7 +185,7 @@ export default function DiagnosticoDocumentoA4({
 
                 {diagnostico.causa_probable && (
                   <div>
-                    <h4 className="font-semibold text-slate-900 mb-2">Causa Técnica Probable</h4>
+                    <h4 className="font-semibold text-slate-900 mb-2">{t('diagDoc.probableCause','Causa Técnica Probable')}</h4>
                     <p className="text-slate-700 whitespace-pre-wrap bg-white p-3 rounded border">
                       {diagnostico.causa_probable}
                     </p>
@@ -278,7 +278,7 @@ export default function DiagnosticoDocumentoA4({
           <div className="print-footer mt-12 pt-6 border-t border-slate-200">
             <div className="grid grid-cols-3 gap-8 mb-8">
               <div>
-                <p className="text-xs text-slate-500 mb-2">Fecha de Emisión</p>
+                <p className="text-xs text-slate-500 mb-2">{t('diagDoc.issuedDate','Fecha de Emisión')}</p>
                 <p className="font-medium text-slate-900">
                   {format(new Date(), 'dd/MM/yyyy', { locale: es })}
                 </p>

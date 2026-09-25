@@ -139,13 +139,13 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, eff
             <Input
               value={formData.nombre_completo}
               onChange={(e) => handleChange('nombre_completo', e.target.value)}
-              placeholder="Juan Pérez"
+              placeholder={t('form.fullNamePlaceholder','Juan Pérez')}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Teléfono *</Label>
+            <Label>{t('form.phoneRequired','Teléfono *')}</Label>
             <Input
               value={formData.telefono}
               onChange={(e) => handleChange('telefono', e.target.value)}
@@ -165,20 +165,20 @@ export default function CrearClienteRapido({ open, onClose, onClienteCreado, eff
           </div>
 
           <div className="space-y-2">
-            <Label>Identificación</Label>
+            <Label>{t('form.identification','Identificación')}</Label>
             <Input
               value={formData.identificacion}
               onChange={(e) => handleChange('identificacion', e.target.value)}
-              placeholder="Cédula, pasaporte o ID"
+              placeholder={t('form.idPlaceholder','Cédula, pasaporte o ID')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Dirección</Label>
+            <Label>{t('form.address','Dirección')}</Label>
             <Input
               value={formData.direccion}
               onChange={(e) => handleChange('direccion', e.target.value)}
-              placeholder="Dirección física"
+              placeholder={t('form.addressPlaceholder','Dirección física')}
             />
           </div>
 

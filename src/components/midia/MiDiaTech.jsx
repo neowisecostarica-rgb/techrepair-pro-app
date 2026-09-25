@@ -423,7 +423,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             <Play className="w-5 h-5 text-white" />
           </div>
           <h2 className="text-xl font-semibold tracking-tight text-slate-950">{t('techDay.activeWork','Trabajo Activo')}</h2>
-          <Badge variant="outline" className="ml-auto border-red-300 text-red-700">1 máximo</Badge>
+          <Badge variant="outline" className="ml-auto border-red-300 text-red-700">{t('midiaTech.maxOne','1 máximo')}</Badge>
         </div>
 
         {ordenActiva ? (
@@ -483,7 +483,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                       {botonesDeshabilitados[`iniciar_revision_${ordenActiva.id}`] ? (
                         <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
                       ) : (
-                        <><Play className="w-4 h-4 mr-2" />Iniciar Revisión</>
+                        <><Play className="w-4 h-4 mr-2" />{t('midiaTech.startReview','Iniciar Revisión')}</>
                       )}
                     </Button>
                   )}
@@ -505,10 +505,10 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         >
                           <Wrench className="w-4 h-4 mr-2" />
                           {tieneDiagnostico(ordenActiva.id) && !diagnosticoListo(ordenActiva.id)
-                            ? 'Continuar Diagnóstico'
+                            ? t('midiaTech.continueDiagnosis','Continuar Diagnóstico')
                             : diagnosticoListo(ordenActiva.id)
-                            ? 'Ver Diagnóstico'
-                            : 'Registrar Diagnóstico'}
+                            ? t('midiaTech.viewDiagnosis','Ver Diagnóstico')
+                            : t('midiaTech.registerDiagnosis','Registrar Diagnóstico')}
                         </Button>
                       )}
 
@@ -644,7 +644,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                         {botonesDeshabilitados[`iniciar_revision_${orden.id}`] ? (
                           <><Clock className="w-4 h-4 mr-2 animate-spin" />Iniciando...</>
                         ) : (
-                          <><Play className="w-4 h-4 mr-2" />{orden.estado === 'EN_REVISION' ? 'Registrar Inicio' : 'Iniciar Revisión'}</>
+                          <><Play className="w-4 h-4 mr-2" />{orden.estado === 'EN_REVISION' ? t('midiaTech.registerStart','Registrar Inicio') : t('midiaTech.startReview','Iniciar Revisión')}</>
                         )}
                       </Button>
                     )}
@@ -693,7 +693,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
             <Card className="border border-slate-200 shadow-sm">
               <CardContent className="p-8 text-center">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-400" />
-                <p className="text-slate-500">No hay órdenes pendientes de iniciar</p>
+                <p className="text-slate-500">{t('midiaTech.noOrdersPending','No hay órdenes pendientes de iniciar')}</p>
               </CardContent>
             </Card>
           )}
@@ -916,7 +916,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
                 <SelectContent>
                   <SelectItem value="esperando_repuesto">Esperando Repuesto</SelectItem>
                   <SelectItem value="esperando_cliente">{t('otTech.waitingCustomer','Esperando Cliente')}</SelectItem>
-                  <SelectItem value="interrupcion">Interrupción</SelectItem>
+                  <SelectItem value="interrupcion">{t('midiaTech.interruption','Interrupción')}</SelectItem>
                   <SelectItem value="otro">Otro</SelectItem>
                 </SelectContent>
               </Select>

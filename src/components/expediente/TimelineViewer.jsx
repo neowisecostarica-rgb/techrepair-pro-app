@@ -63,42 +63,40 @@ const CATEGORIA_CONFIG = {
 };
 
 // ── Labels de OTEvent ─────────────────────────────────────────────────────
-const OT_EVENT_LABELS = {
-  CREATED:                  'OT Creada',
-  FINALIZADA:               'OT Finalizada',
-  ENTREGADA:                'Equipo Entregado',
-  CANCELADA:                'OT Cancelada',
-  SALE_COMPLETED:           'Venta Completada',
-  TRANSITION_ASIGNADA:      'Asignada a Técnico',
-  TRANSITION_EN_REVISION:   'Revisión Iniciada',
-  TRANSITION_DIAGNOSTICADA: 'Diagnóstico Completado',
-  TRANSITION_COTIZADA:      'Cotización Emitida',
-  TRANSITION_APROBADA:      'Reparación Aprobada',
-  TRANSITION_EN_REPARACION: 'Reparación Iniciada',
-  TRANSITION_PRUEBAS:       'En Pruebas de Calidad',
-  // ── Custodia (P1-A.3-I2) ──────────────────────────────────────────────
-  TRANSITION_REASIGNADA:    'Técnico Reasignado',
-  // ── Custodia (P1-A.3-I2) ──────────────────────────────────────────────
-  CUSTODIA_CONTACTO:        'Contacto de Custodia Registrado',
-  CUSTODIA_ABANDONO:        'Abandono Declarado',
-  CUSTODIA_DISPOSICION:     'Disposición Final Realizada',
-};
+const getOTEventLabels = (t) => ({
+  CREATED:                  t('timeline.otCreated','OT Creada'),
+  FINALIZADA:               t('timeline.otFinalized','OT Finalizada'),
+  ENTREGADA:                t('timeline.equipmentDelivered','Equipo Entregado'),
+  CANCELADA:                t('timeline.otCancelled','OT Cancelada'),
+  SALE_COMPLETED:           t('timeline.saleCompleted','Venta Completada'),
+  TRANSITION_ASIGNADA:      t('timeline.assignedToTech','Asignada a Técnico'),
+  TRANSITION_EN_REVISION:   t('timeline.reviewStarted','Revisión Iniciada'),
+  TRANSITION_DIAGNOSTICADA: t('timeline.diagnosisCompleted','Diagnóstico Completado'),
+  TRANSITION_COTIZADA:      t('timeline.quoteIssued','Cotización Emitida'),
+  TRANSITION_APROBADA:      t('timeline.repairApproved','Reparación Aprobada'),
+  TRANSITION_EN_REPARACION: t('timeline.repairStarted','Reparación Iniciada'),
+  TRANSITION_PRUEBAS:       t('timeline.inQualityTests','En Pruebas de Calidad'),
+  TRANSITION_REASIGNADA:    t('timeline.techReassigned','Técnico Reasignado'),
+  CUSTODIA_CONTACTO:        t('timeline.custodyContact','Contacto de Custodia Registrado'),
+  CUSTODIA_ABANDONO:        t('timeline.abandonDeclared','Abandono Declarado'),
+  CUSTODIA_DISPOSICION:     t('timeline.finalDisposition','Disposición Final Realizada'),
+});
 
 // ── Actividad tipo labels ─────────────────────────────────────────────────
-const ACTIVIDAD_LABELS = {
-  diagnostico: 'Diagnóstico',
-  reparacion: 'Reparación',
-  instalacion: 'Instalación',
-  prueba: 'Prueba',
-  limpieza: 'Limpieza',
-  entrega: 'Entrega',
-  otro: 'Actividad',
-};
+const getActividadLabels = (t) => ({
+  diagnostico: t('timeline.diagnosis','Diagnóstico'),
+  reparacion: t('timeline.repair','Reparación'),
+  instalacion: t('timeline.installation','Instalación'),
+  prueba: t('timeline.test','Prueba'),
+  limpieza: t('timeline.cleaning','Limpieza'),
+  entrega: t('timeline.delivery','Entrega'),
+  otro: t('timeline.activity','Actividad'),
+});
 
 // ── Normalizar eventos a formato unificado ────────────────────────────────
 const CUSTODIA_TIPOS = new Set(['CUSTODIA_CONTACTO', 'CUSTODIA_ABANDONO', 'CUSTODIA_DISPOSICION']);
 
-function formatearReasignacion(detalle, tecnicos = []) {
+function formatearReasignacion(detalle, tecnicos = [], t = (k, f) => f) {
   let data = {};
   try {
     data = typeof detalle === 'string' ? JSON.parse(detalle) : (detalle || {});
@@ -125,7 +123,7 @@ function formatearReasignacion(detalle, tecnicos = []) {
   // GAP-004 FIX: Behavioral Contract — fallbacks explícitos para motivo nulo/vacío
   // y detalle malformado. Siempre retorna texto legible.
   if (lineas.length === 0) {
-    return 'Reasignación de técnico sin detalles registrados';
+    return t('timeline.reassignNoDetails','Reasignación de técnico sin detalles registrados');
   }
   // Si motivo es nulo, añadir nota explícita solo si hay otros datos disponibles
   if (!motivo && lineas.length > 0) {
@@ -134,19 +132,20 @@ function formatearReasignacion(detalle, tecnicos = []) {
   return lineas.join('\n');
 }
 
-function normalizarOTEvents(events = [], tecnicos = []) {
+function normalizarOTEvents(events = [], tecnicos = [], t) {
+  const labels = getOTEventLabels(t);
   return events.map(e => {
     const base = {
       id: `ot-${e.id}`,
       categoria: CUSTODIA_TIPOS.has(e.tipo) ? 'custodia'
                : e.tipo === 'SALE_COMPLETED' ? 'comercial'
                : 'estado',
-      titulo: OT_EVENT_LABELS[e.tipo] || e.tipo,
+      titulo: labels[e.tipo] || e.tipo,
       timestamp: e.created_at || e.created_date,
     };
 
     if (e.tipo === 'TRANSITION_REASIGNADA') {
-      return { ...base, detalle: formatearReasignacion(e.detalle, tecnicos) };
+      return { ...base, detalle: formatearReasignacion(e.detalle, tecnicos, t) };
     }
 
     return {
@@ -158,11 +157,12 @@ function normalizarOTEvents(events = [], tecnicos = []) {
   });
 }
 
-function normalizarActividades(actividades = []) {
+function normalizarActividades(actividades = [], t) {
+  const labels = getActividadLabels(t);
   return actividades.map(a => ({
     id: `act-${a.id}`,
     categoria: 'actividad',
-    titulo: `${ACTIVIDAD_LABELS[a.tipo_actividad] || 'Actividad'}: ${a.subtipo || ''}`.trim(),
+    titulo: `${labels[a.tipo_actividad] || t('timeline.activity','Actividad')}: ${a.subtipo || ''}`.trim(),
     detalle: [
       a.estado === 'finalizada' && a.duracion_minutos ? `${a.duracion_minutos} min` : null,
       a.estado === 'bloqueada' ? `Bloqueada: ${a.causa_bloqueo || ''}` : null,
@@ -178,6 +178,7 @@ function normalizarActividades(actividades = []) {
 
 // ── Item de timeline ───────────────────────────────────────────────────────
 function TimelineItem({ item, isLast }) {
+  const { t } = useI18n();
   const catConf = CATEGORIA_CONFIG[item.categoria] || CATEGORIA_CONFIG.estado;
   const Icon = catConf.icon;
   const [expanded, setExpanded] = useState(false);
@@ -197,7 +198,7 @@ function TimelineItem({ item, isLast }) {
         <div className="flex flex-wrap items-center gap-2 mb-0.5">
           {/* Etiqueta de categoría — visible siempre, no solo color */}
           <Badge className={`${catConf.badgeClass} border-0 text-[10px] px-1.5 py-0`}>
-            {catConf.label}
+            {t('timeline.cat_' + item.categoria, catConf.label)}
           </Badge>
           {item.badge && (
             <Badge className={`${item.badgeClass} border-0 text-[10px] px-1.5 py-0`}>
@@ -234,6 +235,7 @@ const FILTROS = [
   { key: 'comercial', label: 'Comercial' },
   { key: 'custodia', label: 'Custodia' },
 ];
+const FILTRO_KEYS = { todos: 'timeline.filterAll', estado: 'timeline.filterStates', actividad: 'timeline.filterTech', comercial: 'timeline.filterCommercial', custodia: 'timeline.filterCustody' };
 
 export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
   const { t } = useI18n();
@@ -272,8 +274,8 @@ export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
 
   // ── Construir timeline unificado ──────────────────────────────────────
   const todosLosItems = [
-    ...normalizarOTEvents(otEvents, tecnicos),
-    ...normalizarActividades(actividades),
+    ...normalizarOTEvents(otEvents, tecnicos, t),
+    ...normalizarActividades(actividades, t),
   ].sort((a, b) => {
     const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
     const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
@@ -311,7 +313,7 @@ export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
                 : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
             }`}
           >
-            {f.label}
+            {t(FILTRO_KEYS[f.key] || 'timeline.filter_' + f.key, f.label)}
           </button>
         ))}
         <span className="text-xs text-slate-400 self-center ml-auto">
@@ -323,7 +325,7 @@ export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
       {itemsVisible.length === 0 ? (
         <div className="py-12 text-center">
           <AlertCircle className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">Sin eventos en esta categoría</p>
+          <p className="text-slate-400 text-sm">{t('timeline.noEventsInCategory','Sin eventos en esta categoría')}</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-slate-100 p-4">
@@ -344,7 +346,7 @@ export default function TimelineViewer({ ordenTrabajoId, organizationId }) {
                 className="text-slate-500"
               >
                 <ChevronDown className="w-4 h-4 mr-1" />
-                Ver más ({itemsFiltrados.length - itemsVisible.length} restantes)
+                {t('timeline.viewMore','Ver más')} ({itemsFiltrados.length - itemsVisible.length} {t('timeline.remaining','restantes')})
               </Button>
             </div>
           )}

@@ -107,7 +107,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
           className="bg-gradient-to-r from-emerald-500 to-blue-500"
         >
           <Plus className="w-4 h-4 mr-2" />
-          {hayTerminos ? 'Nueva Versión' : 'Configurar Términos'}
+          {hayTerminos ? t('terms.newVersion','Nueva Versión') : t('terms.configureTerms','Configurar Términos')}
         </Button>
       </div>
 
@@ -116,23 +116,23 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
         <Alert className="bg-amber-50 border-amber-200">
           <AlertCircle className="w-4 h-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
-            <strong>⚠️ Acción requerida:</strong> No hay términos configurados. 
-            La creación de Órdenes de Trabajo está bloqueada hasta que se definan los términos legales.
+            <strong>{t('terms.actionRequired','⚠️ Acción requerida:')}</strong> {t('terms.noTermsConfigured','No hay términos configurados.')}
+            {t('terms.otBlockedUntilTerms','La creación de Órdenes de Trabajo está bloqueada hasta que se definan los términos legales.')}
           </AlertDescription>
         </Alert>
       ) : !versionActiva ? (
         <Alert className="bg-red-50 border-red-200">
           <AlertCircle className="w-4 h-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            <strong>⚠️ Sin versión activa:</strong> Debes activar una versión de términos para permitir la creación de OT.
+            <strong>{t('terms.noActiveVersion','⚠️ Sin versión activa:')}</strong> {t('terms.mustActivateVersion','Debes activar una versión de términos para permitir la creación de OT.')}
           </AlertDescription>
         </Alert>
       ) : (
         <Alert className="bg-emerald-50 border-emerald-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <AlertDescription className="text-emerald-800">
-            <strong>✓ Términos activos:</strong> Versión {versionActiva.version} activada. 
-            Las nuevas Órdenes de Trabajo usarán estos términos.
+            <strong>{t('terms.activeTerms','✓ Términos activos:')}</strong> {t('terms.versionActivated','Versión')} {versionActiva.version} {t('terms.activated','activada.')}
+            {t('terms.newOTsUseTerms','Las nuevas Órdenes de Trabajo usarán estos términos.')}
           </AlertDescription>
         </Alert>
       )}
@@ -143,7 +143,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
           <CardHeader className="border-b border-slate-100">
             <CardTitle className="text-base flex items-center gap-2">
               <History className="w-4 h-4 text-slate-600" />
-              Historial de Versiones
+              {t('terms.versionHistory','Historial de Versiones')}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-3">
@@ -204,7 +204,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
-              {hayTerminos ? 'Nueva Versión de Términos' : 'Configurar Términos y Condiciones'}
+              {hayTerminos ? t('terms.newTermsVersion','Nueva Versión de Términos') : t('terms.configureTermsConditions','Configurar Términos y Condiciones')}
             </DialogTitle>
           </DialogHeader>
 
@@ -218,12 +218,12 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
             </Alert>
 
             <div className="space-y-3">
-              <Label htmlFor="texto">Texto de Términos y Condiciones *</Label>
+              <Label htmlFor="texto">{t('terms.termsText','Texto de Términos y Condiciones *')}</Label>
               <Textarea
                 id="texto"
                 value={textoNuevo}
                 onChange={(e) => setTextoNuevo(e.target.value)}
-                placeholder="Escribe aquí los términos y condiciones completos de tu taller...&#10;&#10;Ejemplo:&#10;- Política de garantía&#10;- Responsabilidad por datos&#10;- Condiciones de pago&#10;- Plazos de entrega&#10;etc."
+                placeholder={t('terms.termsPlaceholder','Escribe aquí los términos y condiciones completos de tu taller...\n\nEjemplo:\n- Política de garantía\n- Responsabilidad por datos\n- Condiciones de pago\n- Plazos de entrega\netc.')}
                 rows={15}
                 className="font-mono text-sm"
               />
@@ -241,7 +241,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
                 className="w-4 h-4 text-emerald-600"
               />
               <Label htmlFor="activar" className="cursor-pointer flex-1">
-                <span className="font-medium text-slate-900">Activar esta versión inmediatamente</span>
+                <span className="font-medium text-slate-900">{t('terms.activateImmediately','Activar esta versión inmediatamente')}</span>
                 <p className="text-xs text-slate-500 mt-1">
                   {hayTerminos 
                     ? 'Desactivará automáticamente la versión actual y habilitará esta nueva versión para nuevas OT.'
@@ -258,14 +258,14 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
                   setTextoNuevo('');
                 }}
               >
-                Cancelar
+                {t('form.cancel','Cancelar')}
               </Button>
               <Button 
                 onClick={handleGuardar}
                 disabled={!textoNuevo.trim() || createMutation.isPending}
                 className="bg-gradient-to-r from-emerald-500 to-blue-500"
               >
-                {createMutation.isPending ? 'Guardando...' : 'Guardar Versión'}
+                {createMutation.isPending ? t('form.saving','Guardando...') : t('terms.saveVersion','Guardar Versión')}
               </Button>
             </div>
           </div>

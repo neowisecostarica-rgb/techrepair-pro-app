@@ -131,7 +131,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
       {/* ── Estado Documental — Trazabilidad de Envío ────────────────────── */}
       {docActivo && (
         <Bloque
-          label="Estado del Documento Diagnóstico"
+          label={t('expediente.docStatus','Estado del Documento Diagnóstico')}
           icon={Send}
           accentClass="bg-purple-50 text-purple-700"
           defaultOpen={true}
@@ -157,7 +157,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
               </Dato>
             )}
             {docActivo.canal_envio && (
-              <Dato label="Canal de envío">
+              <Dato label={t('expediente.sendChannel','Canal de envío')}>
                 <span className="inline-flex items-center gap-1">
                   {docActivo.canal_envio === 'WHATSAPP' && <MessageSquare className="w-3 h-3 text-green-600" />}
                   {docActivo.canal_envio === 'EMAIL'    && <Mail className="w-3 h-3 text-blue-600" />}
@@ -172,8 +172,8 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
               </Dato>
             )}
             {docActivo.metodo_aprobacion && (
-              <Dato label="Método aprobación">
-                {{ VERBAL: 'Verbal', WHATSAPP_CONFIRM: 'Confirmación WhatsApp', FIRMA_FISICA: 'Firma física', PORTAL_DIGITAL: 'Portal digital' }[docActivo.metodo_aprobacion] || docActivo.metodo_aprobacion}
+              <Dato label={t('expediente.approvalMethod','Método aprobación')}>
+                {{ VERBAL: t('expediente.verbal','Verbal'), WHATSAPP_CONFIRM: t('expediente.whatsappConfirm','Confirmación WhatsApp'), FIRMA_FISICA: t('expediente.physicalSignature','Firma física'), PORTAL_DIGITAL: t('expediente.portalDigital','Portal digital') }[docActivo.metodo_aprobacion] || docActivo.metodo_aprobacion}
               </Dato>
             )}
             {docActivo.aprobacion_status && docActivo.aprobacion_status !== 'PENDIENTE' && (
@@ -195,7 +195,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
       {/* ── DMR — Solo lectura ────────────────────────────────────────────── */}
       <Bloque
-        label="Documento Maestro de Recepción (DMR)"
+        label={t('expediente.dmr','Documento Maestro de Recepción (DMR)')}
         icon={Shield}
         accentClass="bg-indigo-50 text-indigo-700"
         defaultOpen={false}
@@ -237,7 +237,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
                   <Dato label="Tipo">{dmr.activo_snapshot.tipo}</Dato>
                   <Dato label="Marca/Modelo">{`${dmr.activo_snapshot.marca || ''} ${dmr.activo_snapshot.modelo || ''}`.trim()}</Dato>
                   {dmr.activo_snapshot.serie && <Dato label="Serie">{dmr.activo_snapshot.serie}</Dato>}
-                  {dmr.activo_snapshot.estado_fisico && <Dato label="Estado físico" className="capitalize">{dmr.activo_snapshot.estado_fisico}</Dato>}
+                  {dmr.activo_snapshot.estado_fisico && <Dato label={t('expediente.physicalCondition','Estado físico')} className="capitalize">{dmr.activo_snapshot.estado_fisico}</Dato>}
                 </div>
               </div>
             )}
@@ -263,7 +263,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
                     <Dato label="Accesorios">{dmr.diagnostico_snapshot.accesorios_ingreso}</Dato>
                   )}
                   {dmr.diagnostico_snapshot.estado_fisico_ingreso && (
-                    <Dato label="Estado físico" className="capitalize">{dmr.diagnostico_snapshot.estado_fisico_ingreso}</Dato>
+                    <Dato label={t('expediente.physicalCondition','Estado físico')} className="capitalize">{dmr.diagnostico_snapshot.estado_fisico_ingreso}</Dato>
                   )}
                   {dmr.diagnostico_snapshot.danos_visibles && (
                     <Dato label="Daños visibles">{dmr.diagnostico_snapshot.danos_visibles}</Dato>
@@ -304,7 +304,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
       {/* ── Prediagnóstico ────────────────────────────────────────────────── */}
       <Bloque
-        label="Pre-Diagnóstico de Recepción"
+        label={t('expediente.preDiagReception','Pre-Diagnóstico de Recepción')}
         icon={ClipboardList}
         accentClass="bg-blue-50 text-blue-700"
         defaultOpen={false}
@@ -339,7 +339,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
       {/* ── Diagnóstico Técnico ───────────────────────────────────────────── */}
       <Bloque
-        label="Diagnóstico Técnico"
+        label={t('expediente.techDiagnosis','Diagnóstico Técnico')}
         icon={FileText}
         accentClass="bg-purple-50 text-purple-700"
         defaultOpen={false}
@@ -355,7 +355,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
           <p className="text-xs text-slate-400 italic py-2">{t('ops.noTechDiagnosis','Sin diagnóstico técnico registrado aún.')}</p>
         ) : (
           <div className="space-y-2">
-            {diag.tipo_intervencion && <Dato label="Tipo intervención" className="capitalize">{diag.tipo_intervencion.replace(/_/g, ' ')}</Dato>}
+            {diag.tipo_intervencion && <Dato label={t('expediente.interventionType','Tipo intervención')} className="capitalize">{diag.tipo_intervencion.replace(/_/g, ' ')}</Dato>}
             {diag.causa_probable && <Dato label="Causa probable">{diag.causa_probable}</Dato>}
             {diag.trabajo_recomendado && <Dato label="Trabajo recomendado">{diag.trabajo_recomendado}</Dato>}
             {diag.tiempo_estimado_horas && <Dato label="Tiempo estimado">{diag.tiempo_estimado_horas}h</Dato>}
@@ -485,7 +485,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
       {/* ── Actividades (componente existente reutilizado) ────────────────── */}
       <Bloque
-        label="Actividades Técnicas"
+        label={t('expediente.techActivities','Actividades Técnicas')}
         icon={CheckCircle2}
         accentClass="bg-green-50 text-green-700"
         defaultOpen={false}

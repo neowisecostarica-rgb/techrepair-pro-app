@@ -35,7 +35,7 @@ const ESTADO_SOT = Object.fromEntries(
 );
 
 // ── Evaluación de riesgos operativos ──────────────────────────────────────
-function evaluarRiesgos(ot) {
+function evaluarRiesgos(ot, t) {
   const riesgos = [];
   const ahora = new Date();
   const fechaIngreso = new Date(ot.fecha_ingreso || ot.created_date);
@@ -59,7 +59,7 @@ function evaluarRiesgos(ot) {
   }
 
   if (['EN_COLA_REVISION', 'ASIGNADA'].includes(ot.estado) && !ot.diagnostico_habilitado) {
-    riesgos.push({ nivel: 'info', texto: 'Diagnóstico pendiente de pago' });
+    riesgos.push({ nivel: 'info', texto: t('ops.diagPendingPayment','Diagnóstico pendiente de pago') });
   }
 
   return riesgos;
@@ -135,7 +135,7 @@ export default function CentroMando({ ot, effectiveRole }) {
 
   const sot = ESTADO_SOT[ot.estado] || ESTADO_SOT.EN_COLA_REVISION;
   const SotIcon = sot.icon;
-  const riesgos = evaluarRiesgos(ot);
+  const riesgos = evaluarRiesgos(ot, t);
   const sla = calcularSLA(ot);
   const nivelRiesgoMax = riesgos.find(r => r.nivel === 'alto') ? 'alto'
                        : riesgos.find(r => r.nivel === 'medio') ? 'medio'
@@ -179,7 +179,7 @@ export default function CentroMando({ ot, effectiveRole }) {
 
       if (!response?.data?.success) {
         const codigo = response?.data?.codigo;
-        const errorMsg = response?.data?.error || 'Error al iniciar la revisión';
+        const errorMsg = response?.data?.error || t('ops.errorStartReview','Error al iniciar la revisión');
 
         if (codigo === 'DIAGNOSTICO_NO_HABILITADO') {
           setBloqueoPendiente({
@@ -196,7 +196,7 @@ export default function CentroMando({ ot, effectiveRole }) {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
       queryClient.invalidateQueries({ queryKey: ['panel-diag-tecnico', ot.id] });
     } catch (err) {
-      setErrorInicio(err.message || 'Error al iniciar revisión');
+      setErrorInicio(err.message || t('ops.errorStartReview2','Error al iniciar revisión'));
     } finally {
       setIniciando(false);
     }
@@ -278,7 +278,7 @@ export default function CentroMando({ ot, effectiveRole }) {
               {iniciando ? (
                 <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Iniciando...</>
               ) : ot.diagnostico_habilitado ? (
-                <><Play className="w-4 h-4 mr-1.5" /> {requiereReconciliarInicio ? 'Registrar Inicio' : 'Iniciar Revisión'}</>
+                <><Play className="w-4 h-4 mr-1.5" /> {requiereReconciliarInicio ? t('midiaTech.registerStart','Registrar Inicio') : t('midiaTech.startReview','Iniciar Revisión')}</>
               ) : (
                 <><Lock className="w-4 h-4 mr-1.5" /> {t('sweep.pendingPayment','Pendiente de pago')}</>
               )}
@@ -338,7 +338,7 @@ export default function CentroMando({ ot, effectiveRole }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
       {/* ── Próxima Acción (del SOT) ─────────────────────────────────────── */}
-      <MiniCard icon={SotIcon} label="Próxima Acción" className={`col-span-1 sm:col-span-2 ${sot.color} ${sot.labelColor}`}>
+      <MiniCard icon={SotIcon} label={t('ops.nextAction','Próxima Acción')} className={`col-span-1 sm:col-span-2 ${sot.color} ${sot.labelColor}`}>
         <p className="text-sm font-semibold leading-snug">{sot.accion}</p>
       </MiniCard>
 

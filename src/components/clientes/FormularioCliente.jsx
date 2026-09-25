@@ -157,17 +157,17 @@ export default function FormularioCliente({
             </div>
 
             <div className="space-y-2">
-              <Label>Identificación *</Label>
+              <Label>{t('form.identificationRequired','Identificación *')}</Label>
               <Input
                 value={formData.identificacion}
                 onChange={(e) => handleFieldChange('identificacion', e.target.value)}
-                placeholder="ID único del cliente"
+                placeholder={t('form.identificationPlaceholder','ID único del cliente')}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Teléfono *</Label>
+              <Label>{t('form.phoneRequired','Teléfono *')}</Label>
               <Input
                 value={formData.telefono}
                 onChange={(e) => handleFieldChange('telefono', e.target.value)}
@@ -177,7 +177,7 @@ export default function FormularioCliente({
             </div>
 
             <div className="space-y-2">
-              <Label>Correo Electrónico</Label>
+              <Label>{t('form.email','Correo Electrónico')}</Label>
               <Input
                 type="email"
                 value={formData.email}
@@ -186,7 +186,7 @@ export default function FormularioCliente({
               />
               <p className="text-xs text-slate-500 flex items-center gap-1">
                 <Info className="w-3 h-3 flex-shrink-0" />
-                Recomendado para portal del cliente y notificaciones.
+                {t('form.emailRecommended','Recomendado para portal del cliente y notificaciones.')}
               </p>
             </div>
 
@@ -211,27 +211,27 @@ export default function FormularioCliente({
           <>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nombre Completo *</Label>
+                <Label>{t('form.fullName','Nombre Completo *')}</Label>
                 <Input
                   value={formData.nombre_completo}
                   onChange={(e) => handleFieldChange('nombre_completo', e.target.value)}
-                  placeholder="Nombre completo del cliente"
+                  placeholder={t('form.fullNamePlaceholder','Nombre completo del cliente')}
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Identificación *</Label>
+                <Label>{t('form.identificationRequired','Identificación *')}</Label>
                 <Input
                   value={formData.identificacion}
                   onChange={(e) => handleFieldChange('identificacion', e.target.value)}
-                  placeholder="ID único del cliente"
+                  placeholder={t('form.identificationPlaceholder','ID único del cliente')}
                   required
                   disabled={!!cliente}
                 />
                 {cliente && (
                   <p className="text-xs text-slate-500">
-                    La identificación no puede modificarse después de crear el cliente
+                    {t('form.identificationLocked','La identificación no puede modificarse después de crear el cliente')}
                   </p>
                 )}
               </div>
@@ -248,14 +248,14 @@ export default function FormularioCliente({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="individual">Individual</SelectItem>
-                    <SelectItem value="empresa">Empresa</SelectItem>
+                    <SelectItem value="individual">{t('form.individual','Individual')}</SelectItem>
+                    <SelectItem value="empresa">{t('form.company','Empresa')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Teléfono *</Label>
+                <Label>{t('form.phoneRequired','Teléfono *')}</Label>
                 <Input
                   value={formData.telefono}
                   onChange={(e) => handleFieldChange('telefono', e.target.value)}
@@ -276,20 +276,20 @@ export default function FormularioCliente({
             </div>
 
             <div className="space-y-2">
-              <Label>Dirección</Label>
+              <Label>{t('form.address','Dirección')}</Label>
               <Input
                 value={formData.direccion}
                 onChange={(e) => handleFieldChange('direccion', e.target.value)}
-                placeholder="Dirección física del cliente"
+                placeholder={t('form.addressPlaceholder','Dirección física del cliente')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Notas</Label>
+              <Label>{t('form.notes','Notas')}</Label>
               <Textarea
                 value={formData.notas}
                 onChange={(e) => handleFieldChange('notas', e.target.value)}
-                placeholder="Información adicional sobre el cliente"
+                placeholder={t('form.notesPlaceholder','Información adicional sobre el cliente')}
                 rows={3}
               />
             </div>
@@ -332,10 +332,10 @@ export default function FormularioCliente({
       <AlertDialog open={showNoEmailWarning} onOpenChange={setShowNoEmailWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Este cliente no tendrá correo registrado</AlertDialogTitle>
+            <AlertDialogTitle>{t('form.noEmailRegistered','Este cliente no tendrá correo registrado')}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>Sin correo electrónico, este cliente no tendrá acceso a:</p>
+                <p>{t('form.noEmailAccess','Sin correo electrónico, este cliente no tendrá acceso a:')}</p>
                 <ul className="space-y-1 text-sm">
                   <li className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />

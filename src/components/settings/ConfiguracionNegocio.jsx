@@ -100,9 +100,9 @@ export default function ConfiguracionNegocio() {
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <CardTitle>Información Comercial</CardTitle>
+              <CardTitle>{t('config.commercialInfo','Información Comercial')}</CardTitle>
               <CardDescription>
-                Esta información se mostrará en cotizaciones y documentos comerciales
+                {t('config.commercialInfoDesc','Esta información se mostrará en cotizaciones y documentos comerciales')}
               </CardDescription>
             </div>
           </div>
@@ -111,7 +111,7 @@ export default function ConfiguracionNegocio() {
           <form onSubmit={handleSubmitComercial} className="space-y-6">
             {/* Logo */}
             <div className="space-y-2">
-              <Label>Logo del Negocio</Label>
+              <Label>{t('config.businessLogo','Logo del Negocio')}</Label>
               <div className="flex items-center gap-4">
                 {organization?.logo_url && (
                   <img
@@ -138,11 +138,11 @@ export default function ConfiguracionNegocio() {
                       className="cursor-pointer"
                     >
                       <Upload className="w-4 h-4 mr-2" />
-                      {uploading ? 'Subiendo...' : 'Subir Logo'}
+                      {uploading ? t('form.uploading','Subiendo...') : t('config.uploadLogo','Subir Logo')}
                     </Button>
                   </label>
                   <p className="text-xs text-slate-500 mt-2">
-                    Formato PNG o JPG. Recomendado 400x400px
+                    {t('config.logoFormat','Formato PNG o JPG. Recomendado 400x400px')}
                   </p>
                 </div>
               </div>
@@ -150,18 +150,18 @@ export default function ConfiguracionNegocio() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nombre Comercial *</Label>
+                <Label htmlFor="name">{t('config.commercialName','Nombre Comercial *')}</Label>
                 <Input
                   id="name"
                   name="name"
                   defaultValue={organization?.name}
                   required
-                  placeholder="Ej: Servicio Técnico Central"
+                  placeholder={t('config.commercialNamePlaceholder','Ej: Servicio Técnico Central')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email de Contacto</Label>
+                <Label htmlFor="email">{t('config.contactEmail','Email de Contacto')}</Label>
                 <Input
                   id="email"
                   name="email"
@@ -172,7 +172,7 @@ export default function ConfiguracionNegocio() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="telefono_negocio">Teléfono</Label>
+                <Label htmlFor="telefono_negocio">{t('config.phone','Teléfono')}</Label>
                 <Input
                   id="telefono_negocio"
                   name="telefono_negocio"
@@ -182,12 +182,12 @@ export default function ConfiguracionNegocio() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="direccion_comercial">Dirección Comercial</Label>
+                <Label htmlFor="direccion_comercial">{t('config.commercialAddress','Dirección Comercial')}</Label>
                 <Textarea
                   id="direccion_comercial"
                   name="direccion_comercial"
                   defaultValue={organization?.direccion_comercial}
-                  placeholder="Dirección física visible en cotizaciones"
+                  placeholder={t('config.commercialAddressPlaceholder','Dirección física visible en cotizaciones')}
                   rows={2}
                 />
               </div>
@@ -195,7 +195,7 @@ export default function ConfiguracionNegocio() {
 
             <div className="flex justify-end">
               <Button type="submit" disabled={updateOrgMutation.isPending}>
-                {updateOrgMutation.isPending ? 'Guardando...' : 'Guardar Información Comercial'}
+                {updateOrgMutation.isPending ? t('form.saving','Guardando...') : t('config.saveCommercial','Guardar Información Comercial')}
               </Button>
             </div>
           </form>
@@ -210,9 +210,9 @@ export default function ConfiguracionNegocio() {
               <FileText className="w-5 h-5 text-white" />
             </div>
             <div>
-              <CardTitle>Información Legal / Fiscal</CardTitle>
+              <CardTitle>{t('config.legalInfo','Información Legal / Fiscal')}</CardTitle>
               <CardDescription>
-                Para futuras integraciones de facturación electrónica
+                {t('config.legalInfoDesc','Para futuras integraciones de facturación electrónica')}
               </CardDescription>
             </div>
           </div>
@@ -221,14 +221,14 @@ export default function ConfiguracionNegocio() {
           <Alert className="mb-6 bg-blue-50 border-blue-200">
             <AlertCircle className="w-4 h-4 text-blue-600" />
             <AlertDescription className="text-blue-800">
-              Esta información se preparará para facturación electrónica. No se mostrará en cotizaciones.
+              {t('config.legalInfoAlert','Esta información se preparará para facturación electrónica. No se mostrará en cotizaciones.')}
             </AlertDescription>
           </Alert>
 
           <form onSubmit={handleSubmitLegal} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="tipo_entidad">Tipo de Entidad</Label>
+                <Label htmlFor="tipo_entidad">{t('config.entityType','Tipo de Entidad')}</Label>
                 <Select
                   name="tipo_entidad"
                   defaultValue={organization?.tipo_entidad || ''}
@@ -237,24 +237,24 @@ export default function ConfiguracionNegocio() {
                     <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PERSONA_FISICA">Persona Física</SelectItem>
-                    <SelectItem value="PERSONA_JURIDICA">Persona Jurídica</SelectItem>
+                    <SelectItem value="PERSONA_FISICA">{t('config.personaFisica','Persona Física')}</SelectItem>
+                    <SelectItem value="PERSONA_JURIDICA">{t('config.personaJuridica','Persona Jurídica')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="identificacion_fiscal">Identificación Fiscal</Label>
+                <Label htmlFor="identificacion_fiscal">{t('config.taxId','Identificación Fiscal')}</Label>
                 <Input
                   id="identificacion_fiscal"
                   name="identificacion_fiscal"
                   defaultValue={organization?.identificacion_fiscal}
-                  placeholder="Cédula jurídica o física"
+                  placeholder={t('config.taxIdPlaceholder','Cédula jurídica o física')}
                 />
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="legal_name">Razón Social / Nombre Legal</Label>
+                <Label htmlFor="legal_name">{t('config.legalName','Razón Social / Nombre Legal')}</Label>
                 <Input
                   id="legal_name"
                   name="legal_name"
@@ -264,12 +264,12 @@ export default function ConfiguracionNegocio() {
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="direccion_fiscal">Dirección Fiscal</Label>
+                <Label htmlFor="direccion_fiscal">{t('config.fiscalAddress','Dirección Fiscal')}</Label>
                 <Textarea
                   id="direccion_fiscal"
                   name="direccion_fiscal"
                   defaultValue={organization?.direccion_fiscal}
-                  placeholder="Dirección fiscal registrada (para facturación)"
+                  placeholder={t('config.fiscalAddressPlaceholder','Dirección fiscal registrada (para facturación)')}
                   rows={2}
                 />
               </div>
@@ -277,7 +277,7 @@ export default function ConfiguracionNegocio() {
 
             <div className="flex justify-end">
               <Button type="submit" disabled={updateOrgMutation.isPending}>
-                {updateOrgMutation.isPending ? 'Guardando...' : 'Guardar Información Legal'}
+                {updateOrgMutation.isPending ? t('form.saving','Guardando...') : t('config.saveLegal','Guardar Información Legal')}
               </Button>
             </div>
           </form>

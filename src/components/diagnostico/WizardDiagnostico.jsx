@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const CHECKLIST_CATEGORIAS = {
   hardware: {
     label: 'Hardware',
+    labelKey: 'diag.catHardware',
     items: [
       'Estado de la pantalla',
       'Teclado funcional',
@@ -40,6 +41,7 @@ const CHECKLIST_CATEGORIAS = {
   },
   software: {
     label: 'Software',
+    labelKey: 'diag.catSoftware',
     items: [
       'Sistema operativo',
       'Actualizaciones pendientes',
@@ -50,6 +52,7 @@ const CHECKLIST_CATEGORIAS = {
   },
   bateria: {
     label: 'Batería',
+    labelKey: 'diag.catBattery',
     items: [
       'Nivel de carga',
       'Tiempo de autonomía',
@@ -59,6 +62,7 @@ const CHECKLIST_CATEGORIAS = {
   },
   red: {
     label: 'Red y Conectividad',
+    labelKey: 'diag.catNetwork',
     items: [
       'WiFi funcional',
       'Bluetooth',
@@ -338,9 +342,9 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                   <CardContent className="p-6 text-center">
                     <h4 className="font-bold text-lg mb-2 capitalize">{tipo}</h4>
                     <p className="text-sm text-slate-600">
-                      {tipo === 'rapido' && 'Revisión rápida básica (15-30 min)'}
-                      {tipo === 'completo' && 'Diagnóstico completo (1-2 hrs)'}
-                      {tipo === 'especifico' && 'Problema específico enfocado'}
+                      {tipo === 'rapido' && t('diag.quickReview','Revisión rápida básica (15-30 min)')}
+                      {tipo === 'completo' && t('diag.completeReview','Diagnóstico completo (1-2 hrs)')}
+                      {tipo === 'especifico' && t('diag.specificProblem','Problema específico enfocado')}
                     </p>
                   </CardContent>
                 </Card>
@@ -354,14 +358,14 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
           <div className="space-y-6">
             <div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">{t('sweep.technicalChecklist','Checklist Técnico')}</h3>
-              <p className="text-slate-500">Revisa cada componente y marca el resultado</p>
+              <p className="text-slate-500">{t('diag.reviewEachComponent','Revisa cada componente y marca el resultado')}</p>
             </div>
 
             {Object.entries(CHECKLIST_CATEGORIAS).map(([key, cat]) => (
               <Card key={key} className="border-0 shadow-md">
                 <CardContent className="p-6">
                   <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
-                    {cat.label}
+                    {t(cat.labelKey, cat.label)}
                   </h4>
                   <div className="space-y-3">
                     {cat.items.map((item) => {
@@ -413,8 +417,8 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         {currentStep === 3 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Evidencias</h3>
-              <p className="text-slate-500">Agrega fotos y notas técnicas</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{t('diag.evidences','Evidencias')}</h3>
+              <p className="text-slate-500">{t('diag.addPhotosNotes','Agrega fotos y notas técnicas')}</p>
             </div>
 
             <div className="flex gap-3">
@@ -424,7 +428,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                 className="bg-emerald-500"
               >
                 {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
-                Subir Foto
+                {t('diag.uploadPhoto','Subir Foto')}
               </Button>
               <input
                 id="foto-upload"
@@ -435,7 +439,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
               />
               <Button onClick={handleAddNota} variant="outline">
                 <FileText className="w-4 h-4 mr-2" />
-                Agregar Nota
+                {t('diag.addNote','Agregar Nota')}
               </Button>
             </div>
 
@@ -446,12 +450,12 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                     {ev.tipo === 'foto' ? (
                       <div>
                         <img src={ev.url} alt="Evidencia" className="w-full h-40 object-cover rounded-lg mb-2" />
-                        <Badge className="bg-blue-100 text-blue-700 border-0">Foto</Badge>
+                        <Badge className="bg-blue-100 text-blue-700 border-0">{t('diag.photo','Foto')}</Badge>
                       </div>
                     ) : (
                       <div>
                         <p className="text-sm text-slate-700 mb-2">{ev.contenido_texto}</p>
-                        <Badge className="bg-purple-100 text-purple-700 border-0">Nota</Badge>
+                        <Badge className="bg-purple-100 text-purple-700 border-0">{t('diag.note','Nota')}</Badge>
                       </div>
                     )}
                   </CardContent>
@@ -462,7 +466,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
             {evidencias.length === 0 && (
               <div className="text-center py-12 text-slate-400">
                 <Upload className="w-12 h-12 mx-auto mb-3" />
-                <p>No hay evidencias agregadas</p>
+                <p>{t('diag.noEvidences','No hay evidencias agregadas')}</p>
               </div>
             )}
           </div>
@@ -472,8 +476,8 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         {currentStep === 4 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Conclusión Técnica</h3>
-              <p className="text-slate-500">Resume los hallazgos y define el nivel de riesgo</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{t('diag.technicalConclusionTitle','Conclusión Técnica')}</h3>
+              <p className="text-slate-500">{t('diag.summarizeFindings','Resume los hallazgos y define el nivel de riesgo')}</p>
             </div>
 
             <div className="space-y-4">
@@ -482,7 +486,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                 <Textarea
                   value={conclusionData.conclusion_tecnica}
                   onChange={(e) => setConclusionData(prev => ({ ...prev, conclusion_tecnica: e.target.value }))}
-                  placeholder="Detalla los hallazgos técnicos..."
+                  placeholder={t('diag.findingsPlaceholder','Detalla los hallazgos técnicos...')}
                   rows={4}
                   className="resize-none"
                 />
@@ -493,7 +497,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                 <Textarea
                   value={conclusionData.resumen_cliente}
                   onChange={(e) => setConclusionData(prev => ({ ...prev, resumen_cliente: e.target.value }))}
-                  placeholder="Explica en lenguaje no técnico..."
+                  placeholder={t('diag.customerExplanationPlaceholder','Explica en lenguaje no técnico...')}
                   rows={3}
                   className="resize-none"
                 />
@@ -509,10 +513,10 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="bajo">Bajo - Problema menor</SelectItem>
-                    <SelectItem value="medio">Medio - Requiere atención</SelectItem>
-                    <SelectItem value="alto">Alto - Prioridad alta</SelectItem>
-                    <SelectItem value="critico">Crítico - Urgente</SelectItem>
+                    <SelectItem value="bajo">{t('diag.riskLow','Bajo - Problema menor')}</SelectItem>
+                    <SelectItem value="medio">{t('diag.riskMedium','Medio - Requiere atención')}</SelectItem>
+                    <SelectItem value="alto">{t('diag.riskHigh','Alto - Prioridad alta')}</SelectItem>
+                    <SelectItem value="critico">{t('diag.riskCritical','Crítico - Urgente')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -524,8 +528,8 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         {currentStep === 5 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Propuesta Económica</h3>
-              <p className="text-slate-500">Define el costo estimado de la reparación</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{t('diag.economicProposal','Propuesta Económica')}</h3>
+              <p className="text-slate-500">{t('diag.defineCost','Define el costo estimado de la reparación')}</p>
             </div>
 
             <div className="flex gap-3 mb-4">
@@ -533,19 +537,19 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                 variant={precioData.tipo === 'unico' ? 'default' : 'outline'}
                 onClick={() => setPrecioData(prev => ({ ...prev, tipo: 'unico' }))}
               >
-                Precio Único
+                {t('diag.singlePrice','Precio Único')}
               </Button>
               <Button
                 variant={precioData.tipo === 'detallado' ? 'default' : 'outline'}
                 onClick={() => setPrecioData(prev => ({ ...prev, tipo: 'detallado' }))}
               >
-                Precio Detallado
+                {t('diag.detailedPrice','Precio Detallado')}
               </Button>
             </div>
 
             {precioData.tipo === 'unico' ? (
               <div className="space-y-2">
-                <Label>Precio Total (₡) *</Label>
+                <Label>{t('diag.totalPrice','Precio Total (₡) *')}</Label>
                 <Input
                   type="number"
                   value={precioData.precio_total}
@@ -561,15 +565,15 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                     <CardContent className="p-4">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div className="col-span-2">
-                          <Label>Descripción</Label>
+                          <Label>{t('diag.description','Descripción')}</Label>
                           <Input
                             value={item.descripcion}
                             onChange={(e) => updatePrecioItem(idx, 'descripcion', e.target.value)}
-                            placeholder="Ej: Cambio de pantalla"
+                            placeholder={t('diag.descPlaceholder','Ej: Cambio de pantalla')}
                           />
                         </div>
                         <div>
-                          <Label>Cant.</Label>
+                          <Label>{t('diag.qty','Cant.')}</Label>
                           <Input
                             type="number"
                             value={item.cantidad}
@@ -578,7 +582,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                           />
                         </div>
                         <div>
-                          <Label>Precio Unit.</Label>
+                          <Label>{t('diag.unitPrice','Precio Unit.')}</Label>
                           <Input
                             type="number"
                             value={item.precio_unitario}
@@ -588,17 +592,17 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                       </div>
                       <div className="mt-2 text-right">
                         <span className="text-lg font-bold text-emerald-600">
-                          Subtotal: ₡{item.subtotal.toLocaleString()}
+                          {t('diag.subtotal','Subtotal:')} ₡{item.subtotal.toLocaleString()}
                         </span>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
                 <Button onClick={addPrecioItem} variant="outline" className="w-full">
-                  + Agregar Item
+                  {t('diag.addItem','+ Agregar Item')}
                 </Button>
                 <div className="text-right text-xl font-bold text-slate-900">
-                  Total: ₡{precioData.items.reduce((sum, item) => sum + item.subtotal, 0).toLocaleString()}
+                  {t('diag.total','Total:')} ₡{precioData.items.reduce((sum, item) => sum + item.subtotal, 0).toLocaleString()}
                 </div>
               </div>
             )}
@@ -609,8 +613,8 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
         {currentStep === 6 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Resumen Final</h3>
-              <p className="text-slate-500">Revisa la información antes de completar</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{t('diag.finalSummary','Resumen Final')}</h3>
+              <p className="text-slate-500">{t('diag.reviewBeforeComplete','Revisa la información antes de completar')}</p>
             </div>
 
             <div className="space-y-4">
@@ -623,21 +627,21 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
 
               <Card className="border-0 shadow-md">
                 <CardContent className="p-6">
-                  <h4 className="font-bold mb-3">Checklist</h4>
-                  <p className="text-slate-600">{Object.keys(checklistResults).length} items revisados</p>
+                  <h4 className="font-bold mb-3">{t('diag.checklist','Checklist')}</h4>
+                  <p className="text-slate-600">{Object.keys(checklistResults).length} {t('diag.itemsReviewed','items revisados')}</p>
                 </CardContent>
               </Card>
 
               <Card className="border-0 shadow-md">
                 <CardContent className="p-6">
-                  <h4 className="font-bold mb-3">Evidencias</h4>
-                  <p className="text-slate-600">{evidencias.length} evidencias agregadas</p>
+                  <h4 className="font-bold mb-3">{t('diag.evidences','Evidencias')}</h4>
+                  <p className="text-slate-600">{evidencias.length} {t('diag.evidencesCount','evidencias agregadas')}</p>
                 </CardContent>
               </Card>
 
               <Card className="border-0 shadow-md">
                 <CardContent className="p-6">
-                  <h4 className="font-bold mb-3">Conclusión</h4>
+                  <h4 className="font-bold mb-3">{t('diag.conclusion','Conclusión')}</h4>
                   <p className="text-sm text-slate-700 mb-2">{conclusionData.conclusion_tecnica}</p>
                   <Badge className={`${
                     conclusionData.nivel_riesgo === 'critico' ? 'bg-red-100 text-red-700' :
@@ -645,14 +649,14 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
                     conclusionData.nivel_riesgo === 'medio' ? 'bg-yellow-100 text-yellow-700' :
                     'bg-green-100 text-green-700'
                   } border-0 capitalize`}>
-                    Riesgo: {conclusionData.nivel_riesgo}
+                    {t('diag.riskLabel','Riesgo:')} {conclusionData.nivel_riesgo}
                   </Badge>
                 </CardContent>
               </Card>
 
               <Card className="border-0 shadow-md bg-emerald-50">
                 <CardContent className="p-6">
-                  <h4 className="font-bold mb-3">Propuesta Económica</h4>
+                  <h4 className="font-bold mb-3">{t('diag.economicProposal','Propuesta Económica')}</h4>
                   <p className="text-3xl font-bold text-emerald-600">
                     ₡{(precioData.tipo === 'unico' 
                       ? parseFloat(precioData.precio_total) || 0
@@ -665,9 +669,9 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-yellow-900">Confirmación final</p>
+                  <p className="font-semibold text-yellow-900">{t('diag.finalConfirmation','Confirmación final')}</p>
                   <p className="text-sm text-yellow-700">
-                    Al completar, el diagnóstico será inmutable y la orden pasará a estado DIAGNOSTICADA.
+                    {t('diag.completeWarning','Al completar, el diagnóstico será inmutable y la orden pasará a estado DIAGNOSTICADA.')}
                   </p>
                 </div>
               </div>
@@ -684,7 +688,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
           disabled={completeDiagnosticoMutation.isPending}
         >
           <ChevronLeft className="w-4 h-4 mr-2" />
-          {currentStep === 1 ? 'Cancelar' : 'Anterior'}
+          {currentStep === 1 ? t('diag.cancel','Cancelar') : t('diagTech.previous','Anterior')}
         </Button>
 
         {currentStep < totalSteps ? (
@@ -697,7 +701,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
             }}
             className="bg-gradient-to-r from-emerald-500 to-blue-500"
           >
-            Siguiente
+            {t('diagTech.next','Siguiente')}
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         ) : (
@@ -709,16 +713,16 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
             {completeDiagnosticoMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Completando...
+                {t('diag.completing','Completando...')}
               </>
             ) : (
-              'Completar Diagnóstico'
+              t('diag.completeDiagnosis','Completar Diagnóstico')
             )}
           </Button>
         )}
       </div>
     </div>
-      <Dialog open={notaOpen} onOpenChange={setNotaOpen}><DialogContent><DialogHeader><DialogTitle>{t('diagnosis.addNote','Agregar nota al diagnóstico')}</DialogTitle></DialogHeader><div className="space-y-4"><Textarea value={notaTexto} onChange={(e)=>setNotaTexto(e.target.value)} placeholder="Escribe la observación técnica" rows={4} autoFocus /><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setNotaOpen(false)}>Cancelar</Button><Button onClick={confirmarNota} disabled={!notaTexto.trim()}>Agregar nota</Button></div></div></DialogContent></Dialog>
+      <Dialog open={notaOpen} onOpenChange={setNotaOpen}><DialogContent><DialogHeader><DialogTitle>{t('diagnosis.addNote','Agregar nota al diagnóstico')}</DialogTitle></DialogHeader><div className="space-y-4"><Textarea value={notaTexto} onChange={(e)=>setNotaTexto(e.target.value)} placeholder={t('diag.notePlaceholder','Escribe la observación técnica')} rows={4} autoFocus /><div className="flex justify-end gap-3"><Button variant="outline" onClick={()=>setNotaOpen(false)}>{t('diag.cancel','Cancelar')}</Button><Button onClick={confirmarNota} disabled={!notaTexto.trim()}>{t('diag.addNoteBtn','Agregar nota')}</Button></div></div></DialogContent></Dialog>
     </>
   );
 }

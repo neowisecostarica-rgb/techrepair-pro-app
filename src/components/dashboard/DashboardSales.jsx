@@ -76,7 +76,7 @@ export default function DashboardSales({ effectiveOrgId }) {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-slate-900 mb-2">{t('tail.salesDashboard','Dashboard de Ventas')}</h1>
-        <p className="text-slate-500">Tus métricas de ventas y clientes</p>
+        <p className="text-slate-500">{t('ops.salesMetricsSubtitle','Tus métricas de ventas y clientes')}</p>
       </div>
 
       {/* Stats Grid */}

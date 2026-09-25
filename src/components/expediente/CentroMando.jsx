@@ -230,17 +230,17 @@ export default function CentroMando({ ot, effectiveRole }) {
           <div className="flex-1">
             {requiereReconciliarInicio ? (
               <>
-                <p className="text-sm font-semibold text-emerald-900">Falta registrar el inicio técnico</p>
-                <p className="text-xs text-emerald-700">Registra la actividad auditada para continuar la revisión.</p>
+                <p className="text-sm font-semibold text-emerald-900">{t('ops.missingTechStart','Falta registrar el inicio técnico')}</p>
+                <p className="text-xs text-emerald-700">{t('ops.missingTechStartDesc','Registra la actividad auditada para continuar la revisión.')}</p>
               </>
             ) : ot.diagnostico_habilitado ? (
               <>
-                <p className="text-sm font-semibold text-emerald-900">Esta OT está lista para revisión</p>
-                <p className="text-xs text-emerald-700">Inicia la revisión para registrar tu tiempo técnico y mover la OT a EN_REVISION.</p>
+                <p className="text-sm font-semibold text-emerald-900">{t('ops.readyForReview','Esta OT está lista para revisión')}</p>
+                <p className="text-xs text-emerald-700">{t('ops.readyForReviewDesc','Inicia la revisión para registrar tu tiempo técnico y mover la OT a EN_REVISION.')}</p>
               </>
             ) : (
               <>
-                <p className="text-sm font-semibold text-amber-900">Revisión pendiente de habilitación</p>
+                <p className="text-sm font-semibold text-amber-900">{t('ops.reviewPendingEnable','Revisión pendiente de habilitación')}</p>
                 <p className="text-xs text-amber-700">
                   {motivoBloqueo.descripcion} · Acción: {motivoBloqueo.accion}
                 </p>
@@ -294,7 +294,7 @@ export default function CentroMando({ ot, effectiveRole }) {
           <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border text-xs ${docCfg.color}`}>
             <DocIcon className="w-3.5 h-3.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <span className="font-semibold">Documento diagnóstico: </span>
+              <span className="font-semibold">{t('ops.diagDocumentLabel','Documento diagnóstico: ')}</span>
               <span>{docCfg.label}</span>
               {docActivo?.enviado_at && (
                 <span className="text-[10px] opacity-70 ml-2">

@@ -217,7 +217,7 @@ export default function AccionesCustodia({ ot, onUpdated }) {
               Declarar Abandono
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <span>Esta acción declara formalmente el abandono del equipo. El estado de custodia cambiará a <strong>Abandono Declarado</strong>.</span>
+              <span>{t('ops.abandonWarning','Esta acción declara formalmente el abandono del equipo. El estado de custodia cambiará a')} <strong>{t('ops.abandonDeclared','Abandono Declarado')}</strong>.</span>
               <Textarea
                 placeholder="Observaciones del abandono (opcional)..."
                 value={obsAbandono}
@@ -248,9 +248,9 @@ export default function AccionesCustodia({ ot, onUpdated }) {
               Marcar Disposición Final
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <span>Esta acción indica que el equipo abandonado ha sido dado de baja o dispuesto. Esta acción es irreversible.</span>
+              <span>{t('ops.dispositionWarning','Esta acción indica que el equipo abandonado ha sido dado de baja o dispuesto. Esta acción es irreversible.')}</span>
               <Textarea
-                placeholder="Observaciones de la disposición final (opcional)..."
+                placeholder={t('ops.dispositionNotesPlaceholder','Observaciones de la disposición final (opcional)...')}
                 value={obsDisposicion}
                 onChange={e => setObsDisposicion(e.target.value)}
                 rows={3}

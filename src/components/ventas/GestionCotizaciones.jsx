@@ -730,7 +730,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                           )}
                         </div>
                         <div className="col-span-3">
-                          <Label className="text-xs">Descripción Final</Label>
+                          <Label className="text-xs">{t('quote.finalDescription','Descripción Final')}</Label>
                           <Input
                             value={item.descripcion}
                             onChange={(e) => updateItem(idx, 'descripcion', e.target.value)}
@@ -845,7 +845,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
             </div>
 
             <div className="space-y-2">
-              <Label>Válida hasta</Label>
+              <Label>{t('quoteForm.validUntil','Válida hasta')}</Label>
               <Input
                 name="valida_hasta"
                 type="date"

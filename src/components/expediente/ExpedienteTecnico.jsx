@@ -244,7 +244,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
             {dmr.contexto_recepcion && (
               <div>
-                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Contexto Recepción</p>
+                <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">{t('ops.receptionContext','Contexto Recepción')}</p>
                 <div className="bg-slate-50 rounded-lg p-2 space-y-0.5">
                   {dmr.contexto_recepcion.motivo_ingreso && <Dato label="Motivo">{dmr.contexto_recepcion.motivo_ingreso}</Dato>}
                   {dmr.contexto_recepcion.tipo_ingreso && <Dato label="Tipo ingreso" className="capitalize">{dmr.contexto_recepcion.tipo_ingreso}</Dato>}
@@ -317,7 +317,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
         }
       >
         {!smartIntake ? (
-          <p className="text-xs text-slate-400 italic py-2">Sin prediagnóstico registrado.</p>
+          <p className="text-xs text-slate-400 italic py-2">{t('ops.noPreDiagRegistered','Sin prediagnóstico registrado.')}</p>
         ) : (
           <div>
             {smartIntake.summary && (
@@ -348,11 +348,11 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
             ? <Badge className={`border-0 text-[10px] ${diag.estado === 'listo_aprobacion' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
                 {diag.estado === 'listo_aprobacion' ? 'Listo' : 'Borrador'}
               </Badge>
-            : <Badge className="bg-slate-100 text-slate-400 border-0 text-[10px]">Sin diagnóstico</Badge>
+            : <Badge className="bg-slate-100 text-slate-400 border-0 text-[10px]">{t('ops.noDiagnosis','Sin diagnóstico')}</Badge>
         }
       >
         {!diag ? (
-          <p className="text-xs text-slate-400 italic py-2">Sin diagnóstico técnico registrado aún.</p>
+          <p className="text-xs text-slate-400 italic py-2">{t('ops.noTechDiagnosis','Sin diagnóstico técnico registrado aún.')}</p>
         ) : (
           <div className="space-y-2">
             {diag.tipo_intervencion && <Dato label="Tipo intervención" className="capitalize">{diag.tipo_intervencion.replace(/_/g, ' ')}</Dato>}

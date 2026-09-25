@@ -42,7 +42,7 @@ export default function DashboardSuperAdmin() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Administración de plataforma</h1>
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">{t('ops.superAdminTitle','Administración de plataforma')}</h1>
         <p className="text-slate-500">{t('finalI18n.globalMetrics','Métricas globales de la plataforma')}</p>
       </div>
 
@@ -73,7 +73,7 @@ export default function DashboardSuperAdmin() {
       {/* Quick Action */}
       <Card className="border-0 shadow-lg">
         <CardContent className="p-6 text-center">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Panel de administración</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">{t('ops.superAdminPanel','Panel de administración')}</h3>
           <Link to={createPageUrl('Saas')}>
             <Button size="lg">{t('finalI18n.openAdmin','Abrir administración')}</Button>
           </Link>

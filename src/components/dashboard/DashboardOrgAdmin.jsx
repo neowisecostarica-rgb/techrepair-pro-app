@@ -302,7 +302,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
 
       <Card className="border-0 shadow-lg">
         <CardHeader className="border-b border-slate-100">
-          <CardTitle className="text-lg font-semibold">Órdenes por Día (7 días)</CardTitle>
+          <CardTitle className="text-lg font-semibold">{t('ops.orgAdminOrdersChart','Órdenes por Día (7 días)')}</CardTitle>
         </CardHeader>
 
         <CardContent className="p-6">

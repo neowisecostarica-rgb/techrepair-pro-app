@@ -139,7 +139,7 @@ function LayoutContent({ children, currentPageName }) {
       <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
         <div className="text-center max-w-md p-8 bg-white rounded-xl border border-slate-200 shadow-sm">
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Sesión válida · Servicio de identidad no disponible</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('ops.sessionValid','Sesión válida · Servicio de identidad no disponible')}</h2>
           <p className="text-slate-600 mb-6">
             Base44 reconoce tu sesión, pero TRP no pudo cargar la autorización del usuario. El acceso permanece bloqueado de forma segura.
           </p>
@@ -162,7 +162,7 @@ function LayoutContent({ children, currentPageName }) {
       <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
         <div className="text-center max-w-md p-8 bg-white rounded-xl border border-slate-200 shadow-sm">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Error de Autenticación</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('ops.authError','Error de Autenticación')}</h2>
           <p className="text-slate-600 mb-6">
             No se pudo cargar la información de tu sesión. Intenta nuevamente o cierra sesión.
           </p>
@@ -273,8 +273,8 @@ function LayoutContent({ children, currentPageName }) {
               <Wrench className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Selecciona una organización</h2>
-              <p className="text-sm text-slate-500">Tu cuenta está vinculada a múltiples organizaciones</p>
+              <h2 className="text-lg font-bold text-slate-900">{t('ops.selectOrg','Selecciona una organización')}</h2>
+              <p className="text-sm text-slate-500">{t('ops.multiOrgHelp','Tu cuenta está vinculada a múltiples organizaciones')}</p>
             </div>
           </div>
           <div className="space-y-3">

@@ -65,7 +65,7 @@ export default function DashboardTechnician({ effectiveOrgId, userId }) {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Mi Dashboard</h1>
-        <p className="text-slate-500">Tus métricas y órdenes asignadas</p>
+        <p className="text-slate-500">{t('ops.techMetricsSubtitle','Tus métricas y órdenes asignadas')}</p>
       </div>
 
       {/* Stats Grid */}
@@ -98,12 +98,12 @@ export default function DashboardTechnician({ effectiveOrgId, userId }) {
               Órdenes Activas ({ordenesActivas.length})
             </h3>
             <Link to={createPageUrl('MiDia')}>
-              <Button size="sm">Ver Mi Día</Button>
+              <Button size="sm">{t('ops.viewMyDay','Ver Mi Día')}</Button>
             </Link>
           </div>
           <div className="space-y-3">
             {ordenesActivas.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">No tienes órdenes activas</p>
+              <p className="text-slate-500 text-center py-8">{t('ops.noOrdersActive','No tienes órdenes activas')}</p>
             ) : (
               ordenesActivas.slice(0, 5).map(orden => (
                 <div key={orden.id} className="p-4 bg-slate-50 rounded-lg flex items-center justify-between">

@@ -68,7 +68,7 @@ function VentasGarantiasContent() {
 
   const getClienteName = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nombre_completo || 'Sin cliente';
+    return cliente?.nombre_completo || t('warranty.noClient','Sin cliente');
   };
 
   const getClienteTelefono = (clienteId) => {
@@ -79,10 +79,10 @@ function VentasGarantiasContent() {
   const getOrigen = (garantia) => {
     if (garantia.origen_tipo === 'OT') {
       const ot = ordenesTrabajo.find(o => o.id === garantia.origen_id);
-      return ot?.codigo_ot || 'OT no encontrada';
+      return ot?.codigo_ot || t('warranty.otNotFound','OT no encontrada');
     } else {
       const venta = ventas.find(v => v.id === garantia.origen_id);
-      return venta ? `Venta ₡${venta.total.toLocaleString()}` : 'Venta no encontrada';
+      return venta ? `${t('warranty.sale','Venta')} ₡${venta.total.toLocaleString()}` : t('warranty.saleNotFound','Venta no encontrada');
     }
   };
 
@@ -273,7 +273,7 @@ function VentasGarantiasContent() {
             {garantiasFiltradas.length === 0 && (
               <div className="text-center py-12">
                 <Shield className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500">No se encontraron garantías</p>
+                <p className="text-slate-500">{t('warranty.notFound','No se encontraron garantías')}</p>
               </div>
             )}
           </div>
@@ -319,7 +319,7 @@ function VentasGarantiasContent() {
                   <p className="text-slate-900">{getOrigen(garantiaSeleccionada)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Fecha de Emisión</p>
+                  <p className="text-xs text-slate-500">{t('publicDocs.issued','Fecha de Emisión')}</p>
                   <p className="text-slate-900">
                     {format(new Date(garantiaSeleccionada.fecha_emision), 'dd MMM yyyy', { locale: es })}
                   </p>

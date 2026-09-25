@@ -15,14 +15,14 @@ import { useToast } from '@/components/ui/use-toast';
 import { createPageUrl } from '@/utils';
 import { COMPONENTES_DISPONIBLES, PRUEBAS_POR_COMPONENTE } from './pruebasPorComponente';
 
-const TIPOS_INTERVENCION = {
-  diagnostico_tecnico: 'Diagnóstico técnico completo',
-  mantenimiento_preventivo: 'Mantenimiento preventivo',
-  mantenimiento_correctivo: 'Mantenimiento correctivo',
-  limpieza: 'Limpieza y mantenimiento',
-  reparacion_puntual: 'Reparación puntual',
-  revision_general: 'Revisión general',
-  otro: 'Otro'
+const TIPOS_INTERVENCION_KEYS = {
+  diagnostico_tecnico: 'intDiagnostico',
+  mantenimiento_preventivo: 'intPreventivo',
+  mantenimiento_correctivo: 'intCorrectivo',
+  limpieza: 'intLimpieza',
+  reparacion_puntual: 'intReparacion',
+  revision_general: 'intRevision',
+  otro: 'intOtro'
 };
 
 export default function WizardDiagnosticoTecnico({ 
@@ -126,7 +126,7 @@ export default function WizardDiagnosticoTecnico({
       }
     } catch (error) {
       console.error('Error guardando progreso:', error);
-      toast({ variant: 'destructive', title: 'No se pudo guardar el diagnóstico', description: error.message });
+      toast({ variant: 'destructive', title: t('diagTech.saveError','No se pudo guardar el diagnóstico'), description: error.message });
     } finally {
       setSaving(false);
     }
@@ -141,7 +141,7 @@ export default function WizardDiagnosticoTecnico({
         motivo: 'credito_ya_consumido',
         ts: new Date().toISOString() 
       });
-      toast({ title: 'Diagnóstico ya finalizado', description: 'Este diagnóstico ya fue finalizado previamente y no puede prepararse de nuevo.' });
+      toast({ title: t('diagTech.alreadyFinished','Diagnóstico ya finalizado'), description: t('diagTech.alreadyFinishedDesc','Este diagnóstico ya fue finalizado previamente y no puede prepararse de nuevo.') });
       return;
     }
 
@@ -175,7 +175,7 @@ export default function WizardDiagnosticoTecnico({
       setDiagnostico(diagnosticoPreparado);
       const diagnosticoPreparadoId = diagnosticoPreparado?.id || diagnostico?.id;
       if (!diagnosticoPreparadoId) {
-        throw new Error('No se pudo resolver el diagnóstico técnico preparado');
+        throw new Error(t('diagTech.resolveError','No se pudo resolver el diagnóstico técnico preparado'));
       }
 
       console.log('PREPARAR_DIAG_DONE', {
@@ -191,7 +191,7 @@ export default function WizardDiagnosticoTecnico({
       }
     } catch (error) {
       console.error('Error preparando diagnóstico:', error);
-      toast({ variant: 'destructive', title: 'No se pudo preparar el diagnóstico', description: error.message });
+      toast({ variant: 'destructive', title: t('diagTech.prepareError','No se pudo preparar el diagnóstico'), description: error.message });
     } finally {
       setSaving(false);
     }
@@ -247,24 +247,24 @@ export default function WizardDiagnosticoTecnico({
           <AlertDescription className="text-orange-900">
             <p className="font-semibold mb-2">🔒 {t('docResidual.locked','Diagnóstico Bloqueado')}</p>
             <p className="text-sm mb-3">
-              El diagnóstico debe cobrarse antes de iniciar la revisión técnica.
+              {t('diagTech.lockedDesc','El diagnóstico debe cobrarse antes de iniciar la revisión técnica.')}
             </p>
             <p className="text-sm font-medium">
-              Próximo paso: Ir a Caja y Cobros para cobrar el diagnóstico.
+              {t('diagTech.lockedNextStep','Próximo paso: Ir a Caja y Cobros para cobrar el diagnóstico.')}
             </p>
           </AlertDescription>
         </Alert>
         <div className="flex justify-end gap-3 pt-4">
           <Button onClick={onClose} variant="outline">
-            Cerrar
+            {t('diagTech.close','Cerrar')}
           </Button>
-          <Button 
+          <Button
             onClick={() => {
               window.location.href = createPageUrl('PuntoVenta') + `?ot_id=${ordenTrabajo.id}&concepto=revision_diagnostico`;
             }}
             className="bg-gradient-to-r from-green-500 to-emerald-500"
           >
-            💳 Ir a Cobrar Diagnóstico
+            {t('diagTech.chargeDiagnosis','💳 Ir a Cobrar Diagnóstico')}
           </Button>
         </div>
       </div>
@@ -278,13 +278,12 @@ export default function WizardDiagnosticoTecnico({
         <Alert className="bg-red-50 border-red-200">
           <AlertCircle className="w-4 h-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            <strong>Trabajo NO activo:</strong> No puedes diagnosticar un trabajo pausado o en espera. 
-            Por favor, retoma el trabajo desde "Hoy" antes de continuar.
+            <strong>{t('diagTech.notActiveTitle','Trabajo NO activo:')}</strong> {t('diagTech.notActiveDesc','No puedes diagnosticar un trabajo pausado o en espera. Por favor, retoma el trabajo desde "Hoy" antes de continuar.')}
           </AlertDescription>
         </Alert>
         <div className="flex justify-end pt-4">
           <Button onClick={onClose} variant="outline">
-            Cerrar
+            {t('diagTech.close','Cerrar')}
           </Button>
         </div>
       </div>
@@ -297,12 +296,12 @@ export default function WizardDiagnosticoTecnico({
         <div>
           <h2 className="text-2xl font-bold text-slate-900">{t('diagnosis.title','Diagnóstico Técnico')}</h2>
           <p className="text-sm text-slate-500">
-            Evaluación profesional y recomendaciones técnicas
+            {t('diagTech.subtitle','Evaluación profesional y recomendaciones técnicas')}
           </p>
         </div>
         {paso > 0 && (
           <Badge variant="outline" className="text-lg px-4 py-2">
-            Paso {paso} de 4
+            {t('diagTech.step','Paso')} {paso} {t('diagTech.of','de')} 4
           </Badge>
         )}
       </div>
@@ -313,7 +312,7 @@ export default function WizardDiagnosticoTecnico({
           <Alert className="bg-emerald-50 border-emerald-200">
             <FileText className="w-4 h-4 text-emerald-600" />
             <AlertDescription className="text-emerald-800">
-              <strong>Contexto del cliente:</strong> Revisa lo que reportó el cliente antes de iniciar el diagnóstico técnico.
+              <strong>{t('diagTech.contextTitle','Contexto del cliente:')}</strong> {t('diagTech.contextDesc','Revisa lo que reportó el cliente antes de iniciar el diagnóstico técnico.')}
             </AlertDescription>
           </Alert>
 
@@ -325,32 +324,32 @@ export default function WizardDiagnosticoTecnico({
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-slate-500">Uso principal:</p>
-                    <p className="font-medium">{smartIntake.mainUse || 'No especificado'}</p>
+                    <p className="text-slate-500">{t('diagTech.mainUse','Uso principal:')}</p>
+                    <p className="font-medium">{smartIntake.mainUse || t('diagTech.notSpecified','No especificado')}</p>
                   </div>
                   <div>
                     <p className="text-slate-500">{t('docResidual.criticalEquipment','Equipo crítico:')}</p>
-                    <p className="font-medium">{smartIntake.isCriticalEquipment ? 'Sí' : 'No'}</p>
+                    <p className="font-medium">{smartIntake.isCriticalEquipment ? t('diagTech.yes','Sí') : t('diagTech.no','No')}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Problema reportado:</p>
-                    <p className="font-medium">{smartIntake.mainReportedProblem || 'No especificado'}</p>
+                    <p className="text-slate-500">{t('diagTech.reportedProblem','Problema reportado:')}</p>
+                    <p className="font-medium">{smartIntake.mainReportedProblem || t('diagTech.notSpecified','No especificado')}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Riesgo de datos:</p>
+                    <p className="text-slate-500">{t('diagTech.dataRisk','Riesgo de datos:')}</p>
                     <Badge className={
                       smartIntake.dataRiskLevel === 'alto' ? 'bg-red-100 text-red-800' :
                       smartIntake.dataRiskLevel === 'medio' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-slate-100 text-slate-800'
                     }>
-                      {smartIntake.dataRiskLevel || 'ninguno'}
+                      {smartIntake.dataRiskLevel || t('diagTech.none','ninguno')}
                     </Badge>
                   </div>
                 </div>
 
                 {smartIntake.summary && (
                   <div className="border-t pt-4 mt-4">
-                    <p className="text-sm text-slate-500 mb-2">Resumen:</p>
+                    <p className="text-sm text-slate-500 mb-2">{t('diagTech.summary','Resumen:')}</p>
                     <p className="text-sm whitespace-pre-wrap">{smartIntake.summary}</p>
                   </div>
                 )}
@@ -360,7 +359,7 @@ export default function WizardDiagnosticoTecnico({
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>
-                No hay pre-diagnóstico disponible. El equipo fue recibido sin información previa del cliente.
+                {t('diagTech.noPreDiag','No hay pre-diagnóstico disponible. El equipo fue recibido sin información previa del cliente.')}
               </AlertDescription>
             </Alert>
           )}
@@ -370,7 +369,7 @@ export default function WizardDiagnosticoTecnico({
               onClick={() => setPaso(1)}
               className="bg-gradient-to-r from-purple-500 to-blue-500"
             >
-              Iniciar Diagnóstico Técnico
+              {t('diagTech.startTechDiag','Iniciar Diagnóstico Técnico')}
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -385,7 +384,7 @@ export default function WizardDiagnosticoTecnico({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label>Tipo de Intervención *</Label>
+              <Label>{t('diagTech.interventionType','Tipo de Intervención *')}</Label>
               <Select 
                 value={formData.tipo_intervencion} 
                 onValueChange={(value) => setFormData({...formData, tipo_intervencion: value})}
@@ -394,15 +393,15 @@ export default function WizardDiagnosticoTecnico({
                   <SelectValue placeholder={t('otTech.selectType','Seleccionar tipo')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(TIPOS_INTERVENCION).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  {Object.entries(TIPOS_INTERVENCION_KEYS).map(([key, msgKey]) => (
+                    <SelectItem key={key} value={key}>{t(`diagTech.${msgKey}`, msgKey)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-3">
-              <Label>Componentes a Revisar</Label>
+              <Label>{t('diagTech.componentsToReview','Componentes a Revisar')}</Label>
               <div className="grid grid-cols-2 gap-3">
                 {COMPONENTES_DISPONIBLES.map(componente => (
                   <div key={componente.id} className="flex items-center space-x-2">
@@ -426,14 +425,14 @@ export default function WizardDiagnosticoTecnico({
       {paso === 2 && (
         <Card>
           <CardHeader>
-            <CardTitle>Pruebas Técnicas Realizadas</CardTitle>
+            <CardTitle>{t('diagTech.testsPerformed','Pruebas Técnicas Realizadas')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {formData.componentes_revisar.length === 0 ? (
               <Alert>
                 <AlertCircle className="w-4 h-4" />
                 <AlertDescription>
-                  Selecciona componentes en el paso anterior para ver las pruebas disponibles.
+                  {t('diagTech.selectComponentsFirst','Selecciona componentes en el paso anterior para ver las pruebas disponibles.')}
                 </AlertDescription>
               </Alert>
             ) : (
@@ -469,13 +468,13 @@ export default function WizardDiagnosticoTecnico({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="ok">✓ OK</SelectItem>
-                                <SelectItem value="falla">✗ Falla</SelectItem>
-                                <SelectItem value="na">N/A</SelectItem>
+                                <SelectItem value="ok">{t('diagTech.ok','✓ OK')}</SelectItem>
+                                <SelectItem value="falla">{t('diagTech.fail','✗ Falla')}</SelectItem>
+                                <SelectItem value="na">{t('diagTech.na','N/A')}</SelectItem>
                               </SelectContent>
                             </Select>
                             <Input
-                              placeholder="Observación breve"
+                              placeholder={t('diagTech.briefObservation','Observación breve')}
                               value={resultado?.observacion || ''}
                               onChange={(e) => setFormData({
                                 ...formData,
@@ -509,24 +508,24 @@ export default function WizardDiagnosticoTecnico({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label>Problemas Detectados</Label>
+              <Label>{t('diagTech.problemsDetected','Problemas Detectados')}</Label>
               <Textarea
                 value={formData.hallazgos.problemas || ''}
                 onChange={(e) => setFormData({
                   ...formData,
                   hallazgos: {...formData.hallazgos, problemas: e.target.value}
                 })}
-                placeholder="Lista los problemas técnicos detectados..."
+                placeholder={t('diagTech.problemsPlaceholder','Lista los problemas técnicos detectados...')}
                 rows={4}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Causa Probable</Label>
+              <Label>{t('diagTech.probableCause','Causa Probable')}</Label>
               <Textarea
                 value={formData.causa_probable}
                 onChange={(e) => setFormData({...formData, causa_probable: e.target.value})}
-                placeholder="¿Cuál es la causa técnica más probable?"
+                placeholder={t('diagTech.causePlaceholder','¿Cuál es la causa técnica más probable?')}
                 rows={3}
               />
             </div>
@@ -538,31 +537,31 @@ export default function WizardDiagnosticoTecnico({
       {paso === 4 && (
         <Card>
           <CardHeader>
-            <CardTitle>Recomendación Técnica</CardTitle>
+            <CardTitle>{t('diagTech.recommendation','Recomendación Técnica')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label>Trabajo Recomendado *</Label>
+              <Label>{t('diagTech.recommendedWork','Trabajo Recomendado *')}</Label>
               <Textarea
                 value={formData.trabajo_recomendado}
                 onChange={(e) => setFormData({...formData, trabajo_recomendado: e.target.value})}
-                placeholder="Describe el trabajo técnico necesario..."
+                placeholder={t('diagTech.workPlaceholder','Describe el trabajo técnico necesario...')}
                 rows={3}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Riesgos si NO se Repara</Label>
+              <Label>{t('diagTech.risksNoRepair','Riesgos si NO se Repara')}</Label>
               <Textarea
                 value={formData.riesgos_no_reparar}
                 onChange={(e) => setFormData({...formData, riesgos_no_reparar: e.target.value})}
-                placeholder="¿Qué puede pasar si el cliente no aprueba la reparación?"
+                placeholder={t('diagTech.risksPlaceholder','¿Qué puede pasar si el cliente no aprueba la reparación?')}
                 rows={2}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Tiempo Estimado (horas) *</Label>
+              <Label>{t('diagTech.estimatedTime','Tiempo Estimado (horas) *')}</Label>
               <Input
                 type="number"
                 value={formData.tiempo_estimado_horas}
@@ -574,9 +573,9 @@ export default function WizardDiagnosticoTecnico({
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Repuestos Requeridos</Label>
+                <Label>{t('diagTech.requiredParts','Repuestos Requeridos')}</Label>
                 <Button type="button" variant="outline" size="sm" onClick={agregarRepuesto}>
-                  + Agregar Repuesto
+                  {t('diagTech.addPart','+ Agregar Repuesto')}
                 </Button>
               </div>
 
@@ -590,7 +589,7 @@ export default function WizardDiagnosticoTecnico({
                     />
                     <Input
                       type="number"
-                      placeholder="Cantidad"
+                      placeholder={t('diagTech.quantity','Cantidad')}
                       value={repuesto.cantidad}
                       onChange={(e) => actualizarRepuesto(index, 'cantidad', parseInt(e.target.value) || 1)}
                       className="w-24"
@@ -621,7 +620,7 @@ export default function WizardDiagnosticoTecnico({
             disabled={saving}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
-            {paso === 1 ? 'Ver Contexto' : 'Anterior'}
+            {paso === 1 ? t('diagTech.viewContext','Ver Contexto') : t('diagTech.previous','Anterior')}
           </Button>
 
           {paso < 4 ? (
@@ -633,11 +632,11 @@ export default function WizardDiagnosticoTecnico({
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Guardando...
+                  {t('diagTech.saving','Guardando...')}
                 </>
               ) : (
                 <>
-                  Siguiente
+                  {t('diagTech.next','Siguiente')}
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </>
               )}
@@ -656,14 +655,14 @@ export default function WizardDiagnosticoTecnico({
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Preparando...
+                  {t('diagTech.preparing','Preparando...')}
                 </>
               ) : diagnostico?.credito_consumido_finalizacion === true ? (
-                '✓ Diagnóstico ya completado'
+                t('diagTech.alreadyCompleted','✓ Diagnóstico ya completado')
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Preparar para Emitir
+                  {t('diagTech.prepareToEmit','Preparar para Emitir')}
                 </>
               )}
             </Button>

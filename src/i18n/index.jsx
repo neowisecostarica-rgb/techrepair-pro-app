@@ -1,6 +1,8 @@
 import React from 'react';
 import { websiteMessages } from './website-messages';
 import { residualMessages } from './residual-messages';
+import { diagMessages } from './diag-messages';
+import { opsMessages } from './ops-messages';
 export const SUPPORTED_LOCALES=['es','en','pt','fr','no'];
 export const LOCALE_LABELS={es:'ES',en:'EN',pt:'PT',fr:'FR',no:'NO'};
 const KEY='trp.locale';
@@ -18,6 +20,12 @@ Object.keys(messages).forEach(locale => {
   }
   if (residualMessages[locale]) {
     messages[locale] = { ...messages[locale], ...residualMessages[locale] };
+  }
+  if (diagMessages[locale]) {
+    messages[locale] = { ...messages[locale], ...diagMessages[locale] };
+  }
+  if (opsMessages[locale]) {
+    messages[locale] = { ...messages[locale], ...opsMessages[locale] };
   }
 });
 const Context=React.createContext(null);

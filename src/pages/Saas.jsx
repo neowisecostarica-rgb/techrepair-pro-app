@@ -747,7 +747,7 @@ function SaasContent() {
                           <Badge className="bg-teal-50 text-teal-800 border border-teal-200 uppercase text-xs">
                             {packageName === 'advanced' ? 'business' : packageName}
                           </Badge>
-                          <p className="text-xs text-slate-500 mt-1">{entitlementSource === 'legacy_compatibility' ? 'Compatibilidad legacy' : 'Política comercial TRP'}</p>
+                          <p className="text-xs text-slate-500 mt-1">{entitlementSource === 'legacy_compatibility' ? t('saas.legacyCompat','Compatibilidad legacy') : t('saas.trpCommercialPolicy','Política comercial TRP')}</p>
                         </td>
                         <td className="p-3">
                           <Badge className={billingStatus === 'active' ? 'bg-teal-50 text-teal-800 border border-teal-200' : billingStatus === 'trial' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
@@ -759,20 +759,20 @@ function SaasContent() {
                           <Badge className={licenseStatus === 'active' ? 'bg-teal-50 text-teal-800 border border-teal-200' : licenseStatus === 'pending' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
                             {licenseStatus}
                           </Badge>
-                          <p className="text-xs text-slate-500 mt-1">{renewalAt ? `Renueva ${new Date(renewalAt).toLocaleDateString('es-ES')}` : 'Renovación administrada'}</p>
+                          <p className="text-xs text-slate-500 mt-1">{renewalAt ? `${t('saas.renewsPrefix','Renueva')} ${new Date(renewalAt).toLocaleDateString('es-ES')}` : t('saas.managedRenewal','Renovación administrada')}</p>
                         </td>
                         <td className="p-3">
                           <Badge className={org.status === 'active'
                             ? 'bg-teal-50 text-teal-800 border border-teal-200'
                             : 'bg-red-50 text-red-700 border border-red-200'}>
-                            {org.status === 'active' ? 'Activa' : org.status === 'suspended' ? 'Suspendida' : org.status}
+                            {org.status === 'active' ? t('saas.statusActive','Activa') : org.status === 'suspended' ? t('saas.statusSuspended','Suspendida') : org.status}
                           </Badge>
                         </td>
                         <td className="p-3">
                           <Badge className={tenantReady ? 'bg-teal-50 text-teal-800 border border-teal-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
-                            {tenantReady ? 'Lista' : `${readinessCount}/6`}
+                            {tenantReady ? t('saas.ready','Lista') : `${readinessCount}/6`}
                           </Badge>
-                          {!tenantReady && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? 'Configuración inicial pendiente' : !hasPrimaryBranch ? 'Falta sucursal' : !hasAdmin ? 'Falta administrador principal' : !commercialReady ? 'Falta paquete' : !licenseReady ? 'Licencia pendiente' : 'Acceso suspendido'}</p>}
+                          {!tenantReady && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? t('saas.initialConfigPending','Configuración inicial pendiente') : !hasPrimaryBranch ? t('saas.missingBranch','Falta sucursal') : !hasAdmin ? t('saas.missingAdmin','Falta administrador principal') : !commercialReady ? t('saas.missingPackage','Falta paquete') : !licenseReady ? t('saas.licensePending','Licencia pendiente') : t('saas.accessSuspended','Acceso suspendido')}</p>}
                         </td>
                         <td className="hidden xl:table-cell p-3 text-xs text-slate-600">
                           {new Date(org.created_date).toLocaleDateString('es-ES')}
@@ -786,10 +786,10 @@ function SaasContent() {
                               onClick={() => handleImpersonate(org)}
                               disabled={authIsImpersonating || impersonating || org.status !== 'active'}
                               className="text-xs bg-slate-800 hover:bg-slate-900"
-                              title={org.status !== 'active' ? 'La organización debe estar activa' : 'Entrar al contexto de la organización'}
+                              title={org.status !== 'active' ? t('saas.orgMustBeActive','La organización debe estar activa') : t('saas.enterOrgContext','Entrar al contexto de la organización')}
                             >
                               <UserCog className="w-3.5 h-3.5 mr-1" />
-                              Entrar
+                              {t('saas.enter','Entrar')}
                             </Button>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -866,19 +866,19 @@ function SaasContent() {
         <div className="space-y-5">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{t('saas.commercial','Comercial y planes')}</h2>
-            <p className="text-sm text-slate-600 mt-1">Oferta comercial de TRP. La configuración contractual de cada organización se administra desde esta consola.</p>
+            <p className="text-sm text-slate-600 mt-1">{t('saas.commercialOfferDesc','Oferta comercial de TRP. La configuración contractual de cada organización se administra desde esta consola.')}</p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {[
-              { name: 'Core', monthly: 'Consultar', annual: 'Precio público pendiente', note: 'Workflow operativo esencial completo · sin caps artificiales de órdenes' },
-              { name: 'Business', monthly: 'Consultar', annual: 'Precio público pendiente', note: 'Más profundidad, escala, analítica operativa, calidad y productividad · entitlement técnico: advanced' },
-              { name: 'Enterprise', monthly: 'A medida', annual: 'Contrato anual', note: 'Gobernanza, custodia de activos, onboarding/offboarding y evidencia operativa' },
+              { name: 'Core', monthly: t('saas.consult','Consultar'), annual: t('saas.pricePending','Precio público pendiente'), note: t('saas.coreNote','Workflow operativo esencial completo · sin caps artificiales de órdenes') },
+              { name: 'Business', monthly: t('saas.consult','Consultar'), annual: t('saas.pricePending','Precio público pendiente'), note: t('saas.businessNote','Más profundidad, escala, analítica operativa, calidad y productividad · entitlement técnico: advanced') },
+              { name: 'Enterprise', monthly: t('saas.custom','A medida'), annual: t('saas.annualContract','Contrato anual'), note: t('saas.enterpriseNote','Gobernanza, custodia de activos, onboarding/offboarding y evidencia operativa') },
             ].map(plan => (
               <Card key={plan.name} className="border border-slate-200 shadow-sm bg-white">
                 <CardHeader><CardTitle className="text-lg">TRP {plan.name}</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="flex items-end gap-2 mb-2"><span className="text-3xl font-semibold text-slate-950">{plan.monthly}</span>{plan.monthly.startsWith('$') && <span className="text-sm text-slate-500 mb-1">/mes</span>}</div>
-                  <p className="text-sm font-medium text-teal-800 mb-3">{plan.annual}{plan.annual.startsWith('$') && ' / año'}</p>
+                  <div className="flex items-end gap-2 mb-2"><span className="text-3xl font-semibold text-slate-950">{plan.monthly}</span>{plan.monthly.startsWith('$') && <span className="text-sm text-slate-500 mb-1">{t('saas.perMonth','/mes')}</span>}</div>
+                  <p className="text-sm font-medium text-teal-800 mb-3">{plan.annual}{plan.annual.startsWith('$') && ` ${t('saas.perYear','/ año')}`}</p>
                   <p className="text-sm text-slate-600">{plan.note}</p>
                 </CardContent>
               </Card>

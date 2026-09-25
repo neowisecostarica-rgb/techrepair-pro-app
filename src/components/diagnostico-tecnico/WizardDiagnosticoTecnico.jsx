@@ -13,7 +13,7 @@ import { Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, FileText
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 import { createPageUrl } from '@/utils';
-import { COMPONENTES_DISPONIBLES, PRUEBAS_POR_COMPONENTE } from './pruebasPorComponente';
+import { getComponentesDisponibles, getPruebasPorComponente } from './pruebasPorComponente';
 
 const TIPOS_INTERVENCION_KEYS = {
   diagnostico_tecnico: 'intDiagnostico',
@@ -34,6 +34,8 @@ export default function WizardDiagnosticoTecnico({
   onComplete 
 }) {
   const { t } = useI18n();
+  const COMPONENTES_DISPONIBLES = getComponentesDisponibles(t);
+  const PRUEBAS_POR_COMPONENTE = getPruebasPorComponente(t);
   const { toast } = useToast();
   const [paso, setPaso] = useState(0); // 0 = contexto, 1-4 = wizard
   const [saving, setSaving] = useState(false);

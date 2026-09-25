@@ -5,6 +5,7 @@ import { diagMessages } from './diag-messages';
 import { opsMessages } from './ops-messages';
 import uiMessages from './ui-messages';
 import { searchMessages } from './search-messages';
+import { saasMessages } from './saas-messages';
 export const SUPPORTED_LOCALES=['es','en','pt','fr','no'];
 export const LOCALE_LABELS={es:'ES',en:'EN',pt:'PT',fr:'FR',no:'NO'};
 const KEY='trp.locale';
@@ -34,6 +35,9 @@ Object.keys(messages).forEach(locale => {
   }
   if (searchMessages[locale]) {
     messages[locale] = { ...messages[locale], ...searchMessages[locale] };
+  }
+  if (saasMessages[locale]) {
+    messages[locale] = { ...messages[locale], ...saasMessages[locale] };
   }
 });
 const Context=React.createContext(null);

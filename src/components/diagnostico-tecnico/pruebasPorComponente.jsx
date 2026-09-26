@@ -67,8 +67,8 @@ export function getComponentesDisponibles(t) {
   ];
 }
 
-// Legacy constants for backward compatibility (ES only)
-export const PRUEBAS_POR_COMPONENTE = {
+/* Legacy ES-only constants removed after all consumers migrated to the i18n-aware getters.
+const PRUEBAS_POR_COMPONENTE = {
   energia: [
     { id: 'voltaje_entrada', nombre: 'Voltaje de entrada correcto' },
     { id: 'fuente_alimentacion', nombre: 'Fuente de alimentación funcional' },
@@ -118,7 +118,7 @@ export const PRUEBAS_POR_COMPONENTE = {
   ]
 };
 
-export const COMPONENTES_DISPONIBLES = [
+const COMPONENTES_DISPONIBLES = [
   { id: 'energia', label: 'Energía' },
   { id: 'almacenamiento', label: 'Almacenamiento' },
   { id: 'memoria', label: 'Memoria RAM' },
@@ -128,3 +128,4 @@ export const COMPONENTES_DISPONIBLES = [
   { id: 'red', label: 'Red / Conectividad' },
   { id: 'otros', label: 'Otros componentes' }
 ];
+*/

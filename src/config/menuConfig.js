@@ -28,6 +28,8 @@ import {
   UserMinus,
   UserPlus,
   ShieldCheck,
+  ContactRound,
+  ListChecks,
 } from 'lucide-react';
 
 export const MENU_ITEMS = [
@@ -38,7 +40,7 @@ export const MENU_ITEMS = [
     path: 'MiDia',
     icon: Sun,
     category: null,
-    anyCapabilities: ['TECHNICAL_WORK', 'TECHNICAL_SUPERVISION', 'FINANCIAL_READ'],
+    anyCapabilities: ['TECHNICAL_WORK', 'TECHNICAL_SUPERVISION', 'FINANCIAL_READ', 'SALE_OPERATIONS'],
   },
 
   // ── VISIÓN DEL NEGOCIO ──────────────────────────────────────────────────────
@@ -143,6 +145,22 @@ export const MENU_ITEMS = [
     icon: Users,
     category: 'CLIENTES Y VENTAS',
     anyCapabilities: ['CUSTOMER_SERVICE_OPERATIONS'],
+  },
+  {
+    label: 'CRM',
+    i18nKey: 'nav.crm',
+    path: 'CRM',
+    icon: ContactRound,
+    category: 'CLIENTES Y VENTAS',
+    anyCapabilities: ['CRM_OPERATIONS'],
+  },
+  {
+    label: 'Cola de Revisión',
+    i18nKey: 'nav.reviewQueue',
+    path: 'ColaRevision',
+    icon: ListChecks,
+    category: 'TALLER',
+    anyCapabilities: ['TECHNICAL_ASSIGNMENT'],
   },
 
   // ── INVENTARIO ──────────────────────────────────────────────────────────────

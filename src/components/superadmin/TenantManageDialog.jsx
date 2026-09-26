@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { listIdentityAccounts, adminUpdateIdentityOrganization } from '@/api/identity';
+import { adminListIdentityAccounts, adminListIdentityBranches, adminUpdateIdentityOrganization } from '@/api/identity';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -34,13 +34,13 @@ export default function TenantManageDialog({ organization, onClose }) {
 
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
     queryKey: ['identity', 'accounts', organization?.id],
-    queryFn: () => listIdentityAccounts(organization.id).then(r => r.accounts),
+    queryFn: () => adminListIdentityAccounts(organization.id).then(r => r.accounts),
     enabled: !!organization?.id,
   });
 
   const { data: branches = [] } = useQuery({
     queryKey: ['tenant-branches', organization?.id],
-    queryFn: () => base44.entities.Branch.filter({ organization_id: organization.id }),
+    queryFn: () => adminListIdentityBranches(organization.id).then(r => r.branches),
     enabled: !!organization?.id,
   });
 
@@ -73,7 +73,7 @@ export default function TenantManageDialog({ organization, onClose }) {
   });
 
   const branchMutation = useMutation({
-    mutationFn: (data) => base44.functions.invoke('manageBranchLifecycle', data).then(r => r?.data ?? r),
+    mutationFn: (data) => base44.functions.invoke('manageBranchLifecycle', { ...data, organization_id: organization.id }).then(r => r?.data ?? r),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-branches', organization.id] });
       queryClient.invalidateQueries({ queryKey: ['all-branches'] });

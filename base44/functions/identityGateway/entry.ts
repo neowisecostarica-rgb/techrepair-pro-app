@@ -549,6 +549,20 @@ Deno.serve(async (req) => {
       return Response.json({ organization: sanitizeOrganization(updated) });
     }
 
+    if (action === 'adminListAccounts' || action === 'adminListBranches') {
+      if (!isCanonicalSuperAdmin(user)) return jsonError('Superadmin requerido', 403, 'SUPERADMIN_REQUIRED');
+      const organizationId = clean(body.organization_id, 160);
+      if (!organizationId) return jsonError('Organizacion requerida', 400, 'ORGANIZATION_REQUIRED');
+      const [organization] = await base44.asServiceRole.entities.Organization.filter({ id: organizationId }, 1);
+      if (!organization) return jsonError('Organizacion no encontrada', 404, 'ORGANIZATION_NOT_FOUND');
+      if (action === 'adminListAccounts') {
+        const accounts = await base44.asServiceRole.entities.UserAccount.filter({ organization_id: organizationId }, '-created_date', 500);
+        return Response.json({ accounts: (accounts || []).map(sanitizeUserAccount) });
+      }
+      const branches = await base44.asServiceRole.entities.Branch.filter({ organization_id: organizationId }, '-created_date', 500);
+      return Response.json({ branches: branches || [] });
+    }
+
     if (action === 'adminOverview') {
       if (!isCanonicalSuperAdmin(user)) return jsonError('Superadmin requerido', 403, 'SUPERADMIN_REQUIRED');
       const [organizations, accounts, auditLogs] = await Promise.all([

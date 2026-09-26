@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useI18n } from '@/i18n';
 import { Loader2, UserPlus, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ const ROLES = [
 ];
 
 export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
+  const { t } = useI18n();
   const { toast } = useToast();
   const [inviting, setInviting] = useState(false);
   const [email, setEmail] = useState('');
@@ -48,7 +50,7 @@ export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-slate-900">Invita a tu equipo</h2>
+        <h2 className="text-xl font-bold text-slate-900">{t('preGo.inviteTeam','Invita a tu equipo')}</h2>
         <p className="mt-1 text-sm text-slate-500">
           TRP funciona mejor cuando tu equipo opera desde la misma plataforma.
           Invita al menos a un técnico para recibir y diagnosticar equipos.
@@ -58,7 +60,7 @@ export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="invite_email">Correo del invitado</Label>
+          <Label htmlFor="invite_email">{t('preGo.inviteEmail','Correo del invitado')}</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
@@ -73,7 +75,7 @@ export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
         </div>
 
         <div className="space-y-2">
-          <Label>Rol</Label>
+          <Label>{t('preGo.role','Rol')}</Label>
           <Select value={role} onValueChange={setRole}>
             <SelectTrigger>
               <SelectValue />
@@ -89,7 +91,7 @@ export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={onSkip} className="flex-1" disabled={inviting}>
-          Saltar por ahora
+          {t('preGo.skip','Saltar por ahora')}
         </Button>
         <Button onClick={handleInvite} className="flex-1" disabled={inviting}>
           {inviting ? (
@@ -97,10 +99,10 @@ export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
           ) : email.trim() ? (
             <>
               <UserPlus className="h-4 w-4" />
-              Invitar y continuar
+              {t('preGo.inviteContinue','Invitar y continuar')}
             </>
           ) : (
-            'Continuar'
+            t('preGo.continue','Continuar')
           )}
         </Button>
       </div>

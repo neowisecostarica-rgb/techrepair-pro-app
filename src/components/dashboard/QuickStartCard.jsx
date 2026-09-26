@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,7 @@ export default function QuickStartCard({
   hasClients, 
   hasOrders 
 }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   // Product SOT: primero llevar al usuario al valor operacional.
@@ -56,7 +58,7 @@ export default function QuickStartCard({
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-slate-900">
-                Activa TRP con tu primer trabajo
+                {t('preGo.quickTitle','Activa TRP con tu primer trabajo')}
               </CardTitle>
               <p className="text-sm text-slate-600 mt-1">
                 Registra una recepción y TRP abrirá su expediente. Configura el resto cuando ya estés operando.
@@ -65,7 +67,7 @@ export default function QuickStartCard({
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold text-emerald-600">{completedCount}/{totalSteps}</div>
-            <p className="text-xs text-slate-500">completado</p>
+            <p className="text-xs text-slate-500">{t('preGo.completed','completado')}</p>
           </div>
         </div>
       </CardHeader>

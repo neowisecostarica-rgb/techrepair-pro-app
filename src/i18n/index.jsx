@@ -6,6 +6,7 @@ import { opsMessages } from './ops-messages';
 import uiMessages from './ui-messages';
 import { searchMessages } from './search-messages';
 import { saasMessages } from './saas-messages';
+import { preGoMessages } from './pre-go-messages';
 export const SUPPORTED_LOCALES=['es','en','pt','fr','no'];
 export const LOCALE_LABELS={es:'ES',en:'EN',pt:'PT',fr:'FR',no:'NO'};
 const KEY='trp.locale';
@@ -18,6 +19,9 @@ const messages={
 }
 // Merge website and residual messages into each locale (reuses the same i18n system).
 Object.keys(messages).forEach(locale => {
+  if (preGoMessages[locale]) {
+    messages[locale] = { ...messages[locale], ...preGoMessages[locale] };
+  }
   if (websiteMessages[locale]) {
     messages[locale] = { ...messages[locale], ...websiteMessages[locale] };
   }

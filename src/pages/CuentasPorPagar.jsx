@@ -378,7 +378,7 @@ function CuentasPorPagarContent() {
               </Select>
             </div>
             <div>
-              <Label>Número de Factura *</Label>
+              <Label>{t('finance.invoiceNumber','Número de Factura *')}</Label>
               <Input
                 name="invoice_number"
                 placeholder="Ej: FAC-12345"
@@ -387,7 +387,7 @@ function CuentasPorPagarContent() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Fecha Factura *</Label>
+                <Label>{t('finance.invoiceDate','Fecha Factura *')}</Label>
                 <Input
                   name="date"
                   type="date"
@@ -396,7 +396,7 @@ function CuentasPorPagarContent() {
                 />
               </div>
               <div>
-                <Label>Fecha Vencimiento *</Label>
+                <Label>{t('finance.dueDate','Fecha Vencimiento *')}</Label>
                 <Input
                   name="due_date"
                   type="date"
@@ -406,7 +406,7 @@ function CuentasPorPagarContent() {
               </div>
             </div>
             <div>
-              <Label>Monto Total *</Label>
+              <Label>{t('finance.totalAmount','Monto Total *')}</Label>
               <Input
                 name="total_amount"
                 type="number"
@@ -417,7 +417,7 @@ function CuentasPorPagarContent() {
               />
             </div>
             <div>
-              <Label>Notas</Label>
+              <Label>{t('finance.notes','Notas')}</Label>
               <Textarea
                 name="notes"
                 placeholder="Detalles adicionales..."
@@ -471,7 +471,7 @@ function CuentasPorPagarContent() {
               </Alert>
 
               <div>
-                <Label>Monto a Pagar *</Label>
+                <Label>{t('finance.amountPay','Monto a Pagar *')}</Label>
                 <Input
                   name="amount"
                   type="number"
@@ -513,7 +513,7 @@ function CuentasPorPagarContent() {
                 />
               </div>
               <div>
-                <Label>Notas</Label>
+                <Label>{t('finance.notes','Notas')}</Label>
                 <Textarea
                   name="notes"
                   placeholder={t('tail.notes','Notas adicionales...')}

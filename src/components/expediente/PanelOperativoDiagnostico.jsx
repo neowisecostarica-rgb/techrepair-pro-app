@@ -435,12 +435,12 @@ export default function PanelOperativoDiagnostico({
           {/* Estado dual: Documento + Aprobación */}
           {docActivo && (
             <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-xs text-slate-400">Documento:</span>
+              <span className="text-xs text-slate-400">{t('diagnosis.document','Documento')}:</span>
               <EstadoBadge config={docConfig} />
               {aproConfig && (
                 <>
                   <span className="text-xs text-slate-300">|</span>
-                  <span className="text-xs text-slate-400">Aprobación:</span>
+                  <span className="text-xs text-slate-400">{t('diagnosis.approval','Aprobación')}:</span>
                   <EstadoBadge config={aproConfig} />
                 </>
               )}

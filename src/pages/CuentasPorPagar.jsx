@@ -498,15 +498,15 @@ function CuentasPorPagarContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="efectivo">Efectivo</SelectItem>
-                    <SelectItem value="transferencia">Transferencia</SelectItem>
-                    <SelectItem value="cheque">Cheque</SelectItem>
-                    <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                    <SelectItem value="efectivo">{t('finance.cash','Efectivo')}</SelectItem>
+                    <SelectItem value="transferencia">{t('finance.transfer','Transferencia')}</SelectItem>
+                    <SelectItem value="cheque">{t('finance.check','Cheque')}</SelectItem>
+                    <SelectItem value="tarjeta">{t('finance.card','Tarjeta')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Referencia / Nro. Transacción</Label>
+                <Label>{t('finance.reference','Referencia / Nro. Transacción')}</Label>
                 <Input
                   name="reference"
                   placeholder="Ej: SINPE-12345"

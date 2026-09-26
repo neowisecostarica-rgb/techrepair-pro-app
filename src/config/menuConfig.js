@@ -148,7 +148,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'CRM',
-    i18nKey: 'nav.crm',
+    i18nKey: null,
     path: 'CRM',
     icon: ContactRound,
     category: 'CLIENTES Y VENTAS',
@@ -156,7 +156,7 @@ export const MENU_ITEMS = [
   },
   {
     label: 'Cola de Revisión',
-    i18nKey: 'nav.reviewQueue',
+    i18nKey: null,
     path: 'ColaRevision',
     icon: ListChecks,
     category: 'TALLER',

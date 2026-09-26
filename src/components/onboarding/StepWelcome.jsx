@@ -1,8 +1,10 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { CheckCircle2, Building2, Package, Users, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function StepWelcome({ organizationName, onContinue }) {
+  const { t } = useI18n();
   const autoConfigured = [
     { icon: Building2, label: 'Sucursal Principal', detail: 'Lista para recibir equipos' },
     { icon: Package, label: '5 categorías de inventario', detail: 'Servicios, Repuestos, Equipos, Accesorios, Reciclaje' },
@@ -15,7 +17,7 @@ export default function StepWelcome({ organizationName, onContinue }) {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-50">
           <CheckCircle2 className="h-8 w-8 text-teal-700" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900">¡Tu espacio TRP está listo!</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t('preGo.onboardingReady','¡Tu espacio TRP está listo!')}</h2>
         <p className="mt-1 text-slate-500">
           Configuramos lo esencial para que operes desde ya. Revisa lo que quedó listo:
         </p>
@@ -41,7 +43,7 @@ export default function StepWelcome({ organizationName, onContinue }) {
       </div>
 
       <Button onClick={onContinue} className="w-full" size="lg">
-        Continuar
+        {t('preGo.continue','Continuar')}
       </Button>
     </div>
   );

@@ -57,6 +57,12 @@ const PACKAGE_DEFAULTS = Object.freeze({
   },
 });
 
+export function normalizePackageId(packageId) {
+  const normalized = String(packageId || '').trim().toLowerCase();
+  if (Object.hasOwn(PACKAGE_DEFAULTS, normalized)) return normalized;
+  return LEGACY_PACKAGE_FALLBACK[normalized] || null;
+}
+
 function unique(values) {
   return [...new Set((values || []).filter(Boolean))];
 }

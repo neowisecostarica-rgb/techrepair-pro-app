@@ -167,7 +167,7 @@ export default function FormularioCita({
 
       {/* Tipo de cita */}
       <div className="space-y-2">
-        <Label>Tipo de Cita *</Label>
+        <Label>{t('agenda.eventType','Tipo de Cita *')}</Label>
         <Select
           value={formData.tipo}
           onValueChange={(value) => setFormData({ ...formData, tipo: value })}
@@ -210,7 +210,7 @@ export default function FormularioCita({
 
       {/* Fecha */}
       <div className="space-y-2">
-        <Label>Fecha *</Label>
+        <Label>{t('agenda.date','Fecha *')}</Label>
         <Input
           type="date"
           value={formData.fecha}
@@ -222,7 +222,7 @@ export default function FormularioCita({
       {/* Horas */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Hora Inicio *</Label>
+          <Label>{t('agenda.startTime','Hora Inicio *')}</Label>
           <Input
             type="time"
             value={formData.hora_inicio}
@@ -231,7 +231,7 @@ export default function FormularioCita({
           />
         </div>
         <div className="space-y-2">
-          <Label>Hora Fin *</Label>
+          <Label>{t('agenda.endTime','Hora Fin *')}</Label>
           <Input
             type="time"
             value={formData.hora_fin}
@@ -293,7 +293,7 @@ export default function FormularioCita({
       {/* Enlace videollamada (condicional) */}
       {requiereVideoLlamada && (
         <div className="space-y-2">
-          <Label>Enlace Videollamada * (requerido)</Label>
+          <Label>{t('agenda.videoLink','Enlace Videollamada * (requerido)')}</Label>
           <Input
             type="url"
             value={formData.enlace_videollamada}
@@ -305,7 +305,7 @@ export default function FormularioCita({
 
       {/* Motivo */}
       <div className="space-y-2">
-        <Label>Motivo</Label>
+        <Label>{t('agenda.reason','Motivo')}</Label>
         <Input
           value={formData.motivo}
           onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
@@ -315,7 +315,7 @@ export default function FormularioCita({
 
       {/* Notas */}
       <div className="space-y-2">
-        <Label>Notas (opcional)</Label>
+        <Label>{t('agenda.notes','Notas (opcional)')}</Label>
         <Textarea
           value={formData.notas}
           onChange={(e) => setFormData({ ...formData, notas: e.target.value })}

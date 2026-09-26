@@ -206,11 +206,11 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Rol</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('userAdmin.email','Email')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('userAdmin.role','Rol')}</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('userAdmin.branch','Sucursal')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Estado</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Acciones</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">{t('userAdmin.status','Estado')}</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">{t('userAdmin.actions','Acciones')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -285,7 +285,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
 
       <Dialog open={Boolean(pendingSuspendUser)} onOpenChange={(open) => { if (!open) setPendingSuspendUser(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Suspender acceso del usuario</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('userAdmin.suspendTitle','Suspender acceso del usuario')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-slate-600">{pendingSuspendUser?.user_email} dejará de tener acceso operativo a esta organización. Su historial y las acciones ya registradas se conservan.</p>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Esto suspende una membresía de TRP. No ejecuta offboarding laboral ni revoca accesos en sistemas externos.</div>
@@ -298,7 +298,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invitar usuario</DialogTitle>
+            <DialogTitle>{t('userAdmin.invite','Invitar usuario')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleInviteUser} className="space-y-4">
             <div className="space-y-2">
@@ -354,7 +354,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
           {editingUser && (
             <form onSubmit={handleUpdateUser} className="space-y-4">
               <div className="space-y-2">
-                <Label>Email</Label>
+                <Label>{t('userAdmin.email','Email')}</Label>
                 <Input value={editingUser.user_email} disabled className="bg-slate-50" />
               </div>
 

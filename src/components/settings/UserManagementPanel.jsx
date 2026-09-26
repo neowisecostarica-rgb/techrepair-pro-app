@@ -302,11 +302,11 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
           </DialogHeader>
           <form onSubmit={handleInviteUser} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="user_email">Email *</Label>
+              <Label htmlFor="user_email">{t('userAdmin.emailRequired','Email *')}</Label>
               <Input id="user_email" name="user_email" type="email" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="role">Rol *</Label>
+              <Label htmlFor="role">{t('userAdmin.roleRequired','Rol *')}</Label>
               <Select name="role" required>
                 <SelectTrigger>
                   <SelectValue placeholder={t('userAdmin.selectRole','Seleccionar rol')} />
@@ -371,7 +371,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="role">Rol *</Label>
+                <Label htmlFor="role">{t('userAdmin.roleRequired','Rol *')}</Label>
                 <Select 
                   name="role" 
                   defaultValue={editingUser.role} 
@@ -397,7 +397,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                     <SelectValue placeholder="Sin sucursal" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>Sin sucursal</SelectItem>
+                    <SelectItem value={null}>{t('userAdmin.noBranch','Sin sucursal')}</SelectItem>
                     {branches.map(b => (
                       <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                     ))}
@@ -405,7 +405,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="status">Estado *</Label>
+                <Label htmlFor="status">{t('userAdmin.statusRequired','Estado *')}</Label>
                 <Select
                   name="status"
                   defaultValue={editingUser.status || (editingUser.active ? 'active' : 'suspended')}
@@ -417,8 +417,8 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">{t('finalI18n.active','Activo')}</SelectItem>
-                    <SelectItem value="invited">Invitado (pendiente)</SelectItem>
-                    <SelectItem value="suspended">Suspendido</SelectItem>
+                    <SelectItem value="invited">{t('userAdmin.invitedPending','Invitado (pendiente)')}</SelectItem>
+                    <SelectItem value="suspended">{t('status.suspended','Suspendido')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

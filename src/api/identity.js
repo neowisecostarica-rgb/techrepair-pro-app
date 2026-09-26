@@ -31,6 +31,10 @@ export const updateIdentityOrganization = (organizationId, changes) =>
   invokeIdentity('updateOrganization', { organization_id: organizationId, changes });
 export const listIdentityAccounts = (organizationId) =>
   invokeIdentity('listAccounts', { organization_id: organizationId });
+export const adminListIdentityAccounts = (organizationId) =>
+  invokeIdentity('adminListAccounts', { organization_id: organizationId });
+export const adminListIdentityBranches = (organizationId) =>
+  invokeIdentity('adminListBranches', { organization_id: organizationId });
 export const getIdentityAdminOverview = () => invokeIdentity('adminOverview');
 export const adminUpdateIdentityOrganization = (organizationId, changes, auditContext = undefined) =>
   invokeIdentity('adminUpdateOrganization', { organization_id: organizationId, changes, audit_context: auditContext });

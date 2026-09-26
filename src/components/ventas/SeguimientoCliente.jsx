@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/i18n';
 import { Badge } from '@/components/ui/badge';
 import { Wrench, ShoppingCart, FileText, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
@@ -85,6 +86,7 @@ function FilaVacia({ texto }) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function SeguimientoCliente({ ordenes = [], ventas = [], cotizaciones = [], mensajes = [] }) {
+  const { t } = useI18n();
   const fmt = (d) => {
     try { return format(new Date(d), 'dd/MM/yy', { locale: es }); }
     catch { return '—'; }
@@ -94,9 +96,9 @@ export default function SeguimientoCliente({ ordenes = [], ventas = [], cotizaci
     <div className="grid grid-cols-2 gap-3">
 
       {/* ── Órdenes de Trabajo ───────────────────────────────────────── */}
-      <SeccionCompacta icon={Wrench} iconColor="text-emerald-600" titulo="Órdenes de Trabajo" count={ordenes.length}>
+      <SeccionCompacta icon={Wrench} iconColor="text-emerald-600" titulo={t('preGo.orders','Órdenes de Trabajo')} count={ordenes.length}>
         {ordenes.length === 0
-          ? <FilaVacia texto="Sin órdenes registradas" />
+          ? <FilaVacia texto={t('preGo.noOrders','Sin órdenes registradas')} />
           : ordenes.slice(0, 6).map((o) => {
               const cfg = estadoOTConfig[o.estado] || estadoOTConfig.EN_COLA_REVISION;
               return (
@@ -114,9 +116,9 @@ export default function SeguimientoCliente({ ordenes = [], ventas = [], cotizaci
       </SeccionCompacta>
 
       {/* ── Ventas ───────────────────────────────────────────────────── */}
-      <SeccionCompacta icon={ShoppingCart} iconColor="text-blue-600" titulo="Ventas" count={ventas.length}>
+      <SeccionCompacta icon={ShoppingCart} iconColor="text-blue-600" titulo={t('preGo.sales','Ventas')} count={ventas.length}>
         {ventas.length === 0
-          ? <FilaVacia texto="Sin ventas registradas" />
+          ? <FilaVacia texto={t('preGo.noSales','Sin ventas registradas')} />
           : ventas.slice(0, 6).map((v) => (
               <FilaCompacta
                 key={v.id}
@@ -131,9 +133,9 @@ export default function SeguimientoCliente({ ordenes = [], ventas = [], cotizaci
       </SeccionCompacta>
 
       {/* ── Cotizaciones ─────────────────────────────────────────────── */}
-      <SeccionCompacta icon={FileText} iconColor="text-purple-600" titulo="Cotizaciones" count={cotizaciones.length}>
+      <SeccionCompacta icon={FileText} iconColor="text-purple-600" titulo={t('preGo.quotes','Cotizaciones')} count={cotizaciones.length}>
         {cotizaciones.length === 0
-          ? <FilaVacia texto="Sin cotizaciones registradas" />
+          ? <FilaVacia texto={t('preGo.noQuotes','Sin cotizaciones registradas')} />
           : cotizaciones.slice(0, 6).map((c) => (
               <FilaCompacta
                 key={c.id}
@@ -148,9 +150,9 @@ export default function SeguimientoCliente({ ordenes = [], ventas = [], cotizaci
       </SeccionCompacta>
 
       {/* ── Mensajes ─────────────────────────────────────────────────── */}
-      <SeccionCompacta icon={MessageSquare} iconColor="text-orange-500" titulo="Mensajes" count={mensajes.length}>
+      <SeccionCompacta icon={MessageSquare} iconColor="text-orange-500" titulo={t('preGo.messages','Mensajes')} count={mensajes.length}>
         {mensajes.length === 0
-          ? <FilaVacia texto="Sin mensajes registrados" />
+          ? <FilaVacia texto={t('preGo.noMessages','Sin mensajes registrados')} />
           : mensajes.slice(0, 6).map((m) => (
               <FilaCompacta
                 key={m.id}

@@ -46,3 +46,24 @@ Pruebas nuevas: no ejecutadas.
 Integración funcional: ninguna.
 Publicación: ninguna.
 Estado release: PRE-BETA / NO-GO.
+
+## Actualización TRP-COM-001-B — 2026-11-02
+Tipo: auditoría estática backend, sin ejecución runtime.
+
+### Hallazgos verificados en código
+- `base44/functions/createSale/entry.ts`: `resolveAuthorizedContext` admite ORG_ADMIN, BRANCH_ADMIN y SALES; aplica scope de sucursal, validación comercial y stock, clave de idempotencia, lock, compensación y `appendAuditEvent`. No certifica transacción física atómica ni P0-AUD-01.
+- `base44/functions/createInventoryItem/entry.ts` y `updateInventoryItem/entry.ts`: roles ORG_ADMIN, BRANCH_ADMIN e INVENTORY; creación exige sucursal autorizada; actualización rechaza campos soberanos de existencias y otros campos.
+- `base44/functions/crmGateway/entry.ts`: rol CUSTOMER_SERVICE no incluido en ALLOWED_ROLES, pero `src/pages/CRM.jsx` sí lo permite. Discrepancia de autorización UI/backend (P1 candidato).
+- Conversión CRM crea Cliente y después actualiza Lead, con comprobación de duplicados, conciliación y compensación. Probar concurrencia; no asumir operación atómica.
+- `src/components/cotizacion/FormularioCotizacion.jsx` líneas 63 y 72 y `GestionCotizaciones.jsx`: escrituras directas a Cotizacion desde frontend; comprobar RLS y reglas de integridad de snapshots antes de decidir severidad definitiva (P0 candidato).
+- `src/pages/PuntoVenta.jsx` contiene eliminación directa de Venta borrador en cancelación de conversión antigua; requiere trazabilidad y verificación de autorización.
+
+### Clasificación de trabajo
+P0 candidato: integridad de escrituras a Cotizacion, cancelación de Venta borrador, consistencia financiera / snapshots; depende de análisis RLS y pruebas.
+P1 candidato: incongruencia CUSTOMER_SERVICE en CRM y ensayo de recuperación/concurrencia del proceso Lead → Cliente.
+Confirmado como implementado en código (NO equivale a PASS): autorización backend para venta/inventario, control de sucursal, idempotencia en venta y controles de compensación.
+
+### Próxima acción exacta
+TRP-COM-001-C: inspeccionar esquemas/RLS de Cotizacion y Venta; gateways approveCotizacion, createSale y cancelación legacy; definir parche mínimo si se confirma bypass. Después ejecutar suites focalizadas y QA runtime autenticado. No integrar ni publicar por este checkpoint.
+
+Código: sin cambios. Pruebas: no ejecutadas. Integración: ninguna. Publicación: ninguna. Estados de matriz sin cambios. Estado global: PRE-BETA / NO-GO.

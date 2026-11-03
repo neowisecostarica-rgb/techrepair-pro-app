@@ -16,6 +16,12 @@
 
 **No repitas la auditoría desde cero.** Primero identifica qué evidencia ya existe y cuál falta. Un cambio de versión o fallo de regresión sí puede justificar una nueva auditoría acotada.
 
+## PAUSA TRP — 2026-11-03
+
+- **DIRECCIÓN GENERAL DETUVO LOS TRABAJOS.** Leer `docs/TRP-CHECKPOINT-PAUSA-2026-11-03.md` antes de cualquier modificación: contiene backlog priorizado, SHA y checkpoints.
+- Último código `496c9cea3f75c32a5a01ff24703cd9417ecbe7eb` (COM-QA-002), contratos PASS pero Inventario SALES aún sin QA visual. No hacer Publish ni tocar COMPU STORE.
+- Próxima intervención, cuando se autorice: verificar Inventario con SALES y OWNER, luego CRM/cotizaciones/caja en lectura. P0-AUD-01 #13 y E2E/SEC-QA #12 siguen NO-GO. Issue #15 pendiente QA, #14 SEC-020 cerrado.
+
 ## COM-QA-002 — SALES puede consultar inventario sin mutaciones (2026-11-03)
 
 - Se corrigió PageGuard de Inventario para admitir SALES, ya autorizado por backend a `INVENTORY_READ`, sin dar permisos de ajustes/edición. La UI oculta a SALES costos, márgenes, valor a costo y todos los formularios/controles de creación, modificación y stock. La proyección del gateway no entrega costos ni proveedor a SALES. No se cambió backend ni datos.

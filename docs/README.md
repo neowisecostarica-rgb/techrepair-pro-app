@@ -4,6 +4,8 @@
 
 **LEER PRIMERO:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)
 
+**SEC-017 (panel SALES/OWNER aún falla):** [Diagnóstico de pantallas y protección contra error de render](TRP-SEC-017-MIDIA-ROLE-PANEL-DIAGNOSTICS-2026-11-03.md).
+
 **SEC-016 (video de cambio de usuario):** [QA y corrección del aislamiento frontend — validación real pendiente](TRP-SEC-016-NATIVE-USER-SWITCH-QA-2026-11-03.md).
 
 **QA con cuentas existentes confirmadas:** [SEC-015 — SALES y ORG_ADMIN, solo lectura](TRP-SEC-015-EXISTING-SALES-QA-2026-11-03.md).

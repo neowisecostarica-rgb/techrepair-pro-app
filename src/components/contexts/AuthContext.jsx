@@ -13,6 +13,7 @@ export function AuthProvider({ children }) {
   const [multiOrgAccounts, setMultiOrgAccounts] = useState(null);
   const [identityStatus, setIdentityStatus] = useState(null);
   const [authorization, setAuthorization] = useState(null);
+  const [authorizedOrganizations, setAuthorizedOrganizations] = useState([]);
   const hasInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
   const last429Timestamp = useRef(null);
@@ -28,6 +29,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     setUserAccount(null);
     setAuthorization(null);
+    setAuthorizedOrganizations([]);
     setIdentityStatus(null);
     setMultiOrgAccounts(null);
     setErrorCode(null);
@@ -50,6 +52,7 @@ export function AuthProvider({ children }) {
       setUserAccount(account || null);
       setIdentityStatus(context.identityStatus || null);
       setAuthorization(context.authorization || null);
+      setAuthorizedOrganizations(Array.isArray(context.organizations) ? context.organizations : []);
       setMultiOrgAccounts(context.identityStatus === 'MULTI_ORG_REQUIRED'
         ? context.memberships || []
         : null);
@@ -73,6 +76,7 @@ export function AuthProvider({ children }) {
             setUser(sessionUser);
             setUserAccount(null);
             setAuthorization(null);
+            setAuthorizedOrganizations([]);
             setIdentityStatus('IDENTITY_GATEWAY_UNAVAILABLE');
             setMultiOrgAccounts(null);
             setErrorCode('IDENTITY_GATEWAY_UNAVAILABLE');
@@ -214,6 +218,7 @@ export function AuthProvider({ children }) {
     errorCode,
     identityStatus,
     multiOrgAccounts,
+    authorizedOrganizations,
     capabilities,
     authorizationScope: authorization?.scope || userAccount?.authorization_scope || null,
     authorizationPresetVersion: authorization?.preset_version || userAccount?.authorization_preset_version || null,
@@ -236,6 +241,7 @@ export function AuthProvider({ children }) {
     errorCode,
     identityStatus,
     multiOrgAccounts,
+    authorizedOrganizations,
     capabilities,
     authorization,
     authorizationReady,

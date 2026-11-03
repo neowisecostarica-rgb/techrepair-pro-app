@@ -1,5 +1,5 @@
 # TRP-SEC-007 — Diagnóstico de etapas de identidad
-Fecha 2026-11-03. Estado: instrumentación de diagnóstico aplicada, regresiones PASS, QA runtime sin veredicto.
+Fecha 2026-11-03. Estado: instrumentación de diagnóstico aplicada, regresiones PASS; QA runtime FAILED por plataforma / NO-GO.
 
 ## Contexto
 - SALES en Testing Agent falló 3 veces antes de esta intervención. Último caso 6ae9fb462d67eca79f243657 FAILED platform, pantalla 'Valid session · Identity service unavailable'.
@@ -19,10 +19,10 @@ Fecha 2026-11-03. Estado: instrumentación de diagnóstico aplicada, regresiones
 - `npm run test:crm-customer360`: 8/8 PASS.
 - `npm run test:operational-authorization`: 9 grupos PASS.
 - `npm run build`: PASS; `git diff --check`: PASS.
-- Testing Agent SALES flow 6ae9e9f78f0299c74d0fdc48, ejecución nueva 6aea004fab91e361e9cde919, commit 53272033893ab9fdba9cb94e45a018e381c3a574: PENDING en lanzamiento; no declarar PASS.
+- Testing Agent SALES flow 6ae9e9f78f0299c74d0fdc48, ejecución nueva 6aea004fab91e361e9cde919, commit 53272033893ab9fdba9cb94e45a018e381c3a574: FAILED / platform / goal_accomplished=false al cierre. La app mostró Identity service unavailable después de dos reintentos. Logs 15:41:01, :03, :11 y :16 UTC: CONTEXT_BUILD HTTP 400, sin eventos identityGateway:context-step en registros disponibles. No declarar PASS ni inferir versión backend.
 
 ## Interpretación y siguientes pasos
-1. Consultar resultado final de ejecución 6aea004fab91e361e9cde919 y logs contemporáneos de identityGateway. Verificar presencia de `identityGateway:context-step` y paso específico antes de inferir causa.
+1. El resultado final de ejecución 6aea004fab91e361e9cde919 es FAILED / platform. No ejecutar pruebas SALES idénticas: primero obtener versión efectiva de función y verificar sincronización o disponibilidad de trazas por etapa.
 2. Si solo existe CONTEXT_BUILD y no aparece el marcador, verificar sincronización efectiva de backend contra fuente; no asumir que el archivo está en runtime.
 3. Si falla LOAD_BACKEND_USER, investigar validez de `asServiceRole.entities.User.filter` (entidad User especial), contrato de SDK o entorno. No eliminar la lectura soberana sin revisar consecuencias de seguridad.
 4. Si falla RESOLVE_IDENTITY, inspeccionar consultas UserAccount.filter por user_id/email y permisos/consulta. Si falla LOAD_ORGANIZATIONS o RESOLVE_ENTITLEMENT, inspeccionar las entidades referidas.

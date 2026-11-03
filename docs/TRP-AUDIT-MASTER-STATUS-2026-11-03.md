@@ -13,6 +13,14 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-008 — sincronización autorizada y verificación runtime (2026-11-03)
+- Dirección General autorizó continuar con la sincronización puntual de `identityGateway`.
+- Checkpoint **previo** para restauración: `6aea020265e3a5041801b2f2`, commit `bceb4ad857e2d3469d19ce1d29f0b3e5efae3d0f`.
+- Se envió exclusivamente el contenido completo de `base44/functions/identityGateway/entry.ts` (42.110 caracteres, con `contextStep`) a Base44 `POST /coding/redeploy-function/identityGateway`. La respuesta de esa API se truncó, **sin confirmación directa de compilador o versión del servicio**.
+- Después, Base44 reportó estado `ready` y commit `579e9ed003017518940b04ebde739bb8cc0f4b9f` (Git: `Manual code change`); esto demuestra persistencia de cambio en app/editor, pero todavía no demuestra que el runtime esté libre del HTTP 400.
+- Nuevo Testing Agent SALES: ejecución **`6aea023165a7bd96801de1e6`**, disparada contra SHA `579e9ed003017518940b04ebde739bb8cc0f4b9f`; **PENDING** al sondeo inicial. Obtener veredicto y cotejar logs antes de declarar PASS. No lanzar más sincronizaciones indiscriminadas.
+- No se hizo Publish del frontend ni mutación de datos comerciales. P0-AUD-01 permanece NO-GO.
+
 ## Actualización SEC-007 — diagnóstico por etapas de identityGateway (2026-11-03)
 - El intento SALES `6ae9fb462d67eca79f243657` terminó **FAILED / platform**; el acceso siguió bloqueado tras tres reintentos. Se volvió a observar `identityGateway / CONTEXT_BUILD / HTTP 400` en registros a las 15:19 UTC.
 - Para evitar más conjeturas, se instrumentó `base44/functions/identityGateway/entry.ts` con `contextStep`: emite únicamente un identificador de etapa fijo y estatus HTTP cuando falla; luego relanza error sin conceder acceso. Etapas: LOAD_BACKEND_USER, RESOLVE_IDENTITY, PERSIST_ADMIN_FLAG, REPAIR_IDENTITY_FLAGS, RESOLVE_REPAIRED_IDENTITY, LOAD_ORGANIZATIONS, RESOLVE_ENTITLEMENT. No registra datos personales.

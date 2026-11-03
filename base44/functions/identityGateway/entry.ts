@@ -82,19 +82,31 @@ function controlledPilotSnapshot(organization) {
   };
 }
 
+// Diagnostics only: emits a fixed step identifier and numeric HTTP status; never user data or payloads.
+async function contextStep(step, operation) {
+  try { return await operation(); }
+  catch (error) {
+    console.error('[identityGateway:context-step]', {
+      step,
+      status: error?.response?.status || error?.status || null,
+    });
+    throw error;
+  }
+}
+
 async function buildContext(base44, user) {
   // Base44 editor impersonation can switch the effective session user before
   // the request projection has fully settled. Re-read the authoritative User
   // record once at context-build time so membership resolution and profile
   // repair operate on one coherent identity snapshot.
-  const backendUser = await loadBackendUser(base44, user.id);
+  const backendUser = await contextStep('LOAD_BACKEND_USER', () => loadBackendUser(base44, user.id));
   const authoritativeUser = backendUser || user;
-  let identity = await resolveIdentitySnapshot(base44, authoritativeUser);
+  let identity = await contextStep('RESOLVE_IDENTITY', () => resolveIdentitySnapshot(base44, authoritativeUser));
   if (!identity.ok) return identity;
 
   if (identity.isSuperAdmin) {
     if (getUserDataField(authoritativeUser, 'is_super_admin') !== true) {
-      await persistUserIdentity(base44, authoritativeUser.id, { is_super_admin: true });
+      await contextStep('PERSIST_ADMIN_FLAG', () => persistUserIdentity(base44, authoritativeUser.id, { is_super_admin: true }));
     }
   } else if (
     identity.activeMemberships.length === 1 && (
@@ -106,13 +118,13 @@ async function buildContext(base44, user) {
   ) {
     // Canonical tenant membership wins over stale platform/impersonation flags.
     // Repair those flags even when organization_id was already correct.
-    await persistUserIdentity(base44, authoritativeUser.id, {
+    await contextStep('REPAIR_IDENTITY_FLAGS', () => persistUserIdentity(base44, authoritativeUser.id, {
       organization_id: identity.activeMemberships[0].organization_id,
       impersonating_org_id: null,
       impersonating_started_at: null,
       impersonation_previous_organization_id: null,
       is_super_admin: false,
-    });
+    }));
     const refreshedUser = {
       ...authoritativeUser,
       organization_id: identity.activeMemberships[0].organization_id,
@@ -129,7 +141,7 @@ async function buildContext(base44, user) {
         impersonation_previous_organization_id: null,
       },
     };
-    identity = await resolveIdentitySnapshot(base44, refreshedUser);
+    identity = await contextStep('RESOLVE_REPAIRED_IDENTITY', () => resolveIdentitySnapshot(base44, refreshedUser));
   }
 
   const organizationIds = identity.isSuperAdmin
@@ -138,7 +150,7 @@ async function buildContext(base44, user) {
         ...identity.activeMemberships.map(account => account.organization_id),
         ...identity.pendingInvitations.map(account => account.organization_id),
       ];
-  const organizations = await loadOrganizations(base44, organizationIds);
+  const organizations = await contextStep('LOAD_ORGANIZATIONS', () => loadOrganizations(base44, organizationIds));
   const organizationById = new Map(organizations.map(org => [org.id, sanitizeOrganization(org)]));
   const authorizationRole = identity.isSuperAdmin
     ? (identity.user.impersonating_org_id ? 'ORG_ADMIN' : 'SUPER_ADMIN')
@@ -148,7 +160,7 @@ async function buildContext(base44, user) {
     : identity.user.organization_id;
   const activeOrganization = organizations.find(org => org.id === effectiveOrganizationId) || null;
   const entitlement = activeOrganization
-    ? await resolveEffectiveEntitlement(base44, activeOrganization)
+    ? await contextStep('RESOLVE_ENTITLEMENT', () => resolveEffectiveEntitlement(base44, activeOrganization))
     : null;
 
   return {

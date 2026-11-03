@@ -13,6 +13,12 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-009 — SDK backend y cuentas temporales del Testing Agent (2026-11-03)
+- `identityGateway/entry.ts` importa `npm:@base44/sdk@0.8.41`. Se obtuvo este paquete en `/tmp` y se verificó su implementación: `filter(query, sort, limit, skip, fields)`; la firma corregida usada por SEC-003/004 es válida tanto para SDK 0.8.41 como para 0.8.57. La divergencia de versión por sí misma **NO explica el HTTP 400**.
+- Base44 documenta que `GET entities/User` omite cuentas temporales del Testing Agent. En `buildContext`, la primera operación es `User.filter({id:user.id}, '-created_date', 1)` y, si no encuentra registro, usa `auth.me()`. Se abre hipótesis **NO CONFIRMADA** sobre compatibilidad del usuario temporal con esa consulta; una lista vacía no explica por sí sola un HTTP 400.
+- Se intentó una consulta read-only con ID sintético inexistente y `fields=id`; Base44 respondió `auth_required` porque la aplicación es privada. No se accedió a información real ni se modificaron datos; **ningún resultado funcional concluyente**.
+- Siguiente paso: trazas por request ID o soporte Base44 para identificar la operación de CONTEXT_BUILD que responde 400; no repetir redeploy ni SALES sin nueva evidencia. Documento `docs/TRP-SEC-009-SDK-TEST-USER-2026-11-03.md`. P0-AUD-01 sigue NO-GO.
+
 ## SEC-008 — sincronización autorizada y verificación runtime (2026-11-03)
 - Dirección General autorizó continuar con la sincronización puntual de `identityGateway`.
 - Checkpoint **previo** para restauración: `6aea020265e3a5041801b2f2`, commit `bceb4ad857e2d3469d19ce1d29f0b3e5efae3d0f`.

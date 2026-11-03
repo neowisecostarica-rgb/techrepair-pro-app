@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## Actualización SEC-006 — handoff permanente para programadores (2026-11-03)
+- **Entrada obligatoria creada en la raíz:** `AGENTS.md`. Identifica aplicación/repositorio, estado NO-GO, secuencia comercial-first, evidencias existentes, comandos de regresión, gates SEC/E2E y riesgos de Base44. Antes de una nueva auditoría leer esta guía y los informes enlazados.
+- `README.md` y `docs/README.md` contienen enlaces prominentes a `AGENTS.md` y a este estado maestro. Se mantuvo la documentación dentro del repositorio conectado `neowisecostarica-rgb/techrepair-pro-app`, además de los checkpoints de Base44.
+- Importante: el sandbox remoto de Base44 puede sincronizar cambios de archivos backend automáticamente; **no se debe inferir que editar sin Publish carece de efectos en runtime de preview**. La publicación y la sincronización de recursos backend son conceptos diferentes; ninguna prueba de frontend acredita la versión backend sin verificarla.
+- Nueva ejecución de Testing Agent SALES **`6ae9fb462d67eca79f243657`**, iniciada contra commit `34cf2b66e5f0d845a0f3d96bedf6d368d5b2bba1`, último estado consultado **PENDING**. Obtener veredicto final y logs antes de actualizar SEC-003. No declarar PASS antes de la respuesta final.
+- Ninguna transacción de ventas, cambios de stock ni Publish fue solicitada en esta intervención; no se invocó despliegue manual.
+
 ## Actualización SEC-004 — normalización global del SDK (2026-11-03)
 **Código corregido; runtime aún NO VERIFICADO.** Se detectaron 56 llamadas a filtros de membresía con el límite 100 colocado en el segundo parámetro (sort) en 28 archivos de autorización adicionales. Se cambió solo la firma a `filter(query, '-created_date', 100)` en esos 28 archivos. El contrato `scripts/verify-identity-filter-sdk-contract.mjs` ahora verifica 29 copias y 58 llamadas corregidas. Las pruebas de identidad, CRM, autorización, cotizaciones, inventario y ventas, impersonación y Super Admin y el build pasaron. No hubo Publish/redeploy; QA de navegador sigue pendiente de un runtime que sirva las correcciones. Referencia: `docs/TRP-SEC-004-SDK-AUTH-COPIES-AUDIT-2026-11-03.md`. P0-AUD-01 sigue NO-GO.
 

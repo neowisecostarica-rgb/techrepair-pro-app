@@ -31,12 +31,14 @@ function LayoutContent({ children, currentPageName }) {
 
   // Query organization (MUST be before any conditional returns)
   const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({
-    queryKey: ['org-status', effectiveOrgId],
+    // Cache is scoped to the authenticated principal, not just the tenant.
+    // Two Base44 users can share an organization but have distinct authorization.
+    queryKey: ['org-status', user?.id || 'no-user', effectiveOrgId, effectiveRole],
     queryFn: async () => {
       const result = await getIdentityOrganization(effectiveOrgId);
       return result.organization;
     },
-    enabled: !!effectiveOrgId && effectiveRole !== 'SUPER_ADMIN',
+    enabled: status === 'ready' && authorizationReady && !!user?.id && !!userAccount && !!effectiveOrgId && effectiveRole !== 'SUPER_ADMIN',
     staleTime: 60000,
   });
 

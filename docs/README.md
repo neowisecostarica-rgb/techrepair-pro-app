@@ -4,6 +4,8 @@
 
 **LEER PRIMERO:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)
 
+**SEC-019 (pantalla blanca total tras SEC-018):** [Instrumentación global de errores React; QA en navegador pendiente](TRP-SEC-019-ROOT-BLANK-PREVIEW-2026-11-03.md).
+
 **SEC-018 (organización en contexto canónico):** [Eliminación del doble gate previo al panel, con QA real pendiente](TRP-SEC-018-CANONICAL-ORGANIZATION-CONTEXT-2026-11-03.md).
 
 **SEC-017 (panel SALES/OWNER aún falla):** [Diagnóstico de pantallas y protección contra error de render](TRP-SEC-017-MIDIA-ROLE-PANEL-DIAGNOSTICS-2026-11-03.md).

@@ -13,6 +13,11 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## PAUSA DIRECCIÓN GENERAL — 2026-11-03
+- TRP queda **PAUSADO / NO-GO general**, por decisión de Dirección General. Handoff maestro de pausa: `docs/TRP-CHECKPOINT-PAUSA-2026-11-03.md`.
+- Último candidato `496c9cea3f75c32a5a01ff24703cd9417ecbe7eb` y checkpoint COM-QA-002 `6aea60dcf531da81176fa1b5`. GitHub #14 SEC-020 cerrado (SALES/OWNER visual PASS). Issue #15 sigue abierto: Inventario SALES solo lectura **PASS en código, pendiente QA navegador**. Issues #12 (QA multirol/E2E) y #13 (atomicidad AuditEvent) siguen abiertos.
+- Retomar **directamente con QA de navegador Inventario SALES/OWNER sin mutaciones**, luego CRM/cotizaciones/caja solo lectura, E2E sobre fixtures aislados y P0-AUD-01. No repetir auditorías ni afirmar GO sin evidencia.
+
 ## COM-QA-002 — Inventario SALES solo lectura, corrección de código (2026-11-03)
 - Corregida inconsistencia de menú #15: SALES ya tenía `INVENTORY_READ` y backend `operationalGateway` permite su lectura con proyección redaccionada, pero `Inventario.jsx` PageGuard negaba SALES. Ahora lo admite **para consulta**, sin conceder INVENTORY_OPERATIONS, ni modificar RLS/backend.
 - SALES consulta existencias y precios de venta de su sucursal; se ocultan costos, margen, valor de stock al costo y los modales/botones de edición, creación, categoría y ajuste. El DTO del gateway tampoco incluye `costo_unitario` ni `proveedor` para SALES. ORG_ADMIN conserva su vista administrativa. El backend sigue autorizando toda mutación.

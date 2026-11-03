@@ -34,7 +34,7 @@
 - Inspección en node_modules/@base44/sdk/dist/modules/entities.js: segundo argumento de filter es sort, tercero limit. Se reprodujo en nuevo test; .filter({id},1) genera params.sort=1 sin params.limit; .filter({id}, '-created_date',1) genera sort/limit válidos.
 - Candidato corrige filtros de User, Organization, UserAccount y otras consultas del mismo identityGateway. No cambia las reglas de autorización ni otorga fallback si falla el backend.
 - Pruebas del candidato: verify-identity-filter-sdk-contract PASS; identity-tenant-security 7/7; impersonation-session-hardening 10/10; operational-authorization 9 grupos; superadmin-lifecycle 5/5; build PASS; git diff --check PASS.
-- **No se comprobó aún que preview sirva la nueva implementación backend.** Retest SALES execution 6ae9ef2fad726c60d1c127bf (último estado observado PENDING; consultar resultado final antes de decidir). No declarar cerrado hasta comprobar la ejecución real y versión de backend.
+- **No se comprobó aún que preview sirva la nueva implementación backend.** Retest SALES execution 6ae9ef2fad726c60d1c127bf **FAILED / failure_reason=platform / goal_accomplished=false**. Volvió a aparecer 'Valid session · Identity service unavailable'. Logs de identityGateway registrados 2026-11-03 14:28:24Z, 14:28:30Z y 14:28:39Z: CONTEXT_BUILD HTTP 400. El candidato compila, pero el runtime ejecutado aún falla. **NO afirmar resuelta SEC-003**. Debe verificarse la implementación backend efectivamente desplegada en preview, diagnosticar la operación 400 y repetir test.
 
 ## P0-AUD-01: qué falta para cierre
 - Ubicación: base44/functions/_shared/auditEvent.ts, función appendAuditEvent: filter → create sin transacción. Esta secuencia permite carrera aunque se reconcilie al fallar.
@@ -44,7 +44,7 @@
 - Evitar mutex local, check-then-create y retardo arbitrario: no son garantías entre instancias.
 
 ## Testing Agent — flujos existentes y estado
-- SEC-QA-03 SALES CRM: flow 6ae9e9f78f0299c74d0fdc48; ejecución original FAIL plataforma (6ae9ea17c06b0cd8717dd21c); retest 6ae9ef2fad726c60d1c127bf PENDIENTE de reporte.
+- SEC-QA-03 SALES CRM: flow 6ae9e9f78f0299c74d0fdc48; ejecución original FAIL plataforma (6ae9ea17c06b0cd8717dd21c); retest 6ae9ef2fad726c60d1c127bf FAILED plataforma; identidad vuelve a fallar. La ejecución quedó archivada sin modificar datos.
 - SEC-QA-05 CUSTOMER_SERVICE CRM denegado: flow 6ae9ea09d84de077deb6d822 — no ejecutado.
 - SEC-QA-07 SUPER_ADMIN consola: flow 6ae9ea1075e8169fbbbcbf64 — no ejecutado.
 - SEC-QA-02 BRANCH_ADMIN: flow 6ae9ef6dad726c60d1c1283f — preparado, no ejecutado.
@@ -63,7 +63,7 @@
 - audit-concurrency-boundary 1/1 prueba de **reproducción del fallo**, no aprobación.
 
 ## Próximas 4 acciones por prioridad
-1. **SEC-003:** revisar ejecución 6ae9ef2fad726c60d1c127bf y logs; si runtime sigue con código viejo, reconciliar función desplegada/preview sin publicar producción. Si falla por cuenta QA sin membresía, clasificarlo como fixture/QA, no como error de CRM.
+1. **SEC-003:** reconciliar backend servido en preview (retest 6ae9ef2fad726c60d1c127bf FAILED, HTTP 400 en CONTEXT_BUILD) contra el candidato corregido. No está probado que el servidor haya incorporado el código corregido; no hacer redeploy de producción sin autorización. Si falla por cuenta QA sin membresía, clasificarlo como fixture/QA, no como error de CRM.
 2. **SEC-QA:** ejecutar y documentar accesos de SALES, CUSTOMER_SERVICE, SUPER_ADMIN, BRANCH_ADMIN e INVENTORY, luego roles restantes y cruce empresa/sucursal. Requiere identidad estable.
 3. **E2E-001:** ejecutar recorrido de lectura y después recorrido con fixtures dev: Lead → Cliente → Cotización → Aprobación → Stock → Venta → Cobro → Comprobante, probando reintentos y auditoría.
 4. **P0-AUD-01:** obtener mecanismo atómico de Base44/alternativa aprobada y probar concurrencia real. Sin esto no cerrar NO-GO general.

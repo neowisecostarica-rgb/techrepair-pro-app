@@ -13,6 +13,9 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## Actualización SEC-004 — normalización global del SDK (2026-11-03)
+**Código corregido; runtime aún NO VERIFICADO.** Se detectaron 56 llamadas a filtros de membresía con el límite 100 colocado en el segundo parámetro (sort) en 28 archivos de autorización adicionales. Se cambió solo la firma a `filter(query, '-created_date', 100)` en esos 28 archivos. El contrato `scripts/verify-identity-filter-sdk-contract.mjs` ahora verifica 29 copias y 58 llamadas corregidas. Las pruebas de identidad, CRM, autorización, cotizaciones, inventario y ventas, impersonación y Super Admin y el build pasaron. No hubo Publish/redeploy; QA de navegador sigue pendiente de un runtime que sirva las correcciones. Referencia: `docs/TRP-SEC-004-SDK-AUTH-COPIES-AUDIT-2026-11-03.md`. P0-AUD-01 sigue NO-GO.
+
 ## Estado verificable por bloque
 | ID | Estado | Evidencia y condición pendiente |
 |---|---|---|
@@ -21,7 +24,7 @@
 | COM-003 Inventario | Correcciones guardadas, QA NO VERIFICADO | Conserva reorder=0; confirma success del backend. |
 | COM-004 Ventas/cobros | Corrección guardada, QA NO VERIFICADO | POS conserva sucursal de cotización/OT. Backend sigue autorizando. |
 | SEC-001 roles/aislamiento | Contratos de código PASS, QA de sesiones NO VERIFICADO | Matriz detallada en docs/TRP-SEC-001-E2E-001-QA-MATRIX-2026-11-03.md. |
-| SEC-003 identidad | **Candidato técnico CORREGIDO**, runtime NO VERIFICADO | Falla SALES previa: identityGateway CONTEXT_BUILD HTTP 400. SDK .filter(query, sort, limit) recibía .filter(query, 1/100), enviando sort numérico inválido. Se normalizaron llamadas de identityGateway y userAuthorization. Nuevo contrato scripts/verify-identity-filter-sdk-contract.mjs PASS. Checkpoint de corrección 6ae9ef214cc85330a89e38f0. |
+| SEC-003/004 identidad y SDK | **Código CORREGIDO** en gateway y copias, runtime NO VERIFICADO | Falla SALES previa: identityGateway CONTEXT_BUILD HTTP 400. SDK .filter(query, sort, limit) recibía .filter(query, 1/100), enviando sort numérico inválido. Se normalizaron llamadas de identityGateway y userAuthorization. Nuevo contrato scripts/verify-identity-filter-sdk-contract.mjs PASS. Checkpoint de corrección 6ae9ef214cc85330a89e38f0. |
 | P0-AUD-01 auditoría concurrente | **BLOQUEADO / NO-GO** | scripts/verify-audit-concurrency-boundary.mjs reproduce dos AuditEvent para la misma clave concurrente. Base44 upsert beta no garantiza atomicidad y puede duplicar en concurrencia. Se requiere primitiva persistente única y prueba real. |
 | SEC-QA multirol | En preparación, no aprobado | Testing Agent con flujos descritos abajo, pruebas funcionales sin veredicto PASS. |
 | E2E-001 circuito comercial | Contratos PASS, transacción E2E NO VERIFICADA | Se preparó flujo de inspección solo lectura. Transacciones únicamente con datos de prueba cuando roles funcionen. |

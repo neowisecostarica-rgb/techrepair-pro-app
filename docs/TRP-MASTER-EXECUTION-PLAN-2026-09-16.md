@@ -1,5 +1,7 @@
 # TRP — MASTER EXECUTION PLAN / SOT
 
+> **ACTUALIZACIÓN CANÓNICA 2026-11-03:** antes de iniciar nuevas tareas, leer `docs/TRP-AUDIT-MASTER-STATUS-2026-11-03.md`. La nueva secuencia comercial-first y la auditoría SEC/E2E son decisiones posteriores que actualizan el estado de ejecución aquí descrito. P0-AUD-01 sigue NO-GO para release general; SEC-003 tiene corrección de código en verificación de runtime; no inferir QA aprobado por contratos automatizados. Esta referencia no cambia los cierres históricos ni autoriza Publish.
+
 Fecha: 2026-09-16
 Estado: ACTIVE — SINGLE ROADMAP
 Producto: TRP — Technology Reliability Platform

@@ -538,7 +538,7 @@ Deno.serve(async (req) => {
 
       const [organization] = await base44.asServiceRole.entities.Organization.filter({
         id: authorization.organizationId,
-      }, 1);
+      }, '-created_date', 1);
       if (!organization) return jsonError('Organizacion no encontrada', 404);
       if (action === 'getOrganization') {
         return Response.json({ organization: sanitizeOrganization(organization) });

@@ -53,6 +53,14 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## P0-AUD-01 — candidato de ledger atómico, NO desplegado (2026-11-03)
+
+- El `appendAuditEvent` actual sigue siendo check-then-create y permite duplicación concurrente. `npm run test:audit-concurrency-boundary` PASS significa defecto reproducido.
+- La API `entities/upsert` de Base44 advierte que llamadas simultáneas pueden duplicar; no utilizarla como 'solución'. No hay conectores externos instalados actualmente en TRP.
+- Documentación: `docs/TRP-P0-AUD-01-ATOMIC-LEDGER-ADR-2026-11-03.md`, SQL **solo ilustrativo** `docs/architecture/TRP-P0-AUD-01-POSTGRES-LEDGER-CANDIDATE.sql`, prueba `python3 scripts/verify-p0-aud-01-atomic-ledger-model.py`.
+- Modelo SQLite con UNIQUE: 8 writers/1 fila, retry, tenant isolation y collision PASS **solo local**. NO implica PostgreSQL o Base44 PASS. No existe writer nuevo implementado; no aprobar release.
+- Issue #13 sigue OPEN; requiere aprobación de infraestructura transaccional, implementación en backend y QA de concurrencia real. NO modificar datos ni introducir workaround de mutex, upsert, sleeps o select/create.
+
 ## SEC-013 — issues de continuación y bloqueo QA de navegador (2026-11-03)
 
 - **Issue #12** `https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/12`: habilitar identidad QA canónica en dataset aislado; Base44 Testing Agent solo acepta rol y flow, NO permite establecer ID de usuario ni `UserAccount` de forma documentada. Su seed automático puede copiar PII de registros vivos; NO utilizar sin evaluación/aprobación.

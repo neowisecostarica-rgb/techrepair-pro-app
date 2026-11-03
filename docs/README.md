@@ -6,6 +6,8 @@
 
 **SEC-020 (causa de pantalla blanca identificada):** [Null en traducción de SidebarMenu, corrección y prueba SSR seis roles](TRP-SEC-020-SIDEBAR-NULL-I18N-ROOT-CAUSE-2026-11-03.md).
 
+**SEC-020 (causa de crash identificada en consola):** [SidebarMenu + i18n null.split corregido, QA funcional pendiente](TRP-SEC-020-SIDEBAR-NULL-I18N-CRASH-2026-11-03.md).
+
 **SEC-019 (pantalla blanca total tras SEC-018):** [Instrumentación global de errores React; QA en navegador pendiente](TRP-SEC-019-ROOT-BLANK-PREVIEW-2026-11-03.md).
 
 **SEC-018 (organización en contexto canónico):** [Eliminación del doble gate previo al panel, con QA real pendiente](TRP-SEC-018-CANONICAL-ORGANIZATION-CONTEXT-2026-11-03.md).

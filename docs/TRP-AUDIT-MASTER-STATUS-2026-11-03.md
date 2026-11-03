@@ -13,6 +13,12 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## COM-QA-001 — circuito comercial: contratos PASS, QA lectura pendiente (2026-11-03)
+- Desde cierre visual SEC-020, se ejecutaron nuevamente contratos de código: flujo comercial 16/16, integridad comercial 12/12, inventario 22/22, ventas atómicas 28/28, CRM 8/8, navegación 8/8, build PASS. **No equivalen a QA runtime ni E2E**.
+- Incidencia #15: SALES posee `INVENTORY_READ` y visualiza Inventario en menú, pero `PageGuard` de `src/pages/Inventario.jsx` no admite SALES. Riesgo de enlace visible que rechaza la navegación. Pendiente decisión de producto: vista estricta solo lectura para SALES o retirar enlace; no autoelevar permisos de edición. https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/15
+- Nuevo test `scripts/verify-commercial-menu-route-alignment.mjs` PASS con única discrepancia conocida #15, 4 rutas × 6 roles; no se modificaron permisos ni datos. QA browser de CRM/Cotizaciones/Caja/Inventario con SALES y ORG_ADMIN todavía PENDIENTE.
+- Guía `docs/TRP-COM-QA-001-COMMERCIAL-READONLY-2026-11-03.md`; E2E real y P0-AUD-01 continúan pendientes, **NO-GO general**.
+
 ## SEC-020 — CIERRE VISUAL DE PANELES SALES Y OWNER CONFIRMADO POR DIRECCIÓN GENERAL (2026-11-03)
 - Dirección General informó expresamente **«ya funcionan los 2»** después del parche SEC-020, refiriéndose a los paneles SALES (`ventas@compustorecr.com`) y OWNER/ORG_ADMIN (`gustavo@compustorecr.com`) en Base44 Preview. Se registra como **PASS visual de apertura de ambos paneles, validado por usuario**.
 - La causa de la pantalla blanca estaba confirmada por DevTools: `Cannot read properties of null (reading 'split')` en i18n invocado desde SidebarMenu. La corrección del manejo de claves nulas quedó en commit `a7afa0af874804e8367d074b16366d33b6649bdd`, checkpoint `6aea334ebebd14e65eecc39e`.

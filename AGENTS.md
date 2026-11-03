@@ -16,6 +16,12 @@
 
 **No repitas la auditoría desde cero.** Primero identifica qué evidencia ya existe y cuál falta. Un cambio de versión o fallo de regresión sí puede justificar una nueva auditoría acotada.
 
+## COM-QA-001 — QA comercial solo lectura (2026-11-03)
+
+- Regresiones después de SEC-020 PASS: comercial 16/16, integridad 12/12, inventario 22/22, venta atómica 28/28, CRM 8/8, navegación 8/8, build. Son contratos de código, no QA runtime ni E2E.
+- Issue #15: SALES tiene INVENTORY_READ y ve Inventario en menú, pero el PageGuard de Inventario niega SALES. Nuevo test `npx tsx scripts/verify-commercial-menu-route-alignment.mjs` PASS con esta única inconsistencia conocida. Pendiente decidir vista solo lectura o esconder ruta; no conceder capacidad de mutación.
+- Guía de validación manual de CRM, cotizaciones, inventario y caja: `docs/TRP-COM-QA-001-COMMERCIAL-READONLY-2026-11-03.md`. No modificar datos COMPU STORE. P0-AUD-01 mantiene NO-GO general.
+
 ## Cierre verificado SEC-020 (2026-11-03)
 
 - Dirección General confirmó explícitamente **«ya funcionan los 2»** tras la corrección de `null.split` en `SidebarMenu`/i18n. Esto acredita PASS visual de apertura de paneles **SALES y OWNER/ORG_ADMIN** en Base44 Preview, no el flujo comercial E2E.

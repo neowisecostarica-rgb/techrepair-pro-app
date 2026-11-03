@@ -53,6 +53,13 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-015 — cuentas QA existentes, verificadas en Base44 (2026-11-03)
+
+- Dirección General ofreció `ventas@compustorecr.com` y `gustavo@compustorecr.com`. Verificación read-only de User + UserAccount: SALES y ORG_ADMIN, ambos activos con IDs canónicos correctamente vinculados, empresa activa; SALES en sucursal activa TRES RÍOS. Gustavo `role=admin` nativo **no es** Super Admin SaaS (`is_super_admin=false`). **No crear nuevos usuarios, no provisionar ni re-vincular estas identidades**.
+- Inspección read-only corrigió la interpretación previa: un filtro `user_id:{$exists:true}` devolvió 0 pero estas cuentas sí tienen `user_id`. NO ejecutar migración de IDs por esa consulta.
+- QA comercial: usar sesión legítima de ventas@ para navegación/lectura; cuenta ORG_ADMIN solo contraste. No modificar datos, clientes, inventario, cobros ni permisos de COMPU STORE. E2E transaccional continúa bloqueado hasta contar con tenant y datos ficticios aislados.
+- Informe `docs/TRP-SEC-015-EXISTING-SALES-QA-2026-11-03.md`; GitHub #12. **Aún falta QA real de navegador**: la conexión Base44 no equivale a una sesión iniciada en la cuenta; Testing Agent usa usuario efímero. No marcar PASS hasta obtener la prueba autenticada.
+
 ## SEC-014 — usuario estable para QA, sin provisionar (2026-11-03)
 
 - Base44 soporta `users/provisions` para crear acceso con correo controlado y `embed-url` para obtener enlace de sesión de un solo uso hacia `live_preview`/`latest_preview`. No guardar ni compartir enlace/token en GitHub o logs.

@@ -75,7 +75,7 @@ export default function SidebarMenu({ effectiveRole, capabilities = [], currentP
                   <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-teal-300' : 'text-slate-500 group-hover:text-teal-300'}`} />
                   {sidebarOpen && (
                     <>
-                      <span className="flex-1 font-medium truncate">{t(item.i18nKey, item.label)}</span>
+                      <span className="flex-1 font-medium truncate">{item.i18nKey ? t(item.i18nKey, item.label) : item.label}</span>
                       {isActive && <ChevronRight className="w-4 h-4" />}
                     </>
                   )}

@@ -53,6 +53,13 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-019 — vista previa completamente vacía con SALES (2026-11-03)
+
+- Captura Base44 editor/preview en modo `ventas@compustorecr.com` tras SEC-018: área de TRP totalmente blanca, ni spinner ni mensaje SEC-017. SEC-018 NO acreditado como corrección funcional.
+- Se añadió `AppErrorBoundary` global en `src/main.jsx` que encapsula React App/Auth/Router y muestra `SEC-019 · REACT_ROOT` ante excepción de render; test `node scripts/verify-sec019-root-error-boundary.mjs`, regresiones y build PASS. No se tocaron roles, usuarios ni RLS.
+- Si sigue totalmente vacío sin SEC-019 en el candidato actualizado, inspeccionar consola y Network de iframe por fallo JS antes de React, recursos o redirección `return null`. No adivinar causa ni publicar sin QA.
+- Documento `docs/TRP-SEC-019-ROOT-BLANK-PREVIEW-2026-11-03.md`, checkpoint PRE `6aea2c22bc3231fb009a4ac0`, GitHub #14 continúa abierto.
+
 ## SEC-018 — retirar la consulta duplicada de organización en Layout (2026-11-03)
 
 - `identityGateway.context` ya devuelve `organizations` autorizadas, pero `Layout` repetía `getIdentityOrganization` y bloqueaba la interfaz con `Verificando estado de tu cuenta...` hasta que llegara una segunda respuesta. SEC-018 elimina ese gate duplicado y utiliza `authorizedOrganizations` desde el contexto canónico.

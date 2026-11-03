@@ -1,5 +1,5 @@
 # TRP-SEC-012 — Plan verificable para fixtures SALES y recuperación de membresías legacy
-Fecha 2026-11-03 | Estado: PLAN QA preparado, sin ejecutar mutaciones de datos
+Fecha 2026-11-03 | Estado: QA SIMULADO 6/6 PASS, POLÍTICA CRM ALINEADA, QA NAVEGADOR PENDIENTE; sin mutaciones de datos
 
 ## Punto de partida comprobado
 - SEC-011 agregó UserAccount.user_id opcional; filtro directo por ese campo en Base44 ahora funciona sin HTTP 400 y test SDK/seguridad PASS.
@@ -7,6 +7,14 @@ Fecha 2026-11-03 | Estado: PLAN QA preparado, sin ejecutar mutaciones de datos
 - Inspección read-only de UserAccount (solamente campo id, limit 1): al menos un registro, al menos una membresía active. Consulta por user_id {$exists:true} devolvió 0. No se accedió a emails ni se modificaron registros.
 - En `identityGateway/_shared/userAuthorization.ts`, una membresía activa exige explícitamente account.user_id === user.id y status === 'active'. Por lo tanto un UserAccount legacy sin user_id no concede acceso (fail closed), incluso cuando coincide el email. Es correcto mantener este control, no bypass.
 - `resolveAuthorizedContext` también exige organización activa y sucursal activa para rol SINGLE_BRANCH. Una membresía aislada sin sucursal funcional no satisface el circuito de SALES.
+
+## Ejecución técnica de SEC-012 — evidencia
+- Se creó `scripts/verify-sec012-isolated-membership-fixtures.mjs` (fixtures exclusivamente en memoria, sin recursos Base44). Se ejecutaron 6 escenarios: SALES válido en org A/sucursal A, cruce org B denegado, ID distinto con mismo correo denegado, invitación sin activar denegada, CUSTOMER_SERVICE sin privilegios SALES, y contrato SDK de filtros válido. **6/6 PASS simulados**, no equivalentes a prueba de navegador.
+- Se descubrió inconsistencia: `CUSTOMER_SERVICE` tenía `CRM_OPERATIONS` en 26 copias `roleCapabilities.ts`, mientras que `src/pages/CRM.jsx` y `crmGateway/entry.ts` autorizan solo ORG_ADMIN, BRANCH_ADMIN y SALES. Se retiró únicamente `CRM_OPERATIONS` del preset CUSTOMER_SERVICE en esas 26 copias. SALES conserva la capacidad. Checkpoint previo: `6aea0e0a68cc2e37a54134c1`.
+- `scripts/verify-sec012-isolated-membership-fixtures.mjs` ahora comprueba 26 políticas sincronizadas más el PageGuard y el backend CRM. `scripts/verify-multiuser-navigation-contract.mjs` corrigió dos aserciones obsoletas: MiDia se muestra a SALES por SALE_OPERATIONS (sin TECHNICAL_WORK), y CRM no se muestra a CUSTOMER_SERVICE con el preset corregido. No se añadieron privilegios ni reglas de bypass.
+- Regresiones PASS: 6/6 fixtures, 8/8 navegación, 12/12 policy pipeline, 6/6 aprovisionamiento, 7/7 seguridad identidad, 8/8 CRM, 9 grupos autorización operacional, 13/13 seguridad round2, 16/16 commercial-flow y build. Los controles de UI reales siguen pendientes.
+- No se ejecutó `testing-agent/data/seed`: su API documenta que puede copiar hasta 5 registros productivos por entidad, incluyendo datos personales, al test-data. No está demostrada una manera segura de ligar el usuario efímero del Testing Agent con `UserAccount.user_id`. Evitar sembrado indiscriminado para no crear falsa autorización o copiar PII.
+- Resultado: código y simulación PASS; **NO declarar SEC-QA/E2E PASS**, ni modificar registros de organización, sucursal o membresía para hacer pasar el navegador.
 
 ## Estrategia segura de QA
 1. Establecer si Testing Agent puede operar con identidad temporal ligada a membresía persistente en su *test-data*; solicitar capacidad documentada al proveedor o utilizar un usuario de QA establecido específicamente con una identidad y organización ficticia en un entorno aislado. NO vincular usuarios aleatorios.

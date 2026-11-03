@@ -74,9 +74,9 @@ export function sanitizeOrganization(organization) {
 
 async function loadCanonicalMemberships(base44, user) {
   const [byUserId, byEmail] = await Promise.all([
-    base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, 100),
+    base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, '-created_date', 100),
     user.email
-      ? base44.asServiceRole.entities.UserAccount.filter({ user_email: user.email }, 100)
+      ? base44.asServiceRole.entities.UserAccount.filter({ user_email: user.email }, '-created_date', 100)
       : Promise.resolve([]),
   ]);
   const unique = new Map();

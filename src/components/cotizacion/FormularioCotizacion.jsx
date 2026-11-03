@@ -194,7 +194,7 @@ export default function FormularioCotizacion({
       cliente_id: clienteActual,
       vendedor_id: user.id,
       vendedor_nombre: user.full_name || user.email,
-      orden_trabajo_id: ordenTrabajoId || null,
+      orden_trabajo_id: ordenTrabajoId || cotizacionEditar?.orden_trabajo_id || null,
       items: items,
       subtotal: totales.subtotal,
       descuento_total: totales.descuentoTotal,

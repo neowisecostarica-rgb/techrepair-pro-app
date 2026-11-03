@@ -53,6 +53,12 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-020 — Root cause confirmado de pantalla blanca en SALES y OWNER (2026-11-03)
+
+- Evidencia Chrome DevTools de Dirección General: `Cannot read properties of null (reading 'split')` en `src/i18n/index.jsx:49` llamada desde `SidebarMenu.jsx:78`. CRM y ColaRevision estaban configurados con `i18nKey: null` y SidebarMenu hacía `t(null, item.label)`. El rol SALES y ORG_ADMIN incluyen CRM, TECHNICIAN no.
+- Se corrigió de modo mínimo `src/components/layout/SidebarMenu.jsx`: con i18nKey válido llamar t; con null mostrar `item.label`, conservando capacidades backend intactas. Prueba real SSR con Vite `npx tsx scripts/verify-sec020-sidebar-null-i18n.mjs` PASS seis roles; navegación 8/8, identidad 7/7, CRM 8/8 y build PASS.
+- Informe `docs/TRP-SEC-020-SIDEBAR-NULL-I18N-ROOT-CAUSE-2026-11-03.md`. Checkpoint previo `6aea2f739aba4269bcf479a4`; issue #14 abierto hasta QA de preview nativo SALES, ORG_ADMIN, TECHNICIAN y cambio de sesión. No marcar GO general; P0-AUD-01 sigue pendiente.
+
 ## SEC-019 — vista previa completamente vacía con SALES (2026-11-03)
 
 - Captura Base44 editor/preview en modo `ventas@compustorecr.com` tras SEC-018: área de TRP totalmente blanca, ni spinner ni mensaje SEC-017. SEC-018 NO acreditado como corrección funcional.

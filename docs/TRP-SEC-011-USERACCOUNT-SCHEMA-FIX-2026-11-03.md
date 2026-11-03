@@ -27,7 +27,7 @@ Estado: DEFECTO DE ESQUEMA CORREGIDO Y CONSULTA DIRECTA PASS; QA SALES FALLA POR
 
 ## QA post-cambio
 - Testing Agent SALES flow 6ae9e9f78f0299c74d0fdc48, nueva ejecución `6aea0ad9f6c9bb351729f8f7` contra SHA `c3c34a8b878b756eb931479855535cb3b452bdd2`: FAILED / goal_accomplished=false, sin failure_reason de plataforma. Testing Agent informa que la aplicación mostró `Configura tu organización`, sin CRM ni navegación, y NO registró errores de autorización. No creó registros ni completó onboarding.
-- Obtener resultado final antes de declarar SEC-011 cerrado en runtime. Si falla, correlacionar error distinto y etapa real. No cambiar seguridad por ensayo y error.
+- Resultado definitivo disponible: falla por ausencia de contexto organizacional en el usuario de prueba; el problema anterior de pantalla de indisponibilidad no se reprodujo. No cambiar seguridad por ensayo y error.
 
 ## Hallazgos posteriores: membresías y QA
 - Inspección read-only de Base44 `UserAccount` con `fields=['id']` y limit=1 confirmó al menos 1 registro y al menos 1 con `status='active'`, **sin extraer datos personales**.

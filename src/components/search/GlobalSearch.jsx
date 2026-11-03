@@ -63,12 +63,12 @@ export default function GlobalSearch({ open, onOpenChange }) {
     );
     if (!needle) return [];
     return eligible
-      .filter(item => matches(t(item.i18nKey, item.label), needle) || matches(item.path, needle))
+      .filter(item => matches(item.i18nKey ? t(item.i18nKey, item.label) : item.label, needle) || matches(item.path, needle))
       .slice(0, 5)
       .map(item => ({
         type: 'page',
         id: `page-${item.path}-${item.label}`,
-        label: t(item.i18nKey, item.label),
+        label: item.i18nKey ? t(item.i18nKey, item.label) : item.label,
         subtitle: t('search.page','Página'),
         icon: item.icon,
         action: () => {

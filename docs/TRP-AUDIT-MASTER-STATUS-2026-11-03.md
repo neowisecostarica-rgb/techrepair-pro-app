@@ -13,6 +13,14 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-011 — corrección aditiva de UserAccount.user_id (2026-11-03)
+- Diagnóstico directo Base44: el filtro por `UserAccount.user_id` devolvía error `Unknown field "user_id" in the filter`, mientras que el filtro por `user_email` respondía correctamente. `loadCanonicalMemberships` consulta `user_id`: defecto de esquema real y ruta plausible al HTTP 400 previo.
+- Checkpoint previo `6aea0a97a6073aa1f2dc549c` (commit `0a609235027088e3e51e8dc1a4da91e9cf972739`). Se agregó **solo** `properties.user_id` tipo string opcional a `base44/entities/UserAccount.jsonc`, sin cambiar RLS ni required. Esquema confirmado por Base44 y consulta directa por ID sintético ahora devuelve lista vacía **sin HTTP 400**.
+- Contratos PASS: SDK (29 copias/58 llamadas), identidad 7/7, impersonación 10/10, CRM 8/8, autorización 9 grupos, flujo comercial 16/16, build PASS.
+- Nueva prueba SALES `6aea0ad9f6c9bb351729f8f7` contra SHA `c3c34a8b878b756eb931479855535cb3b452bdd2` iniciada, **PENDING** a la primera consulta; obtener el veredicto definitivo antes de declarar acceso reparado.
+- No se migraron registros históricos ni se asignaron membresías. **Pendiente** verificar qué registros UserAccount tienen realmente `user_id` persistido; dato indispensable antes de marcar multiempresa PASS.
+- Documento técnico `docs/TRP-SEC-011-USERACCOUNT-SCHEMA-FIX-2026-11-03.md`. P0-AUD-01 permanece NO-GO.
+
 ## SEC-010 — expediente técnico Base44 preparado (2026-11-03)
 - Se revisó la definición `User.jsonc`, el cliente que invoca `identityGateway` y el informe final de Testing Agent `6aea023165a7bd96801de1e6`: `goal_not_accomplished` e `issues=[]`; el usuario SALES siguió sin entrar al CRM. Esto no equivale a demostrar que el CRM sea defectuoso.
 - Se creó el expediente `docs/TRP-SEC-010-BASE44-SUPPORT-CASE-2026-11-03.md` con evidencias de ejecuciones, versiones, rollback, cinco preguntas para soporte y criterios de cierre, sin PII. **No se envió a Base44 ni se abrió ticket**.

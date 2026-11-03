@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createEntitiesModule } from '../node_modules/@base44/sdk/dist/modules/entities.js';
+
+const calls = [];
+const entities = createEntitiesModule({
+  appId: 'contract-only',
+  axios: {
+    get: async (url, config) => {
+      calls.push({ url, params: config.params });
+      return { data: [] };
+    },
+  },
+  getSocket: () => null,
+});
+
+await entities.User.filter({ id: 'u1' }, 1);
+assert.equal(calls.at(-1).params.sort, 1);
+assert.equal(calls.at(-1).params.limit, undefined);
+console.log('PASS SDK reproduces invalid numeric sort when limit is passed as second argument');
+
+await entities.User.filter({ id: 'u1' }, '-created_date', 1);
+assert.equal(calls.at(-1).params.sort, '-created_date');
+assert.equal(calls.at(-1).params.limit, 1);
+console.log('PASS SDK accepts explicit sort and limit in third argument');
+
+const sources = [
+  'base44/functions/identityGateway/entry.ts',
+  'base44/functions/identityGateway/_shared/userAuthorization.ts',
+];
+for (const file of sources) {
+  const source = readFileSync(file, 'utf8');
+  const invalidSecondArg = /\.filter\(\{[^{}]*\},\s*(?:1|2|10|20|100|500)\s*\)/g;
+  assert.equal([...source.matchAll(invalidSecondArg)].length, 0, `${file}: no numeric sort arguments`);
+}
+console.log('PASS identity gateway source has no numeric second-argument entity filters');

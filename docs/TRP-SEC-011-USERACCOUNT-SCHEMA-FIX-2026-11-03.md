@@ -1,0 +1,39 @@
+# TRP-SEC-011 — Corrección aditiva de esquema UserAccount.user_id
+Fecha: 2026-11-03 | Aplicación: 695d708948469128f473d080
+Estado: DEFECTO DE ESQUEMA CORREGIDO Y CONSULTA DIRECTA PASS; QA SALES PENDIENTE; NO-GO GENERAL.
+
+## Evidencia de causa técnica
+- La fuente `base44/functions/identityGateway/_shared/userAuthorization.ts` ejecuta `asServiceRole.entities.UserAccount.filter({user_id:user.id}, '-created_date', 100)` al resolver membresías.
+- Antes del cambio, el esquema `UserAccount.jsonc` NO declaraba `user_id`. Una consulta directa Base44 con filtro user_id se rechazó: `Unknown field "user_id" in the filter: UserAccount has no field "user_id"`.
+- Consulta de control por `user_email` devolvió resultado vacío, sin error.
+- Resultado independiente: existe una ruta verificable a HTTP 400. No se ha demostrado que sea la única causa de los errores de identityGateway previos.
+
+## Cambio aplicado
+- Checkpoint PREVIO: `6aea0a97a6073aa1f2dc549c`, SHA `0a609235027088e3e51e8dc1a4da91e9cf972739`.
+- Archivo editado: `base44/entities/UserAccount.jsonc`.
+- Solo se agregó `properties.user_id: {type: 'string'}` (campo opcional). No se modificaron listas required, roles, demás propiedades ni reglas RLS (`create/read/update/delete=false`).
+- No se crearon ni modificaron registros, ni se asignó automáticamente `user_id` a membresías existentes.
+- Base44 list_entity_schemas confirmó `user_id` declarado; RLS conservado.
+- Prueba directa read-only contra Base44: query `UserAccount` por un `user_id` sintético inexistente devolvió `entities:[], count:0` y NO HTTP 400.
+
+## Contratos de código
+- SDK de entidades: PASS 29 copias, 58 firmas.
+- Identidad/tenancy: 7/7 PASS.
+- Impersonación/sesión: 10/10 PASS.
+- CRM/Customer360: 8/8 PASS.
+- Autorización operacional: 9 grupos PASS.
+- Flujo comercial: 16/16 PASS.
+- Vite build y git diff --check: PASS.
+
+## QA post-cambio
+- Testing Agent SALES flow 6ae9e9f78f0299c74d0fdc48, nueva ejecución `6aea0ad9f6c9bb351729f8f7` contra SHA `c3c34a8b878b756eb931479855535cb3b452bdd2`: PENDING al inicio.
+- Obtener resultado final antes de declarar SEC-011 cerrado en runtime. Si falla, correlacionar error distinto y etapa real. No cambiar seguridad por ensayo y error.
+
+## Puntos pendientes
+- Verificar para las membresías existentes cuántas tienen user_id persistido; sin ese campo, la resolución canónica de membresías activas podría quedarse vacía incluso después de eliminar el 400.
+- No cambiar `activeMemberships` ni invitar/asignar roles hasta revisar la migración de datos con un plan seguro y autorizado.
+- SEC-QA multirol y E2E transaccional pendientes de acceso real.
+- P0-AUD-01 concurrencia de AuditEvent sigue NO-GO general.
+
+## Continuidad
+Actualizar `docs/TRP-AUDIT-MASTER-STATUS-2026-11-03.md` y `AGENTS.md` con el resultado definitivo de SALES, y guardar checkpoint posterior. No repetir auditoría desde cero.

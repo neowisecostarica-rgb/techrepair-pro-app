@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-012 — QA simulado de membresías y alineación de roles CRM (2026-11-03)
+- Dirección General autorizó ejecutar los pendientes para beta privada. Se preparó un harness **in-memory**, `scripts/verify-sec012-isolated-membership-fixtures.mjs`, con 6 escenarios PASS de SALES, tenant/sucursal, ID canónico, invitaciones y denegación CUSTOMER_SERVICE. No representa QA real de navegador ni fue necesario crear organizaciones/usuarios/datos productivos.
+- Se detectó que 26 copias de `roleCapabilities.ts` otorgaban `CRM_OPERATIONS` a CUSTOMER_SERVICE, contrario al `PageGuard` de CRM y `crmGateway` (ORG_ADMIN/BRANCH_ADMIN/SALES). Se eliminó únicamente esa capacidad de CUSTOMER_SERVICE en las 26 copias, manteniendo SALES. Checkpoint previo `6aea0e0a68cc2e37a54134c1`. Se corrigieron aserciones de navegación obsoletas y se amplió el test de fixtures para vigilar los 26 presets, backend y guard.
+- PASS: 6/6 fixtures simulados; 8/8 navegación; 12/12 policy pipeline; 6/6 aprovisionamiento; 7/7 identidad; 8/8 CRM; 9 grupos autorización; 13/13 seguridad round2; 16/16 commercial-flow; build.
+- **Bloqueo real:** Testing Agent crea usuarios temporales que no tienen membresía válida en `UserAccount`. Su seed automático puede copiar registros live a test-data, incluidos datos personales, y no garantiza vínculo testUserId↔UserAccount. No se ejecutó seed ni se modificaron datos operativos; **SEC-QA real y E2E transaccional siguen PENDIENTES**. Necesitamos fixtures dev verificables o un usuario QA aislado con identidad y organización explícitas, sin modificar usuarios productivos.
+- Informe: `docs/TRP-SEC-012-SALES-QA-FIXTURES-PLAN-2026-11-03.md`. Mantener P0-AUD-01 NO-GO y no declarar release PASS.
+
 ## SEC-011 — corrección aditiva de UserAccount.user_id (2026-11-03)
 - Diagnóstico directo Base44: el filtro por `UserAccount.user_id` devolvía error `Unknown field "user_id" in the filter`, mientras que el filtro por `user_email` respondía correctamente. `loadCanonicalMemberships` consulta `user_id`: defecto de esquema real y ruta plausible al HTTP 400 previo.
 - Checkpoint previo `6aea0a97a6073aa1f2dc549c` (commit `0a609235027088e3e51e8dc1a4da91e9cf972739`). Se agregó **solo** `properties.user_id` tipo string opcional a `base44/entities/UserAccount.jsonc`, sin cambiar RLS ni required. Esquema confirmado por Base44 y consulta directa por ID sintético ahora devuelve lista vacía **sin HTTP 400**.

@@ -18,7 +18,7 @@
 - Checkpoint **previo** para restauración: `6aea020265e3a5041801b2f2`, commit `bceb4ad857e2d3469d19ce1d29f0b3e5efae3d0f`.
 - Se envió exclusivamente el contenido completo de `base44/functions/identityGateway/entry.ts` (42.110 caracteres, con `contextStep`) a Base44 `POST /coding/redeploy-function/identityGateway`. La respuesta de esa API se truncó, **sin confirmación directa de compilador o versión del servicio**.
 - Después, Base44 reportó estado `ready` y commit `579e9ed003017518940b04ebde739bb8cc0f4b9f` (Git: `Manual code change`); esto demuestra persistencia de cambio en app/editor, pero todavía no demuestra que el runtime esté libre del HTTP 400.
-- Nuevo Testing Agent SALES: ejecución **`6aea023165a7bd96801de1e6`**, disparada contra SHA `579e9ed003017518940b04ebde739bb8cc0f4b9f`; **PENDING** al sondeo inicial. Obtener veredicto y cotejar logs antes de declarar PASS. No lanzar más sincronizaciones indiscriminadas.
+- Nuevo Testing Agent SALES: ejecución **`6aea023165a7bd96801de1e6`**, disparada contra SHA `579e9ed003017518940b04ebde739bb8cc0f4b9f`; **ANALYZING** al último sondeo: Testing Agent informa que CRM no abrió y persistió `Valid session · Identity service unavailable` tras Retry. El informe final aún no reportaba `failure_reason`; **NO declarar PASS**. Logs consultados tras la sincronización no mostraron marcadores `context-step` nuevos. No lanzar más sincronizaciones indiscriminadas; solicitar observabilidad del despliegue/ruteo del backend y de la consulta HTTP 400.
 - No se hizo Publish del frontend ni mutación de datos comerciales. P0-AUD-01 permanece NO-GO.
 
 ## Actualización SEC-007 — diagnóstico por etapas de identityGateway (2026-11-03)

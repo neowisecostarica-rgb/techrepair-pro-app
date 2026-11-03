@@ -57,7 +57,7 @@ async function loadOrganizations(base44, ids) {
   if (uniqueIds.length === 0) return [];
   const organizations = [];
   for (const id of uniqueIds) {
-    const found = await base44.asServiceRole.entities.Organization.filter({ id }, 1);
+    const found = await base44.asServiceRole.entities.Organization.filter({ id }, '-created_date', 1);
     if (found?.[0]) organizations.push(found[0]);
   }
   return organizations;
@@ -68,7 +68,7 @@ async function persistUserIdentity(base44, userId, data) {
 }
 
 async function loadBackendUser(base44, userId) {
-  const users = await base44.asServiceRole.entities.User.filter({ id: userId }, 1);
+  const users = await base44.asServiceRole.entities.User.filter({ id: userId }, '-created_date', 1);
   return users?.[0] || null;
 }
 

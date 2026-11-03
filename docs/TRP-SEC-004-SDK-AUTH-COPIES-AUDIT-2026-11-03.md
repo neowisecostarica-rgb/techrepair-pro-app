@@ -1,5 +1,5 @@
 # TRP-SEC-004 — Copias de autorización y alcance SDK
-Fecha: 2026-11-03. Estado: DIAGNÓSTICO COMPLETADO, REMEDIACIÓN GLOBAL PENDIENTE / NO-GO.
+Fecha: 2026-11-03. Estado: REMEDIACIÓN DE CÓDIGO COMPLETADA, REGRESIONES PASS; RUNTIME NO VERIFICADO / NO-GO.
 
 ## Hallazgo reproducible
 Base44 SDK filter(query, sort, limit) trata el segundo argumento como sort. Las llamadas filter({user_id:user.id},100) y filter({user_email:user.email},100) envían sort=100 y omiten limit; forma correcta: filter(query, '-created_date', 100). scripts/verify-identity-filter-sdk-contract.mjs reproduce este comportamiento sin red.
@@ -14,6 +14,12 @@ Base44 SDK filter(query, sort, limit) trata el segundo argumento como sort. Las 
 - SALES runs 6ae9ea17c06b0cd8717dd21c y 6ae9ef2fad726c60d1c127bf: FAILED platform; acceso CRM bloqueado antes de cargar.
 - Logs identityGateway 14:08 y 14:28 UTC: CONTEXT_BUILD / HTTP 400.
 - GET backend-functions devolvió truncated=true; no hay confirmación de hashes del backend desplegado. Código de editor no prueba lo ejecutado en sandbox/producción.
+
+## Ejecución técnica autorizada posteriormente
+- Se corrigieron las 56 llamadas detectadas en 28 archivos de autorización. Cada modificación agregó exclusivamente el argumento `'-created_date'` antes del límite `100`; no se alteraron roles, autorizaciones ni modelos.
+- Se extendió `scripts/verify-identity-filter-sdk-contract.mjs` para recorrer todas las 29 copias `userAuthorization.ts` y verificar 58 firmas correctas, sin usos numéricos de `sort` en filtros de membresías.
+- PASS: SDK, identidad 7/7, autorización 9 grupos, CRM 8/8, flujo comercial 16/16, integridad comercial 12/12, inventario 22/22, venta atómica 28/28, integridad seguridad 7/7, sesiones 10/10, Super Admin 5/5 y build.
+- Este PASS demuestra únicamente corrección del código. El backend ejecutado por Testing Agent no ha sido reconciliado después del cambio. No hubo redeploy ni Publish; P0-AUD-01 permanece abierto.
 
 ## Plan seguro
 1. Capturar baseline por función; editar SOLO dos firmas de filter por copia en candidato controlado, con diff y sin modificar reglas de autorización.

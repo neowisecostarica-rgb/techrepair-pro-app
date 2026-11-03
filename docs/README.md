@@ -6,6 +6,8 @@
 
 **SEC-020 (causa de pantalla blanca identificada):** [Null en traducción de SidebarMenu, corrección y prueba SSR seis roles](TRP-SEC-020-SIDEBAR-NULL-I18N-ROOT-CAUSE-2026-11-03.md).
 
+**COM-QA-002 (Inventario SALES):** [Consulta protegida de stock con costo/margen ocultos; QA navegador pendiente](TRP-COM-QA-002-SALES-INVENTORY-READONLY-2026-11-03.md).
+
 **COM-QA-001 (circuito comercial):** [QA de lectura SALES/OWNER y defecto de navegación Inventario #15](TRP-COM-QA-001-COMMERCIAL-READONLY-2026-11-03.md).
 
 **SEC-020 (causa de crash identificada en consola):** [SidebarMenu + i18n null.split corregido, QA funcional pendiente](TRP-SEC-020-SIDEBAR-NULL-I18N-CRASH-2026-11-03.md).

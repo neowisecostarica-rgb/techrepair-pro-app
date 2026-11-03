@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-013 — Identidad de QA aislada: capacidades Base44 y seguimiento formal (2026-11-03)
+- GitHub **issue #12** abierto: `https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/12` — proveer identidad QA estable y membresía canónica en dataset aislado para ejecutar SEC-QA y E2E. Documentación `docs/TRP-SEC-013-QA-IDENTITY-GATE-2026-11-03.md`.
+- Se verificó contrato oficial Testing Agent: test define `name/goal/role`; ejecución `flow_id` y URL opcional. **No admite asignar directamente `user_id`, ni pasar membresía de QA**. El usuario es temporal, y la última prueba llegó a onboarding porque no tenía organización. Un cambio de rol seleccionado para Testing Agent no crea una membresía canónica en TRP.
+- No se ejecutó seed automático porque puede copiar datos y PII de producción al dataset de pruebas y no crea garantía de vínculo entre usuario temporal y UserAccount. No se alteraron miembros ni organizaciones productivas, ni se publicó la app. El bloqueo de QA navegador real está **confirmado**, no resuelto; mantener SEC-QA y E2E en PENDIENTE.
+- GitHub **issue #13** abierto: `https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/13` — cierre independiente de P0-AUD-01, requiere atomicidad persistente y prueba concurrente en runtime. **NO-GO general**.
+- Próxima dependencia: obtener método soportado por Base44 para sesión estable de QA en datos aislados o usuario real QA controlado dentro de un entorno separado, sin alterar producción; luego ejecutar pruebas de roles y flujo E2E, documentar evidencias.
+
 ## SEC-012 — QA simulado de membresías y alineación de roles CRM (2026-11-03)
 - Dirección General autorizó ejecutar los pendientes para beta privada. Se preparó un harness **in-memory**, `scripts/verify-sec012-isolated-membership-fixtures.mjs`, con 6 escenarios PASS de SALES, tenant/sucursal, ID canónico, invitaciones y denegación CUSTOMER_SERVICE. No representa QA real de navegador ni fue necesario crear organizaciones/usuarios/datos productivos.
 - Se detectó que 26 copias de `roleCapabilities.ts` otorgaban `CRM_OPERATIONS` a CUSTOMER_SERVICE, contrario al `PageGuard` de CRM y `crmGateway` (ORG_ADMIN/BRANCH_ADMIN/SALES). Se eliminó únicamente esa capacidad de CUSTOMER_SERVICE en las 26 copias, manteniendo SALES. Checkpoint previo `6aea0e0a68cc2e37a54134c1`. Se corrigieron aserciones de navegación obsoletas y se amplió el test de fixtures para vigilar los 26 presets, backend y guard.

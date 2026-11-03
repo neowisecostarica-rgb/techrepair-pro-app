@@ -18,7 +18,7 @@ export function isMenuItemEligible(item, { effectiveRole, capabilities }) {
 
 export default function SidebarMenu({ effectiveRole, capabilities = [], currentPageName, sidebarOpen, sectionsOpen, toggleSection }) {
   const { t } = useI18n();
-  const categoryKey = {NEGOCIO:'cat.business',TALLER:'cat.workshop','CLIENTES Y VENTAS':'cat.sales','CONFIGURACIÓN':'cat.settings',PLATAFORMA:'cat.platform',CONTROL:'cat.control',SENSITIVE:'cat.sensitive'};
+  const categoryKey = {NEGOCIO:'cat.business',TALLER:'cat.workshop', 'CLIENTES Y VENTAS':'cat.sales','CONFIGURACIÓN':'cat.settings',PLATAFORMA:'cat.platform',CONTROL:'cat.control',SENSITIVE:'cat.sensitive'};
   const allowedItems = MENU_ITEMS.filter(item => isMenuItemEligible(item, { effectiveRole, capabilities }));
 
   // Agrupar por categoría manteniendo orden de aparición

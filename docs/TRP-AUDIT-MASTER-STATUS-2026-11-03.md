@@ -13,6 +13,12 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-020 — CIERRE VISUAL DE PANELES SALES Y OWNER CONFIRMADO POR DIRECCIÓN GENERAL (2026-11-03)
+- Dirección General informó expresamente **«ya funcionan los 2»** después del parche SEC-020, refiriéndose a los paneles SALES (`ventas@compustorecr.com`) y OWNER/ORG_ADMIN (`gustavo@compustorecr.com`) en Base44 Preview. Se registra como **PASS visual de apertura de ambos paneles, validado por usuario**.
+- La causa de la pantalla blanca estaba confirmada por DevTools: `Cannot read properties of null (reading 'split')` en i18n invocado desde SidebarMenu. La corrección del manejo de claves nulas quedó en commit `a7afa0af874804e8367d074b16366d33b6649bdd`, checkpoint `6aea334ebebd14e65eecc39e`.
+- **Alcance exacto:** carga de ambos paneles verificada por reporte de Dirección General; no se verificaron aún automáticamente ausencia de errores en consola, alternancia repetida SALES↔TECHNICIAN↔OWNER, CRM/cotizaciones/inventario/ventas E2E, ni aislamientos negativos. No inferir esos PASS.
+- Incidente visual de pantalla blanca #14 puede cerrarse como solucionado para SALES/OWNER, dejando esos controles adicionales en backlog SEC-QA/comercial. **Release general sigue NO-GO** por P0-AUD-01 y E2E real pendiente.
+
 ## SEC-020 — CAUSA RAÍZ CONFIRMADA por DevTools: null i18nKey en SidebarMenu (2026-11-03)
 - La consola aportada por Dirección General documenta `Uncaught TypeError: Cannot read properties of null (reading 'split')` en `src/i18n/index.jsx:49` llamado desde `SidebarMenu.jsx:78`, con error de React en `<SidebarMenu>`. Esto explica que el ErrorBoundary SEC-019 sí capturara el fallo.
 - `src/config/menuConfig.js` define `i18nKey:null` para CRM y ColaRevision, mientras que SidebarMenu pasaba esa clave a `t()`, cuyo `get` ejecuta `path.split('.')`. Los roles con CRM (SALES y ORG_ADMIN, también BRANCH_ADMIN) disparaban el error; TECHNICIAN no. **Causa raíz de crash de render demostrada**, no problema de permisos ni iframe.

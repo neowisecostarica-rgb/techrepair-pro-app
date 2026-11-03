@@ -59,6 +59,13 @@
 - Se corrigió de modo mínimo `src/components/layout/SidebarMenu.jsx`: con i18nKey válido llamar t; con null mostrar `item.label`, conservando capacidades backend intactas. Prueba real SSR con Vite `npx tsx scripts/verify-sec020-sidebar-null-i18n.mjs` PASS seis roles; navegación 8/8, identidad 7/7, CRM 8/8 y build PASS.
 - Informe `docs/TRP-SEC-020-SIDEBAR-NULL-I18N-ROOT-CAUSE-2026-11-03.md`. Checkpoint previo `6aea2f739aba4269bcf479a4`; issue #14 abierto hasta QA de preview nativo SALES, ORG_ADMIN, TECHNICIAN y cambio de sesión. No marcar GO general; P0-AUD-01 sigue pendiente.
 
+## SEC-020 — error exacto SidebarMenu/i18n encontrado en consola (2026-11-03)
+
+- Evidencia DevTools aportada: `Cannot read properties of null (reading 'split')`, stack `src/i18n/index.jsx:49` → `src/components/layout/SidebarMenu.jsx:78` → Layout → `SEC-019 REACT_ROOT`. **Causa de crash de render localizada: traductor usa `path.split('.')` sobre clave nula**.
+- Corrección en `src/i18n/index.jsx` valida clave string, `SidebarMenu.jsx` retorna fallback para categoría sin traducción y `GlobalSearch.jsx` evita traducir `i18nKey:null` presente en menú. No se modificaron roles, RLS, backend ni datos.
+- Test reproducible `node scripts/verify-sec020-null-navigation-i18n.mjs` PASS; navegación 8/8, i18n navegación 7/7, i18n foundation 8/8, identidad 7/7 y build PASS. PRE checkpoint `6aea31ddb060f1319c7752f9`.
+- Próximo paso ÚNICO para este incidente: QA en navegador del SHA candidato actualizado con SALES y ORG_ADMIN y verificar que consola no tiene null.split; luego issue #14. No declarar funcional PASS hasta evidencia. Informe `docs/TRP-SEC-020-SIDEBAR-NULL-I18N-CRASH-2026-11-03.md`.
+
 ## SEC-019 — vista previa completamente vacía con SALES (2026-11-03)
 
 - Captura Base44 editor/preview en modo `ventas@compustorecr.com` tras SEC-018: área de TRP totalmente blanca, ni spinner ni mensaje SEC-017. SEC-018 NO acreditado como corrección funcional.

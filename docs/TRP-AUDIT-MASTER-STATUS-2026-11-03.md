@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-015 — QA con cuentas existentes, elegibilidad confirmada (2026-11-03)
+- Dirección General autorizó considerar `ventas@compustorecr.com` y `gustavo@compustorecr.com`. Consulta read-only a Base44 confirmó que ambas tienen `User.id` idéntico a `UserAccount.user_id` y membresías activas en COMPU STORE COSTA RICA (`Organization.status=active`). SALES tiene sucursal TRES RÍOS activa. La primera es `SALES` nativo Base44 `user`; la segunda es `ORG_ADMIN`, nativo Base44 `admin` pero `is_super_admin=false` (NO SUPER_ADMIN SaaS).
+- **Corrección de evidencia anterior:** el filtro `user_id:{$exists:true}` usado previamente devolvió 0, pero la búsqueda por email muestra `user_id` efectivamente persistido para ambos usuarios. No realizar backfill ni afirmar ausencia de IDs a partir del resultado del filtro.
+- Selección QA: `ventas@compustorecr.com` para acceso comercial **solo lectura**, `gustavo@compustorecr.com` para contraste ORG_ADMIN. Son cuentas reales asociadas a empresa existente: no crear leads, ventas, cotizaciones, cobros, inventario ni permisos en COMPU STORE para probar.
+- Identidades y relaciones válidas verificadas; **QA de navegador AÚN PENDIENTE** porque no se ha abierto una sesión autenticada de ninguna cuenta. El Testing Agent sigue usando su propio usuario temporal; no reemplaza estas identidades. E2E transaccional requiere datos aislados.
+- Handoff `docs/TRP-SEC-015-EXISTING-SALES-QA-2026-11-03.md`; GitHub issue #12 sigue abierto hasta QA con evidencias.
+
 ## SEC-014 — alternativa QA con usuario estable provisionado (2026-11-03)
 - Base44 ofrece `POST /users/provisions` para provisionar usuario por correo controlado, y `POST /embed-url` para acceso con token de un solo uso al `live_preview`. No se ha demostrado que Testing Agent pueda usar la misma identidad embebida; su propio flujo inicia usuario temporal.
 - `GET /remix/requirements` confirma app tipo user_app con backend y sin secretos declarados. Un remix crearía otra app; no se hizo por preferencia de evitar entornos adicionales. Una rama Base44 es rama de código, **no** prueba de separación de datos.

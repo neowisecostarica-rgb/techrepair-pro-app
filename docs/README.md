@@ -4,6 +4,8 @@
 
 **LEER PRIMERO:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)
 
+**Nueva ruta QA con identidad estable:** [SEC-014 provisionamiento de usuario QA en Base44 (pendiente de correo controlado)](TRP-SEC-014-STABLE-QA-IDENTITY-PROVISIONING-2026-11-03.md).
+
 **Diseño de auditoría atómica:** [ADR P0-AUD-01, propuesta sin desplegar](TRP-P0-AUD-01-ATOMIC-LEDGER-ADR-2026-11-03.md).
 
 **Bloqueos vigentes con issues:** [SEC-013 QA de identidad aislada](TRP-SEC-013-QA-IDENTITY-GATE-2026-11-03.md) ([GitHub #12](https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/12)) · [Auditoría atómica P0-AUD-01 (GitHub #13)](https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/13).

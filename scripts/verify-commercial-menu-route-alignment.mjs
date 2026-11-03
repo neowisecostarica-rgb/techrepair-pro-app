@@ -27,6 +27,6 @@ for(const route of routes){
     if(role==='TECHNICIAN'&&['CRM','VentasCotizaciones','PuntoVenta'].includes(route.path))assert.ok(!shown&&!pageAllowed,'TECHNICIAN commercial privilege leak: '+route.path);
   }
 }
-assert.deepEqual(unresolved,[{route:'Inventario',role:'SALES',classification:'NAV_VISIBLE_BUT_PAGE_DENIED'}]);
+assert.deepEqual(unresolved,[], 'any capability-visible commercial route must be authorized by its page guard');
 console.log('PASS COM-QA 2026-11-03: SALES CRM/Quotes/POS, ORG_ADMIN all four, and TECHNICIAN commercial exclusions match expected guards');
-console.log('KNOWN OPEN DEFECT #15: SALES Inventario shown by INVENTORY_READ but rejected by PageGuard. No authorization changed.');
+console.log('PASS COM-QA #15: SALES inventory route visible and PageGuard aligned for read-only inventory; backend authorization unchanged.');

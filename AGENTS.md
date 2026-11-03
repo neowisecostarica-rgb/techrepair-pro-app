@@ -53,6 +53,14 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-017 — incidente de paneles SALES/OWNER persiste (2026-11-03)
+
+- Dirección General reportó 'sigue igual no muestra el panel ni de ventas ni de owner' después del SEC-016. **No afirmar que SEC-016 resolvió el incidente.**
+- Backend identityGateway logs recientes muestran POST 200; `Verificando estado de tu cuenta...` es spinner de `Layout` por `getIdentityOrganization`, no del panel. MiDia encamina SALES a MiDiaSales y ORG_ADMIN a MiDiaAdmin.
+- Nuevo `src/components/midia/MiDiaErrorBoundary.jsx` con página de error controlada y código SEC-017, envuelve paneles según usuario/rol desde `src/pages/MiDia.jsx`; pruebas SEC-017, SEC-016, navegación y CRM y build PASS. No se cambiaron permisos ni datos.
+- **Diagnóstico posterior:** si se ve `SEC-017` usar error de consola para panel; si queda en `Verificando...`, medir Network `identityGateway/getOrganization`; si todo blanco, error fuera del boundary. Informar SHA exacto preview. Este cambio de instrumentación no acredita QA funcional.
+- Informe: `docs/TRP-SEC-017-MIDIA-ROLE-PANEL-DIAGNOSTICS-2026-11-03.md`; checkpoint anterior `6aea25a0c5356076bd88dbd3`. P0-AUD-01 / E2E mantienen NO-GO.
+
 ## SEC-016 — cambio de identidad nativa Base44, corrección pendiente QA (2026-11-03)
 
 - Video muestra que SALES queda en `Verificando estado de tu cuenta...` o pantalla vacía y TECHNICIAN sí carga; el texto viene del `useQuery` de organización de `src/Layout.jsx`.

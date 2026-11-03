@@ -6,6 +6,8 @@
 
 **SEC-020 (causa de pantalla blanca identificada):** [Null en traducción de SidebarMenu, corrección y prueba SSR seis roles](TRP-SEC-020-SIDEBAR-NULL-I18N-ROOT-CAUSE-2026-11-03.md).
 
+**PUNTO DE PAUSA TRP:** [Checkpoint de continuidad y backlog priorizado — 2026-11-03](TRP-CHECKPOINT-PAUSA-2026-11-03.md).
+
 **COM-QA-002 (Inventario SALES):** [Consulta protegida de stock con costo/margen ocultos; QA navegador pendiente](TRP-COM-QA-002-SALES-INVENTORY-READONLY-2026-11-03.md).
 
 **COM-QA-001 (circuito comercial):** [QA de lectura SALES/OWNER y defecto de navegación Inventario #15](TRP-COM-QA-001-COMMERCIAL-READONLY-2026-11-03.md).

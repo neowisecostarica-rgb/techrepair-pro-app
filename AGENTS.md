@@ -26,6 +26,12 @@
 - SEC-005: repositorio y Base44 conectados; la comparación GitHub `628f1018` → `b6690e11` agregó solo documentación. La API para listar código backend desplegado devolvió información truncada; no hay SHA backend certificado.
 - Se prepararon flujos de QA de SALES, CUSTOMER_SERVICE, SUPER_ADMIN, BRANCH_ADMIN, INVENTORY y navegación comercial (IDs en el informe maestro); **los pendientes NO deben figurar como PASS**.
 
+## Último resultado SEC-007 (2026-11-03)
+
+- Ejecución SALES `6aea004fab91e361e9cde919` contra `53272033893ab9fdba9cb94e45a018e381c3a574` finalizó **FAILED / platform**; CRM inaccesible. A las 15:41 UTC, logs de `identityGateway` todavía muestran `CONTEXT_BUILD / HTTP 400`.
+- La instrumentación de etapas `contextStep` ya está en el código del editor, pero **ningún marcador de etapa apareció en los registros consultados**. Puede indicar versión backend diferente o visibilidad incompleta de logs; no presentar una hipótesis como hecho.
+- **No repetir Testing Agent SALES** hasta verificar la implementación backend o establecer un método nuevo de diagnóstico. No asumir que editar archivos de función en sandbox no tiene efectos de runtime.
+
 ## Instrucciones de operación y seguridad
 
 - **No realizar Publish, redeploy manual, merges, cambios de permisos, ni cambios sobre clientes, inventario, ventas o cobros reales sin autorización específica.**

@@ -16,6 +16,14 @@
 ## Actualización SEC-004 — normalización global del SDK (2026-11-03)
 **Código corregido; runtime aún NO VERIFICADO.** Se detectaron 56 llamadas a filtros de membresía con el límite 100 colocado en el segundo parámetro (sort) en 28 archivos de autorización adicionales. Se cambió solo la firma a `filter(query, '-created_date', 100)` en esos 28 archivos. El contrato `scripts/verify-identity-filter-sdk-contract.mjs` ahora verifica 29 copias y 58 llamadas corregidas. Las pruebas de identidad, CRM, autorización, cotizaciones, inventario y ventas, impersonación y Super Admin y el build pasaron. No hubo Publish/redeploy; QA de navegador sigue pendiente de un runtime que sirva las correcciones. Referencia: `docs/TRP-SEC-004-SDK-AUTH-COPIES-AUDIT-2026-11-03.md`. P0-AUD-01 sigue NO-GO.
 
+## Actualización SEC-005 — reconciliación GitHub / runtime (2026-11-03)
+- Repositorio **conectado oficialmente** en Base44: `neowisecostarica-rgb/techrepair-pro-app` (conexión activa, webhook activo).
+- La corrección SEC-004 se encuentra en GitHub SHA `628f101859e65fd0dee24c854c8200893e978ec8`.
+- GitHub y sandbox de Base44 alcanzaron SHA posterior `b6690e119c1cdbc115840811fade1cad20bf9c0e` — único cambio adicional frente a 628f1018: archivo de documentación `docs/TRP-SEC-005-RUNTIME-RECONCILIATION-2026-11-03.md`; **sin diferencias de código** en esa comparación. Esta reconciliación es de *fuente*, no de funciones desplegadas.
+- Base44 agent-profile: SPA Vite, runtime backend actual, backend functions habilitadas; preview sandbox disponible. El endpoint `GET backend-functions` devuelve respuesta truncada y no permite verificar SHA/hash del código que realmente atiende `identityGateway`.
+- SEC-003/004 **NO CERRADO en navegador**; última prueba SALES falló en `CONTEXT_BUILD` HTTP 400. No hubo redeploy y no se debe inferir que la fuente corregida esté activa en runtime.
+- Documento detallado: `docs/TRP-SEC-005-RUNTIME-RECONCILIATION-2026-11-03.md`.
+
 ## Estado verificable por bloque
 | ID | Estado | Evidencia y condición pendiente |
 |---|---|---|

@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-017 — Persisten los paneles SALES/OWNER sin mostrar (2026-11-03)
+- Dirección General confirmó que tras SEC-016 **sigue igual**; SALES y OWNER/ORG_ADMIN no muestran panel. Por tanto la corrección de SEC-016 es solo código PASS y **NO resuelve el incidente funcional**.
+- Los logs consultados de identityGateway muestran múltiples POST HTTP 200 (18:13–18:15 UTC) sin error detallado; no demuestran que `getOrganization` o paneles terminen correctamente. `MiDia` distingue MiDiaSales/MiDiaAdmin/MiDiaTech; `Verificando estado de tu cuenta...` corresponde a `Layout` ANTES de MiDia.
+- Se agregó `MiDiaErrorBoundary.jsx` y wrapper por usuario/rol en `src/pages/MiDia.jsx`, para evitar pantalla completamente blanca si un panel arroja excepción de React; caso visible `No se pudo mostrar el panel · SEC-017`. No evade PageGuard ni modifica backend/permisos.
+- Contratos PASS: SEC-017, SEC-016, navegación 8/8, CRM 8/8, build. Inspección read-only en COMPU STORE confirmó 16 ventas y 5 cotizaciones, totales numéricos en registros inspeccionados. **QA del navegador pendiente; diagnóstico de causa exacta NO VERIFICADO**.
+- Guía de discriminación: si permanece spinner `Verificando estado...` revisar `Layout/getIdentityOrganization`; si aparece boundary SEC-017 revisar consola `[TRP SEC-017]`; si pantalla totalmente blanca, error React superior. Informe `docs/TRP-SEC-017-MIDIA-ROLE-PANEL-DIAGNOSTICS-2026-11-03.md`; checkpoint previo `6aea25a0c5356076bd88dbd3`. No declarar GO.
+
 ## SEC-016 — Cambio de usuario nativo Base44: corrección de aislamiento frontend (2026-11-03)
 - Video de Dirección General (50 s): SALES muestra `Verificando estado de tu cuenta...` y termina con pantalla vacía al alternar SALES → TECHNICIAN → SALES. TECHNICIAN sí carga. Este texto proviene de la consulta `getIdentityOrganization` en `Layout.jsx`, no del spinner inicial de AuthContext.
 - Defecto verificable: la clave React Query `['org-status', effectiveOrgId]` permitía reutilizar cache entre usuarios distintos de la misma empresa; `loadAuthData()` también conservaba temporalmente identidad/autorización anterior mientras recargaba. La corrección separa la clave por `user.id`, organización y rol, habilita la consulta solo tras identidad autorizada y limpia el contexto previo antes de cargar el nuevo.

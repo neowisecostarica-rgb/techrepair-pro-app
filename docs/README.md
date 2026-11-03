@@ -4,6 +4,8 @@
 
 **LEER PRIMERO:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)
 
+**QA con cuentas existentes confirmadas:** [SEC-015 — SALES y ORG_ADMIN, solo lectura](TRP-SEC-015-EXISTING-SALES-QA-2026-11-03.md).
+
 **Nueva ruta QA con identidad estable:** [SEC-014 provisionamiento de usuario QA en Base44 (pendiente de correo controlado)](TRP-SEC-014-STABLE-QA-IDENTITY-PROVISIONING-2026-11-03.md).
 
 **Diseño de auditoría atómica:** [ADR P0-AUD-01, propuesta sin desplegar](TRP-P0-AUD-01-ATOMIC-LEDGER-ADR-2026-11-03.md).

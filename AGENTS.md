@@ -53,6 +53,14 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-012 — fixtures simuladas, navegación CRM y QA pendiente (2026-11-03)
+
+- `scripts/verify-sec012-isolated-membership-fixtures.mjs`: 6/6 escenarios in-memory PASS, sin crear registros Base44: SALES empresa/sucursal, cruce empresa denegado, identidad ID distinta con mismo email denegada, invitado denegado, CUSTOMER_SERVICE no asume SALES, firma SDK correcta.
+- 26 copias de `roleCapabilities.ts`: removida SOLO `CRM_OPERATIONS` de CUSTOMER_SERVICE para alinear el preset con `crmGateway` y `PageGuard` (permiten solo ORG_ADMIN, BRANCH_ADMIN, SALES); SALES conserva su permiso CRM. Checkpoint previo `6aea0e0a68cc2e37a54134c1`. El test de fixtures ahora verifica todas las copias y ambos guards.
+- Ajustado test `scripts/verify-multiuser-navigation-contract.mjs` a política vigente: SALES tiene MiDia por SALE_OPERATIONS sin TECHNICAL_WORK; CUSTOMER_SERVICE ya no tiene CRM en navegación. Regresiones de seguridad, multiusuario, CRM y build PASS.
+- La API de seed de Testing Agent puede copiar datos live al test-data, incluyendo PII. **No se ejecutó seed** ni se crearon membresías o usuarios reales. QA navegador y E2E siguen SIN PASS porque el usuario efímero del agente carece de membresía canónica. Ver `docs/TRP-SEC-012-SALES-QA-FIXTURES-PLAN-2026-11-03.md`.
+- El siguiente equipo debe obtener identidad de QA aislada enlazada a organización/sucursal válidas o método soportado por Base44; no relajar seguridad, no vincular cuentas por email solamente y no repetir QA contra onboarding sin fixture.
+
 ## Instrucciones de operación y seguridad
 
 - **No realizar Publish, redeploy manual, merges, cambios de permisos, ni cambios sobre clientes, inventario, ventas o cobros reales sin autorización específica.**

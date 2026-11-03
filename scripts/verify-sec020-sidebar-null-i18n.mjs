@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { createServer } from 'vite';
 import { getRoleCapabilities } from '../base44/functions/_shared/roleCapabilities.ts';
 
-const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
+const vite = await createServer({ server: { middlewareMode: true }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 const { I18nProvider } = await vite.ssrLoadModule('/src/i18n/index.jsx');
 const { default: SidebarMenu } = await vite.ssrLoadModule('/src/components/layout/SidebarMenu.jsx');
 const { MENU_ITEMS } = await vite.ssrLoadModule('/src/config/menuConfig.js');

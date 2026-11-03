@@ -13,6 +13,12 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## COM-QA-002 — Inventario SALES solo lectura, corrección de código (2026-11-03)
+- Corregida inconsistencia de menú #15: SALES ya tenía `INVENTORY_READ` y backend `operationalGateway` permite su lectura con proyección redaccionada, pero `Inventario.jsx` PageGuard negaba SALES. Ahora lo admite **para consulta**, sin conceder INVENTORY_OPERATIONS, ni modificar RLS/backend.
+- SALES consulta existencias y precios de venta de su sucursal; se ocultan costos, margen, valor de stock al costo y los modales/botones de edición, creación, categoría y ajuste. El DTO del gateway tampoco incluye `costo_unitario` ni `proveedor` para SALES. ORG_ADMIN conserva su vista administrativa. El backend sigue autorizando toda mutación.
+- Tests `scripts/verify-com-qa-002-sales-inventory-readonly.mjs` PASS y `scripts/verify-commercial-menu-route-alignment.mjs` PASS (0 inconsistencias), inventario 22/22, navegación 8/8, identidad 7/7 y build PASS. PRE-checkpoint `6aea5f700450fb3c28c78b64`.
+- Informe `docs/TRP-COM-QA-002-SALES-INVENTORY-READONLY-2026-11-03.md`. **No se ha hecho QA de navegador de Inventario SALES/OWNER, issue #15 debe seguir abierto.** E2E y P0-AUD-01 continúan NO-GO.
+
 ## COM-QA-001 — circuito comercial: contratos PASS, QA lectura pendiente (2026-11-03)
 - Desde cierre visual SEC-020, se ejecutaron nuevamente contratos de código: flujo comercial 16/16, integridad comercial 12/12, inventario 22/22, ventas atómicas 28/28, CRM 8/8, navegación 8/8, build PASS. **No equivalen a QA runtime ni E2E**.
 - Incidencia #15: SALES posee `INVENTORY_READ` y visualiza Inventario en menú, pero `PageGuard` de `src/pages/Inventario.jsx` no admite SALES. Riesgo de enlace visible que rechaza la navegación. Pendiente decisión de producto: vista estricta solo lectura para SALES o retirar enlace; no autoelevar permisos de edición. https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/15

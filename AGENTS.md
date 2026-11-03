@@ -16,6 +16,12 @@
 
 **No repitas la auditoría desde cero.** Primero identifica qué evidencia ya existe y cuál falta. Un cambio de versión o fallo de regresión sí puede justificar una nueva auditoría acotada.
 
+## COM-QA-002 — SALES puede consultar inventario sin mutaciones (2026-11-03)
+
+- Se corrigió PageGuard de Inventario para admitir SALES, ya autorizado por backend a `INVENTORY_READ`, sin dar permisos de ajustes/edición. La UI oculta a SALES costos, márgenes, valor a costo y todos los formularios/controles de creación, modificación y stock. La proyección del gateway no entrega costos ni proveedor a SALES. No se cambió backend ni datos.
+- Test `npx tsx scripts/verify-com-qa-002-sales-inventory-readonly.mjs` PASS; ruta-alineación ahora exige 0 inconsistencias, inventario 22/22, navegación 8/8, identidad 7/7 y build PASS. Pre-checkpoint `6aea5f700450fb3c28c78b64`.
+- QA con SALES/ORG_ADMIN en navegador aún **PENDIENTE**, sin datos operativos modificados. Issue #15 abierto hasta prueba funcional. Informe: `docs/TRP-COM-QA-002-SALES-INVENTORY-READONLY-2026-11-03.md`.
+
 ## COM-QA-001 — QA comercial solo lectura (2026-11-03)
 
 - Regresiones después de SEC-020 PASS: comercial 16/16, integridad 12/12, inventario 22/22, venta atómica 28/28, CRM 8/8, navegación 8/8, build. Son contratos de código, no QA runtime ni E2E.

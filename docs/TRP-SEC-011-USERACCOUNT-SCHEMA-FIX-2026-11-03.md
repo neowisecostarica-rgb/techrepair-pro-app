@@ -1,6 +1,6 @@
 # TRP-SEC-011 — Corrección aditiva de esquema UserAccount.user_id
 Fecha: 2026-11-03 | Aplicación: 695d708948469128f473d080
-Estado: DEFECTO DE ESQUEMA CORREGIDO Y CONSULTA DIRECTA PASS; QA SALES PENDIENTE; NO-GO GENERAL.
+Estado: DEFECTO DE ESQUEMA CORREGIDO Y CONSULTA DIRECTA PASS; QA SALES FALLA POR ONBOARDING / SIN MEMBRESÍA TEMPORAL; NO-GO GENERAL.
 
 ## Evidencia de causa técnica
 - La fuente `base44/functions/identityGateway/_shared/userAuthorization.ts` ejecuta `asServiceRole.entities.UserAccount.filter({user_id:user.id}, '-created_date', 100)` al resolver membresías.
@@ -26,8 +26,15 @@ Estado: DEFECTO DE ESQUEMA CORREGIDO Y CONSULTA DIRECTA PASS; QA SALES PENDIENTE
 - Vite build y git diff --check: PASS.
 
 ## QA post-cambio
-- Testing Agent SALES flow 6ae9e9f78f0299c74d0fdc48, nueva ejecución `6aea0ad9f6c9bb351729f8f7` contra SHA `c3c34a8b878b756eb931479855535cb3b452bdd2`: PENDING al inicio.
+- Testing Agent SALES flow 6ae9e9f78f0299c74d0fdc48, nueva ejecución `6aea0ad9f6c9bb351729f8f7` contra SHA `c3c34a8b878b756eb931479855535cb3b452bdd2`: FAILED / goal_accomplished=false, sin failure_reason de plataforma. Testing Agent informa que la aplicación mostró `Configura tu organización`, sin CRM ni navegación, y NO registró errores de autorización. No creó registros ni completó onboarding.
 - Obtener resultado final antes de declarar SEC-011 cerrado en runtime. Si falla, correlacionar error distinto y etapa real. No cambiar seguridad por ensayo y error.
+
+## Hallazgos posteriores: membresías y QA
+- Inspección read-only de Base44 `UserAccount` con `fields=['id']` y limit=1 confirmó al menos 1 registro y al menos 1 con `status='active'`, **sin extraer datos personales**.
+- Consulta `{'user_id':{'$exists':true}}` devolvió 0; la observación NO permite deducir por sí sola la situación de los usuarios reales o de la base de datos de pruebas. Sí documenta que no se encontró un ID canónico persistido en los registros inspeccionables.
+- El Testing Agent usa usuario temporal sin membresía de organización. Por eso el test de CRM de rol SALES no acredita acceso funcional aunque el servicio de identidad ya no arroje la pantalla de error.
+- Se añadió `scripts/verify-useraccount-schema-contract.mjs`: contrato PASS para existencia de user_id opcional, conservación de campos y RLS fail-closed; consulta por user_id y email; membresía activa únicamente cuando user_id corresponde a la identidad real.
+- Próximo gate: establecer fixtures aislados y una membresía válida verificada sin backfill ni asociación automática de usuarios históricos. No crear organizaciones o asignar roles en datos reales para hacer pasar el test.
 
 ## Puntos pendientes
 - Verificar para las membresías existentes cuántas tienen user_id persistido; sin ese campo, la resolución canónica de membresías activas podría quedarse vacía incluso después de eliminar el 400.

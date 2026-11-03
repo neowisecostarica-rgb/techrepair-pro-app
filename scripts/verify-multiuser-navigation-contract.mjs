@@ -40,9 +40,10 @@ test('tenant navigation is capability-based and platform navigation is explicit'
   assert.deepEqual(platformItems.filter(item => item.path === 'Saas').map(item => item.hash), ['overview', 'organizations', 'commercial', 'health', 'audit', 'pilot']);
 });
 
-test('Mi Dia is visible exactly to presets with technical-work eligibility', () => {
-  for (const role of ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN']) assert.ok(visiblePaths(role).includes('MiDia'), role);
-  for (const role of ['SALES', 'INVENTORY', 'CUSTOMER_SERVICE']) assert.ok(!visiblePaths(role).includes('MiDia'), role);
+test('Mi Dia follows declared technical, financial or sales capabilities', () => {
+  for (const role of ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES']) assert.ok(visiblePaths(role).includes('MiDia'), role);
+  for (const role of ['INVENTORY', 'CUSTOMER_SERVICE']) assert.ok(!visiblePaths(role).includes('MiDia'), role);
+  assert.ok(!getRoleCapabilities('SALES').includes('TECHNICAL_WORK'), 'SALES MiDia does not grant technical work');
 });
 
 test('customer-service navigation matches its operational capabilities', () => {

@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## Actualización SEC-007 — diagnóstico por etapas de identityGateway (2026-11-03)
+- El intento SALES `6ae9fb462d67eca79f243657` terminó **FAILED / platform**; el acceso siguió bloqueado tras tres reintentos. Se volvió a observar `identityGateway / CONTEXT_BUILD / HTTP 400` en registros a las 15:19 UTC.
+- Para evitar más conjeturas, se instrumentó `base44/functions/identityGateway/entry.ts` con `contextStep`: emite únicamente un identificador de etapa fijo y estatus HTTP cuando falla; luego relanza error sin conceder acceso. Etapas: LOAD_BACKEND_USER, RESOLVE_IDENTITY, PERSIST_ADMIN_FLAG, REPAIR_IDENTITY_FLAGS, RESOLVE_REPAIRED_IDENTITY, LOAD_ORGANIZATIONS, RESOLVE_ENTITLEMENT. No registra datos personales.
+- Regresiones tras el cambio: contrato SDK PASS, identidad 7/7, impersonación 10/10, CRM 8/8, autorización 9 grupos y build PASS. Se actualizó el test estático para reconocer la misma lectura autoritativa envuelta por diagnóstico.
+- Se inició retest SALES **`6aea004fab91e361e9cde919`** contra SHA `53272033893ab9fdba9cb94e45a018e381c3a574`, **PENDING** al último sondeo. El siguiente agente debe obtener resultado definitivo y correlacionarlo con logs `identityGateway:context-step`. Si el marcador no aparece, investigar qué versión del backend sirve el preview. No declarar SEC-007 PASS sin la prueba.
+- Informe: `docs/TRP-SEC-007-IDENTITY-CONTEXT-STAGES-2026-11-03.md`. P0-AUD-01 sigue NO-GO.
+
 ## Actualización SEC-006 — handoff permanente para programadores (2026-11-03)
 - **Entrada obligatoria creada en la raíz:** `AGENTS.md`. Identifica aplicación/repositorio, estado NO-GO, secuencia comercial-first, evidencias existentes, comandos de regresión, gates SEC/E2E y riesgos de Base44. Antes de una nueva auditoría leer esta guía y los informes enlazados.
 - `README.md` y `docs/README.md` contienen enlaces prominentes a `AGENTS.md` y a este estado maestro. Se mantuvo la documentación dentro del repositorio conectado `neowisecostarica-rgb/techrepair-pro-app`, además de los checkpoints de Base44.

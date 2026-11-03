@@ -16,6 +16,12 @@
 
 **No repitas la auditoría desde cero.** Primero identifica qué evidencia ya existe y cuál falta. Un cambio de versión o fallo de regresión sí puede justificar una nueva auditoría acotada.
 
+## Cierre verificado SEC-020 (2026-11-03)
+
+- Dirección General confirmó explícitamente **«ya funcionan los 2»** tras la corrección de `null.split` en `SidebarMenu`/i18n. Esto acredita PASS visual de apertura de paneles **SALES y OWNER/ORG_ADMIN** en Base44 Preview, no el flujo comercial E2E.
+- Commit corregido `a7afa0af874804e8367d074b16366d33b6649bdd`, checkpoint `6aea334ebebd14e65eecc39e`; DevTools previo mostraba `Cannot read properties of null (reading 'split')`. **No repetir SEC-016..020** si no hay nueva regresión.
+- Próximo frente: SEC-QA solo lectura CRM/cotizaciones/inventario/ventas, contraste de permisos, ciclo de cambio de usuario; después E2E aislado y bloqueo P0-AUD-01. No declarar GO general por este cierre visual.
+
 ## Resumen de hechos establecidos
 
 - Dirección General eligió **secuencia comercial-first**: CRM → cotizaciones → inventario → ventas/cobros → recepción/OT. No regresar al orden técnico histórico sin decisión nueva.

@@ -55,13 +55,18 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
         operation_key: operationKey.current,
       });
 
+      const result = response?.data ?? response;
+      if (result?.success !== true) {
+        throw new Error(result?.error || 'El servidor no confirmó el ajuste de inventario');
+      }
+
       toast({
         title: '✅ Ajuste registrado',
-        description: `Stock actualizado: ${response.data.stock_anterior} → ${response.data.stock_nuevo} unidades.`,
+        description: `Stock actualizado: ${result.stock_anterior} → ${result.stock_nuevo} unidades.`,
       });
 
       handleClose();
-      onSuccess();
+      onSuccess?.();
     } catch (error) {
       toast({
         title: 'Error al ajustar stock',

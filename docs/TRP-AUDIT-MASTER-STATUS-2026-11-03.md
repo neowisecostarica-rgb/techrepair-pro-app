@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-016 — Cambio de usuario nativo Base44: corrección de aislamiento frontend (2026-11-03)
+- Video de Dirección General (50 s): SALES muestra `Verificando estado de tu cuenta...` y termina con pantalla vacía al alternar SALES → TECHNICIAN → SALES. TECHNICIAN sí carga. Este texto proviene de la consulta `getIdentityOrganization` en `Layout.jsx`, no del spinner inicial de AuthContext.
+- Defecto verificable: la clave React Query `['org-status', effectiveOrgId]` permitía reutilizar cache entre usuarios distintos de la misma empresa; `loadAuthData()` también conservaba temporalmente identidad/autorización anterior mientras recargaba. La corrección separa la clave por `user.id`, organización y rol, habilita la consulta solo tras identidad autorizada y limpia el contexto previo antes de cargar el nuevo.
+- Archivos: `src/components/contexts/AuthContext.jsx`, `src/Layout.jsx`; prueba permanente `scripts/verify-sec016-native-session-switch.mjs`. **No** se modificaron roles, membresías, RLS ni funciones backend.
+- PRE-FIX checkpoint `6aea22bc8d5d03273ba07f6f` (SHA `bf425dfb59ea747c362f531da0136e35d8515403`). Contratos PASS: SEC-016, impersonación 10/10, identidad 7/7, navegación 8/8, CRM 8/8, Vite build.
+- Informe `docs/TRP-SEC-016-NATIVE-USER-SWITCH-QA-2026-11-03.md`. **QA navegador de SALES → TECHNICIAN → SALES pendiente**, sin evidencia de que desapareciera el fallo; no declarar SEC-016 PASS funcional ni GO general. Si persiste, revisar Network y consola de `getOrganization` sin PII.
+
 ## SEC-015 — QA con cuentas existentes, elegibilidad confirmada (2026-11-03)
 - Dirección General autorizó considerar `ventas@compustorecr.com` y `gustavo@compustorecr.com`. Consulta read-only a Base44 confirmó que ambas tienen `User.id` idéntico a `UserAccount.user_id` y membresías activas en COMPU STORE COSTA RICA (`Organization.status=active`). SALES tiene sucursal TRES RÍOS activa. La primera es `SALES` nativo Base44 `user`; la segunda es `ORG_ADMIN`, nativo Base44 `admin` pero `is_super_admin=false` (NO SUPER_ADMIN SaaS).
 - **Corrección de evidencia anterior:** el filtro `user_id:{$exists:true}` usado previamente devolvió 0, pero la búsqueda por email muestra `user_id` efectivamente persistido para ambos usuarios. No realizar backfill ni afirmar ausencia de IDs a partir del resultado del filtro.

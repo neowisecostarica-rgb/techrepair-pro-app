@@ -4,6 +4,8 @@
 
 **LEER PRIMERO:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)
 
+**Bloqueos vigentes con issues:** [SEC-013 QA de identidad aislada](TRP-SEC-013-QA-IDENTITY-GATE-2026-11-03.md) ([GitHub #12](https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/12)) · [Auditoría atómica P0-AUD-01 (GitHub #13)](https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/13).
+
 Esta es la entrada para cualquier nuevo equipo, Codex, Work o agente que retome TRP. La auditoría comercial-first de noviembre **no está cerrada integralmente**; hay correcciones con contratos PASS pero no un GO de runtime.
 
 1. [Estado maestro de auditoría](TRP-AUDIT-MASTER-STATUS-2026-11-03.md) — decisiones, evidencias, bloqueos, pruebas y próximos trabajos.

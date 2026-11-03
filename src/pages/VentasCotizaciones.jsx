@@ -475,26 +475,6 @@ function VentasCotizacionesContent() {
                     <>
                       <Button
                         onClick={async () => {
-                          const response = await base44.functions.invoke('approveCotizacion', {
-                            cotizacion_id: cotizacionSeleccionada.id,
-                            canal_envio: 'link',
-                          });
-                          if (!response?.data?.success) {
-                            throw new Error(response?.data?.error || 'El servidor no confirmó el reenvío de la cotización');
-                          }
-                          queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
-                          navigator.clipboard.writeText(link);
-                          toast({ title: 'Reenvío registrado', description: 'El enlace quedó copiado al portapapeles.' });
-                          setCotizacionSeleccionada(response.data.cotizacion || response.data.data || cotizacionSeleccionada);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Send className="w-4 h-4 mr-2" />
-                        Reenviar Cotización
-                      </Button>
-                      <Button
-                        onClick={async () => {
                           const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
                           navigator.clipboard.writeText(link);
                           toast({ title: 'Enlace copiado', description: 'Ya puedes compartirlo con el cliente.' });

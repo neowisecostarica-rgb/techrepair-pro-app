@@ -53,6 +53,13 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-014 — usuario estable para QA, sin provisionar (2026-11-03)
+
+- Base44 soporta `users/provisions` para crear acceso con correo controlado y `embed-url` para obtener enlace de sesión de un solo uso hacia `live_preview`/`latest_preview`. No guardar ni compartir enlace/token en GitHub o logs.
+- El Testing Agent no documenta cómo asumir una identidad provisionada; no confundir su usuario temporal con un usuario estable. Rama de código Base44 tampoco acredita aislamiento de datos. `remix/requirements` indica ausencia de secretos en app, pero una copia sigue requiriendo evaluación de datos.
+- **Para proceder** se requiere correo de QA controlado/autorizado; después provisionar con rol nativo mínimo, verificar `auth.me().id`, y recién entonces vincular una membresía ficticia con usuario/tenant/sucursal correctos en entorno aislado. No usar correo personal ni fabricar cuentas. No se realizó ningún provisionamiento o mutación.
+- Documento: `docs/TRP-SEC-014-STABLE-QA-IDENTITY-PROVISIONING-2026-11-03.md`. Issue #12 continúa abierto; SEC-QA/E2E pendientes.
+
 ## P0-AUD-01 — candidato de ledger atómico, NO desplegado (2026-11-03)
 
 - El `appendAuditEvent` actual sigue siendo check-then-create y permite duplicación concurrente. `npm run test:audit-concurrency-boundary` PASS significa defecto reproducido.

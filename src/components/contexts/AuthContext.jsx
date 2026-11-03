@@ -23,7 +23,13 @@ export function AuthProvider({ children }) {
     if (last429Timestamp.current && Date.now() - last429Timestamp.current < 10000) return;
 
     isLoadingRef.current = true;
+    // Never expose a previous identity's authority while resolving the current session.
     setStatus('loading');
+    setUser(null);
+    setUserAccount(null);
+    setAuthorization(null);
+    setIdentityStatus(null);
+    setMultiOrgAccounts(null);
     setErrorCode(null);
     try {
       const context = await getIdentityContext();

@@ -1,5 +1,7 @@
 # TRP — índice de documentación para continuidad
 
+**Entrada para programación:** [AGENTS.md](../AGENTS.md), con reglas, gates, comandos y handoff obligatorio.
+
 **LEER PRIMERO:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)
 
 Esta es la entrada para cualquier nuevo equipo, Codex, Work o agente que retome TRP. La auditoría comercial-first de noviembre **no está cerrada integralmente**; hay correcciones con contratos PASS pero no un GO de runtime.

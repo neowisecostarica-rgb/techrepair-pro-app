@@ -13,6 +13,12 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-014 — alternativa QA con usuario estable provisionado (2026-11-03)
+- Base44 ofrece `POST /users/provisions` para provisionar usuario por correo controlado, y `POST /embed-url` para acceso con token de un solo uso al `live_preview`. No se ha demostrado que Testing Agent pueda usar la misma identidad embebida; su propio flujo inicia usuario temporal.
+- `GET /remix/requirements` confirma app tipo user_app con backend y sin secretos declarados. Un remix crearía otra app; no se hizo por preferencia de evitar entornos adicionales. Una rama Base44 es rama de código, **no** prueba de separación de datos.
+- **Bloqueo para acción:** se requiere correo QA bajo control del usuario y sesión de navegador compatible, y luego verificar ID nativo `auth.me()` antes de crear membresía. No crear correo inventado ni roles por email. No se aprovisionaron usuarios ni se generaron tokens ni cambiaron datos.
+- Procedimiento seguro: `docs/TRP-SEC-014-STABLE-QA-IDENTITY-PROVISIONING-2026-11-03.md`; issue #12 sigue abierto; SEC-QA/E2E no están aprobados. P0-AUD-01 sigue NO-GO.
+
 ## P0-AUD-01 — diseño transaccional auditado (2026-11-03)
 - El writer actual sigue sin ser atómico: `npm run test:audit-concurrency-boundary` reproduce 2 registros para la misma clave concurrente. Esta prueba PASS **confirma el defecto**.
 - Base44 documenta que `POST entities/upsert` no impide duplicados si corren dos solicitudes simultáneas; no sirve como solución. Se consultaron conectores externos de TRP: **0 configurados**.

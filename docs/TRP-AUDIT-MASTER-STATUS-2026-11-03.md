@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-019 — Pantalla completamente blanca con SALES tras SEC-018 (2026-11-03)
+- Nueva captura de Dirección General: Base44 Preview en modo `ventas@compustorecr.com`, aplicación vacía sin spinner, sidebar ni texto SEC-017; Base44 muestra checkpoint SEC-018. NO demuestra que la incidencia se haya resuelto.
+- Instrumentación de React a nivel raíz en `src/components/diagnostics/AppErrorBoundary.jsx`, montada desde `src/main.jsx` alrededor de I18n y App. Si hay excepción de render muestra `TRP no pudo mostrar la aplicación · SEC-019 · REACT_ROOT` y registra diagnóstico mínimo sin mensaje personal/tokens. No altera autorización ni datos, no hace Publish.
+- Contratos PASS: `scripts/verify-sec019-root-error-boundary.mjs`, SEC-016/018, SEC-017, identidad 7/7, navegación 8/8, build. Checkpoint ANTES del cambio `6aea2c22bc3231fb009a4ac0` / SHA `b3749f43`.
+- Si con nuevo candidato sigue completamente blanco y no aparece SEC-019, investigar errores JS previos al React root, cargas de chunk, redirect o retornos `null` en Layout/PageGuard; no atribuirlo automáticamente a crash del panel.
+- Informe `docs/TRP-SEC-019-ROOT-BLANK-PREVIEW-2026-11-03.md`; issue #14 sigue ABIERTO; QA navegador y P0-AUD-01 NO-GO.
+
 ## SEC-018 — Eliminación de la doble consulta de organización previa al panel (2026-11-03)
 - Hallazgo concreto: `identityGateway.buildContext` **ya devuelve** `organizations` autorizadas con `id/status`, pero `Layout` hacía una segunda `getIdentityOrganization` y bloqueaba con `Verificando estado de tu cuenta...`. Ese texto coincide con el video del usuario.
 - Se eliminó **solo** la segunda consulta en `src/Layout.jsx`; `AuthContext` ahora guarda `authorizedOrganizations` de la respuesta canónica y la limpia ante cambio de usuario/error. Layout selecciona organización por `effectiveOrgId` y mantiene bloqueo fail-closed si no existe o estado inválido, además de `SuspendedScreen` para empresas suspendidas. No se cambió backend, RLS, roles ni usuarios.

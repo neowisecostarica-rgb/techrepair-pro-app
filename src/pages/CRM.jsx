@@ -18,7 +18,7 @@ import { useToast } from '@/components/ui/use-toast';
 export default function CRM() {
   const { t } = useI18n();
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'CUSTOMER_SERVICE']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES']}>
       <CRMContent />
     </PageGuard>
   );

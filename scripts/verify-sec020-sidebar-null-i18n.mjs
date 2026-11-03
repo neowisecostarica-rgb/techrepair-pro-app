@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { I18nProvider } from '../src/i18n/index.jsx';
-import SidebarMenu from '../src/components/layout/SidebarMenu.jsx';
-import { MENU_ITEMS } from '../src/config/menuConfig.js';
+import { createServer } from 'vite';
 import { getRoleCapabilities } from '../base44/functions/_shared/roleCapabilities.ts';
+
+const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
+const { I18nProvider } = await vite.ssrLoadModule('/src/i18n/index.jsx');
+const { default: SidebarMenu } = await vite.ssrLoadModule('/src/components/layout/SidebarMenu.jsx');
+const { MENU_ITEMS } = await vite.ssrLoadModule('/src/config/menuConfig.js');
 
 assert.ok(MENU_ITEMS.some(item => item.i18nKey === null && item.path === 'CRM'), 'reproduce CRM null i18nKey');
 assert.ok(MENU_ITEMS.some(item => item.i18nKey === null && item.path === 'ColaRevision'), 'reproduce review-queue null i18nKey');
@@ -31,4 +34,5 @@ for (const role of ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES', 'TECHNICIAN', 'INVENTO
   if (role === 'TECHNICIAN') assert.ok(!markup.includes('CRM'), 'no role escalation');
   console.log('PASS server render: '+role);
 }
+await vite.close();
 console.log('SEC-020 PASS: null i18nKey fallback displays labels, other menu permissions intact');

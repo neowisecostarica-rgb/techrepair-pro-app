@@ -53,6 +53,13 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-013 — issues de continuación y bloqueo QA de navegador (2026-11-03)
+
+- **Issue #12** `https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/12`: habilitar identidad QA canónica en dataset aislado; Base44 Testing Agent solo acepta rol y flow, NO permite establecer ID de usuario ni `UserAccount` de forma documentada. Su seed automático puede copiar PII de registros vivos; NO utilizar sin evaluación/aprobación.
+- **Issue #13** `https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/13`: P0-AUD-01 auditoría concurrente; solo cierra con persistencia atómica comprobada, no por test de reproducción.
+- Detalle: `docs/TRP-SEC-013-QA-IDENTITY-GATE-2026-11-03.md`. SEC-QA de navegador y E2E siguen PENDIENTES, a diferencia del QA simulado de código que pasó.
+- No crear cuentas reales ni otorgar roles por coincidencia de email para que el Testing Agent pase. Primero obtener solución soportada de identidad/fixture QA y validar los IDs autoritativos.
+
 ## SEC-012 — fixtures simuladas, navegación CRM y QA pendiente (2026-11-03)
 
 - `scripts/verify-sec012-isolated-membership-fixtures.mjs`: 6/6 escenarios in-memory PASS, sin crear registros Base44: SALES empresa/sucursal, cruce empresa denegado, identidad ID distinta con mismo email denegada, invitado denegado, CUSTOMER_SERVICE no asume SALES, firma SDK correcta.

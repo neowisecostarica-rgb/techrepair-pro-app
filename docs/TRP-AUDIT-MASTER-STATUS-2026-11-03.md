@@ -13,6 +13,13 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## P0-AUD-01 — diseño transaccional auditado (2026-11-03)
+- El writer actual sigue sin ser atómico: `npm run test:audit-concurrency-boundary` reproduce 2 registros para la misma clave concurrente. Esta prueba PASS **confirma el defecto**.
+- Base44 documenta que `POST entities/upsert` no impide duplicados si corren dos solicitudes simultáneas; no sirve como solución. Se consultaron conectores externos de TRP: **0 configurados**.
+- Se preparó **ADR de arquitectura** `docs/TRP-P0-AUD-01-ATOMIC-LEDGER-ADR-2026-11-03.md`, esquema SQL solo ilustrativo `docs/architecture/TRP-P0-AUD-01-POSTGRES-LEDGER-CANDIDATE.sql` y prueba de modelo local `scripts/verify-p0-aud-01-atomic-ledger-model.py`.
+- **MODELO PASS exclusivamente:** SQLite con restricción UNIQUE, 8 writers concurrentes → exactamente una fila, reintento idempotente, aislamiento por tenant y colisión incompatible bloqueada. No se ha desplegado PostgreSQL ni ninguna conexión; este PASS no autoriza beta ni GO.
+- Issue #13 actualizado: https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/13. Continúa **OPEN/P0/NO-GO**. Se requiere aprobar proveedor/infraestructura y probar la primitiva atómica **en runtime real**, fail-closed, reconciliación de auditoría y efectos de negocio.
+
 ## SEC-013 — Identidad de QA aislada: capacidades Base44 y seguimiento formal (2026-11-03)
 - GitHub **issue #12** abierto: `https://github.com/neowisecostarica-rgb/techrepair-pro-app/issues/12` — proveer identidad QA estable y membresía canónica en dataset aislado para ejecutar SEC-QA y E2E. Documentación `docs/TRP-SEC-013-QA-IDENTITY-GATE-2026-11-03.md`.
 - Se verificó contrato oficial Testing Agent: test define `name/goal/role`; ejecución `flow_id` y URL opcional. **No admite asignar directamente `user_id`, ni pasar membresía de QA**. El usuario es temporal, y la última prueba llegó a onboarding porque no tenía organización. Un cambio de rol seleccionado para Testing Agent no crea una membresía canónica en TRP.

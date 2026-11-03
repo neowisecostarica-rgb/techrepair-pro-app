@@ -504,7 +504,8 @@ function PuntoVentaContent() {
     setShowConfirmacionVenta(false);
 
     // P0.2: Resolver branch_id automáticamente si falta y hay una sola sucursal
-    let branchIdFinal = userAccount?.branch_id;
+    // La venta conserva la sucursal del documento origen; createSale valida el acceso.
+    let branchIdFinal = cotizacionOrigen?.branch_id || ordenTrabajoObj?.branch_id || userAccount?.branch_id;
 
     if (!branchIdFinal && effectiveOrgId) {
       try {

@@ -13,6 +13,12 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-018 — Eliminación de la doble consulta de organización previa al panel (2026-11-03)
+- Hallazgo concreto: `identityGateway.buildContext` **ya devuelve** `organizations` autorizadas con `id/status`, pero `Layout` hacía una segunda `getIdentityOrganization` y bloqueaba con `Verificando estado de tu cuenta...`. Ese texto coincide con el video del usuario.
+- Se eliminó **solo** la segunda consulta en `src/Layout.jsx`; `AuthContext` ahora guarda `authorizedOrganizations` de la respuesta canónica y la limpia ante cambio de usuario/error. Layout selecciona organización por `effectiveOrgId` y mantiene bloqueo fail-closed si no existe o estado inválido, además de `SuspendedScreen` para empresas suspendidas. No se cambió backend, RLS, roles ni usuarios.
+- El test `scripts/verify-sec016-native-session-switch.mjs` se actualizó para validar SEC-018 en lugar de exigir el antiguo query `org-status`. Contratos PASS: SEC-016/018, SEC-017, sesión 10/10, identidad 7/7, navegación 8/8, CRM 8/8, build.
+- **Importante:** la duplicación del gate estaba demostrada en código, pero **no se ha confirmado todavía en navegador** que ésta sea la única causa de fallo. Documento `docs/TRP-SEC-018-CANONICAL-ORGANIZATION-CONTEXT-2026-11-03.md`. Checkpoint previo `6aea2842cd1479edcf3ca090`. Issue #14 continúa abierto; E2E y P0-AUD-01 NO-GO.
+
 ## SEC-017 — Persisten los paneles SALES/OWNER sin mostrar (2026-11-03)
 - Dirección General confirmó que tras SEC-016 **sigue igual**; SALES y OWNER/ORG_ADMIN no muestran panel. Por tanto la corrección de SEC-016 es solo código PASS y **NO resuelve el incidente funcional**.
 - Los logs consultados de identityGateway muestran múltiples POST HTTP 200 (18:13–18:15 UTC) sin error detallado; no demuestran que `getOrganization` o paneles terminen correctamente. `MiDia` distingue MiDiaSales/MiDiaAdmin/MiDiaTech; `Verificando estado de tu cuenta...` corresponde a `Layout` ANTES de MiDia.

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { ResolveAuthorizationContext } from '../base44/functions/_shared/userAuthorization.ts';
 
 const orgs = [
@@ -48,3 +50,27 @@ assert.ok(calls.every(x=>x.sort==='-created_date'));
 console.log('PASS all database lookups use explicit SDK sort');
 
 console.log('SEC-012: 6/6 simulated fixture authorization checks PASS; NO real user or tenant record was created');
+
+const roleFiles = [];
+function scan(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) scan(path);
+    else if (entry.name === 'roleCapabilities.ts') roleFiles.push(path);
+  }
+}
+scan('base44/functions');
+assert.ok(roleFiles.length >= 26);
+for (const path of roleFiles) {
+  const source = readFileSync(path, 'utf8');
+  const role = source.split('CUSTOMER_SERVICE: [', 2)[1]?.split('],', 1)[0];
+  assert.ok(role, path + ': missing CUSTOMER_SERVICE preset');
+  assert.ok(!role.includes("'CRM_OPERATIONS'"), path + ': CUSTOMER_SERVICE must not have CRM_OPERATIONS');
+  const sales = source.split('SALES: [', 2)[1]?.split('],', 1)[0];
+  assert.ok(sales?.includes("'CRM_OPERATIONS'"), path + ': SALES must retain CRM_OPERATIONS');
+}
+const crm = readFileSync('base44/functions/crmGateway/entry.ts', 'utf8');
+const page = readFileSync('src/pages/CRM.jsx', 'utf8');
+assert.ok(crm.includes("const ALLOWED_ROLES = ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES']"));
+assert.ok(page.includes("allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES']}"));
+console.log(`PASS CRM roles aligned across ${roleFiles.length} policy copies, backend gateway and page guard`);

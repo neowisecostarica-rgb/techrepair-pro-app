@@ -39,6 +39,12 @@
 - La lectura exploratoria read-only a la API fue rechazada por `auth_required` (app privada), sin datos accedidos. Detalles en `docs/TRP-SEC-009-SDK-TEST-USER-2026-11-03.md`.
 - Antes de otras pruebas/redeploy, exigir traza granular de `identityGateway CONTEXT_BUILD` y confirmación de versión runtime efectiva.
 
+## SEC-010 — expediente de soporte (2026-11-03)
+
+- Se creó `docs/TRP-SEC-010-BASE44-SUPPORT-CASE-2026-11-03.md` con evidencia técnica, cinco solicitudes específicas a Base44 y criterios de aceptación. **No se abrió ticket ni se envió**.
+- Testing Agent SALES más reciente `6aea023165a7bd96801de1e6` tiene informe `goal_not_accomplished`, `issues=[]`; no accedió a CRM. No deducir PASS por lista de issues vacía.
+- Escalar trazabilidad del HTTP 400 de `identityGateway` antes de otro redeploy o retest SALES; P0-AUD-01 sigue sin resolver.
+
 ## Instrucciones de operación y seguridad
 
 - **No realizar Publish, redeploy manual, merges, cambios de permisos, ni cambios sobre clientes, inventario, ventas o cobros reales sin autorización específica.**

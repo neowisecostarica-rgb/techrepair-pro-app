@@ -13,6 +13,11 @@
 - Preservar roles, aislamiento de empresa/sucursal y Super Admin. GitHub como SOT por reconciliar; no suponer que un checkpoint Base44 equivale a un deployment.
 - No crear entornos innecesarios: para QA usar el entorno de datos de prueba separado de Base44, con usuarios temporales, y no datos productivos.
 
+## SEC-010 — expediente técnico Base44 preparado (2026-11-03)
+- Se revisó la definición `User.jsonc`, el cliente que invoca `identityGateway` y el informe final de Testing Agent `6aea023165a7bd96801de1e6`: `goal_not_accomplished` e `issues=[]`; el usuario SALES siguió sin entrar al CRM. Esto no equivale a demostrar que el CRM sea defectuoso.
+- Se creó el expediente `docs/TRP-SEC-010-BASE44-SUPPORT-CASE-2026-11-03.md` con evidencias de ejecuciones, versiones, rollback, cinco preguntas para soporte y criterios de cierre, sin PII. **No se envió a Base44 ni se abrió ticket**.
+- Falta identificar exactamente qué operación de `CONTEXT_BUILD` devuelve 400; no hay nueva prueba que justifique otro redeploy o repetición de SALES. Se mantiene estado NO-GO y P0-AUD-01 independiente.
+
 ## SEC-009 — SDK backend y cuentas temporales del Testing Agent (2026-11-03)
 - `identityGateway/entry.ts` importa `npm:@base44/sdk@0.8.41`. Se obtuvo este paquete en `/tmp` y se verificó su implementación: `filter(query, sort, limit, skip, fields)`; la firma corregida usada por SEC-003/004 es válida tanto para SDK 0.8.41 como para 0.8.57. La divergencia de versión por sí misma **NO explica el HTTP 400**.
 - Base44 documenta que `GET entities/User` omite cuentas temporales del Testing Agent. En `buildContext`, la primera operación es `User.filter({id:user.id}, '-created_date', 1)` y, si no encuentra registro, usa `auth.me()`. Se abre hipótesis **NO CONFIRMADA** sobre compatibilidad del usuario temporal con esa consulta; una lista vacía no explica por sí sola un HTTP 400.

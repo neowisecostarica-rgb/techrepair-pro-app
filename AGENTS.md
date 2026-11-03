@@ -53,6 +53,13 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-018 — retirar la consulta duplicada de organización en Layout (2026-11-03)
+
+- `identityGateway.context` ya devuelve `organizations` autorizadas, pero `Layout` repetía `getIdentityOrganization` y bloqueaba la interfaz con `Verificando estado de tu cuenta...` hasta que llegara una segunda respuesta. SEC-018 elimina ese gate duplicado y utiliza `authorizedOrganizations` desde el contexto canónico.
+- `AuthContext` limpia el snapshot anterior al cambiar usuario o fallar el gateway. `Layout` exige coincidencia `org.id === effectiveOrgId`, estado `active/suspended` y conserva bloqueo por suspensión, sin relajación de RLS ni cambio de roles.
+- `node scripts/verify-sec016-native-session-switch.mjs` ahora comprueba el comportamiento SEC-018, junto con `node scripts/verify-sec017-midia-error-boundary.mjs`. Sesión 10/10, identidad 7/7, navegación 8/8, CRM 8/8 y build PASS. Checkpoint previo `6aea2842cd1479edcf3ca090`.
+- No confundir PASS de código con QA real: falta comprobar SALES, OWNER y el cambio de usuario en vista previa actualizada. Si falta empresa/status, fail-closed `Error al Cargar Cuenta`; si falla render, boundary SEC-017. Informe: `docs/TRP-SEC-018-CANONICAL-ORGANIZATION-CONTEXT-2026-11-03.md`. Issue #14 OPEN.
+
 ## SEC-017 — incidente de paneles SALES/OWNER persiste (2026-11-03)
 
 - Dirección General reportó 'sigue igual no muestra el panel ni de ventas ni de owner' después del SEC-016. **No afirmar que SEC-016 resolvió el incidente.**

@@ -32,6 +32,13 @@
 - La instrumentación de etapas `contextStep` ya está en el código del editor, pero **ningún marcador de etapa apareció en los registros consultados**. Puede indicar versión backend diferente o visibilidad incompleta de logs; no presentar una hipótesis como hecho.
 - **No repetir Testing Agent SALES** hasta verificar la implementación backend o establecer un método nuevo de diagnóstico. No asumir que editar archivos de función en sandbox no tiene efectos de runtime.
 
+## SEC-009 — comprobación de SDK y usuario de pruebas (2026-11-03)
+
+- Se verificó directamente @base44/sdk@0.8.41 usado por `identityGateway`: tiene `filter(query, sort, limit, skip, fields)` igual que el 0.8.57 instalado; los 58 filtros corregidos son válidos.
+- Base44 documenta que la lista de User omite cuentas temporales de Testing Agent. La primera llamada de `buildContext` consulta `User.filter({id:user.id}, '-created_date', 1)`; falta determinar si devuelve lista vacía o HTTP 400. **No asumir causa sin logs/soporte**.
+- La lectura exploratoria read-only a la API fue rechazada por `auth_required` (app privada), sin datos accedidos. Detalles en `docs/TRP-SEC-009-SDK-TEST-USER-2026-11-03.md`.
+- Antes de otras pruebas/redeploy, exigir traza granular de `identityGateway CONTEXT_BUILD` y confirmación de versión runtime efectiva.
+
 ## Instrucciones de operación y seguridad
 
 - **No realizar Publish, redeploy manual, merges, cambios de permisos, ni cambios sobre clientes, inventario, ventas o cobros reales sin autorización específica.**

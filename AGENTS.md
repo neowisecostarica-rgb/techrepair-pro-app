@@ -53,6 +53,14 @@
 - Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
 - **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
 
+## SEC-016 — cambio de identidad nativa Base44, corrección pendiente QA (2026-11-03)
+
+- Video muestra que SALES queda en `Verificando estado de tu cuenta...` o pantalla vacía y TECHNICIAN sí carga; el texto viene del `useQuery` de organización de `src/Layout.jsx`.
+- Se corrigió cache `org-status` previamente compartida por mismo tenant entre usuarios: ahora distingue `user.id`, organización y rol, y solo se ejecuta con `status=ready`, autorización y membresía verificadas.
+- En `src/components/contexts/AuthContext.jsx` se eliminan datos de identidad/tenant previos al iniciar recarga de auth. No cambian backend ni permisos.
+- Reproducir pruebas: `node scripts/verify-sec016-native-session-switch.mjs`, `npm run test:impersonation-session-hardening`, `npm run test:identity-tenant-security`, `npm run test:multiuser-navigation`, `npm run test:crm-customer360`, `npm run build`. Todo PASS en candidato, **sin QA real del video todavía**.
+- PRE-FIX checkpoint `6aea22bc8d5d03273ba07f6f`; informe `docs/TRP-SEC-016-NATIVE-USER-SWITCH-QA-2026-11-03.md`. Próximo equipo: validar SALES → TECHNICIAN → SALES en navegador, inspeccionar consola/Network si persiste. No alterar COMPU STORE ni declarar GO.
+
 ## SEC-015 — cuentas QA existentes, verificadas en Base44 (2026-11-03)
 
 - Dirección General ofreció `ventas@compustorecr.com` y `gustavo@compustorecr.com`. Verificación read-only de User + UserAccount: SALES y ORG_ADMIN, ambos activos con IDs canónicos correctamente vinculados, empresa activa; SALES en sucursal activa TRES RÍOS. Gustavo `role=admin` nativo **no es** Super Admin SaaS (`is_super_admin=false`). **No crear nuevos usuarios, no provisionar ni re-vincular estas identidades**.

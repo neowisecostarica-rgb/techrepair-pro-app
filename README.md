@@ -1,3 +1,11 @@
+# TRP — Technology Reliability Platform
+
+**Para cualquier nuevo programador o agente: leer primero [AGENTS.md](AGENTS.md) y [la auditoría maestra](docs/TRP-AUDIT-MASTER-STATUS-2026-11-03.md).**
+
+Estado al 3 de noviembre de 2026: auditoría comercial y de seguridad documentada; correcciones de código verificadas, pero el acceso autenticado del runtime y P0-AUD-01 aún bloquean la aprobación general. No repetir la auditoría sin evidencia de regresión. Consulta también [docs/README.md](docs/README.md).
+
+---
+
 **Welcome to your Base44 project** 
 
 **About**

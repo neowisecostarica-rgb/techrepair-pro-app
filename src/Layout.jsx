@@ -4,7 +4,6 @@ import { base44 } from '@/api/base44Client';
 import { useAuthContext } from './components/contexts/AuthContext';
 import ImpersonationBanner from './components/superadmin/ImpersonationBanner';
 import SuspendedScreen from './components/suspended/SuspendedScreen';
-import { useQuery } from '@tanstack/react-query';
 import {
   Wrench,
   AlertCircle,
@@ -19,28 +18,22 @@ import GlobalSearch from '@/components/search/GlobalSearch';
 import useGlobalSearchShortcut from '@/components/search/useGlobalSearchShortcut';
 import { Search } from 'lucide-react';
 import { useI18n } from '@/i18n';
-import { endIdentityImpersonation, getIdentityOrganization } from '@/api/identity';
+import { endIdentityImpersonation } from '@/api/identity';
 
 function LayoutContent({ children, currentPageName }) {
   const { t } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth, identityStatus, multiOrgAccounts, selectOrganization, capabilities, authorizationReady } = useAuthContext();
+  const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth, identityStatus, multiOrgAccounts, authorizedOrganizations, selectOrganization, capabilities, authorizationReady } = useAuthContext();
 
   useGlobalSearchShortcut(setSearchOpen);
 
-  // Query organization (MUST be before any conditional returns)
-  const { data: organization, isLoading: isLoadingOrg, isError: isErrorOrg } = useQuery({
-    // Cache is scoped to the authenticated principal, not just the tenant.
-    // Two Base44 users can share an organization but have distinct authorization.
-    queryKey: ['org-status', user?.id || 'no-user', effectiveOrgId, effectiveRole],
-    queryFn: async () => {
-      const result = await getIdentityOrganization(effectiveOrgId);
-      return result.organization;
-    },
-    enabled: status === 'ready' && authorizationReady && !!user?.id && !!userAccount && !!effectiveOrgId && effectiveRole !== 'SUPER_ADMIN',
-    staleTime: 60000,
-  });
+  // The authoritative identity context already contains the sanitized tenant.
+  // Do not block the application on a second getOrganization request after auth.
+  // Never accept a missing/mismatched organization from another native session.
+  const organization = Array.isArray(authorizedOrganizations)
+    ? authorizedOrganizations.find(org => org?.id === effectiveOrgId) || null
+    : null;
 
   // Estado de secciones colapsables
   const [sectionsOpen, setSectionsOpen] = useState(() => {
@@ -356,21 +349,9 @@ function LayoutContent({ children, currentPageName }) {
     return <>{children}</>;
   }
 
-  // GATE GLOBAL: Verificar suspensión de Organization (P0 - Bloqueo Total)
-  // Esperar a que cargue org antes de decidir
-  if (effectiveOrgId && effectiveRole !== 'SUPER_ADMIN' && isLoadingOrg) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Verificando estado de tu cuenta...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error al cargar Organization → Fallback (RIESGO 1)
-  if (effectiveOrgId && isErrorOrg && effectiveRole !== 'SUPER_ADMIN') {
+  // Fail closed if the context did not include the selected organization.
+  // The backend remains authoritative for suspension and every operation.
+  if (effectiveRole !== 'SUPER_ADMIN' && (!effectiveOrgId || !organization || !['active', 'suspended'].includes(organization.status))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f6f8fb]">
         <div className="text-center max-w-md p-8 bg-white rounded-xl border border-slate-200 shadow-sm">

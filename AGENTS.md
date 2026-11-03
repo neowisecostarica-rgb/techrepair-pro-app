@@ -45,6 +45,14 @@
 - Testing Agent SALES más reciente `6aea023165a7bd96801de1e6` tiene informe `goal_not_accomplished`, `issues=[]`; no accedió a CRM. No deducir PASS por lista de issues vacía.
 - Escalar trazabilidad del HTTP 400 de `identityGateway` antes de otro redeploy o retest SALES; P0-AUD-01 sigue sin resolver.
 
+## SEC-011 — esquema reparado y QA bloqueado por contexto organizacional (2026-11-03)
+
+- Checkpoint previo al cambio `6aea0a97a6073aa1f2dc549c`. Se agregó únicamente `UserAccount.properties.user_id` de tipo string opcional; esquema Base44 y consulta directa por `user_id` ahora PASS. Conserva RLS fail-closed.
+- Nuevo contrato `node scripts/verify-useraccount-schema-contract.mjs` PASS; impedir que se vuelva a eliminar `user_id` o se abran permisos de UserAccount.
+- Prueba SALES `6aea0ad9f6c9bb351729f8f7`: **FAILED / goal_accomplished=false**, sin error de identidad; muestra onboarding `Configura tu organización` por falta de membresía del usuario temporal. CRM no validado.
+- Consulta read-only sin datos personales: al menos 1 membresía activa de `UserAccount`, pero no se encontraron registros con `user_id` presente. El entorno de Testing Agent tiene cuentas temporales separadas; no inferir correspondencias.
+- **Próximo gate:** preparar fixtures de prueba con organización, usuario temporal/membresía SALES y sucursal válidos, sin modificar relaciones productivas ni crear privilegios impropios. No repetir SALES hasta tener fixture verificada. P0-AUD-01 sigue NO-GO.
+
 ## Instrucciones de operación y seguridad
 
 - **No realizar Publish, redeploy manual, merges, cambios de permisos, ni cambios sobre clientes, inventario, ventas o cobros reales sin autorización específica.**

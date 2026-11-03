@@ -142,7 +142,7 @@ function InventarioContent() {
       ubicacion: formData.get('ubicacion'),
       costo_unitario: parseFloat(formData.get('costo_unitario')) || 0,
       precio_venta: categoriaSeleccionada?.es_vendible ? (parseFloat(formData.get('precio_venta')) || 0) : 0,
-      punto_reorden: parseFloat(formData.get('punto_reorden')) || 5,
+      punto_reorden: formData.get('punto_reorden') === '' ? 5 : Number(formData.get('punto_reorden')),
       proveedor: formData.get('proveedor'),
       fecha_compra: formData.get('fecha_compra') || undefined,
       documento_compra: formData.get('documento_compra') || undefined,

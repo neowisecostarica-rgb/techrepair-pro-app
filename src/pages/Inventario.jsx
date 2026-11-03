@@ -24,7 +24,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 export default function Inventario() {
   return (
-    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'INVENTORY']}>
+    <PageGuard allowedRoles={['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'INVENTORY', 'SALES']}>
       <InventarioContent />
     </PageGuard>
   );
@@ -54,6 +54,7 @@ function InventarioContent() {
   }, [effectiveOrgId]);
 
   const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
+  const isSalesReadOnly = effectiveRole === 'SALES';
   const { data: items = [] } = useQuery({
     queryKey: ['inventario', userAccount?.organization_id, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Inventario.filter({
@@ -113,6 +114,7 @@ function InventarioContent() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isOrgAdmin) return; // Backend is still the mutation authority.
     const formData = new FormData(e.target);
     const codigoBarras = formData.get('codigo_barras');
     
@@ -185,7 +187,7 @@ function InventarioContent() {
   }, [editingItem]);
 
   const handleSearchKeyDown = (e) => {
-    if (e.key === 'Enter' && searchTerm) {
+    if (isOrgAdmin && e.key === 'Enter' && searchTerm) {
       // Buscar exacto por código de barras
       const exacto = items.find(i => i.codigo_barras === searchTerm);
       if (exacto) {
@@ -261,7 +263,7 @@ function InventarioContent() {
           </CardContent>
         </Card>
 
-        <Card className="border border-slate-200 shadow-sm">
+        {!isSalesReadOnly && <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -271,7 +273,7 @@ function InventarioContent() {
               <DollarSign className="w-10 h-10 text-blue-500" />
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
         <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
@@ -334,7 +336,7 @@ function InventarioContent() {
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colStock','Stock')}</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colLocation','Ubicación')}</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colPrice','Precio')}</th>
-                  <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colMargin','Margen')}</th>
+                  {!isSalesReadOnly && <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colMargin','Margen')}</th>}
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('docResidual.supplierWarrantyShort','Garantía Prov.')}</th>
                   <th className="text-left p-4 text-sm font-semibold text-slate-700">{t('inv.colActions','Acciones')}</th>
                 </tr>
@@ -401,13 +403,13 @@ function InventarioContent() {
                       </td>
                       <td className="p-4">
                         <p className="font-bold text-emerald-600">₡{item.precio_venta?.toLocaleString()}</p>
-                        <p className="text-xs text-slate-500">{t('inv.cost','Costo:')} ₡{item.costo_unitario?.toLocaleString()}</p>
+                        {!isSalesReadOnly && <p className="text-xs text-slate-500">{t('inv.cost','Costo:')} ₡{item.costo_unitario?.toLocaleString()}</p>}
                       </td>
-                      <td className="p-4">
+                      {!isSalesReadOnly && <td className="p-4">
                         <span className={`font-semibold ${margen > 30 ? 'text-green-600' : 'text-slate-600'}`}>
                           {margen.toFixed(1)}%
                         </span>
-                      </td>
+                      </td>}
                       <td className="p-4">
                         {estadoGarantiaProveedor ? (
                           <Badge className={`${
@@ -472,7 +474,7 @@ function InventarioContent() {
       </Card>
 
       {/* Modal Crear/Editar */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      {isOrgAdmin && <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
@@ -871,10 +873,10 @@ function InventarioContent() {
             </div>
           </form>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* MODAL AJUSTE STOCK */}
-      <ModalAjusteStock
+      {isOrgAdmin && <ModalAjusteStock
         open={!!ajusteItem}
         onOpenChange={(open) => { if (!open) setAjusteItem(null); }}
         item={ajusteItem}
@@ -882,10 +884,10 @@ function InventarioContent() {
           queryClient.invalidateQueries({ queryKey: ['inventario'] });
           setAjusteItem(null);
         }}
-      />
+      />}
 
       {/* QUICK CREATE CATEGORÍA */}
-      <QuickCreateCategoria
+      {isOrgAdmin && <QuickCreateCategoria
         open={showQuickCreateCategoria}
         onOpenChange={setShowQuickCreateCategoria}
         organizationId={effectiveOrgId}
@@ -893,7 +895,7 @@ function InventarioContent() {
           queryClient.invalidateQueries({ queryKey: ['categorias'] });
           setSelectedCategoriaId(newCategoria.id);
         }}
-      />
+      />}
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 **Entrada para programación:** [AGENTS.md](../AGENTS.md), con reglas, gates, comandos y handoff obligatorio.
 
+**CANDIDATO BETA / QA VIGENTE (04-nov):** [TRP-MB-06-BETA-CANDIDATE-QA-2026-11-04.md](TRP-MB-06-BETA-CANDIDATE-QA-2026-11-04.md) — SHA conciliado, una matriz QA, bloqueos reales y release NO-GO.
+
 **BACKLOG VIGENTE (04-nov):** [TRP-BACKLOG-MASTER-2026-11-04.md](TRP-BACKLOG-MASTER-2026-11-04.md) — priorización actual, cierres de hoy, pendientes y gates.
 
 **HISTORIAL DE AUDITORÍA:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)

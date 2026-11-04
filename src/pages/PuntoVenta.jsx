@@ -73,16 +73,9 @@ function PuntoVentaContent() {
   const { user, userAccount } = useUserAccount();
   const { effectiveRole, effectiveOrgId } = useAuthContext();
 
-  // Verificar/crear producto diagnóstico al montar
-  useEffect(() => {
-    if (effectiveOrgId) {
-      import('@/components/inventario/setupProductoDiagnostico').then(module => {
-        module.verificarOCrearProductoDiagnostico(effectiveOrgId).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['inventario', userAccount?.organization_id] });
-        });
-      });
-    }
-  }, [effectiveOrgId, queryClient, userAccount?.organization_id]);
+  // Abrir Caja debe ser estrictamente lectura: nunca crear productos o precios
+  // implícitamente. El diagnóstico se selecciona de los productos/servicios
+  // previamente configurados por la administración.
 
   // Precargar venta si viene de taller o cotización
   useEffect(() => {

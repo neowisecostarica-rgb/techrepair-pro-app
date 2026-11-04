@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
 
 // Comando acotado: solo persiste las fotos del producto.
 // La autoridad sobre stock, precios y demas campos sigue siendo
@@ -28,22 +30,20 @@ Deno.serve(async req => {
     return Response.json({ error: 'Las fotos deben ser URLs https validas' }, { status: 400 });
   }
 
-  const accounts = await base44.asServiceRole.entities.UserAccount.filter({
-    user_email: user.email,
-  }, '-created_date', 5);
-  const account = (accounts || []).find(entry => ALLOWED_ROLES.has(entry.role));
-  if (!account) return Response.json({ error: 'Sin permisos sobre inventario' }, { status: 403 });
-  if (account.status && account.status !== 'active') {
-    return Response.json({ error: 'Cuenta de usuario inactiva' }, { status: 403 });
-  }
+  const authorization = await resolveAuthorizedContext(base44, user, {
+    allowedRoles: Array.from(ALLOWED_ROLES),
+  });
+  if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
+  const scope = getCanonicalBranchScope(authorization);
+  if (!scope.ok) return Response.json({ error: scope.error, code: scope.code }, { status: scope.status });
 
   const [item] = await base44.asServiceRole.entities.Inventario.filter({
     id,
-    organization_id: account.organization_id,
-  }, 1);
+    organization_id: authorization.organizationId,
+  }, '-created_date', 2);
   if (!item) return Response.json({ error: 'Producto no encontrado' }, { status: 404 });
-  if (account.role === 'BRANCH_ADMIN' && account.branch_id && item.branch_id !== account.branch_id) {
-    return Response.json({ error: 'Producto fuera de la sucursal autorizada' }, { status: 403 });
+  if (!scope.organizationWide && item.branch_id !== scope.branchId) {
+    return Response.json({ error: 'Producto fuera de la sucursal autorizada', code: 'INVENTORY_CROSS_BRANCH_DENIED' }, { status: 403 });
   }
 
   const updated = await base44.asServiceRole.entities.Inventario.update(id, {

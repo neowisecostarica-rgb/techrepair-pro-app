@@ -65,8 +65,8 @@ function OperacionContent() {
   }, [periodoPreset]);
 
   // OTs (todas las activas del período)
-  const { data: ordenesTrabajo = [], isLoading } = useQuery({
-    queryKey: ['operacion-ots', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo, tecnicoId],
+  const { data: todasLasOrdenes = [], isLoading, isError: ordersFailed, refetch: retryOrders } = useQuery({
+    queryKey: ['operacion-ots', effectiveOrgId, sucursalId, branchIdFijo, tecnicoId],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId };
       
@@ -82,13 +82,9 @@ function OperacionContent() {
 
       const allOTs = await base44.entities.OrdenTrabajo.filter(query, '-created_date', 500);
 
-      return allOTs.filter(ot => {
-        const otFecha = new Date(ot.created_date);
-        const desde = new Date(fechaDesde);
-        const hasta = new Date(fechaHasta);
-        hasta.setHours(23, 59, 59);
-        return otFecha >= desde && otFecha <= hasta;
-      });
+      // Keep the tenant/branch filtered result for long-running active work.
+      // A creation-date filter must not hide old unresolved or delayed orders.
+      return allOTs;
     },
     enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta
   });
@@ -146,15 +142,25 @@ function OperacionContent() {
     enabled: !!effectiveOrgId
   });
 
+  // The selected period applies to trend charts, not to current active work
+  // or the aging queue. Otherwise old overdue OTs disappear from supervision.
+  const ordenesTrabajo = todasLasOrdenes.filter(ot => {
+    const date = new Date(ot.created_date);
+    if (Number.isNaN(date.getTime())) return false;
+    const desde = new Date(fechaDesde + 'T00:00:00');
+    const hasta = new Date(fechaHasta + 'T23:59:59.999');
+    return date >= desde && date <= hasta;
+  });
+
   // Cálculos KPIs
-  const otsActivas = ordenesTrabajo.filter(ot => 
+  const otsActivas = todasLasOrdenes.filter(ot => 
     !['ENTREGADA', 'CANCELADA'].includes(ot.estado)
   );
 
   const ahora = new Date();
   const hace48h = new Date(ahora.getTime() - (48 * 60 * 60 * 1000));
   
-  const otsDemoradas = ordenesTrabajo.filter(ot => {
+  const otsDemoradas = todasLasOrdenes.filter(ot => {
     if (!['EN_REVISION', 'EN_REPARACION', 'DIAGNOSTICADA', 'APROBADA', 'PRUEBAS'].includes(ot.estado)) return false;
     const activityDate = new Date(ot.ultima_actividad_at || ot.updated_date);
     if (activityDate >= hace48h) return false;
@@ -162,10 +168,10 @@ function OperacionContent() {
     return true;
   });
 
-  const otsEnCola = ordenesTrabajo.filter(ot => ot.estado === 'EN_COLA_REVISION').length;
+  const otsEnCola = todasLasOrdenes.filter(ot => ot.estado === 'EN_COLA_REVISION').length;
 
   const tecnicosConCarga = new Set(
-    ordenesTrabajo
+    todasLasOrdenes
       .filter(ot => ot.tecnico_asignado_id && !['ENTREGADA', 'CANCELADA'].includes(ot.estado))
       .map(ot => ot.tecnico_asignado_id)
   ).size;
@@ -240,6 +246,16 @@ function OperacionContent() {
     ? (sucursales.find(s => s.id === branchIdFijo)?.name || 'Tu Sucursal')
     : null;
 
+  if (ordersFailed) {
+    return (
+      <div role="alert" className="max-w-xl mx-auto my-12 rounded-xl border border-red-200 bg-red-50 p-6 text-red-900">
+        <p className="font-semibold">No se pudieron consultar las órdenes de Operación</p>
+        <p className="text-sm mt-2">Los indicadores no están verificados. No se interpretan como cero órdenes o cero atrasos.</p>
+        <button type="button" onClick={() => retryOrders()} className="mt-3 underline font-semibold">Reintentar consulta</button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -302,7 +318,7 @@ function OperacionContent() {
               <p className="text-xs text-slate-600">{t('operation.delayed','Demoradas (+48h)')}</p>
             </div>
             <p className="text-xl font-semibold tracking-tight text-slate-950">{otsDemoradas.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Días desde última actividad</p>
+            <p className="text-xs text-slate-500 mt-1">Última actividad, sin excluir órdenes antiguas</p>
           </CardContent>
         </Card>
 
@@ -419,7 +435,7 @@ function OperacionContent() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Clock className="w-5 h-5 text-red-600" />
-            Top 10 OTs Demoradas
+            Top 10 OTs Demoradas · todas las fechas
           </CardTitle>
         </CardHeader>
         <CardContent>

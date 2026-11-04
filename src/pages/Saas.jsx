@@ -155,15 +155,15 @@ function SaasContent() {
 
   const showSection = (section) => consoleSection === section || consoleSection === 'overview';
 
-  const { data: adminOverview = {} } = useQuery({
+  const { data: adminOverview, isLoading: adminOverviewLoading, isError: adminOverviewFailed, error: adminOverviewError, refetch: reloadAdminOverview } = useQuery({
     queryKey: ['identity', 'admin-overview'],
     queryFn: getIdentityAdminOverview,
     enabled: !authIsImpersonating,
   });
-  const organizations = adminOverview.organizations || [];
-  const allUserAccounts = adminOverview.accounts || [];
-  const auditLogs = adminOverview.auditLogs || [];
-  const entitlementsByOrg = adminOverview.entitlements || {};
+  const organizations = adminOverview?.organizations || [];
+  const allUserAccounts = adminOverview?.accounts || [];
+  const auditLogs = adminOverview?.auditLogs || [];
+  const entitlementsByOrg = adminOverview?.entitlements || {};
 
   const { data: allSucursales = [] } = useQuery({
     queryKey: ['all-branches'],
@@ -429,6 +429,23 @@ function SaasContent() {
           <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('saas.restricted','Acceso restringido')}</h1>
           <p className="text-slate-600 mb-6">{t('saas.restrictedDesc','Este panel está reservado para la administración de plataforma.')}</p>
         </div>
+      </div>
+    );
+  }
+
+  // Fail closed on the authoritative platform overview: a failed identity
+  // response must never masquerade as zero organizations/accounts.
+  if (adminOverviewLoading || (!adminOverview && !adminOverviewFailed)) {
+    return <div role="status" className="min-h-[50vh] flex items-center justify-center p-8 text-slate-600">Cargando información de la plataforma…</div>;
+  }
+
+  if (adminOverviewFailed || !adminOverview) {
+    return (
+      <div role="alert" className="max-w-xl mx-auto p-8 mt-12 bg-white border border-amber-200 rounded-xl space-y-4">
+        <div className="flex items-center gap-2 text-amber-800 font-semibold"><AlertCircle className="w-5 h-5" /> No se pudo consultar la plataforma</div>
+        <p className="text-sm text-slate-600">No es posible confirmar organizaciones, usuarios ni licencias en este momento. Los datos no se muestran como cero y las acciones administrativas quedan suspendidas hasta recuperar la consulta.</p>
+        <p className="text-xs text-slate-500">{adminOverviewError?.message || 'Revisá la conexión y volvé a intentar.'}</p>
+        <Button type="button" variant="outline" onClick={() => reloadAdminOverview()}>Reintentar consulta</Button>
       </div>
     );
   }

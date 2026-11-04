@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { getIdentityOrganization } from '@/api/identity';
@@ -64,6 +64,8 @@ function PuntoVentaContent() {
   const [validacionesPendientes, setValidacionesPendientes] = useState([]);
   const [ordenTrabajoObj, setOrdenTrabajoObj] = useState(null);
   const [showConfirmacionVenta, setShowConfirmacionVenta] = useState(false);
+  const saleConfirmationLock = useRef(false);
+  const [isPreparingSale, setIsPreparingSale] = useState(false);
   const [showConversionAntigua, setShowConversionAntigua] = useState(false);
   // Identidad del intento: permanece estable durante retries y solo cambia cuando
   // createSale confirma una venta efectiva.
@@ -494,7 +496,13 @@ function PuntoVentaContent() {
   };
 
   const confirmarYProcesarVenta = async () => {
+    // A synchronous lock covers the time before React can render isPending.
+    // The same idempotency key remains in force for any server-side retry.
+    if (saleConfirmationLock.current || createVentaMutation.isPending) return;
+    saleConfirmationLock.current = true;
+    setIsPreparingSale(true);
     setShowConfirmacionVenta(false);
+    try {
 
     // P0.2: Resolver branch_id automáticamente si falta y hay una sola sucursal
     // La venta conserva la sucursal del documento origen; createSale valida el acceso.
@@ -572,7 +580,14 @@ function PuntoVentaContent() {
       created_by_user_id: user?.id,
     };
 
-    createVentaMutation.mutate(ventaData);
+    await createVentaMutation.mutateAsync(ventaData);
+    } catch (error) {
+      // The mutation's onError presents the server error. This catch prevents
+      // an unhandled rejection from the confirm button.
+    } finally {
+      saleConfirmationLock.current = false;
+      setIsPreparingSale(false);
+    }
   };
 
   const handleSearchKeyDown = (e) => {
@@ -972,13 +987,14 @@ function PuntoVentaContent() {
                 onClick={procesarVenta}
                 disabled={
                   carrito.length === 0 || 
-                  createVentaMutation.isPending || 
+                  createVentaMutation.isPending ||
+                  isPreparingSale ||
                   validacionesPendientes.length > 0
                 }
                 className="w-full h-11 disabled:opacity-50"
               >
                 <DollarSign className="w-5 h-5 mr-2" />
-                {createVentaMutation.isPending ? t('pos.processing','Procesando...') : ventaId ? t('pos.confirmCharge','Confirmar Cobro') : t('pos.registerSale','Registrar Venta')}
+                {(createVentaMutation.isPending || isPreparingSale) ? t('pos.processing','Procesando...') : ventaId ? t('pos.confirmCharge','Confirmar Cobro') : t('pos.registerSale','Registrar Venta')}
               </Button>
             </CardContent>
           </Card>
@@ -1121,9 +1137,10 @@ function PuntoVentaContent() {
             </Button>
             <Button 
               onClick={confirmarYProcesarVenta}
+              disabled={isPreparingSale || createVentaMutation.isPending}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {t('pos.yesProcess','Sí, Procesar Venta')}
+              {isPreparingSale || createVentaMutation.isPending ? t('pos.processing','Procesando...') : t('pos.yesProcess','Sí, Procesar Venta')}
             </Button>
           </div>
         </DialogContent>

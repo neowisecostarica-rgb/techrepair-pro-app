@@ -27,5 +27,14 @@ La propuesta SQL está en `docs/architecture/TRP-P0-AUD-01-POSTGRES-LEDGER-CANDI
 - Migración/historial: decidir sobre duplicados previos sin borrado automático; reconciliar registros anteriores; backup antes de mutaciones y rollback documentado.
 - Actualizar documentación maestra, AGENTS.md, issue #13 y cerrar solo después de evidencia externa verificable. El QA browser sigue bloqueado por identidad de pruebas en issue #12.
 
+## Actualización 04-nov-2026 — MB-05A ejecutado
+**Resultado:** CANDIDATO IMPLEMENTADO AISLADAMENTE / RUNTIME NO IMPLEMENTADO / P0-AUD-01 SIGUE BLOQUEADO.
+
+- Código `scripts/candidates/atomicAuditLedgerCandidate.ts` con interfaz de base de datos inyectada y preparado para SQL con restricción `UNIQUE (organization_id, audit_operation_id)`, `ON CONFLICT DO NOTHING`, identidad SHA-256 inmutable y rechazo de colisiones con hash distinto. No lo llama ningún comando productivo.
+- Prueba del adaptador `scripts/verify-p0-aud-01-candidate.test.mjs`: 4/4 PASS simulados; modelo independiente SQLite: 8 escritores exactamente una fila; prueba del código actual: **confirma creación de duplicados**; identidad existente 9/9 PASS. La simulación JS NO prueba una BD real ni su concurrencia transaccional.
+- Sin cambios en writer live, entidades, datos reales, credenciales, proveedores o despliegues. No hay evidencia de que el actual SDK Base44 soporte unicidad atómica.
+- Falta garantía transaccional efectiva conectada y aprobada, QA concurrente remoto con diferentes procesos/tenants, integración/sustitución de cada copia de `auditEvent.ts`, reconciliación/rollback y manejo de efectos comerciales ya confirmados si falla la auditoría.
+- **El issue #13 permanece abierto y la beta NO-GO para operaciones reales.** El trabajo de preparación no autoriza su cierre. Siguiente MB-06 sin publicación.
+
 ## Decisión
 **ADR propuesta, pendiente de aprobación.** Ningún proveedor ni conector fue contratado/conectado. No se ha migrado `AuditEvent`, no se alteró el writer ni se tocó producción. Hasta validar una primitiva atómica de persistencia en backend real, P0-AUD-01 sigue abierto.

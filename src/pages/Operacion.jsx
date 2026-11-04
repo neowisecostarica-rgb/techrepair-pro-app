@@ -118,7 +118,7 @@ function OperacionContent() {
   });
 
   // Cotizaciones
-  const { data: cotizaciones = [] } = useQuery({
+  const { data: cotizaciones = [], isPending: quotesPending, isError: quotesError, refetch: retryQuotes } = useQuery({
     queryKey: ['cotizaciones-op', effectiveOrgId, branchIdFijo, sucursalId],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId };
@@ -133,7 +133,7 @@ function OperacionContent() {
   });
 
   // Garantías
-  const { data: garantias = [] } = useQuery({
+  const { data: garantias = [], isPending: warrantiesPending, isError: warrantiesError, refetch: retryWarranties } = useQuery({
     queryKey: ['garantias-op', effectiveOrgId],
     queryFn: () => base44.entities.Garantia.filter({
       organization_id: effectiveOrgId,
@@ -176,14 +176,16 @@ function OperacionContent() {
       .map(ot => ot.tecnico_asignado_id)
   ).size;
 
-  const cotizacionesPendientes = cotizaciones.filter(c => c.estado === 'enviada').length;
+  const quotesVerified = !quotesPending && !quotesError;
+  const warrantiesVerified = !warrantiesPending && !warrantiesError;
+  const cotizacionesPendientes = quotesVerified ? cotizaciones.filter(c => c.estado === 'enviada').length : null;
 
   const hoyDate = new Date();
   const en15Dias = new Date(hoyDate.getTime() + (15 * 24 * 60 * 60 * 1000));
-  const garantiasPorVencer = garantias.filter(g => {
+  const garantiasPorVencer = warrantiesVerified ? garantias.filter(g => {
     const fechaFin = new Date(g.fecha_fin);
     return fechaFin >= hoyDate && fechaFin <= en15Dias;
-  }).length;
+  }).length : null;
 
   // Distribución por estado
   const estadosCount = {};
@@ -221,7 +223,7 @@ function OperacionContent() {
 
   // Carga por técnico
   const cargaPorTecnico = {};
-  ordenesTrabajo.forEach(ot => {
+  todasLasOrdenes.forEach(ot => {
     if (ot.tecnico_asignado_id && !['ENTREGADA', 'CANCELADA'].includes(ot.estado)) {
       if (!cargaPorTecnico[ot.tecnico_asignado_id]) {
         cargaPorTecnico[ot.tecnico_asignado_id] = 0;
@@ -299,6 +301,18 @@ function OperacionContent() {
         mostrarSelectorTecnico={true}
       />
 
+      {(quotesError || warrantiesError) && (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 flex flex-wrap items-center justify-between gap-3">
+          <span>No se pudieron verificar algunos indicadores comerciales: {[
+            quotesError && 'cotizaciones', warrantiesError && 'garantías'
+          ].filter(Boolean).join(', ')}.</span>
+          <button type="button" className="underline font-semibold" onClick={() => {
+            if (quotesError) retryQuotes();
+            if (warrantiesError) retryWarranties();
+          }}>Reintentar indicadores</button>
+        </div>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <Card className="border border-slate-200 shadow-sm bg-white">
@@ -351,7 +365,7 @@ function OperacionContent() {
               <FileText className="w-5 h-5 text-yellow-600" />
               <p className="text-xs text-slate-600">{t('operation.pendingQuotes','Cotizaciones Pendientes')}</p>
             </div>
-            <p className="text-xl font-semibold tracking-tight text-slate-950">{cotizacionesPendientes}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{cotizacionesPendientes === null ? '—' : cotizacionesPendientes}</p>
             {cotizacionesPendientes > 20 && (
               <Badge className="bg-red-200 text-red-800 border-0 text-xs mt-1">Revisar</Badge>
             )}
@@ -364,7 +378,7 @@ function OperacionContent() {
               <Shield className="w-5 h-5 text-indigo-600" />
               <p className="text-xs text-slate-600">{t('operation.warranties','Garantías por Vencer')}</p>
             </div>
-            <p className="text-xl font-semibold tracking-tight text-slate-950">{garantiasPorVencer}</p>
+            <p className="text-xl font-semibold tracking-tight text-slate-950">{garantiasPorVencer === null ? '—' : garantiasPorVencer}</p>
             {garantiasPorVencer > 5 && (
               <Badge className="bg-red-200 text-red-800 border-0 text-xs mt-1">Atención</Badge>
             )}
@@ -396,7 +410,7 @@ function OperacionContent() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-slate-400">
-                <p>No hay OTs en el período</p>
+                <p>No hay OTs creadas en el período seleccionado</p>
               </div>
             )}
           </CardContent>
@@ -407,7 +421,7 @@ function OperacionContent() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-600" />
-              Carga por Técnico
+              Carga actual por Técnico
             </CardTitle>
           </CardHeader>
           <CardContent>

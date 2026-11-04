@@ -56,6 +56,13 @@
 - **Estado MB-01:** PARCIAL, no finalizado funcionalmente. Requiere QA de consola con Super Admin real, validación de respuestas backend y de errores de consultas secundarias (Branches/OT/Garantías), y verificación de controles sensibles sin efectuar mutaciones productivas. No declarar consola integral GO.
 - **Siguientes acciones:** revisar la consistencia de los estados de carga/error de métricas secundarias, continuar MB-02 en código, y agrupar QA de roles en QA-06. Ningún nuevo módulo o vista duplicada.
 
+## Avance MB-01B — Integridad de métricas secundarias de Super Admin (04-nov)
+- **Código corregido:** consultas de sucursales, órdenes, garantías y partners ahora distinguen cargando/error/sin datos; indicadores de integridad global muestran «—» cuando alguna consulta de salud no está verificada, no presentan un falso cero. Incluye aviso de módulos sin verificar y reintento selectivo.
+- **Preparación de tenants:** la cantidad de sucursales y la condición «Lista» no se declaran como válidas si falla la consulta de sucursales; tabla refleja «Sin verificar», no «0».
+- **Partners:** formulario no intenta usar lista no disponible y deshabilita selección si la consulta falló.
+- **Pruebas:** test específico `scripts/verify-superadmin-secondary-read-state.test.mjs` PASS, lifecycle Super Admin 5/5 PASS, navegación 8/8 PASS, build PASS.
+- **Estado:** MB-01A + MB-01B código completado; MB-01 conserva QA funcional de Super Admin pendiente. No ejecutar acciones administrativas reales para probar ni afirmar beta GO. Continuar MB-02 roles/permisos o cerrar brechas de código acreditadas.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

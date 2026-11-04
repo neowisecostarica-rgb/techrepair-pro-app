@@ -305,7 +305,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     toast({ title: t('quote.linkCopied','Enlace copiado'), description: t('quote.linkCopiedDesc','El enlace público de la cotización está en el portapapeles.') });
   };
 
-  const descargarPDF = (cotizacion, cliente, organization) => {
+  const descargarPDF = (cotizacion, cliente, organization, tipoDocumento = 'cotizacion') => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     let y = 20;
@@ -313,7 +313,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     // Header
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text(t('quote.pdfTitle','COTIZACIÓN COMERCIAL'), pageWidth / 2, y, { align: 'center' });
+    doc.text(tipoDocumento === 'proforma' ? 'PROFORMA COMERCIAL' : t('quote.pdfTitle','COTIZACIÓN COMERCIAL'), pageWidth / 2, y, { align: 'center' });
     
     y += 10;
     doc.setFontSize(10);
@@ -411,7 +411,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       doc.text(splitNotas, 14, y);
     }
 
-    doc.save(`Cotizacion_${cotizacion.id}.pdf`);
+    doc.save(`${tipoDocumento === 'proforma' ? 'Proforma' : 'Cotizacion'}_${cotizacion.id}.pdf`);
   };
 
   const imprimirCotizacion = async (cotizacion, organization) => {
@@ -575,6 +575,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                           <span className="text-slate-300">·</span>
                           <button onClick={() => descargarPDF(cot, cliente, organization)}
                             className="text-[10px] text-slate-500 hover:text-slate-800 underline">PDF</button>
+                          <span className="text-slate-300">·</span>
+                          <button onClick={() => descargarPDF(cot, cliente, organization, 'proforma')}
+                            className="text-[10px] text-slate-500 hover:text-slate-800 underline">Proforma PDF</button>
                           <span className="text-slate-300">·</span>
                           <button onClick={() => imprimirCotizacion(cot)}
                             className="text-[10px] text-slate-500 hover:text-slate-800 underline">Imprimir</button>

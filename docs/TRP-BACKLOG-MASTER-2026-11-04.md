@@ -92,6 +92,14 @@
 - **Estado:** MB-03C código PASS; QA de diagnóstico/reparación/entrega en navegador y E2E-OT-001 siguen pendientes. No se publicaron cambios ni se alteraron órdenes COMPU STORE.
 - **Continuidad:** avanzar con MB-04 UX operativa o completar brechas justificadas de taller; no recrear módulos ni ejecutar QA E2E hasta el bloque previsto.
 
+## MB-04A — Operación: órdenes atrasadas independientes del período de gráficas (04-nov)
+- **Hallazgo corregido:** el panel `Operacion.jsx` filtraba las OTs por fecha de creación antes de calcular los atrasos, y ocultaba órdenes antiguas activas (como las vistas en la grabación) cuando se seleccionaba mes/semana.
+- **Cambio:** conservar la consulta de órdenes de empresa/sucursal para calcular OTs activas, demoradas, en cola y técnicos con carga; aplicar el rango de fechas **solo** a las gráficas históricas que requieren período. El error de la consulta de OTs ahora muestra alerta y reintento, evitando interpretar un fallo como «0 atrasos».
+- **Evidencia:** `scripts/verify-mb04-overdue-orders-period.test.mjs` PASS, navegación 8/8 PASS, Vite build PASS.
+- **Limitación pendiente:** la consulta actual `OrdenTrabajo.filter(query, '-created_date', 500)` obtiene como máximo 500 órdenes. La mejora evita pérdida por filtro local, pero **no garantiza cobertura histórica total en organizaciones mayores**. Revisar paginación/backend apropiado y compatibilidad durante QA; no declarar exhaustividad.
+- **Estado:** MB-04A código PASS; QA navegador/estadísticas reales pendiente. No se alteraron OTs ni se publicó.
+- **Continuación:** MB-04B revisar si otras gráficas vacías corresponden a datos/período/carga o a un defecto demostrable; no inventar resultados.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

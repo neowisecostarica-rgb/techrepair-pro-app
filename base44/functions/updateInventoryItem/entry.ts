@@ -33,6 +33,12 @@ Deno.serve(async req => {
   if (!id || !updateData || typeof updateData !== 'object' || Array.isArray(updateData)) {
     return Response.json({ error: 'id y updateData son requeridos' }, { status: 400 });
   }
+  if (updateData.galeria_fotos !== undefined || updateData.foto_url !== undefined) {
+    const photos = updateData.galeria_fotos;
+    if (!Array.isArray(photos) || photos.length > 5 || photos.some(url => typeof url !== 'string' || !/^https:\/\/\S+$/i.test(url)) || updateData.foto_url !== (photos[0] || null)) {
+      return Response.json({ error: 'Galería inválida: máximo cinco URLs HTTPS y primera foto principal', code: 'INVENTORY_PHOTOS_INVALID' }, { status: 422 });
+    }
+  }
   const forbidden = Object.keys(updateData).filter(field => SOVEREIGN_FIELDS.has(field));
   if (forbidden.length > 0) {
     return Response.json({

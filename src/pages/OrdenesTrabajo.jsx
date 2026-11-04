@@ -110,7 +110,7 @@ function OrdenesTrabajoContent() {
     created_date: orden.created_date || orden.created_at,
   });
 
-  const { data: ordenes = [], isLoading: isLoadingOrdenes } = useQuery({
+  const { data: ordenes = [], isLoading: isLoadingOrdenes, isError: ordersLoadError, error: ordersLoadErrorDetail, refetch: retryOrdersLoad } = useQuery({
     queryKey: ['ordenes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
@@ -431,8 +431,19 @@ function OrdenesTrabajoContent() {
         </div>
       </div>
 
+      {/* A failed read is not an empty workshop. Never show false zero orders. */}
+      {ordersLoadError && (
+        <Alert role="alert" className="border-red-300 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-700" />
+          <AlertDescription className="text-red-800 flex flex-wrap items-center justify-between gap-3">
+            <span>No se pudieron consultar las órdenes de trabajo. Esto no significa que el taller esté vacío. {ordersLoadErrorDetail?.message || ''}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => retryOrdersLoad()}>Reintentar consulta</Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Vista Kanban */}
-      {vistaActiva === 'kanban' && (
+      {vistaActiva === 'kanban' && !ordersLoadError && (
         <KanbanBoard onCardClick={(ot) => navigate(`/expediente/${ot.id}`)} />
       )}
 
@@ -444,7 +455,7 @@ function OrdenesTrabajoContent() {
         <TabsTrigger value="todas">{t('workOrders.all','Todas las OTs')}</TabsTrigger>
         <TabsTrigger value="pendiente-cliente">
           {t('workOrders.pendingClient','Pendiente Cliente')}
-          {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length > 0 && (
+          {!ordersLoadError && ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length > 0 && (
             <span className="ml-2 bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
               {ordenes.filter(o => o.estado === 'DIAGNOSTICADA').length}
             </span>
@@ -463,7 +474,7 @@ function OrdenesTrabajoContent() {
       )}
 
       {/* Filtros */}
-      {!isLoadingOrdenes && <Card className="border border-slate-200 shadow-sm">
+      {!isLoadingOrdenes && !ordersLoadError && <Card className="border border-slate-200 shadow-sm">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -491,7 +502,7 @@ function OrdenesTrabajoContent() {
         </Card>}
 
         {/* Lista de Órdenes */}
-        {!isLoadingOrdenes && <div className="space-y-4">
+        {!isLoadingOrdenes && !ordersLoadError && <div className="space-y-4">
         {ordenesFiltradas.map((orden) => {
           const config = estadoConfig[orden.estado] || estadoConfig.EN_COLA_REVISION;
           
@@ -585,7 +596,7 @@ function OrdenesTrabajoContent() {
             <span className="text-slate-500">{t('workOrders.loading','Cargando órdenes...')}</span>
           </div>
         )}
-        {!isLoadingOrdenes && (
+        {!isLoadingOrdenes && !ordersLoadError && (
           <div className="space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-2 text-amber-800 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />

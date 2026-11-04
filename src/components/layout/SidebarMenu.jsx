@@ -65,7 +65,7 @@ export default function SidebarMenu({ effectiveRole, capabilities = [], currentP
                 <Link
                   key={`${item.path}-${item.label}`}
                   to={`${createPageUrl(item.path)}${item.hash ? `#${item.hash}` : ''}`}
-                  title={sidebarOpen && item.tooltip ? item.tooltip : undefined}
+                  title={sidebarOpen ? (item.tooltip || item.label) : item.label}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                     isActive
                       ? 'bg-teal-400/10 text-teal-200 ring-1 ring-inset ring-teal-400/20'

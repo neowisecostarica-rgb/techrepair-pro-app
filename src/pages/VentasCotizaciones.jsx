@@ -58,6 +58,7 @@ function VentasCotizacionesContent() {
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const [showNuevaCotizacion, setShowNuevaCotizacion] = useState(false);
   const [cotizacionEditar, setCotizacionEditar] = useState(null);
+  const [sendingQuoteId, setSendingQuoteId] = useState(null);
 
   const emitirEnlaceCotizacion = async (quoteId) => {
     const response = await base44.functions.invoke('issuePublicDocumentToken', {
@@ -68,6 +69,37 @@ function VentasCotizacionesContent() {
     const token = response?.data?.token;
     if (!token) throw new Error(response?.data?.error || 'No se pudo emitir el enlace de cotizacion');
     return `${getPublicBaseUrl(organization)}/PortalCotizacion?token=${token}`;
+  };
+
+  const enviarCotizacion = async (cotizacion) => {
+    if (!cotizacion || sendingQuoteId) return;
+    if (cotizacion.requiere_aprobacion && !cotizacion.aprobada_por) {
+      toast({ variant: 'destructive', title: 'Aprobación requerida', description: 'El descuento aplicado requiere aprobación antes de continuar.' });
+      return;
+    }
+    setSendingQuoteId(cotizacion.id);
+    try {
+      const response = await base44.functions.invoke('approveCotizacion', {
+        cotizacion_id: cotizacion.id,
+        canal_envio: 'link',
+      });
+      if (!response?.data?.success) throw new Error(response?.data?.error || 'El servidor no confirmó el envío de la cotización');
+      queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
+      queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      const updatedQuote = response.data.cotizacion || response.data.data || { ...cotizacion, estado: 'enviada' };
+      setCotizacionSeleccionada(updatedQuote);
+      try {
+        const link = await emitirEnlaceCotizacion(cotizacion.id);
+        await navigator.clipboard.writeText(link);
+        toast({ title: 'Cotización lista para compartir', description: 'La cotización cambió a enviada y el enlace se copió. Compartilo con el cliente.' });
+      } catch (sharingError) {
+        toast({ variant: 'destructive', title: 'Cotización preparada; enlace no copiado', description: 'El cambio de estado se guardó, pero no pudimos copiar el enlace. Usá Copiar Link para reintentarlo.' });
+      }
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'No se pudo preparar la cotización', description: error?.message || 'Volvé a intentarlo.' });
+    } finally {
+      setSendingQuoteId(null);
+    }
   };
 
   // Escuchar eventos de cotización creada/actualizada
@@ -461,33 +493,12 @@ function VentasCotizacionesContent() {
                         Editar Cotización
                       </Button>
                       <Button
-                        onClick={async () => {
-                          if (cotizacionSeleccionada.requiere_aprobacion && !cotizacionSeleccionada.aprobada_por) {
-                            toast({ variant: 'destructive', title: 'Aprobación requerida', description: 'El descuento aplicado requiere aprobación antes de continuar.' });
-                            return;
-                          }
-                          const response = await base44.functions.invoke('approveCotizacion', {
-                            cotizacion_id: cotizacionSeleccionada.id,
-                            canal_envio: 'link',
-                          });
-                          if (!response?.data?.success) {
-                            throw new Error(response?.data?.error || 'El servidor no confirmó el envío de la cotización');
-                          }
-                          queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
-                          queryClient.invalidateQueries({ queryKey: ['ordenes'] });
-                          const updatedQuote = response.data.cotizacion || response.data.data || {
-                            ...cotizacionSeleccionada,
-                            estado: 'enviada',
-                          };
-                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
-                          navigator.clipboard.writeText(link);
-                          toast({ title: 'Cotización enviada', description: 'El enlace quedó copiado al portapapeles.' });
-                          setCotizacionSeleccionada(updatedQuote);
-                        }}
+                        onClick={() => enviarCotizacion(cotizacionSeleccionada)}
+                        disabled={!!sendingQuoteId}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
                         <Send className="w-4 h-4 mr-2" />
-                        Enviar Cotización
+                        {sendingQuoteId === cotizacionSeleccionada.id ? 'Preparando cotización…' : 'Preparar y copiar enlace'}
                       </Button>
                     </>
                   )}

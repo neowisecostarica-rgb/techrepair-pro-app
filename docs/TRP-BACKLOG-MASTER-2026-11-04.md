@@ -85,6 +85,13 @@
 - **Estado:** código MB-03B cerrado; QA autenticado, diagnóstico/entrega en navegador y E2E con fixtures aislados aún **PENDIENTES**. No modificar órdenes COMPU STORE ni hacer Publish.
 - **Próximo trabajo:** MB-03C buscar brecha real de diagnóstico, preparación de reparación o entrega sin reabrir recepción que ya superó contratos.
 
+## MB-03C — Diagnóstico técnico: estado de lectura verificable (04-nov)
+- **Hallazgo:** ExpedienteTecnico trataba los fallos de consulta del DMR y diagnóstico como «Sin DMR»/«Sin diagnóstico», dando la impresión incorrecta de que faltaban documentos en órdenes reales.
+- **Corrección:** `src/components/expediente/ExpedienteTecnico.jsx` ahora distingue cargando, error de consulta y ausencia real para DMR y DiagnosticoTecnico; alerta de disponibilidad para documento diagnóstico y evidencias; botón de reintento de consultas fallidas. Se reutilizó el expediente existente, sin cambios de estados de OT ni mutaciones.
+- **Evidencia:** `scripts/verify-mb03-technical-read-state.test.mjs` PASS, build PASS, `test:commercial-flow` 16/16 PASS, `test:delivery-atomicity` 35/35 PASS.
+- **Estado:** MB-03C código PASS; QA de diagnóstico/reparación/entrega en navegador y E2E-OT-001 siguen pendientes. No se publicaron cambios ni se alteraron órdenes COMPU STORE.
+- **Continuidad:** avanzar con MB-04 UX operativa o completar brechas justificadas de taller; no recrear módulos ni ejecutar QA E2E hasta el bloque previsto.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

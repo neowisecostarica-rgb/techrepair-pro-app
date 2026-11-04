@@ -2,6 +2,7 @@
 **Fecha:** 2026-11-04
 **Alcance:** TRP Base44 Preview, recorrido visual de ~152 segundos aportado por Dirección General.
 **Candidato de partida:** b8a78365e90f23b53d37dc77d3a71f2eeee69950
+**Estado de incidencia principal:** CERRADO — confirmado por Dirección General en Base44 Preview el 2026-11-04 («listo cerralo»), tras la corrección de navegación. El cierre aplica exclusivamente al scroll entre módulos de TRP; no implica aprobación integral de la beta.
 
 ## Incidencia principal y corrección
 - La navegación SPA en src/App.jsx no restablecía la posición del documento al cambiar pathname. La nueva pantalla podía conservar el desplazamiento anterior y comenzar lejos del encabezado.
@@ -10,7 +11,7 @@
 - Scroll de sidebar y de modales queda independiente.
 - Se corrigió también la accesibilidad del nombre completo de los enlaces laterales truncados: title de cada item.
 - Contrato scripts/verify-trp-route-scroll-top.test.mjs PASS 3/3. Build PASS y contrato de Inventario SALES solo lectura PASS.
-- **QA de navegador posterior al cambio PENDIENTE.** No declarar corregido en ejecución real sin verificación.
+- **QA visual de navegación confirmado por Dirección General (2026-11-04).** Se registra el cierre funcional de TRP-UX-NAV-001 basado en la verificación directa del usuario. El test automatizado de navegador no se ejecutó; otros módulos y SaaS conservan sus propias validaciones.
 
 ## Otras observaciones de la grabación (no confundir con bugs demostrados)
 - Se recorrieron Mi Día, Negocio, Órdenes, Activos, Agenda, Cola de Revisión, Inventario, Caja, Cotizaciones, Clientes, CRM y Configuración.

@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useUserAccount } from '@/components/hooks/useOrgData';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import ExportarInventario from '@/components/inventario/ExportarInventario';
+import ImportarCatalogo from '@/components/inventario/ImportarCatalogo';
 import QuickCreateCategoria from '@/components/inventario/QuickCreateCategoria';
 import { generarCodigoInterno } from '@/components/inventario/utils/generarCodigoInterno';
 import ModalAjusteStock from '@/components/inventario/ModalAjusteStock';
@@ -35,6 +36,7 @@ function InventarioContent() {
   const { t } = useI18n();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
+  const [showImportar, setShowImportar] = useState(false);
   const [showQuickCreateCategoria, setShowQuickCreateCategoria] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [ajusteItem, setAjusteItem] = useState(null);
@@ -234,6 +236,9 @@ function InventarioContent() {
                 items={itemsFiltrados} 
                 organizationName={organization?.name}
               />
+              <Button variant="outline" onClick={() => setShowImportar(true)}>
+                Importar productos y servicios
+              </Button>
               
               <Button
                 onClick={() => { setEditingItem(null); setShowModal(true); }}
@@ -496,6 +501,14 @@ function InventarioContent() {
       </Card>
 
       {/* Modal Crear/Editar */}
+      {isOrgAdmin && <ImportarCatalogo
+        open={showImportar}
+        onOpenChange={setShowImportar}
+        organizationId={effectiveOrgId}
+        categorias={categorias}
+        existingItems={items}
+        onImported={() => queryClient.invalidateQueries({ queryKey: ['inventario'] })}
+      />}
       {isOrgAdmin && <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

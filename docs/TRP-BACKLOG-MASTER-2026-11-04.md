@@ -78,6 +78,13 @@
 - **Estado MB-03:** parcial, no validado en navegador; recepción→diagnóstico→reparación→entrega E2E (QA-07) sigue pendiente con fixtures aislados. No tocar órdenes COMPU STORE ni publicar.
 - Seguir con una brecha concreta del expediente/diagnóstico (MB-03B), sin repetir contrato de recepción salvo regresión.
 
+## MB-03B — Expediente OT: errores separados y consulta por empresa (04-nov)
+- **Hallazgo corregido:** una falla de lectura de OrdenTrabajo se mostraba como «Expediente no encontrado», confundiendo caída temporal del servicio con OT inexistente o acceso denegado.
+- **Código:** `src/pages/ExpedienteOT.jsx` ahora distingue error de consulta, ausencia de OT y contexto de otra organización. Agrega mensaje de error y reintento; consulta principal `OrdenTrabajo.filter` incluye `organization_id: effectiveOrgId` y la caché incorpora el tenant. Conserva guard multitenant y controles de capacidades de expediente.
+- **Evidencia:** `scripts/verify-mb03-expediente-read-error.test.mjs` PASS; compilación PASS, flujo comercial 16/16, recepción atómica 24/24, navegación 8/8 PASS.
+- **Estado:** código MB-03B cerrado; QA autenticado, diagnóstico/entrega en navegador y E2E con fixtures aislados aún **PENDIENTES**. No modificar órdenes COMPU STORE ni hacer Publish.
+- **Próximo trabajo:** MB-03C buscar brecha real de diagnóstico, preparación de reparación o entrega sin reabrir recepción que ya superó contratos.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

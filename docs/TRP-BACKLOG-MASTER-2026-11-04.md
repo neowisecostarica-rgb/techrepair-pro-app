@@ -108,6 +108,14 @@
 - **Límites:** consultas Base44 paginadas hasta 500; no declarar recuentos históricos exhaustivos por encima del límite. QA de datos reales, filtros y estados vacíos pendiente, sin editar órdenes. No publicado.
 - **Estado:** MB-04A y MB-04B código PASS; MB-04 requiere QA visual y análisis de clasificación del catálogo «MANTENIMIENTO» antes de cierre funcional.
 
+## Avance MB-05A — Adaptador transaccional candidato, SIN despliegue (04-nov)
+- Revisión del escritor `base44/functions/_shared/auditEvent.ts` y ADR actual: el patrón `findExisting` → `AuditEvent.create` sigue **NO ATÓMICO**. La prueba `npm run test:audit-concurrency-boundary` volvió a reproducir dos filas bajo concurrencia; su PASS es prueba de defecto, **NO** solución.
+- Se preparó `scripts/candidates/atomicAuditLedgerCandidate.ts` (CANDIDATO AISLADO, fuera de funciones backend vivas). Implementa digest SHA-256 canónico para campos inmutables, `INSERT ... ON CONFLICT ... DO NOTHING RETURNING` + lectura posterior para distinguir idempotencia de colisión; sin datos sensibles en el payload de ejemplo; falla cerrado si no existe conexión autorizada, la lectura es ambigua o cae el almacén.
+- Pruebas `scripts/verify-p0-aud-01-candidate.test.mjs`: **4/4 PASS de lógica simulada**, incl. 8 llamadas concurrentes a simulación con restricción UNIQUE, dos empresas, colisión incompatible y caída. Modelo transaccional independiente SQLite 8 escritores PASS; prueba de identidad actual 9/9 PASS; build PASS. **Ninguna demuestra atomicidad PostgreSQL/Base44 real**.
+- No se contrató ni conectó PostgreSQL, Render ni ningún proveedor externo; no se agregaron secretos, no se modificó `appendAuditEvent` productivo ni clones empaquetados; no se tocaron organizaciones ni registros reales. Los scripts son preparación de implementación, no mitigación P0 activa.
+- **Dictamen: BLOQUEADO / NO-GO para auditoría concurrente.** Para cerrar #13 es imprescindible autorizar/configurar una base con restricción UNIQUE verificable o encontrar en Base44 una primitiva de escritura condicional/única realmente documentada y probada en runtime, integrar el escritor en todos los comandos con efectos de negocio, revisar fail-closed/reconciliación, y contar filas en un test concurrente real. No habilitar cobros reales basándose en las simulaciones.
+- Orden de continuidad: MB-06 preparación de candidato y QA sin publicación; resolver decisión de persistencia antes del GO. El piloto sin efectos auditables no sustituye el criterio de liberación.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

@@ -31,6 +31,16 @@ export default function VentasCotizaciones() {
 function VentasCotizacionesContent() {
   const { t, locale } = useI18n();
   const { effectiveOrgId, user, userAccount } = useAuthContext();
+  const inventoryBranchId = userAccount?.branch_id;
+  const inventoryOrganizationWide = userAccount?.role === 'ORG_ADMIN';
+  const { data: productosCotizacion = [] } = useQuery({
+    queryKey: ['quote-product-photos', effectiveOrgId, inventoryOrganizationWide ? 'all' : inventoryBranchId],
+    queryFn: () => base44.entities.Inventario.filter({
+      organization_id: effectiveOrgId,
+      ...(!inventoryOrganizationWide ? { branch_id: inventoryBranchId } : {}),
+    }, '-created_date', 500),
+    enabled: !!effectiveOrgId && (inventoryOrganizationWide || !!inventoryBranchId),
+  });
   const { toast } = useToast();
   const { data: organization } = useQuery({
     queryKey: ['org-ventascot', effectiveOrgId],
@@ -366,12 +376,21 @@ function VentasCotizacionesContent() {
                   {cotizacionSeleccionada.items?.map((item, idx) => (
                     <div key={idx} className="p-3 bg-slate-50 rounded-lg">
                       <div className="flex justify-between items-start">
-                        <div>
+                        <div className="flex items-center gap-3">
+                          {productosCotizacion.find(product => product.id === item.referencia_id)?.foto_url && (
+                            <img
+                              src={productosCotizacion.find(product => product.id === item.referencia_id).foto_url}
+                              alt={item.descripcion || 'Producto'}
+                              className="h-12 w-12 rounded-md object-cover border border-slate-200"
+                            />
+                          )}
+                          <div>
                           <p className="font-medium text-slate-900">{item.descripcion}</p>
                           <p className="text-xs text-slate-500">
                             {item.cantidad} x ₡{item.precio_unitario?.toLocaleString()}
                             {item.descuento_porcentaje > 0 && ` (-${item.descuento_porcentaje}%)`}
                           </p>
+                          </div>
                         </div>
                         <p className="font-semibold text-slate-900">₡{item.subtotal?.toLocaleString()}</p>
                       </div>

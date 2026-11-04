@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 const money = value => '₡' + Number(value || 0).toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const date = value => { try { return value ? format(new Date(value), 'dd/MM/yyyy') : '—'; } catch { return '—'; } };

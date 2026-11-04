@@ -63,6 +63,14 @@
 - **Pruebas:** test específico `scripts/verify-superadmin-secondary-read-state.test.mjs` PASS, lifecycle Super Admin 5/5 PASS, navegación 8/8 PASS, build PASS.
 - **Estado:** MB-01A + MB-01B código completado; MB-01 conserva QA funcional de Super Admin pendiente. No ejecutar acciones administrativas reales para probar ni afirmar beta GO. Continuar MB-02 roles/permisos o cerrar brechas de código acreditadas.
 
+## MB-02A — Alineación real de navegación y roles (04-nov)
+- Revisión acotada de menú `src/config/menuConfig.js`, `PageGuard` y capacidades de `roleCapabilities.ts` de ORG_ADMIN, BRANCH_ADMIN, TECHNICIAN, SALES, INVENTORY y CUSTOMER_SERVICE.
+- **Corrección concreta:** Garantías se ofrecía a CUSTOMER_SERVICE mediante `DELIVERY_OPERATIONS`, pero `VentasGarantias` solo admite ORG_ADMIN, BRANCH_ADMIN y SALES. Se agregó `tenantRoles` a ese ítem y se aplicó la restricción en el filtro compartido de menú. **No se cambiaron capacidades ni permisos de backend.**
+- **Diferencias NO corregidas sin decisión de producto:** Dashboard de técnico admite acceso directo pero no se ofrece en menú; rutas Enterprise son protegidas y no están anunciadas por los presets estándar. No ampliar privilegios automáticamente.
+- Pruebas: `verify-mb02-warranties-role-alignment.test.mjs` PASS, navegación 8/8 PASS, flujo comercial 16/16 PASS, compilación PASS.
+- **MB-02 estado:** avance de código PASS acotado, QA de roles reales pendiente en QA-06; issue #15 Inventario SALES sigue abierto hasta navegador; #12 y #13 siguen bloqueantes.
+- No se modificaron usuarios, organizaciones, pedidos ni datos COMPU STORE, ni Publish/deploy.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

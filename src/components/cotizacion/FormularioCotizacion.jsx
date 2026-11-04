@@ -90,7 +90,6 @@ export default function FormularioCotizacion({
     newItems[index].precio_unitario = item.precio_venta || 0;
     newItems[index].tipo = item.tipo_sugerido;
     newItems[index].referencia_id = item.id;
-    newItems[index].foto_url = item.origen === 'inventario' ? (item.foto_url || null) : null;
     delete newItems[index].item_id;
     newItems[index].origen = item.origen;
     
@@ -407,6 +406,16 @@ export default function FormularioCotizacion({
                     </div>
                   </div>
 
+                  {(productoActual?.foto_url || inventario.find(product => product.id === item.referencia_id)?.foto_url) && (
+                    <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                      <img
+                        src={productoActual?.foto_url || inventario.find(product => product.id === item.referencia_id)?.foto_url}
+                        alt={item.descripcion || 'Producto'}
+                        className="h-14 w-14 rounded-md object-cover"
+                      />
+                      <span className="text-xs text-slate-600">Fotografía actual del producto en inventario</span>
+                    </div>
+                  )}
                   {productoActual && (
                     <Alert className="bg-blue-50 border-blue-200">
                       <Package className="w-4 h-4 text-blue-600" />

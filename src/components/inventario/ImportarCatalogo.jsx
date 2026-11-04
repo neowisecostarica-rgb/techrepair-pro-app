@@ -86,6 +86,8 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
   const [confirmed, setConfirmed] = useState(false);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState(null);
+  const [defaultType, setDefaultType] = useState('producto');
+  const [defaultCategoryId, setDefaultCategoryId] = useState('');
 
   const openFile = async event => {
     const file = event.target.files?.[0];
@@ -122,11 +124,12 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
     const inFile = new Set();
     return rows.map((row, index) => {
       const field = key => mapping[key] === '' || mapping[key] == null ? '' : row[Number(mapping[key])];
-      const kind = norm(field('tipo'));
+      const kind = norm(field('tipo') || defaultType);
       const isService = ['servicio', 'service', 'servicios'].includes(kind);
       const name = clean(field('nombre')), sku = clean(field('sku')), category = clean(field('categoria'));
+      const fallbackCategory = categorias.find(c => c.id === defaultCategoryId && c.activo !== false);
       const price = number(field('precio')), cost = number(field('costo')), stock = number(field('stock'));
-      const categoryRecord = categorias.find(c => norm(c.nombre) === norm(category) && c.activo !== false);
+      const categoryRecord = category ? categorias.find(c => norm(c.nombre) === norm(category) && c.activo !== false) : fallbackCategory;
       const duplicateKey = isService ? 'service:' + norm(name) : sku ? 'sku:' + norm(sku) : 'product:' + norm(name);
       let error = '';
       if (!name) error = 'Falta nombre';
@@ -143,11 +146,11 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
       inFile.add(duplicateKey);
       return { index: index + 2, row, isService, name, sku, category, categoryRecord, price, cost, stock, error, field };
     });
-  }, [rows, mapping, categorias, existingItems, services, branchId]);
+  }, [rows, mapping, categorias, existingItems, services, branchId, defaultType, defaultCategoryId]);
   const eligible = preview.filter(x => !x.error);
   const invalid = preview.filter(x => !!x.error);
   const process = async () => {
-    if (!confirmed || running || !eligible.length || !organizationId) return;
+    if (!confirmed || running || result !== null || !eligible.length || !organizationId) return;
     setRunning(true);
     let created = 0;
     const errors = [];
@@ -215,6 +218,20 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
                 <SelectContent><SelectItem value="none">Sin columna</SelectItem>{headers.map((h,i) => <SelectItem value={String(i)} key={i}>{h || 'Columna ' + (i+1)}</SelectItem>)}</SelectContent>
               </Select></div>)}
         </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div><Label>Tipo si el archivo no tiene columna Tipo</Label>
+            <Select value={defaultType} onValueChange={v => { setDefaultType(v); setConfirmed(false); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="producto">Productos</SelectItem><SelectItem value="servicio">Servicios</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <div><Label>Categoría de inventario si falta en el archivo</Label>
+            <Select value={defaultCategoryId || 'none'} onValueChange={v => { setDefaultCategoryId(v === 'none' ? '' : v); setConfirmed(false); }}>
+              <SelectTrigger><SelectValue placeholder="Elegí categoría existente" /></SelectTrigger>
+              <SelectContent><SelectItem value="none">Ninguna</SelectItem>{categorias.filter(c => c.activo !== false).map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
         <div><Label>Sucursal de destino para productos</Label>
           <Select value={branchId} onValueChange={v => {setBranchId(v);setConfirmed(false);}}>
             <SelectTrigger><SelectValue placeholder="Seleccioná la sucursal" /></SelectTrigger>
@@ -229,10 +246,11 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
         </div>
         {!!invalid.length && <p className="text-sm text-amber-800"><AlertTriangle className="w-4 h-4 inline mr-1" /> Los registros con errores no se importarán. Ajustá el archivo y volvé a cargarlo para corregirlos.</p>}
         <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} disabled={running} /> Confirmo importar únicamente los registros válidos al catálogo de esta empresa. Comprendo que esta acción crea registros.</label>
-        <Button disabled={running || !confirmed || !eligible.length} onClick={process}>{running ? 'Importando…' : 'Importar ' + eligible.length + ' registros válidos'}</Button>
+        <Button disabled={running || !confirmed || !eligible.length || result !== null} onClick={process}>{running ? 'Importando…' : 'Importar ' + eligible.length + ' registros válidos'}</Button>
       </>}
       {result && <div className="rounded-lg border p-3 text-sm">
         <p className="font-semibold"><CheckCircle2 className="h-4 w-4 inline mr-1" /> Registros creados: {result.created}</p>
+        <p className="text-xs text-slate-600">Para importar otro lote o reintentar los pendientes, seleccioná nuevamente un archivo después de revisar los registros creados.</p>
         {!!result.errors.length && <p className="text-red-700">Se detuvo en la fila {result.errors[0].row}: {result.errors[0].error}. Los registros anteriores ya se guardaron; no repitas todo el lote sin revisar duplicados.</p>}
       </div>}
     </DialogContent>

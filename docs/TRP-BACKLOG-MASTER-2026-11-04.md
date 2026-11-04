@@ -100,6 +100,14 @@
 - **Estado:** MB-04A código PASS; QA navegador/estadísticas reales pendiente. No se alteraron OTs ni se publicó.
 - **Continuación:** MB-04B revisar si otras gráficas vacías corresponden a datos/período/carga o a un defecto demostrable; no inventar resultados.
 
+## MB-04B — Gráficas y KPIs operativos confiables (04-nov)
+- **Causa corregida:** el gráfico Carga por Técnico aún recorría `ordenesTrabajo` filtradas por fecha de creación, aunque los indicadores de carga actual y atraso debían conservar las OTs abiertas anteriores al período. Ahora usa `todasLasOrdenes` ya limitadas por empresa/sucursal/técnico; las gráficas históricas por estado conservan el período seleccionado.
+- **Estados de carga/error:** cotizaciones pendientes y garantías por vencer distinguen consulta cargando/error de valor numérico real; muestran «—» mientras no haya resultado verificado y permiten reintentar los indicadores fallidos.
+- **Aislamiento de sucursal:** garantía activa se consulta por empresa y sucursal efectiva (BRANCH_ADMIN fijo / selector ORG_ADMIN), no por todas las sucursales mientras el tablero indica una sola.
+- **Validaciones:** `scripts/verify-mb04-operational-metrics.test.mjs` 2/2 PASS, navegación 8/8 PASS, Vite build PASS.
+- **Límites:** consultas Base44 paginadas hasta 500; no declarar recuentos históricos exhaustivos por encima del límite. QA de datos reales, filtros y estados vacíos pendiente, sin editar órdenes. No publicado.
+- **Estado:** MB-04A y MB-04B código PASS; MB-04 requiere QA visual y análisis de clasificación del catálogo «MANTENIMIENTO» antes de cierre funcional.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

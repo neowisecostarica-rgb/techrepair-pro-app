@@ -75,6 +75,9 @@ function CRMContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm'] });
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      setLeadToConvert(null);
+      setConvertIdentification('');
+      toast({ title: 'Cliente creado', description: 'El prospecto se convirtió correctamente en cliente.' });
     },
     onError: (error) => toast({ variant: 'destructive', title: 'No se pudo convertir el prospecto', description: error.message }),
   });
@@ -118,9 +121,8 @@ function CRMContent() {
       toast({ variant: 'destructive', title: 'Identificación requerida', description: 'Ingresa la identificación del cliente antes de convertir el prospecto.' });
       return;
     }
+    if (convertToClienteMutation.isPending) return;
     convertToClienteMutation.mutate({ lead: leadToConvert, identificacion: convertIdentification.trim() });
-    setLeadToConvert(null);
-    setConvertIdentification('');
   };
 
   const handleQuickStatusChange = (lead, newStatus) => {
@@ -312,13 +314,13 @@ function CRMContent() {
       </Card>
 
       {/* Create Lead Modal */}
-      <Dialog open={!!leadToConvert} onOpenChange={(open) => { if (!open) { setLeadToConvert(null); setConvertIdentification(''); } }}>
+      <Dialog open={!!leadToConvert} onOpenChange={(open) => { if (!open && !convertToClienteMutation.isPending) { setLeadToConvert(null); setConvertIdentification(''); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Convertir prospecto en cliente</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-slate-600">Se creará un cliente para <strong>{leadToConvert?.name}</strong> y el prospecto quedará marcado como ganado.</p>
             <div><Label htmlFor="convert-identification">Identificación del cliente</Label><Input id="convert-identification" value={convertIdentification} onChange={(e) => setConvertIdentification(e.target.value)} placeholder={t('crm.idPlaceholder','Cédula o identificación')} className="mt-1" /></div>
-            <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => { setLeadToConvert(null); setConvertIdentification(''); }}>{t('finalI18n.cancel','Cancelar')}</Button><Button onClick={confirmLeadConversion}>{t('crm.convert','Crear cliente')}</Button></div>
+            <div className="flex justify-end gap-3"><Button variant="outline" disabled={convertToClienteMutation.isPending} onClick={() => { setLeadToConvert(null); setConvertIdentification(''); }}>{t('finalI18n.cancel','Cancelar')}</Button><Button disabled={convertToClienteMutation.isPending} onClick={confirmLeadConversion}>{convertToClienteMutation.isPending ? 'Creando cliente…' : t('crm.convert','Crear cliente')}</Button></div>
           </div>
         </DialogContent>
       </Dialog>

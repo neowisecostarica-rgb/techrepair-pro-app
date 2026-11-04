@@ -14,6 +14,40 @@
 - No Publish/deploy, mutaciones reales COMPU STORE, cobros, cambios de usuarios/roles, ni nuevos proveedores o costes sin autorización.
 - Reutilizar entidades, componentes y flujos existentes. No crear vistas duplicadas. No hardcodear precios.
 
+## Separación ejecutiva de trabajo — 04-nov (vigente)
+
+**Regla:** Construcción/ajustes en código ahora; la aceptación funcional se agrupa en un QA final. Cada cambio sustancial sí exige build y contratos mínimos. No confundir «trabajo inmediato» con aprobación del release. Orden recomendado: MB-01 → MB-02 → MB-03 → MB-04 → MB-05 → MB-06; si un bloque depende de evidencia o permisos, avanzar al siguiente sin simular cierre.
+
+### A. MEGABLOQUES EJECUTABLES AHORA (sin mutar datos reales)
+| ID | Qué construir o corregir | Entregable inmediato | Limitación |
+|---|---|---|---|
+| MB-01 | Auditar brechas de Super Admin y completar únicamente los controles faltantes, reutilizando consola, RBAC y servicios actuales | Código candidato, pruebas de contrato, checkpoint | No cambiar roles reales ni impersonar fuera de permisos autorizados |
+| MB-02 | Alinear capacidades, rutas, roles BRANCH_ADMIN/INVENTORY/CUSTOMER_SERVICE/TECHNICIAN y sucursales | Código o inventario de brechas con evidencia, pruebas acotadas | QA auténtico de roles queda en QA-06 |
+| MB-03 | Completar flujos faltantes de recepción → OT → diagnóstico → reparación → QA → entrega, sin duplicar pantallas | Ajustes de código, casos de negocio documentados, checkpoint | No tocar órdenes reales ni simular E2E PASS |
+| MB-04 | Corregir UX comprobable: alertas de órdenes antiguas, estados vacíos/graficación y catalogación de servicios; reutilizar lo existente | Mejoras justificadas y backlog separado de observaciones no confirmadas | No inventar causas a partir de video; no cambiar clasificación ni datos del cliente automáticamente |
+| MB-05 | Resolver el **diseño y factibilidad** de P0-AUD-01 con capacidades existentes: primitiva atómica, contrato y costes, sin falsos cierres | Decisión técnica documentada, prototipo o pruebas de modelo aislado | Implementación runtime y proveedor externo requieren aprobación; riesgo sigue bloqueado |
+| MB-06 | Conciliar versiones GitHub/Base44, preparar guía QA única y candidato de beta, sin publicar | Checkpoint maestro, matriz de cambios y checklist | Publish/deploy y GO requieren autorización y QA final |
+
+### B. RESERVAR PARA QA CON EVIDENCIA
+| ID | Validación pendiente | Dependencia / fecha |
+|---|---|---|
+| QA-01 | Excel real: mapeo, precio, tipo, categorías, sucursal, duplicados, vista previa e importación solo si autorizada | Jueves 05-nov |
+| QA-02 | Inventario SALES frente a OWNER, sin exponer costo ni ajustes al vendedor; GitHub #15 | Navegador autenticado, lectura solamente |
+| QA-03 | Conversión de prospecto a cliente y CRM | Navegador con fixture aislado para escritura |
+| QA-04 | Cotizaciones: aprobación, enlace, proforma PDF y estado de envío | Lectura en cuentas reales; mutaciones solo en aislado |
+| QA-05 | Caja: productos/servicios, stock, doble confirmación, pago y comprobante | Datos ficticios aislados; nunca COMPU STORE |
+| QA-06 | Roles, denegaciones y aislamiento multiempresa/multisucursal; GitHub #12 | Identidad QA estable y membresías canónicas; BLOQUEADO |
+| QA-07 | Taller completo: recepción a entrega | Entorno aislado y flujo coherente |
+| QA-08 | Auditoría atómica bajo concurrencia: escritores concurrentes/reintentos y filas únicas; GitHub #13 | Primitiva transaccional en runtime autorizada; BLOQUEADO |
+| QA-09 | Regresión final multirol, evidencia de versiones y decisión Publish/GO | QA-02..08 según alcance de beta, autorización expresa |
+
+### NO REABRIR / SIN REPETICIONES
+- UX-NAV-001 scroll entre módulos TRP: cerrado con confirmación de Dirección General.
+- COM-IMPORT-001..003, proforma PDF, CRM-006, QUOTE-007, POS-008 y POS-009: correcciones implementadas y respaldadas; **solo les falta QA funcional**, no rediseño por defecto.
+- Issues abiertos en GitHub: #12, #13, #15. No cerrarlos por build ni por pruebas en memoria.
+- El Excel real es QA-01 de mañana, no un trabajo de hoy.
+- Prioridad comercial y beta 06-nov mantienen dictamen **NO-GO** si P0-AUD-01 permanece abierto.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

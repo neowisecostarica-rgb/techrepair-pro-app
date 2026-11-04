@@ -3,8 +3,9 @@
 **Proyecto:** TRP — Technology Reliability Platform  
 **Base44 App ID:** `695d708948469128f473d080`  
 **GitHub oficial:** `neowisecostarica-rgb/techrepair-pro-app`  
-**Actualización:** 2026-11-03  
-**Estado de release:** **NO-GO general**. La auditoría está documentada, **no está cerrada**.
+**Actualización:** 2026-11-04 (MB-06)  
+**Estado de release:** **NO-GO general**. La auditoría está documentada, **no está cerrada**.  
+**Leer primero para próximas intervenciones:** `docs/TRP-MB-06-BETA-CANDIDATE-QA-2026-11-04.md` y `docs/TRP-BACKLOG-MASTER-2026-11-04.md`. El apartado PAUSA TRP de 03-nov se conserva como historial, no como último estado.
 
 ## Antes de trabajar (orden obligatorio)
 

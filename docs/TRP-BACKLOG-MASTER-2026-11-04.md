@@ -116,6 +116,12 @@
 - **Dictamen: BLOQUEADO / NO-GO para auditoría concurrente.** Para cerrar #13 es imprescindible autorizar/configurar una base con restricción UNIQUE verificable o encontrar en Base44 una primitiva de escritura condicional/única realmente documentada y probada en runtime, integrar el escritor en todos los comandos con efectos de negocio, revisar fail-closed/reconciliación, y contar filas en un test concurrente real. No habilitar cobros reales basándose en las simulaciones.
 - Orden de continuidad: MB-06 preparación de candidato y QA sin publicación; resolver decisión de persistencia antes del GO. El piloto sin efectos auditables no sustituye el criterio de liberación.
 
+## MB-06 — Preparación de beta y QA único (04-nov)
+- **Candidato fuente:** `1c1c8c2bb5f2ed9b7c1217d62e0f7541e49e2528` confirmado en GitHub y Base44 main; `get_app_status=ready`. La referencia local `remotes/github/main` estaba obsoleta; no hay indicio de merge pendiente por esa referencia.
+- **Entregable maestro:** [`TRP-MB-06-BETA-CANDIDATE-QA-2026-11-04.md`](TRP-MB-06-BETA-CANDIDATE-QA-2026-11-04.md) con QA-01..09, bloqueos, evidencia exigida y plan de reversión.
+- **Límite:** SHA de editor no valida versión backend efectiva, sin QA visual/E2E y sin publicación. Issues GitHub #12, #13, #15 permanecen abiertos; **NO-GO** para operaciones reales. Excel real pendiente jueves 05-nov.
+- **Estado MB-06:** paquete documental y conciliación de fuente completados; liberación NO AUTORIZADA. No abrir una rama/PR de pruebas sin necesidad o autorización.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

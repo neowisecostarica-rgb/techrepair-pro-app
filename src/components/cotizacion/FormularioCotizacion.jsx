@@ -47,10 +47,13 @@ export default function FormularioCotizacion({
   const clienteActual = clienteId || clienteSeleccionadoInterno;
 
   const organizationId = userAccount?.organization_id;
+  const branchId = userAccount?.branch_id;
+  const organizationWide = userAccount?.role === 'ORG_ADMIN';
+  const canReadInventory = !!organizationId && (organizationWide || !!branchId);
   const { data: inventario = [] } = useQuery({
-    queryKey: ['inventario-disponible', organizationId],
-    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo' }, '-created_date', 500),
-    enabled: !!organizationId,
+    queryKey: ['inventario-disponible', organizationId, organizationWide ? 'all' : branchId],
+    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo', ...(!organizationWide ? { branch_id: branchId } : {}) }, '-created_date', 500),
+    enabled: canReadInventory,
   });
 
   const { data: servicios = [] } = useQuery({
@@ -87,6 +90,7 @@ export default function FormularioCotizacion({
     newItems[index].precio_unitario = item.precio_venta || 0;
     newItems[index].tipo = item.tipo_sugerido;
     newItems[index].referencia_id = item.id;
+    newItems[index].foto_url = item.origen === 'inventario' ? (item.foto_url || null) : null;
     delete newItems[index].item_id;
     newItems[index].origen = item.origen;
     

@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Search, Eye, FileText, CheckCircle2, XCircle, Clock, ArrowRight, ShoppingCart, Plus, Pencil, Send, LinkIcon, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
+import { descargarDocumentoCotizacion } from '@/components/ventas/descargarDocumentoCotizacion';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { getPublicBaseUrl } from '@/components/ventas/getPublicBaseUrl';
@@ -503,6 +504,18 @@ function VentasCotizacionesContent() {
                       >
                         <LinkIcon className="w-4 h-4 mr-2" />
                         Copiar Link
+                      </Button>
+                      <Button
+                        onClick={() => descargarDocumentoCotizacion(
+                          cotizacionSeleccionada,
+                          clientes.find(c => c.id === cotizacionSeleccionada.cliente_id),
+                          organization,
+                          'proforma',
+                        )}
+                        variant="outline"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Proforma PDF
                       </Button>
                       <Button
                         onClick={async () => {

@@ -327,16 +327,26 @@ export default function FormularioCotizacion({
                               className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
                             >
                               <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-sm font-medium text-slate-900">{item.nombre}</p>
-                                    <Badge className={item.origen === 'inventario' ? 'bg-blue-100 text-blue-700 border-0' : 'bg-purple-100 text-purple-700 border-0'}>
-                                      {item.origen === 'inventario' ? t('quote.productBadge','Producto') : t('quote.serviceBadge','Servicio')}
-                                    </Badge>
-                                  </div>
-                                  {item.codigo_interno && (
-                                    <p className="text-xs text-slate-500">{item.codigo_interno}</p>
+                                <div className="flex-1 flex items-center gap-2">
+                                  {item.foto_url && (
+                                    <img
+                                      src={item.foto_url}
+                                      alt={item.nombre}
+                                      className="w-9 h-9 rounded-md object-cover border border-slate-200 shrink-0"
+                                      loading="lazy"
+                                    />
                                   )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <p className="text-sm font-medium text-slate-900">{item.nombre}</p>
+                                      <Badge className={item.origen === 'inventario' ? 'bg-blue-100 text-blue-700 border-0' : 'bg-purple-100 text-purple-700 border-0'}>
+                                        {item.origen === 'inventario' ? t('quote.productBadge','Producto') : t('quote.serviceBadge','Servicio')}
+                                      </Badge>
+                                    </div>
+                                    {item.codigo_interno && (
+                                      <p className="text-xs text-slate-500">{item.codigo_interno}</p>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-emerald-600">₡{item.precio_venta?.toLocaleString()}</p>

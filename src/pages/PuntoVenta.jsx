@@ -723,7 +723,14 @@ function PuntoVentaContent() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            {item.tipo === 'producto' ? (
+                            {item.tipo === 'producto' && item.foto_url ? (
+                              <img
+                                src={item.foto_url}
+                                alt={item.nombre}
+                                className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
+                                loading="lazy"
+                              />
+                            ) : item.tipo === 'producto' ? (
                               <Package className="w-8 h-8 text-blue-500" />
                             ) : (
                               <Wrench className="w-8 h-8 text-purple-500" />

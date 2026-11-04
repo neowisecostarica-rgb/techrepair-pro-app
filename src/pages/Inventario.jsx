@@ -18,6 +18,7 @@ import ExportarInventario from '@/components/inventario/ExportarInventario';
 import QuickCreateCategoria from '@/components/inventario/QuickCreateCategoria';
 import { generarCodigoInterno } from '@/components/inventario/utils/generarCodigoInterno';
 import ModalAjusteStock from '@/components/inventario/ModalAjusteStock';
+import ProductPhotoUploader from '@/components/inventario/ProductPhotoUploader';
 import PageGuard from '@/components/guards/PageGuard';
 import TechnicalRequestFulfillmentPanel from '@/components/inventario/TechnicalRequestFulfillmentPanel';
 import { useToast } from '@/components/ui/use-toast';
@@ -37,6 +38,7 @@ function InventarioContent() {
   const [showQuickCreateCategoria, setShowQuickCreateCategoria] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [ajusteItem, setAjusteItem] = useState(null);
+  const [fotos, setFotos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
   const [selectedCategoriaId, setSelectedCategoriaId] = useState('');
@@ -79,7 +81,13 @@ function InventarioContent() {
       const res = await base44.functions.invoke('createInventoryItem', {
         itemData: { ...data, organization_id: effectiveOrgId },
       });
-      return res.data?.data ?? res.data;
+      const item = res.data?.data ?? res.data;
+      if (item?.id && fotos.length) {
+        await base44.functions.invoke('updateInventoryPhotos', { id: item.id, fotos });
+        item.foto_url = fotos[0];
+        item.galeria_fotos = fotos;
+      }
+      return item;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
@@ -99,7 +107,13 @@ function InventarioContent() {
         id,
         updateData: data,
       });
-      return res.data?.data ?? res.data;
+      const item = res.data?.data ?? res.data;
+      if (item?.id) {
+        await base44.functions.invoke('updateInventoryPhotos', { id: item.id, fotos });
+        item.foto_url = fotos[0] || null;
+        item.galeria_fotos = fotos;
+      }
+      return item;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
@@ -181,8 +195,12 @@ function InventarioContent() {
   React.useEffect(() => {
     if (editingItem) {
       setSelectedCategoriaId(editingItem.categoria_id || '');
+      setFotos(editingItem.galeria_fotos?.length
+        ? editingItem.galeria_fotos
+        : (editingItem.foto_url ? [editingItem.foto_url] : []));
     } else {
       setSelectedCategoriaId('');
+      setFotos([]);
     }
   }, [editingItem]);
 
@@ -374,9 +392,23 @@ function InventarioContent() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <div>
-                          <p className="font-medium text-slate-900">{item.nombre}</p>
-                          <p className="text-xs text-slate-500">{item.marca} {item.modelo}</p>
+                        <div className="flex items-center gap-3">
+                          {item.foto_url ? (
+                            <img
+                              src={item.foto_url}
+                              alt={item.nombre}
+                              className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-slate-50 shrink-0"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                              <Package className="w-5 h-5 text-slate-400" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-slate-900">{item.nombre}</p>
+                            <p className="text-xs text-slate-500">{item.marca} {item.modelo}</p>
+                          </div>
                         </div>
                       </td>
                       <td className="p-4">
@@ -612,6 +644,10 @@ function InventarioContent() {
                   name="descripcion"
                   defaultValue={editingItem?.descripcion}
                 />
+              </div>
+
+              <div className="col-span-2">
+                <ProductPhotoUploader fotos={fotos} onChange={setFotos} />
               </div>
 
               <div className="space-y-2">

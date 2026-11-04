@@ -98,6 +98,8 @@ Deno.serve(async req => {
     branch_id: branch.branchId,
     nombre: itemData.nombre.trim(),
     descripcion: itemData.descripcion || null,
+    foto_url: itemData.foto_url || null,
+    galeria_fotos: Array.isArray(itemData.galeria_fotos) ? itemData.galeria_fotos : [],
     categoria_id: itemData.categoria_id,
     tipo_item: itemData.tipo_item || 'producto',
     marca: itemData.marca || null,

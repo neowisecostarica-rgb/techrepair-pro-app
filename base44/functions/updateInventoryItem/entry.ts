@@ -13,7 +13,7 @@ const EDITABLE_FIELDS = new Set([
   'codigo_barras', 'sku', 'ubicacion', 'costo_unitario', 'precio_venta',
   'punto_reorden', 'proveedor', 'fecha_compra', 'documento_compra',
   'garantia_proveedor_meses', 'estado', 'co2_evitado', 'valor_recuperado',
-  'notas_reciclaje', 'numero_serie', 'compatibilidades',
+  'notas_reciclaje', 'numero_serie', 'compatibilidades', 'foto_url', 'galeria_fotos',
 ]);
 
 Deno.serve(async req => {

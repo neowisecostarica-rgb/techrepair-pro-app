@@ -12,6 +12,7 @@ import { useI18n } from '@/i18n';
 
 export function isMenuItemEligible(item, { effectiveRole, capabilities }) {
   if (item.platformRoles) return item.platformRoles.includes(effectiveRole);
+  if (item.tenantRoles && !item.tenantRoles.includes(effectiveRole)) return false;
   if (!Array.isArray(capabilities)) return false;
   return item.anyCapabilities?.some(capability => capabilities.includes(capability)) === true;
 }

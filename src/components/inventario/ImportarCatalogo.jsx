@@ -124,12 +124,13 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
   const [result, setResult] = useState(null);
   const [defaultType, setDefaultType] = useState('producto');
   const [defaultCategoryId, setDefaultCategoryId] = useState('');
+  const [loadedCatalog, setLoadedCatalog] = useState([]);
 
   const openFile = async event => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    setConfirmed(false); setResult(null); setRows([]);
+    setConfirmed(false); setResult(null); setRows([]); setLoadedCatalog([]);
     try {
       if (!/\.(csv|xlsx)$/i.test(file.name)) throw new Error('Usá un archivo .csv o .xlsx');
       const cells = /\.xlsx$/i.test(file.name) ? await readXlsxFile(file) : parseCSV(await file.text());
@@ -143,11 +144,12 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
       });
       setHeaders(detectedHeaders); setRows(cells.slice(1).filter(row => row.some(v => clean(v))));
       setMapping(map); setFileName(file.name);
-      const [branchList, serviceList] = await Promise.all([
+      const [branchList, serviceList, catalogList] = await Promise.all([
         base44.entities.Branch.filter({ organization_id: organizationId, active: true }, '-created_date', 100),
-        base44.entities.Servicio.filter({ organization_id: organizationId }, '-created_date', 1000),
+        base44.entities.Servicio.filter({ organization_id: organizationId }, '-created_date', 2000),
+        base44.entities.Inventario.filter({ organization_id: organizationId }, '-created_date', 3000),
       ]);
-      setBranches(branchList || []); setServices(serviceList || []);
+      setBranches(branchList || []); setServices(serviceList || []); setLoadedCatalog(catalogList || []);
       setBranchId(branchList?.length === 1 ? branchList[0].id : '');
     } catch (error) {
       toast({ variant: 'destructive', title: 'No se pudo leer el archivo', description: error.message });
@@ -155,7 +157,7 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
   };
 
   const preview = useMemo(() => {
-    const existing = new Set(existingItems.flatMap(p => [p.sku ? 'sku:' + norm(p.sku) : null, 'product:' + norm(p.nombre)].filter(Boolean)));
+    const existing = new Set([...existingItems, ...loadedCatalog].flatMap(p => [p.sku ? 'sku:' + norm(p.sku) : null, 'product:' + norm(p.nombre)].filter(Boolean)));
     services.forEach(s => existing.add('service:' + norm(s.nombre)));
     const inFile = new Set();
     return rows.map((row, index) => {
@@ -176,13 +178,13 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
       else if (!isService && !categoryRecord.es_vendible) error = 'Categoría no permite ventas';
       else if (!isService && !categoryRecord.permite_stock && stock > 0) error = 'Categoría no permite stock';
       else if (!isService && !branchId) error = 'Seleccioná sucursal';
-      else if (existing.has(duplicateKey) || inFile.has(duplicateKey) || (sku && (existing.has('sku:' + norm(sku)) || inFile.has('sku:' + norm(sku))))) error = 'Posible duplicado (omitido)';
+      else if (existing.has(duplicateKey) || inFile.has(duplicateKey) || (!isService && (existing.has('product:' + norm(name)) || inFile.has('product:' + norm(name)))) || (sku && (existing.has('sku:' + norm(sku)) || inFile.has('sku:' + norm(sku))))) error = 'Posible duplicado (omitido)';
       else if (clean(field('foto')) && !/^https:\/\/\S+$/i.test(clean(field('foto')))) error = 'FotoURL debe ser HTTPS';
       if (sku) inFile.add('sku:' + norm(sku));
       inFile.add(duplicateKey);
       return { index: index + 2, row, isService, name, sku, category, categoryRecord, price, cost, stock, error, field };
     });
-  }, [rows, mapping, categorias, existingItems, services, branchId, defaultType, defaultCategoryId]);
+  }, [rows, mapping, categorias, existingItems, loadedCatalog, services, branchId, defaultType, defaultCategoryId]);
   const eligible = preview.filter(x => !x.error);
   const invalid = preview.filter(x => !!x.error);
   const process = async () => {
@@ -247,7 +249,7 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
       </div>
       {!!rows.length && <>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {['tipo','nombre','sku','categoria','precio','costo','stock','foto'].map(key =>
+          {['tipo','nombre','sku','descripcion','categoria','precio','costo','stock','marca','modelo','proveedor','ubicacion','foto'].map(key =>
             <div key={key}><Label className="capitalize">{key}</Label>
               <Select value={mapping[key] ?? ''} onValueChange={v => {setMapping(old => ({...old,[key]:v === 'none' ? '' : v}));setConfirmed(false);}}>
                 <SelectTrigger><SelectValue placeholder="Sin columna" /></SelectTrigger>
@@ -274,7 +276,8 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
             <SelectContent>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name || b.nombre || b.id}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="flex gap-4 text-sm"><span className="text-emerald-700">{eligible.length} listos</span><span className="text-amber-700">{invalid.length} omitidos o con errores</span><span>{preview.length} filas</span></div>
+        <div className="flex flex-wrap gap-4 text-sm"><span className="text-emerald-700">{eligible.length} listos</span><span className="text-amber-700">{invalid.length} omitidos o con errores</span><span>{preview.length} filas</span></div>
+        <p className="text-xs text-slate-600">Antes de importar, revisá que Nombre y Precio estén asociados a las columnas correctas. El costo y el stock faltantes se interpretan como cero.</p>
         <div className="max-h-64 overflow-auto border rounded-lg">
           <table className="w-full text-xs"><thead className="sticky top-0 bg-slate-100"><tr><th className="p-2 text-left">Fila</th><th className="p-2 text-left">Tipo</th><th className="p-2 text-left">Nombre</th><th className="p-2 text-right">Precio</th><th className="p-2 text-left">Validación</th></tr></thead>
             <tbody>{preview.map(p => <tr key={p.index} className="border-t"><td className="p-2">{p.index}</td><td className="p-2">{p.isService ? 'Servicio' : 'Producto'}</td><td className="p-2">{p.name}</td><td className="p-2 text-right">{p.price.toLocaleString('es-CR')}</td><td className={'p-2 ' + (p.error ? 'text-amber-700' : 'text-emerald-700')}>{p.error || 'Listo'}</td></tr>)}</tbody>

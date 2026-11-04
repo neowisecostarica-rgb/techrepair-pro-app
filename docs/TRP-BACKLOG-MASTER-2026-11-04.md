@@ -48,6 +48,14 @@
 - El Excel real es QA-01 de mañana, no un trabajo de hoy.
 - Prioridad comercial y beta 06-nov mantienen dictamen **NO-GO** si P0-AUD-01 permanece abierto.
 
+## Avance MB-01 Super Admin — 04-nov (posterior al split)
+
+- **Reutilización confirmada:** Consola `src/pages/Saas.jsx` existente con administración de organizaciones, entitlements/planes, sucursales, usuarios, auditoría, salud y control de piloto; `TenantManageDialog` mantiene las acciones por organización. `AdminReset` está deshabilitado intencionalmente y **no se reactivó**.
+- **Brecha corregida — MB-01A (código PASS):** Cuando `identityGateway.adminOverview` fallaba, `Saas.jsx` usaba `data = {}` y presentaba contadores vacíos como si fueran datos válidos. Ahora la consola principal muestra carga, error explícito y botón de reintento; las acciones y métricas no se renderizan hasta disponer de una consulta válida. Sin modificar funciones de backend, permisos o usuarios.
+- **Evidencia:** `scripts/verify-superadmin-overview-fail-closed.test.mjs` 1/1 PASS, lifecycle Super Admin 5/5 PASS, navegación 8/8 PASS, CRM seguridad 8/8 PASS, Vite build PASS.
+- **Estado MB-01:** PARCIAL, no finalizado funcionalmente. Requiere QA de consola con Super Admin real, validación de respuestas backend y de errores de consultas secundarias (Branches/OT/Garantías), y verificación de controles sensibles sin efectuar mutaciones productivas. No declarar consola integral GO.
+- **Siguientes acciones:** revisar la consistencia de los estados de carga/error de métricas secundarias, continuar MB-02 en código, y agrupar QA de roles en QA-06. Ningún nuevo módulo o vista duplicada.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

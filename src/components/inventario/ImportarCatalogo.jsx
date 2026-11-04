@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import readXlsxFile from 'read-excel-file';
+import ExcelJS from 'exceljs';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -61,15 +62,50 @@ function parseCSV(text) {
   if (quoted) throw new Error('Archivo CSV con comillas sin cerrar');
   return rows;
 }
-function downloadTemplate() {
-  const sample = [
-    ['Producto', 'REP-001', 'Cable HDMI', 'Cable de 2 metros', 'Repuestos', '4500', '2000', '10', 'Genérica', '2m', '', 'Bodega principal', ''],
-    ['Servicio', '', 'Mantenimiento preventivo', 'Limpieza y revisión', 'mantenimiento', '15000', '', '', '', '', '', '', ''],
-  ];
-  const csv = [COLUMNS, ...sample].map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(',')).join('\r\n');
-  const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
-  const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'TRP-plantilla-productos-servicios.csv'; anchor.click();
-  URL.revokeObjectURL(url);
+async function downloadTemplate() {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Productos y servicios', { views: [{ state: 'frozen', ySplit: 1 }] });
+  sheet.addRow(COLUMNS);
+  sheet.addRow(['Producto', 'REP-001', 'Cable HDMI', 'Cable de 2 metros', 'Repuestos', 4500, 2000, 10, 'Genérica', '2m', '', 'Bodega principal', '']);
+  sheet.addRow(['Servicio', '', 'Mantenimiento preventivo', 'Limpieza y revisión', 'mantenimiento', 15000, null, null, '', '', '', '', '']);
+  sheet.getRow(1).height = 27;
+  sheet.getRow(1).eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF155E63' } };
+    cell.alignment = { vertical: 'middle' };
+  });
+  [16, 17, 34, 38, 24, 18, 18, 12, 20, 18, 20, 24, 38].forEach((width, i) => { sheet.getColumn(i + 1).width = width; });
+  sheet.autoFilter = 'A1:M1';
+  sheet.getColumn(6).numFmt = '#,##0.00';
+  sheet.getColumn(7).numFmt = '#,##0.00';
+  sheet.getColumn(8).numFmt = '0';
+  sheet.dataValidations.add('A2:A1001', { type: 'list', allowBlank: false, formulae: ['"Producto,Servicio"'] });
+  const guide = workbook.addWorksheet('Cómo usar');
+  guide.getColumn(1).width = 32;
+  guide.getColumn(2).width = 105;
+  [
+    ['TRP - Importación sencilla', 'Si ya tenés tu propia lista de precios, subila directamente. No necesitás llenar esta plantilla.'],
+    ['Tipo', 'Producto o Servicio. Si tu archivo no tiene esta columna, podés elegir el tipo en el importador.'],
+    ['Nombre', 'Obligatorio. Nombre que verá el cliente.'],
+    ['PrecioVenta', 'Obligatorio. Precio final sin símbolo de moneda.'],
+    ['Categoría de producto', 'Debe existir en el inventario de TRP. También podés elegir una categoría para todo el archivo en el importador.'],
+    ['CostoUnitario', 'Opcional: si no lo conocés se utiliza cero.'],
+    ['Stock', 'Opcional: si no lo conocés se utiliza cero. El sistema registra existencias reales solo al confirmar la importación.'],
+    ['FotoURL', 'Opcional. URL HTTPS pública de la imagen. También podés cargar fotos después desde el editor del producto.'],
+    ['Servicios', 'No manejan existencias; sus categorías son diagnostico, reparacion, mantenimiento, instalacion u otros.'],
+    ['Duplicados', 'El importador revisa códigos SKU y nombres antes de guardar.'],
+    ['Confirmación', 'Revisá primero la vista previa; los datos se guardan solo después de confirmar.'],
+  ].forEach(row => guide.addRow(row));
+  guide.getRow(1).font = { bold: true, size: 14 };
+  guide.getColumn(2).alignment = { wrapText: true, vertical: 'top' };
+  for (let i = 2; i <= guide.rowCount; i++) guide.getRow(i).height = 32;
+  const bytes = await workbook.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'TRP-plantilla-productos-servicios.xlsx';
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 const SERVICE_CATEGORIES = ['diagnostico', 'reparacion', 'mantenimiento', 'instalacion', 'otros'];
 

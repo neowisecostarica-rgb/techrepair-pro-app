@@ -135,6 +135,9 @@ export const MENU_ITEMS = [
     icon: ShieldAlert,
     category: 'CLIENTES Y VENTAS',
     anyCapabilities: ['DELIVERY_OPERATIONS'],
+    // Warranty screen restricts roles further than the broad delivery capability.
+    // Do not offer a link that PageGuard will reject for CUSTOMER_SERVICE.
+    tenantRoles: ['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'],
   },
 
   // ── CLIENTES ────────────────────────────────────────────────────────────────

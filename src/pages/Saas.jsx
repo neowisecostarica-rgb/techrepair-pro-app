@@ -165,28 +165,47 @@ function SaasContent() {
   const auditLogs = adminOverview?.auditLogs || [];
   const entitlementsByOrg = adminOverview?.entitlements || {};
 
-  const { data: allSucursales = [] } = useQuery({
+  const { data: allSucursales, isError: branchesQueryError, isPending: branchesQueryPending, refetch: retryBranchesQuery } = useQuery({
     queryKey: ['all-branches'],
     queryFn: () => base44.entities.Branch.list(),
     enabled: !authIsImpersonating,
   });
 
-  const { data: allOrders = [] } = useQuery({
+  const { data: allOrders, isError: ordersQueryError, isPending: ordersQueryPending, refetch: retryOrdersQuery } = useQuery({
     queryKey: ['all-orders'],
     queryFn: () => base44.entities.OrdenTrabajo.list(),
     enabled: !authIsImpersonating,
   });
 
-  const { data: allGarantias = [] } = useQuery({
+  const { data: allGarantias, isError: warrantiesQueryError, isPending: warrantiesQueryPending, refetch: retryWarrantiesQuery } = useQuery({
     queryKey: ['all-garantias'],
     queryFn: () => base44.entities.Garantia.list(),
     enabled: !authIsImpersonating,
   });
 
-  const { data: partners = [] } = useQuery({
+  const { data: partners, isError: partnersQueryError, isPending: partnersQueryPending, refetch: retryPartnersQuery } = useQuery({
     queryKey: ['partners'],
     queryFn: () => base44.entities.Partner.list(),
   });
+
+  // Secondary collection failures must never be interpreted as empty business data.
+  const branchesVerified = Array.isArray(allSucursales) && !branchesQueryError && !branchesQueryPending;
+  const ordersVerified = Array.isArray(allOrders) && !ordersQueryError && !ordersQueryPending;
+  const warrantiesVerified = Array.isArray(allGarantias) && !warrantiesQueryError && !warrantiesQueryPending;
+  const partnersVerified = Array.isArray(partners) && !partnersQueryError && !partnersQueryPending;
+  const secondaryHealthVerified = branchesVerified && ordersVerified && warrantiesVerified;
+  const missingSecondaryQueries = [
+    !branchesVerified && 'Sucursales',
+    !ordersVerified && 'Órdenes',
+    !warrantiesVerified && 'Garantías',
+    !partnersVerified && 'Partners',
+  ].filter(Boolean);
+  const retrySecondaryQueries = () => {
+    if (!branchesVerified) retryBranchesQuery();
+    if (!ordersVerified) retryOrdersQuery();
+    if (!warrantiesVerified) retryWarrantiesQuery();
+    if (!partnersVerified) retryPartnersQuery();
+  };
 
   const toggleOrgStatusMutation = useMutation({
     mutationFn: async ({ orgId, newStatus, auditContext }) => {
@@ -301,24 +320,24 @@ function SaasContent() {
 
   const getOrgStats = (orgId) => {
     const users = allUserAccounts.filter(u => u.organization_id === orgId && u.status === 'active').length;
-    const branches = allSucursales.filter(b => b.organization_id === orgId).length;
+    const branches = branchesVerified ? allSucursales.filter(b => b.organization_id === orgId).length : null;
 
     return { users, branches };
   };
 
   // Health Checks (integridad de datos)
   const healthChecks = {
-    orgsWithoutSucursales: organizations.filter(org =>
+    orgsWithoutSucursales: branchesVerified ? organizations.filter(org =>
       org.status === 'active' && !allSucursales.some(b => b.organization_id === org.id)
-    ).length,
+    ).length : null,
     usersWithoutOrg: allUserAccounts.filter(u => !u.organization_id).length,
-    otsWithoutCliente: allOrders.filter(ot => !ot.cliente_id).length,
-    expiredActiveWarranties: allGarantias.filter(g =>
+    otsWithoutCliente: ordersVerified ? allOrders.filter(ot => !ot.cliente_id).length : null,
+    expiredActiveWarranties: warrantiesVerified ? allGarantias.filter(g =>
       g.estado === 'ACTIVA' && new Date(g.fecha_fin) < new Date()
-    ).length,
+    ).length : null,
   };
 
-  const totalHealthIssues = Object.values(healthChecks).reduce((a, b) => a + b, 0);
+  const totalHealthIssues = secondaryHealthVerified ? Object.values(healthChecks).reduce((a, b) => a + b, 0) : null;
 
   const createOrgMutation = useMutation({
     mutationFn: (data) => adminCreateIdentityOrganization(data.organization, data.admin_email),
@@ -556,14 +575,14 @@ function SaasContent() {
           </CardContent>
         </Card>
 
-        <Card className={`border border-slate-200 shadow-sm ${totalHealthIssues > 0 ? 'bg-amber-50' : 'bg-white'}`}>
+        <Card className={`border border-slate-200 shadow-sm ${totalHealthIssues === null || totalHealthIssues > 0 ? 'bg-amber-50' : 'bg-white'}`}>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircle className={`w-5 h-5 ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-slate-600'}`} />
               <p className="text-xs font-semibold text-slate-600">{t('saas.integrityAlerts','Alertas de integridad')}</p>
             </div>
             <p className={`text-3xl font-bold ${totalHealthIssues > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-              {totalHealthIssues}
+              {totalHealthIssues === null ? '—' : totalHealthIssues}
             </p>
             <p className="text-xs text-slate-600 mt-1">{t('saas.dataIntegrity','Data integrity')}</p>
           </CardContent>
@@ -577,7 +596,18 @@ function SaasContent() {
 
       <div id="health" className="scroll-mt-6" />
       {/* System Health */}
-      {showSection('health') && totalHealthIssues > 0 && (
+      {missingSecondaryQueries.length > 0 && (
+        <Card role="alert" className="border border-amber-300 bg-amber-50">
+          <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-amber-900">Indicadores secundarios sin verificar</p>
+              <p className="text-sm text-amber-800">Pendiente de cargar: {missingSecondaryQueries.join(', ')}. Las cifras de integridad o preparación que dependen de estas consultas no se consideran completas.</p>
+            </div>
+            <Button variant="outline" onClick={retrySecondaryQueries}>Reintentar consultas</Button>
+          </CardContent>
+        </Card>
+      )}
+      {showSection('health') && totalHealthIssues !== null && totalHealthIssues > 0 && (
         <Card className="border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -735,16 +765,16 @@ function SaasContent() {
                     const billingInterval = entitlement?.billing_interval || 'monthly';
                     const licenseStatus = entitlement?.license_status || (entitlementSource === 'legacy_compatibility' ? 'active' : 'pending');
                     const renewalAt = entitlement?.renewal_at || entitlement?.current_period_end || null;
-                    const partner = partners.find(p => p.id === org.partner_id);
+                    const partner = partnersVerified ? partners.find(p => p.id === org.partner_id) : null;
                     const provisioningReady = org.provisioning_status === 'READY';
-                    const hasPrimaryBranch = stats.branches > 0;
+                    const hasPrimaryBranch = branchesVerified && stats.branches > 0;
                     const hasAdmin = allUserAccounts.some(a => a.organization_id === org.id && a.role === 'ORG_ADMIN' && a.status === 'active');
                     const commercialReady = entitlementSource === 'legacy_compatibility' || Boolean(entitlement?.package_id);
                     const licenseReady = licenseStatus === 'active';
                     const operationalReady = org.status === 'active';
                     const readinessSteps = [provisioningReady, hasPrimaryBranch, hasAdmin, commercialReady, licenseReady, operationalReady];
                     const readinessCount = readinessSteps.filter(Boolean).length;
-                    const tenantReady = readinessCount === readinessSteps.length;
+                    const tenantReady = branchesVerified && readinessCount === readinessSteps.length;
 
                     return (
                       <tr
@@ -787,15 +817,15 @@ function SaasContent() {
                         </td>
                         <td className="p-3">
                           <Badge className={tenantReady ? 'bg-teal-50 text-teal-800 border border-teal-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}>
-                            {tenantReady ? t('saas.ready','Lista') : `${readinessCount}/6`}
+                            {!branchesVerified ? 'Sin verificar' : tenantReady ? t('saas.ready','Lista') : `${readinessCount}/6`}
                           </Badge>
-                          {!tenantReady && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? t('saas.initialConfigPending','Configuración inicial pendiente') : !hasPrimaryBranch ? t('saas.missingBranch','Falta sucursal') : !hasAdmin ? t('saas.missingAdmin','Falta administrador principal') : !commercialReady ? t('saas.missingPackage','Falta paquete') : !licenseReady ? t('saas.licensePending','Licencia pendiente') : t('saas.accessSuspended','Acceso suspendido')}</p>}
+                          {!tenantReady && branchesVerified && <p className="mt-1 max-w-[180px] text-[11px] leading-4 text-slate-500">{!provisioningReady ? t('saas.initialConfigPending','Configuración inicial pendiente') : !hasPrimaryBranch ? t('saas.missingBranch','Falta sucursal') : !hasAdmin ? t('saas.missingAdmin','Falta administrador principal') : !commercialReady ? t('saas.missingPackage','Falta paquete') : !licenseReady ? t('saas.licensePending','Licencia pendiente') : t('saas.accessSuspended','Acceso suspendido')}</p>}
                         </td>
                         <td className="hidden xl:table-cell p-3 text-xs text-slate-600">
                           {new Date(org.created_date).toLocaleDateString('es-ES')}
                         </td>
                         <td className="hidden 2xl:table-cell p-3 text-sm text-slate-700">{stats.users}</td>
-                        <td className="hidden 2xl:table-cell p-3 text-sm text-slate-700">{stats.branches}</td>
+                        <td className="hidden 2xl:table-cell p-3 text-sm text-slate-700">{stats.branches === null ? '—' : stats.branches}</td>
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             <Button

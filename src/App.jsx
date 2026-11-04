@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import ExpedienteOT from './pages/ExpedienteOT';
 import ActivoDetalle from './pages/ActivoDetalle';
@@ -17,6 +18,25 @@ const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
+
+// Every new module should open from its heading, never inherit the previous
+// module's page scroll. Hash links keep their native anchor behavior.
+function ScrollToTopOnModuleChange() {
+  const { pathname, hash } = useLocation();
+  useLayoutEffect(() => {
+    if (hash) return;
+    const reset = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+    };
+    reset();
+    // Browsers may restore the old position when a route settles; clear it
+    // once more after the new module paints, without touching sidebar/modals.
+    const frame = window.requestAnimationFrame(reset);
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
+  return null;
+}
 
 const PUBLIC_PAGE_NAMES = ['PortalCliente', 'PortalCotizacion', 'PortalComprobante', 'PortalGarantia'];
 const MARKETING_PATHS = ['/trp', '/website'];
@@ -97,6 +117,7 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <NavigationTracker />
+          <ScrollToTopOnModuleChange />
           <AuthenticatedApp />
         </Router>
         <Toaster />

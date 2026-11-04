@@ -134,9 +134,10 @@ function OperacionContent() {
 
   // Garantías
   const { data: garantias = [], isPending: warrantiesPending, isError: warrantiesError, refetch: retryWarranties } = useQuery({
-    queryKey: ['garantias-op', effectiveOrgId],
+    queryKey: ['garantias-op', effectiveOrgId, branchIdFijo, sucursalId],
     queryFn: () => base44.entities.Garantia.filter({
       organization_id: effectiveOrgId,
+      ...(branchIdFijo ? { branch_id: branchIdFijo } : sucursalId ? { branch_id: sucursalId } : {}),
       estado: 'ACTIVA'
     }, '-created_date', 500),
     enabled: !!effectiveOrgId

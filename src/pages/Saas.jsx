@@ -1170,10 +1170,11 @@ function SaasContent() {
                 <select
                   id="partner_id"
                   name="partner_id"
+                  disabled={!partnersVerified}
                   className="w-full px-3 py-2 border border-slate-200 rounded-md"
                 >
-                  <option value="">Sin partner</option>
-                  {partners.map(p => (
+                  <option value="">{partnersVerified ? 'Sin partner' : 'Partners no verificados'}</option>
+                  {(partnersVerified ? partners : []).map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>

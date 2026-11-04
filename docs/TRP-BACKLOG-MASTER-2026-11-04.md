@@ -71,6 +71,13 @@
 - **MB-02 estado:** avance de código PASS acotado, QA de roles reales pendiente en QA-06; issue #15 Inventario SALES sigue abierto hasta navegador; #12 y #13 siguen bloqueantes.
 - No se modificaron usuarios, organizaciones, pedidos ni datos COMPU STORE, ni Publish/deploy.
 
+## MB-03A — Órdenes de taller: error de carga visible y recuperación (04-nov)
+- Se revisaron las pantallas existentes `OrdenesTrabajo.jsx`, `ExpedienteOT.jsx`, la función `createWorkOrder` y la máquina de estados. La recepción ya contaba con correlación e idempotencia; **no se reimplementó ni se creó una pantalla nueva**.
+- **Brecha corregida:** una falla de `listWorkOrders` se representaba como `ordenes=[]` sin diferenciar entre vacío legítimo y consulta fallida. Ahora la vista principal presenta un aviso de error con reintento y evita mostrar lista/Kanban/«No hay órdenes» o contadores falsamente vacíos durante el error.
+- Pruebas: `scripts/verify-mb03-orders-error-state.test.mjs` PASS; recepción atómica 24/24 PASS; comercial 16/16 PASS; compilación PASS.
+- **Estado MB-03:** parcial, no validado en navegador; recepción→diagnóstico→reparación→entrega E2E (QA-07) sigue pendiente con fixtures aislados. No tocar órdenes COMPU STORE ni publicar.
+- Seguir con una brecha concreta del expediente/diagnóstico (MB-03B), sin repetir contrato de recepción salvo regresión.
+
 ## Correcciones guardadas entre 2026-11-04 y este corte
 | ID | Cambio | Evidencia / checkpoint | Estado correcto |
 |---|---|---|---|

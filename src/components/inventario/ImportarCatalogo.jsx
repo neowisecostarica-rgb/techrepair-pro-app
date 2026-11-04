@@ -133,6 +133,7 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
     setConfirmed(false); setResult(null); setRows([]); setLoadedCatalog([]);
     try {
       if (!/\.(csv|xlsx)$/i.test(file.name)) throw new Error('Usá un archivo .csv o .xlsx');
+      if (file.size > 5 * 1024 * 1024) throw new Error('El archivo supera 5 MB. Dividí la lista en lotes más pequeños.');
       const cells = /\.xlsx$/i.test(file.name) ? await readXlsxFile(file) : parseCSV(await file.text());
       if (cells.length < 2) throw new Error('El archivo necesita encabezados y al menos una fila');
       if (cells.length > 1001) throw new Error('Máximo 1000 registros por importación. Dividí el archivo en lotes.');

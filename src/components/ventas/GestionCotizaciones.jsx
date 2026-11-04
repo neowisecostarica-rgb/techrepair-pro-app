@@ -15,9 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 
 const DESCUENTO_MAXIMO_SIN_APROBACION = 20;
-import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import FormularioCotizacion from '@/components/cotizacion/FormularioCotizacion';
+import { descargarDocumentoCotizacion } from '@/components/ventas/descargarDocumentoCotizacion';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { customer360QueryKeys, recordCustomerMessage } from '@/api/customer360';
@@ -306,112 +306,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   };
 
   const descargarPDF = (cotizacion, cliente, organization, tipoDocumento = 'cotizacion') => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.width;
-    let y = 20;
-
-    // Header
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text(tipoDocumento === 'proforma' ? 'PROFORMA COMERCIAL' : t('quote.pdfTitle','COTIZACIÓN COMERCIAL'), pageWidth / 2, y, { align: 'center' });
-    
-    y += 10;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(200, 0, 0);
-    doc.text('Este documento NO es una factura ni comprobante fiscal', pageWidth / 2, y, { align: 'center' });
-    doc.setTextColor(0, 0, 0);
-
-    y += 15;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${organization?.name || 'Negocio'}`, 14, y);
-    y += 6;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    if (organization?.telefono_negocio) {
-      doc.text(`Tel: ${organization.telefono_negocio}`, 14, y);
-      y += 6;
-    }
-
-    y += 10;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Cliente:', 14, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(cliente?.nombre_completo || 'N/A', 40, y);
-    y += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Estado:', 14, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(estadoConfig[cotizacion.estado]?.label || cotizacion.estado, 40, y);
-    y += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Fecha:', 14, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(format(new Date(cotizacion.created_date), 'dd/MM/yyyy'), 40, y);
-    
-    if (cotizacion.valida_hasta) {
-      y += 6;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Válida hasta:', 14, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(format(new Date(cotizacion.valida_hasta), 'dd/MM/yyyy'), 40, y);
-    }
-
-    y += 15;
-    doc.setFont('helvetica', 'bold');
-    doc.text('ÍTEMS', 14, y);
-    y += 8;
-
-    // Items
-    cotizacion.items?.forEach((item, idx) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${idx + 1}. ${item.descripcion}`, 14, y);
-      y += 5;
-      doc.setFontSize(9);
-      doc.text(`${item.cantidad} x ₡${item.precio_unitario?.toLocaleString()} ${item.descuento_porcentaje > 0 ? `(-${item.descuento_porcentaje}%)` : ''}`, 20, y);
-      doc.text(`₡${item.subtotal?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
-      doc.setFontSize(10);
-      y += 7;
-    });
-
-    y += 5;
-    doc.line(14, y, pageWidth - 14, y);
-    y += 7;
-
-    // Totales
-    doc.text('Subtotal:', 14, y);
-    doc.text(`₡${cotizacion.subtotal?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
-    y += 6;
-    if (cotizacion.descuento_total > 0) {
-      doc.text('Descuento:', 14, y);
-      doc.text(`-₡${cotizacion.descuento_total?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
-      y += 6;
-    }
-    doc.text('IVA (13%):', 14, y);
-    doc.text(`₡${cotizacion.impuesto?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
-    y += 8;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('TOTAL:', 14, y);
-    doc.text(`₡${cotizacion.total?.toLocaleString()}`, pageWidth - 40, y, { align: 'right' });
-
-    if (cotizacion.notas) {
-      y += 15;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Notas:', 14, y);
-      y += 6;
-      doc.setFont('helvetica', 'normal');
-      const splitNotas = doc.splitTextToSize(cotizacion.notas, pageWidth - 28);
-      doc.text(splitNotas, 14, y);
-    }
-
-    doc.save(`${tipoDocumento === 'proforma' ? 'Proforma' : 'Cotizacion'}_${cotizacion.id}.pdf`);
+    descargarDocumentoCotizacion(cotizacion, cliente, organization, tipoDocumento);
   };
 
   const imprimirCotizacion = async (cotizacion, organization) => {

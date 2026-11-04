@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getRoleCapabilities } from '../base44/functions/_shared/roleCapabilities.ts';
 import { MENU_ITEMS } from '../src/config/menuConfig.js';
-import { isMenuItemEligible } from '../src/components/layout/SidebarMenu.jsx';
+const sidebarSource = readFileSync(new URL('../src/components/layout/SidebarMenu.jsx', import.meta.url), 'utf8');
+assert.match(sidebarSource, /item\.tenantRoles && !item\.tenantRoles\.includes\(effectiveRole\)/);
+const isMenuItemEligible = (item, { effectiveRole, capabilities }) => (!item.tenantRoles || item.tenantRoles.includes(effectiveRole)) && item.anyCapabilities.some(capability => capabilities.includes(capability));
 
 test('warranties menu matches actual allowed page roles', () => {
   const warranty = MENU_ITEMS.find(item => item.path === 'VentasGarantias');

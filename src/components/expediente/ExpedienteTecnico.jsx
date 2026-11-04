@@ -61,7 +61,7 @@ function Dato({ label, children }) {
 export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, cliente, equipo, tecnico, onOTUpdated }) {
   const { t } = useI18n();
   // ── DMR activo ────────────────────────────────────────────────────────────
-  const { data: dmrList = [], isLoading: loadingDMR } = useQuery({
+  const { data: dmrList = [], isLoading: loadingDMR, isError: dmrFailed, refetch: retryDMR } = useQuery({
     queryKey: ['expediente-dmr', ot.id],
     queryFn: () => base44.entities.DiagnosticMasterRecord.filter({
       orden_trabajo_id: ot.id,
@@ -82,7 +82,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
   const smartIntake = smartIntakeResult?.intake || null;
 
   // ── Diagnóstico Técnico ───────────────────────────────────────────────────
-  const { data: diagList = [] } = useQuery({
+  const { data: diagList = [], isLoading: loadingDiagnosis, isError: diagnosisFailed, refetch: retryDiagnosis } = useQuery({
     queryKey: ['expediente-diag-tecnico', ot.id],
     queryFn: () => base44.entities.DiagnosticoTecnico.filter({ orden_trabajo_id: ot.id }),
     enabled: !!ot.id,
@@ -91,7 +91,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
   const diag = diagList[0] || null;
 
   // ── DiagnosticoDocumento activo ───────────────────────────────────────────
-  const { data: docList = [] } = useQuery({
+  const { data: docList = [], isError: documentFailed, refetch: retryDocument } = useQuery({
     queryKey: ['expediente-diag-doc', diag?.id],
     queryFn: () => base44.entities.DiagnosticoDocumento.filter({ diagnostico_id: diag.id }),
     enabled: !!diag?.id,
@@ -100,7 +100,7 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
   const docActivo = docList.find(d => d.estado !== 'ANULADO') || null;
 
   // ── Evidencias ────────────────────────────────────────────────────────────
-  const { data: evidencias = [] } = useQuery({
+  const { data: evidencias = [], isError: evidenceFailed, refetch: retryEvidence } = useQuery({
     queryKey: ['expediente-evidencias', diag?.id],
     queryFn: () => base44.entities.DiagnosticoEvidencia.filter({ diagnostico_id: diag.id }),
     enabled: !!diag?.id,
@@ -113,6 +113,18 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
 
   return (
     <div className="space-y-3">
+      {(dmrFailed || diagnosisFailed || documentFailed || evidenceFailed) && (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-semibold">Información técnica sin verificar</p>
+          <p className="mt-1">No pudimos consultar algunos registros. Esto no significa que el diagnóstico o las evidencias no existan.</p>
+          <button type="button" className="mt-2 font-semibold underline" onClick={() => {
+            if (dmrFailed) retryDMR();
+            if (diagnosisFailed) retryDiagnosis();
+            if (documentFailed) retryDocument();
+            if (evidenceFailed) retryEvidence();
+          }}>Reintentar consultas</button>
+        </div>
+      )}
 
       {/* ── Revelación controlada de PIN/contraseña del dispositivo ──────── */}
       <RevealDeviceCredential ot={ot} effectiveRole={effectiveRole} />
@@ -201,11 +213,16 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
         defaultOpen={false}
         badge={
           loadingDMR ? <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" /> :
+          dmrFailed ? <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px]">No verificado</Badge> :
           dmr ? <Badge className="bg-indigo-100 text-indigo-700 border-0 text-[10px]">#{dmr.dmr_number}</Badge> :
           <Badge className="bg-slate-100 text-slate-500 border-0 text-[10px]">Sin DMR</Badge>
         }
       >
-        {!dmr ? (
+        {loadingDMR ? (
+          <p className="text-xs text-slate-500 py-2">Consultando documento maestro…</p>
+        ) : dmrFailed ? (
+          <p className="text-xs text-amber-800 py-2">No fue posible verificar el documento maestro.</p>
+        ) : !dmr ? (
           <p className="text-xs text-slate-400 italic py-2">No existe DMR activo para esta OT.</p>
         ) : (
           <div className="space-y-3">
@@ -344,6 +361,8 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
         accentClass="bg-purple-50 text-purple-700"
         defaultOpen={false}
         badge={
+          loadingDiagnosis ? <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" /> :
+          diagnosisFailed ? <Badge className="bg-amber-100 text-amber-800 border-0 text-[10px]">No verificado</Badge> :
           diag
             ? <Badge className={`border-0 text-[10px] ${diag.estado === 'listo_aprobacion' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
                 {diag.estado === 'listo_aprobacion' ? 'Listo' : 'Borrador'}
@@ -351,7 +370,11 @@ export default function ExpedienteTecnico({ ot, organizationId, effectiveRole, c
             : <Badge className="bg-slate-100 text-slate-400 border-0 text-[10px]">{t('ops.noDiagnosis','Sin diagnóstico')}</Badge>
         }
       >
-        {!diag ? (
+        {loadingDiagnosis ? (
+          <p className="text-xs text-slate-500 py-2">Consultando diagnóstico técnico…</p>
+        ) : diagnosisFailed ? (
+          <p className="text-xs text-amber-800 py-2">No fue posible verificar el diagnóstico técnico.</p>
+        ) : !diag ? (
           <p className="text-xs text-slate-400 italic py-2">{t('ops.noTechDiagnosis','Sin diagnóstico técnico registrado aún.')}</p>
         ) : (
           <div className="space-y-2">

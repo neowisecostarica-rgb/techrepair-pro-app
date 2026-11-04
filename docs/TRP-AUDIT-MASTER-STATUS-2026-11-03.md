@@ -3,7 +3,8 @@
 **Estado:** AUDITORÍA DE CÓDIGO EJECUTADA; CIERRE INTEGRAL BLOQUEADO (NO-GO general)
 **Fecha de última consolidación:** 2026-11-03
 **Aplicación Base44:** 695d708948469128f473d080
-**Propósito:** Fuente de continuidad obligatoria para el siguiente equipo/agente; evitar repetir diagnósticos y no perder evidencias.
+**Propósito:** Historial de auditoría y evidencias verificadas para continuidad.
+**Actualización de seguimiento (04-nov):** El backlog operativo vigente y sus cierres están en [TRP-BACKLOG-MASTER-2026-11-04.md](TRP-BACKLOG-MASTER-2026-11-04.md). Este archivo conserva la auditoría histórica de 03-nov; no reinterpretar sus estados anteriores como el estado más reciente.
 
 > Leer este archivo al retomar TRP. No declarar PASS de runtime a partir de pruebas de código. No ejecutar Publish, deploy, creación de clientes/cobros o cambios sobre datos reales sin autorización expresa. No reabrir correcciones comerciales COM-001..004 salvo regresión demostrada.
 

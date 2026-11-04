@@ -2,7 +2,9 @@
 
 **Entrada para programación:** [AGENTS.md](../AGENTS.md), con reglas, gates, comandos y handoff obligatorio.
 
-**LEER PRIMERO:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)
+**BACKLOG VIGENTE (04-nov):** [TRP-BACKLOG-MASTER-2026-11-04.md](TRP-BACKLOG-MASTER-2026-11-04.md) — priorización actual, cierres de hoy, pendientes y gates.
+
+**HISTORIAL DE AUDITORÍA:** [TRP-AUDIT-MASTER-STATUS-2026-11-03.md](TRP-AUDIT-MASTER-STATUS-2026-11-03.md)
 
 **SEC-020 (causa de pantalla blanca identificada):** [Null en traducción de SidebarMenu, corrección y prueba SSR seis roles](TRP-SEC-020-SIDEBAR-NULL-I18N-ROOT-CAUSE-2026-11-03.md).
 

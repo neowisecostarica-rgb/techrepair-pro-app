@@ -79,14 +79,9 @@ function InventarioContent() {
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const res = await base44.functions.invoke('createInventoryItem', {
-        itemData: { ...data, organization_id: effectiveOrgId },
+        itemData: { ...data, organization_id: effectiveOrgId, foto_url: fotos[0] || null, galeria_fotos: fotos },
       });
       const item = res.data?.data ?? res.data;
-      if (item?.id && fotos.length) {
-        await base44.functions.invoke('updateInventoryPhotos', { id: item.id, fotos });
-        item.foto_url = fotos[0];
-        item.galeria_fotos = fotos;
-      }
       return item;
     },
     onSuccess: () => {
@@ -105,14 +100,9 @@ function InventarioContent() {
     mutationFn: async ({ id, data }) => {
       const res = await base44.functions.invoke('updateInventoryItem', {
         id,
-        updateData: data,
+        updateData: { ...data, foto_url: fotos[0] || null, galeria_fotos: fotos },
       });
       const item = res.data?.data ?? res.data;
-      if (item?.id) {
-        await base44.functions.invoke('updateInventoryPhotos', { id: item.id, fotos });
-        item.foto_url = fotos[0] || null;
-        item.galeria_fotos = fotos;
-      }
       return item;
     },
     onSuccess: () => {

@@ -53,13 +53,13 @@ function ExpedienteOTContent() {
   };
 
   // ── Carga de OT principal ─────────────────────────────────────────────────
-  const { data: ot, isLoading: loadingOT, isError } = useQuery({
-    queryKey: ['expediente-ot', id],
+  const { data: ot, isLoading: loadingOT, isError: otLoadFailed, error: otLoadError, refetch: retryOTLoad } = useQuery({
+    queryKey: ['expediente-ot', id, effectiveOrgId],
     queryFn: async () => {
-      const results = await base44.entities.OrdenTrabajo.filter({ id });
+      const results = await base44.entities.OrdenTrabajo.filter({ id, organization_id: effectiveOrgId });
       return results[0] || null;
     },
-    enabled: !!id,
+    enabled: !!id && !!effectiveOrgId,
     staleTime: 30 * 1000,
     refetchInterval: 10 * 1000,
     refetchIntervalInBackground: false,
@@ -139,7 +139,21 @@ function ExpedienteOTContent() {
     );
   }
 
-  if (isError || !ot) {
+  if (otLoadFailed) {
+    return (
+      <div role="alert" className="max-w-xl mx-auto mt-16 text-center space-y-4">
+        <AlertCircle className="w-16 h-16 text-amber-500 mx-auto" />
+        <h2 className="text-xl font-bold text-slate-900">No se pudo consultar el expediente</h2>
+        <p className="text-slate-600">No podemos confirmar el estado de la orden en este momento. {otLoadError?.message || 'Revisá la conexión e intentá de nuevo.'}</p>
+        <div className="flex justify-center gap-2">
+          <Button onClick={() => retryOTLoad()}>Reintentar consulta</Button>
+          <Button variant="outline" onClick={() => navigate('/OrdenesTrabajo')}>Volver a Órdenes</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!ot) {
     return (
       <div className="max-w-xl mx-auto mt-16 text-center">
         <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />

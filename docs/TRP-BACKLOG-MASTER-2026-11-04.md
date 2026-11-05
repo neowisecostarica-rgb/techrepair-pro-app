@@ -175,3 +175,12 @@
 - docs/TRP-UX-NAV-001-VIDEO-SCROLL-2026-11-04.md
 - docs/TRP-P0-AUD-01-ATOMIC-LEDGER-ADR-2026-11-03.md
 - GitHub issues #12, #13, #15
+
+
+## Continuidad y cierre documental — jueves 05-nov-2026 (MB-06B)
+- **Fuente actual comprobada:** Base44 main `e14995d522086675cf0c27ae119deb1adab0ac4e`, `get_app_status=ready`, `git status --short` limpio al iniciar esta sesión. Cambios posteriores al candidato funcional `1c1c8c2` afectan solo documentos (`TRP-P0-AUD-01` ADR, MB-06, README, AGENTS, backlog), según `git log --name-only`; **no prueban despliegue backend ni QA**.
+- **Cierre MB-06B:** conciliación documental de SHA y clasificación ejecutiva de pendientes, sin recrear vistas, repetir suites aprobadas ni tocar datos. MB-06 preparación permanece COMPLETADA; release NO-GO y no autorizado.
+- **Sin reaperturas:** UX-NAV-001 CERRADO; COM-IMPORT-001..003, COM-QUOTE-PDF, COM-CRM-006, COM-QUOTE-007, POS-008/009 y MB-01A/B, MB-02A, MB-03A/B/C, MB-04A/B permanecen implementados según evidencia del 04-nov. No declarar QA funcional PASS a partir de contratos.
+- **QA mínima agrupada:** (1) Excel real: solo previsualización hasta autorización, columnas/precio/stock/tipo/sucursal/duplicados; (2) SALES/OWNER inventario, CRM, cotización/PDF y Caja en lectura; (3) cuando #12 permita fixture aislado, una sola ronda E2E Comercial+OT y pruebas negativas multirol; (4) #13 concurrencia REAL antes de operaciones sensibles; (5) matriz 1440/390 y conciliación runtime, decisión final.
+- **Bloqueantes conservados:** #12 identidad y membresía aislada, #13 unicidad atómica auditada en runtime, #15 inventario SALES/OWNER navegador; no cerrar issues sin evidencia. Excel real NO RECIBIDO en esta sesión, no se afirmó previsualización.
+- **Límites:** cero Publish/deploy, cero registros de COMPU STORE modificados, cero cambios de usuarios/roles o cobros. **Próximo avance seguro:** QA solo lectura y previsualización de Excel aportado por Dirección General, mientras la decisión sobre persistencia atómica queda pendiente de validación técnica/autorización.

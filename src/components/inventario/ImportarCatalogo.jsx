@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import readXlsxFile from 'read-excel-file';
-import { FIELDS, ALIASES as IMPORT_ALIASES, norm as importNorm, normalizeSheets, validateImportRow } from './catalogImportUtils.mjs';
+import { FIELDS, ALIASES as IMPORT_ALIASES, normalizeSheets, validateImportRow } from './catalogImportUtils.mjs';
 import ExcelJS from 'exceljs';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -291,7 +290,7 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
         </div>}
         <div className="grid gap-3 md:grid-cols-2">
           <div><Label>Tipo si el archivo no tiene columna Tipo</Label>
-            <Select value={defaultType} onValueChange={v => { setDefaultType(v); setConfirmed(false); }}>
+            <Select value={defaultType} onValueChange={v => { setDefaultType(v); setNormalized(old=>old.map(p=>p.explicitType?p:{...p,data:{...p.data,tipo:v}})); setConfirmed(false); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="producto">Productos</SelectItem><SelectItem value="servicio">Servicios</SelectItem></SelectContent>
             </Select>

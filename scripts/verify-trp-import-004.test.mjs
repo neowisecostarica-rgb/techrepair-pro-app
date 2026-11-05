@@ -42,6 +42,22 @@ test('numeric barcode exceeding safe integer is blocked',()=>{
  const x={...rows[0],warnings:['Código de barras fuera de precisión segura'],data:{...rows[0].data,costo:2000}};
  assert.match(validateImportRow(x,{categorias:cat,branchId:'test'}).error,/precisión/);
 });
+test('official template Servicio stays servicio',()=>{
+ const x=normalizeSheets([{name:'Productos y servicios',rows:[['Tipo','SKU','Nombre','PrecioVenta'],['Servicio','','Revisión preventiva',10000]]}])[0];
+ assert.equal(x.data.tipo,'Servicio');
+});
+test('explicit N/A quantity blocks rather than converting zero',()=>{
+ const x={...rows[0],data:{...rows[0].data,costo:1000,stock:'N/A'}};
+ assert.match(validateImportRow(x,{categorias:cat,branchId:'test'}).error,/Stock N\/A/);
+});
+test('duplicate external barcode blocked',()=>{
+ const x={...rows[0],data:{...rows[0].data,costo:1000,codigo_barras:'000089'}};
+ assert.match(validateImportRow(x,{categorias:cat,branchId:'test',existing:new Set(['barcode:000089'])}).error,/duplicado/);
+});
+test('branch must be explicitly assigned for stock',()=>{
+ const x={...rows[0],data:{...rows[0].data,costo:1000}};
+ assert.match(validateImportRow(x,{categorias:cat}).error,/sucursal/);
+});
 for(const [status,name,detail] of tests)console.log(status,name,detail||'');
 if(tests.some(([status])=>status==='FAIL'))process.exit(1);
 console.log('TOTAL',tests.length,'PASS; no live Base44 API writes');

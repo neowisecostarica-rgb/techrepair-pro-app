@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import readXlsxFile from 'read-excel-file';
+import { FIELDS, ALIASES as IMPORT_ALIASES, norm as importNorm, normalizeSheets, validateImportRow } from './catalogImportUtils.mjs';
 import ExcelJS from 'exceljs';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -11,10 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, Download, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
-const COLUMNS = ['Tipo', 'SKU', 'Nombre', 'Descripcion', 'Categoria', 'PrecioVenta', 'CostoUnitario', 'Stock', 'Marca', 'Modelo', 'Proveedor', 'Ubicacion', 'FotoURL'];
+const COLUMNS = ['Tipo', 'SKU', 'CodigoBarras', 'Nombre', 'Descripcion', 'Categoria', 'PrecioVenta', 'CostoUnitario', 'Stock', 'Marca', 'Modelo', 'Proveedor', 'Ubicacion', 'FotoURL', 'NumeroSerie'];
 const ALIASES = {
-  tipo: ['tipo', 'type', 'clase'],
-  sku: ['sku', 'codigo', 'codigoproducto', 'codigoarticulo', 'codigobarras', 'barcode'],
+  tipo: IMPORT_ALIASES.tipo,
+  sku: IMPORT_ALIASES.sku,
+  codigo_barras: IMPORT_ALIASES.codigo_barras,
+  numero_serie: IMPORT_ALIASES.numero_serie,
   nombre: ['nombre', 'producto', 'servicio', 'articulo', 'descripcionproducto', 'name'],
   descripcion: ['descripcion', 'detalle', 'description'],
   categoria: ['categoria', 'category', 'familia', 'rubro'],
@@ -66,19 +69,20 @@ async function downloadTemplate() {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Productos y servicios', { views: [{ state: 'frozen', ySplit: 1 }] });
   sheet.addRow(COLUMNS);
-  sheet.addRow(['Producto', 'REP-001', 'Cable HDMI', 'Cable de 2 metros', 'Repuestos', 4500, 2000, 10, 'Genérica', '2m', '', 'Bodega principal', '']);
-  sheet.addRow(['Servicio', '', 'Mantenimiento preventivo', 'Limpieza y revisión', 'mantenimiento', 15000, null, null, '', '', '', '', '']);
+  sheet.addRow(['Producto', 'REP-001', '7400000000001', 'Cable HDMI', 'Cable de 2 metros', 'Repuestos', 4500, 2000, 10, 'Genérica', '2m', '', 'bodega', '', '']);
+  sheet.addRow(['Servicio', '', '', 'Mantenimiento preventivo', 'Limpieza y revisión', 'mantenimiento', 15000, null, null, '', '', '', '', '', '']);
   sheet.getRow(1).height = 27;
   sheet.getRow(1).eachCell(cell => {
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF155E63' } };
     cell.alignment = { vertical: 'middle' };
   });
-  [16, 17, 34, 38, 24, 18, 18, 12, 20, 18, 20, 24, 38].forEach((width, i) => { sheet.getColumn(i + 1).width = width; });
-  sheet.autoFilter = 'A1:M1';
-  sheet.getColumn(6).numFmt = '#,##0.00';
+  [16, 17, 20, 34, 38, 24, 18, 18, 12, 20, 18, 20, 24, 38, 24].forEach((width, i) => { sheet.getColumn(i + 1).width = width; });
+  sheet.autoFilter = 'A1:O1';
   sheet.getColumn(7).numFmt = '#,##0.00';
-  sheet.getColumn(8).numFmt = '0';
+  sheet.getColumn(8).numFmt = '#,##0.00';
+  sheet.getColumn(9).numFmt = '0';
+  sheet.getColumn(3).numFmt = '@';
   sheet.dataValidations.add('A2:A1001', { type: 'list', allowBlank: false, formulae: ['"Producto,Servicio"'] });
   const guide = workbook.addWorksheet('Cómo usar');
   guide.getColumn(1).width = 32;
@@ -89,8 +93,12 @@ async function downloadTemplate() {
     ['Nombre', 'Obligatorio. Nombre que verá el cliente.'],
     ['PrecioVenta', 'Obligatorio. Precio final sin símbolo de moneda.'],
     ['Categoría de producto', 'Debe existir en el inventario de TRP. También podés elegir una categoría para todo el archivo en el importador.'],
-    ['CostoUnitario', 'Opcional: si no lo conocés se utiliza cero.'],
-    ['Stock', 'Opcional: si no lo conocés se utiliza cero. El sistema registra existencias reales solo al confirmar la importación.'],
+    ['CostoUnitario', 'Obligatorio para importar productos. Si es desconocido, la fila queda en revisión; nunca inventamos un cero.'],
+    ['Stock', 'Obligatorio para importar productos. N/A o vacío queda en revisión; nunca se sustituye por cero.'],
+    ['CodigoBarras', 'Código externo del cliente/fabricante; distinto del SKU. Mantener como texto para conservar ceros iniciales.'],
+    ['NumeroSerie', 'Número de serie por unidad, independiente del SKU y código de barras.'],
+    ['Código interno TRP', 'Se genera por servidor y no se usa como código de búsqueda comercial.'],
+    ['Excel de varias hojas', 'Se revisan todas las hojas en una sola previsualización, sin crear registros automáticamente.'], 
     ['FotoURL', 'Opcional. URL HTTPS pública de la imagen. También podés cargar fotos después desde el editor del producto.'],
     ['Servicios', 'No manejan existencias; sus categorías son diagnostico, reparacion, mantenimiento, instalacion u otros.'],
     ['Duplicados', 'El importador revisa códigos SKU y nombres antes de guardar.'],

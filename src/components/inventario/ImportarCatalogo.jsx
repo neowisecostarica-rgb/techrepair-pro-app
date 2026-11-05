@@ -121,6 +121,8 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState([]);
+  const [normalized, setNormalized] = useState([]);
+  const [sheetCounts, setSheetCounts] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [mapping, setMapping] = useState({});
   const [fileName, setFileName] = useState('');
@@ -138,21 +140,36 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    setConfirmed(false); setResult(null); setRows([]); setLoadedCatalog([]);
+    setConfirmed(false); setResult(null); setRows([]); setNormalized([]); setSheetCounts([]); setLoadedCatalog([]);
     try {
       if (!/\.(csv|xlsx)$/i.test(file.name)) throw new Error('Usá un archivo .csv o .xlsx');
       if (file.size > 5 * 1024 * 1024) throw new Error('El archivo supera 5 MB. Dividí la lista en lotes más pequeños.');
-      const cells = /\.xlsx$/i.test(file.name) ? await readXlsxFile(file) : parseCSV(await file.text());
-      if (cells.length < 2) throw new Error('El archivo necesita encabezados y al menos una fila');
-      if (cells.length > 1001) throw new Error('Máximo 1000 registros por importación. Dividí el archivo en lotes.');
-      const detectedHeaders = cells[0].map(clean);
-      const map = {};
-      Object.entries(ALIASES).forEach(([field, alternatives]) => {
-        const index = detectedHeaders.findIndex(h => alternatives.includes(norm(h)));
-        map[field] = index < 0 ? '' : String(index);
-      });
-      setHeaders(detectedHeaders); setRows(cells.slice(1).filter(row => row.some(v => clean(v))));
-      setMapping(map); setFileName(file.name);
+      let sheets;
+      if (/\.xlsx$/i.test(file.name)) {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(await file.arrayBuffer());
+        sheets = wb.worksheets.filter(ws => ws.state !== 'hidden' && ws.name !== 'Cómo usar').map(ws => ({
+          name: ws.name,
+          rows: Array.from({length: ws.rowCount}, (_, i) => {
+            const row = ws.getRow(i + 1);
+            return Array.from({length: ws.columnCount}, (_, j) => {
+              const value = row.getCell(j + 1).value;
+              if (value && typeof value === 'object') {
+                if ('result' in value) return value.result;
+                if ('text' in value) return value.text;
+                return null;
+              }
+              return value;
+            });
+          }),
+        }));
+      } else sheets = [{name: 'CSV', rows: parseCSV(await file.text())}];
+      const normalizedRows = normalizeSheets(sheets);
+      if (!normalizedRows.length) throw new Error('No se encontraron productos en las hojas');
+      if (normalizedRows.length > 1000) throw new Error('Máximo 1000 registros por importación');
+      setNormalized(normalizedRows);
+      setSheetCounts(sheets.map(s => ({name:s.name, count:normalizedRows.filter(r=>r.sheet===s.name).length})));
+      setHeaders([]); setMapping({}); setRows(normalizedRows.map(r=>r.data)); setFileName(file.name);
       const [branchList, serviceList, catalogList] = await Promise.all([
         base44.entities.Branch.filter({ organization_id: organizationId, active: true }, '-created_date', 100),
         base44.entities.Servicio.filter({ organization_id: organizationId }, '-created_date', 2000),
@@ -166,9 +183,13 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
   };
 
   const preview = useMemo(() => {
-    const existing = new Set([...existingItems, ...loadedCatalog].flatMap(p => [p.sku ? 'sku:' + norm(p.sku) : null, 'product:' + norm(p.nombre)].filter(Boolean)));
+    const existing = new Set([...existingItems, ...loadedCatalog].flatMap(p => [p.sku ? 'sku:' + norm(p.sku) : null, p.codigo_barras ? 'barcode:' + norm(p.codigo_barras) : null, p.numero_serie ? 'serial:' + norm(p.numero_serie) : null].filter(Boolean)));
     services.forEach(s => existing.add('service:' + norm(s.nombre)));
     const inFile = new Set();
+    if (normalized.length) return normalized.map(source => {
+      const p=validateImportRow(source,{categorias,defaultCategoryId,branchId,seen:inFile,existing});
+      return {...p,index:p.line,name:p.data.nombre,sku:p.data.sku,codigo_barras:p.data.codigo_barras,numero_serie:p.data.numero_serie,category:p.data.categoria,field:key=>p.data[key]};
+    });
     return rows.map((row, index) => {
       const field = key => mapping[key] === '' || mapping[key] == null ? '' : row[Number(mapping[key])];
       const kind = norm(field('tipo') || defaultType);
@@ -193,7 +214,7 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
       inFile.add(duplicateKey);
       return { index: index + 2, row, isService, name, sku, category, categoryRecord, price, cost, stock, error, field };
     });
-  }, [rows, mapping, categorias, existingItems, loadedCatalog, services, branchId, defaultType, defaultCategoryId]);
+  }, [rows, normalized, mapping, categorias, existingItems, loadedCatalog, services, branchId, defaultType, defaultCategoryId]);
   const eligible = preview.filter(x => !x.error);
   const invalid = preview.filter(x => !!x.error);
   const process = async () => {
@@ -217,6 +238,8 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
             itemData: {
               organization_id: organizationId, branch_id: branchId,
               nombre: p.name, sku: p.sku || undefined,
+              codigo_barras: p.codigo_barras || undefined,
+              numero_serie: p.numero_serie || undefined,
               categoria_id: p.categoryRecord.id,
               descripcion: clean(p.field('descripcion')),
               costo_unitario: p.cost, precio_venta: p.price, cantidad_disponible: p.stock,
@@ -257,14 +280,15 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
         {fileName && <span className="text-xs text-slate-500">{fileName}</span>}
       </div>
       {!!rows.length && <>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {['tipo','nombre','sku','descripcion','categoria','precio','costo','stock','marca','modelo','proveedor','ubicacion','foto'].map(key =>
+        {!!sheetCounts.length && <div className="flex flex-wrap gap-2 text-xs">{sheetCounts.map(s => <span key={s.name} className="rounded border px-2 py-1">{s.name}: {s.count}</span>)}</div>}
+        {!normalized.length && <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {FIELDS.map(key =>
             <div key={key}><Label className="capitalize">{key}</Label>
               <Select value={mapping[key] ?? ''} onValueChange={v => {setMapping(old => ({...old,[key]:v === 'none' ? '' : v}));setConfirmed(false);}}>
                 <SelectTrigger><SelectValue placeholder="Sin columna" /></SelectTrigger>
                 <SelectContent><SelectItem value="none">Sin columna</SelectItem>{headers.map((h,i) => <SelectItem value={String(i)} key={i}>{h || 'Columna ' + (i+1)}</SelectItem>)}</SelectContent>
               </Select></div>)}
-        </div>
+        </div>}
         <div className="grid gap-3 md:grid-cols-2">
           <div><Label>Tipo si el archivo no tiene columna Tipo</Label>
             <Select value={defaultType} onValueChange={v => { setDefaultType(v); setConfirmed(false); }}>
@@ -286,10 +310,10 @@ export default function ImportarCatalogo({ open, onOpenChange, organizationId, c
           </Select>
         </div>
         <div className="flex flex-wrap gap-4 text-sm"><span className="text-emerald-700">{eligible.length} listos</span><span className="text-amber-700">{invalid.length} omitidos o con errores</span><span>{preview.length} filas</span></div>
-        <p className="text-xs text-slate-600">Antes de importar, revisá que Nombre y Precio estén asociados a las columnas correctas. El costo y el stock faltantes se interpretan como cero.</p>
+        <p className="text-xs text-amber-700">Revisá la categoría de cada hoja, SKU y código de barras del cliente, número de serie, precio público y existencias. Costo o cantidad desconocidos bloquean la fila: nunca se reemplazan por cero. El código interno TRP se genera aparte.</p>
         <div className="max-h-64 overflow-auto border rounded-lg">
-          <table className="w-full text-xs"><thead className="sticky top-0 bg-slate-100"><tr><th className="p-2 text-left">Fila</th><th className="p-2 text-left">Tipo</th><th className="p-2 text-left">Nombre</th><th className="p-2 text-right">Precio</th><th className="p-2 text-left">Validación</th></tr></thead>
-            <tbody>{preview.map(p => <tr key={p.index} className="border-t"><td className="p-2">{p.index}</td><td className="p-2">{p.isService ? 'Servicio' : 'Producto'}</td><td className="p-2">{p.name}</td><td className="p-2 text-right">{p.price.toLocaleString('es-CR')}</td><td className={'p-2 ' + (p.error ? 'text-amber-700' : 'text-emerald-700')}>{p.error || 'Listo'}</td></tr>)}</tbody>
+          <table className="w-full text-xs"><thead className="sticky top-0 bg-slate-100"><tr><th className="p-2 text-left">Hoja / fila</th><th className="p-2 text-left">Tipo</th><th className="p-2 text-left">Nombre</th><th className="p-2 text-right">Precio</th><th className="p-2 text-left">Validación</th></tr></thead>
+            <tbody>{preview.map(p => <tr key={p.index} className="border-t"><td className="p-2">{p.sheet ? p.sheet + ' / ' : ''}{p.index}</td><td className="p-2">{p.isService ? 'Servicio' : 'Producto'}</td><td className="p-2">{p.name}</td><td className="p-2 text-right">{p.price == null || !Number.isFinite(p.price) ? 'N/A' : p.price.toLocaleString('es-CR')}</td><td className={'p-2 ' + (p.error ? 'text-amber-700' : 'text-emerald-700')}>{p.error || 'Listo'}</td></tr>)}</tbody>
           </table>
         </div>
         {!!invalid.length && <p className="text-sm text-amber-800"><AlertTriangle className="w-4 h-4 inline mr-1" /> Los registros con errores no se importarán. Ajustá el archivo y volvé a cargarlo para corregirlos.</p>}

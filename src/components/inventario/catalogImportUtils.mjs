@@ -81,8 +81,9 @@ export function normalizeSheets(sheets) {
           foto:clean(get('foto')), numero_serie:serial,
         },
         warnings: [
-          ...(typeof sku==='number' && !Number.isSafeInteger(sku)?['SKU numérico fuera de precisión segura']:[]),
-          ...(typeof barcode==='number' && !Number.isSafeInteger(barcode)?['Código de barras fuera de precisión segura']:[]),
+          ...(typeof sku==='number'?['SKU numérico: verificar texto y ceros iniciales']:[]),
+          ...(typeof barcode==='number'?['Código de barras numérico: verificar texto y ceros iniciales']:[]),
+          ...(typeof get('numero_serie')==='number'?['Serie numérica: verificar texto y ceros iniciales']:[]),
           ...(!nameSource && !!name?['Nombre compuesto para revisión']:[]),
         ],
       });
@@ -102,7 +103,7 @@ export function validateImportRow(source,{categorias=[],defaultCategoryId='',bra
   ].filter(Boolean);
   let error='';
   if (!d.nombre) error='Falta nombre';
-  else if (source.warnings?.some(w=>w.includes('precisión segura'))) error='Código numérico perdió precisión';
+  else if (source.warnings?.some(w=>/numéric[oa]/i.test(w))) error='Código/serie numérico: convertir columna a texto y verificar ceros iniciales';
   else if (!Number.isFinite(price)||price<=0) error='Precio de venta no informado o inválido';
   else if (!isService && (cost===null || !Number.isFinite(cost) || cost<0)) error='Costo desconocido: completar antes de importar';
   else if (!isService && (stock===null || !Number.isInteger(stock) || stock<0)) error='Stock N/A o inválido: confirmar cantidad real';

@@ -77,7 +77,7 @@ Deno.serve(async req => {
     return Response.json({ error: `La categoria ${category.nombre} requiere precio_venta mayor a 0` }, { status: 400 });
   }
 
-  for (const field of ['codigo_barras', 'sku']) {
+  for (const field of ['codigo_barras', 'sku', 'numero_serie']) {
     if (!itemData[field]) continue;
     const duplicate = duplicateOutside(await base44.asServiceRole.entities.Inventario.filter({
       organization_id: orgId,
@@ -107,6 +107,7 @@ Deno.serve(async req => {
     codigo_interno: internalCode(orgId),
     codigo_barras: itemData.codigo_barras || null,
     sku: itemData.sku || null,
+    numero_serie: itemData.numero_serie || null,
     cantidad_disponible: 0,
     cantidad_reservada: 0,
     ubicacion: itemData.ubicacion || 'bodega',

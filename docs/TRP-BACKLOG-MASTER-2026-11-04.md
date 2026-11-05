@@ -209,3 +209,6 @@
 - **Bloqueo**: actualización del servicio `createInventoryItem` para persistir serie quedó en código fuente pero la herramienta Base44 rechazó la aplicación al backend por imports compartidos `../_shared/*`; runtime NO VERIFICADO, NO cerrar ese gate.
 - **QA reservada**: abrir archivo real en la interfaz con rol autorizado, confirmar 132 filas y conteos por hoja sin importación; revisar ventas/POS y búsqueda, categorías/sucursal y datos faltantes; no cargar a COMPU STORE.
 - **Estado**: TRP-IMPORT-004 CÓDIGO PARCIALMENTE COMPLETADO / QA BLOQUEADA, RELEASE NO-GO; #12, #13, #15 continúan abiertos. No publicar ni habilitar operaciones reales.
+
+## TRP-IMPORT-005 — 05-nov-2026
+Diagnóstico de bloqueo de bundling cerrado: los imports `../_shared/*` existentes quedan fuera del ámbito permitido por el empaquetador de edición Base44. Candidato de bundle aislado esbuild: 8/8 comprobaciones PASS, 83760 bytes, import externo único del SDK y cero rutas relativas. Pruebas de importador 15/15 PASS. Fuente productiva conservada; archivo candidato temporal en `/tmp`, **no desplegado**. No hubo escrituras de COMPU STORE. Ver `docs/TRP-IMPORT-005-CHECKPOINT-2026-11-05.md`. **Estado: solución técnica candidata PASS; runtime NO VERIFICADO; NO-GO.** Continuar con validación aislada y QA real; no cerrar #12/#13/#15.

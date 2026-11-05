@@ -73,6 +73,7 @@ export function normalizeSheets(sheets) {
       const sku=get('sku'), barcode=get('codigo_barras');
       out.push({
         sheet: sheet.name, line: r+1,
+        explicitType: VALUE_TYPES.includes(norm(typeRaw)) || VALUE_TYPES.includes(norm(genericType)),
         data: {
           tipo:kind, sku: clean(sku), codigo_barras:clean(barcode), nombre:name, descripcion:details,
           categoria:clean(get('categoria'))||sheet.name, precio:get('precio'), costo:get('costo'), stock:get('stock'),

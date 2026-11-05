@@ -58,7 +58,7 @@ export function normalizeSheets(sheets) {
       const get=key=>cols[key] >=0 ? row[cols[key]] : null;
       const typeRaw=clean(get('tipo'));
       const genericType=genericTypeCol>=0?clean(row[genericTypeCol]):'';
-      const kind=VALUE_TYPES.includes(norm(typeRaw)) ? typeRaw : 'Producto';
+      const kind=VALUE_TYPES.includes(norm(typeRaw)) ? typeRaw : (VALUE_TYPES.includes(norm(genericType)) ? genericType : 'Producto');
       const condition=['nuevo','ref','refurbished','reacondicionado','usado'].includes(norm(genericType))?genericType:'';
       const nameSource=clean(get('nombre'));
       const brand=clean(get('marca')), model=clean(get('modelo'));
@@ -69,7 +69,7 @@ export function normalizeSheets(sheets) {
       const fallback=parts.join(' ').trim() || (genericType && !condition ? genericType : '');
       const name=nameSource || (serial && fallback ? fallback+' · S/N '+serial : fallback);
       const specs=clean(get('descripcion'));
-      const details=[specs, (!nameSource && genericType && !condition ? 'Tipo: '+genericType : ''), condition ? 'Condición: '+condition : ''].filter(Boolean).join(' | ');
+      const details=[specs, (genericType && !condition && !VALUE_TYPES.includes(norm(genericType)) ? 'Tipo: '+genericType : ''), condition ? 'Condición: '+condition : ''].filter(Boolean).join(' | ');
       const sku=get('sku'), barcode=get('codigo_barras');
       out.push({
         sheet: sheet.name, line: r+1,

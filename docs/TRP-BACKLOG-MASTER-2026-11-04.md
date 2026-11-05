@@ -201,3 +201,11 @@
 - **Corrección acotada hecha:** `src/pages/Inventario.jsx` excluye `codigo_interno` del filtro de búsqueda; conserva `sku`, `codigo_barras` y `nombre`. Generación interna y visualización de código no se modificaron; no se afectó backend ni datos.
 - **Validación técnica:** `verify-commercial-menu-route-alignment.mjs` PASS y `npm run build` exit 0. QA en navegador pendiente; no publicar. Revisar por separado cualquier buscador de Caja/POS y garantizar consistencia antes del release, sin ampliar esta corrección silenciosamente.
 - **Aclaración adicional del Excel:** por indicación de Dirección General, Precio es precio de venta público y cantidades son existencias propias (cuando se informan); N/A no equivale a 0. Costo unitario no se deduce del precio de venta.
+
+## TRP-IMPORT-004 — Cierre de código / continuidad 05-nov-2026
+- **Evidencia definitiva**: `docs/TRP-IMPORT-004-CHECKPOINT-2026-11-05.md`.
+- **Resultado**: parser multihoja integrado al importador existente; 15/15 pruebas sintéticas PASS y compilación Vite PASS; sin importaciones ni registros reales. Lectura local del Excel aportado: 10 hojas, **132 filas** (corrige apuntes previos de 129), 132 precios de venta, 76 cantidades numéricas y **ningún costo de compra**. No completar automáticamente esos valores.
+- **Implementado en fuente**: lectura multihoja, normalización por hoja y fila, nombres compuestos, categoría existente, sucursal explícita, SKU y barcode de cliente separados del código interno TRP, número de serie independiente, control de duplicados, N/A y costo desconocido bloqueados, plantilla XLSX extendida.
+- **Bloqueo**: actualización del servicio `createInventoryItem` para persistir serie quedó en código fuente pero la herramienta Base44 rechazó la aplicación al backend por imports compartidos `../_shared/*`; runtime NO VERIFICADO, NO cerrar ese gate.
+- **QA reservada**: abrir archivo real en la interfaz con rol autorizado, confirmar 132 filas y conteos por hoja sin importación; revisar ventas/POS y búsqueda, categorías/sucursal y datos faltantes; no cargar a COMPU STORE.
+- **Estado**: TRP-IMPORT-004 CÓDIGO PARCIALMENTE COMPLETADO / QA BLOQUEADA, RELEASE NO-GO; #12, #13, #15 continúan abiertos. No publicar ni habilitar operaciones reales.

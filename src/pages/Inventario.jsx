@@ -210,7 +210,6 @@ function InventarioContent() {
 
   const itemsFiltrados = items.filter(i => {
     const matchSearch = !searchTerm ||
-      i.codigo_interno?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.nombre?.toLowerCase().includes(searchTerm.toLowerCase());

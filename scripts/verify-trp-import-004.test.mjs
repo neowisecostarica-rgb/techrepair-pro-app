@@ -39,8 +39,8 @@ test('condition REF is not mistaken for Servicio',()=>{
  assert.equal(x.data.tipo,'Producto');assert.match(x.data.descripcion,/Condición: REF/);
 });
 test('numeric barcode exceeding safe integer is blocked',()=>{
- const x={...rows[0],warnings:['Código de barras fuera de precisión segura'],data:{...rows[0].data,costo:2000}};
- assert.match(validateImportRow(x,{categorias:cat,branchId:'test'}).error,/precisión/);
+ const x={...rows[0],warnings:['Código de barras numérico: verificar texto y ceros iniciales'],data:{...rows[0].data,costo:2000}};
+ assert.match(validateImportRow(x,{categorias:cat,branchId:'test'}).error,/numérico/);
 });
 test('official template Servicio stays servicio',()=>{
  const x=normalizeSheets([{name:'Productos y servicios',rows:[['Tipo','SKU','Nombre','PrecioVenta'],['Servicio','','Revisión preventiva',10000]]}])[0];

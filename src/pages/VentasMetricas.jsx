@@ -22,11 +22,14 @@ export default function VentasMetricas() {
 
 function VentasMetricasContent() {
   const { t } = useI18n();
-  const { effectiveOrgId, userAccount, user } = useAuthContext();
+  const { effectiveOrgId, userAccount, user, effectiveRole } = useAuthContext();
   const [rangoPreset, setRangoPreset] = useState('mes');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [alcance, setAlcance] = useState('yo');
+  const canSeeOrganization = effectiveRole === 'ORG_ADMIN';
+  const branchScopeReady = canSeeOrganization || !!userAccount?.branch_id;
+  const safeAlcance = canSeeOrganization ? alcance : (alcance === 'todo' ? 'yo' : alcance);
 
   // Calcular fechas según preset
   useEffect(() => {
@@ -57,15 +60,15 @@ function VentasMetricasContent() {
     setFechaHasta(hasta.toISOString().split('T')[0]);
   }, [rangoPreset]);
 
-  const { data: ventas = [], isLoading } = useQuery({
-    queryKey: ['ventas-metricas', effectiveOrgId, fechaDesde, fechaHasta, alcance, userAccount?.branch_id, user?.id],
+  const { data: ventas = [], isLoading, isError: salesMetricsError } = useQuery({
+    queryKey: ['ventas-metricas', effectiveOrgId, fechaDesde, fechaHasta, safeAlcance, userAccount?.branch_id, user?.id, effectiveRole],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId };
 
       // Filtrar por alcance
-      if (alcance === 'yo') {
+      if (safeAlcance === 'yo') {
         query.created_by_user_id = user?.id;
-      } else if (alcance === 'equipo' && userAccount?.branch_id) {
+      } else if (safeAlcance === 'equipo' && userAccount?.branch_id) {
         query.branch_id = userAccount.branch_id;
       }
 
@@ -81,19 +84,20 @@ function VentasMetricasContent() {
         return ventaFecha >= desde && ventaFecha <= hasta;
       });
     },
-    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta
+    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta && branchScopeReady
   });
 
   const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones-metricas', effectiveOrgId, alcance, user?.id],
+    queryKey: ['cotizaciones-metricas', effectiveOrgId, safeAlcance, user?.id, userAccount?.branch_id],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId };
-      if (alcance === 'yo') {
+      if (!canSeeOrganization) query.branch_id = userAccount.branch_id;
+      if (safeAlcance === 'yo') {
         query.vendedor_id = user?.id;
       }
       return await base44.entities.Cotizacion.filter(query, '-created_date', 500);
     },
-    enabled: !!effectiveOrgId
+    enabled: !!effectiveOrgId && branchScopeReady
   });
 
   const { data: garantias = [] } = useQuery({

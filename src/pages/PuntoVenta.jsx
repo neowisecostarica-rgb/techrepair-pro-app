@@ -108,7 +108,7 @@ function PuntoVentaContent() {
   }, [preloadedVenta, cotizacionOrigen]);
 
   const { data: inventario = [] } = useQuery({
-    queryKey: ['inventario', userAccount?.organization_id, isOrgAdmin ? 'all' : userAccount?.branch_id],
+    queryKey: ['inventario', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Inventario.filter({
       organization_id: effectiveOrgId,
       ...salesBranchFilter
@@ -174,11 +174,11 @@ function PuntoVentaContent() {
     enabled: salesScopeReady,
   });
 
+  // DiagnosticoTecnico has no branch_id field; backend gateway validates OT-based scope.
   const { data: diagnosticos = [] } = useQuery({
     queryKey: ['diagnosticos-venta', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.DiagnosticoTecnico.filter({
-      organization_id: effectiveOrgId,
-      ...salesBranchFilter
+      organization_id: effectiveOrgId
     }, '-created_date', 200),
     enabled: salesScopeReady,
   });

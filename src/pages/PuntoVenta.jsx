@@ -74,6 +74,9 @@ function PuntoVentaContent() {
   const queryClient = useQueryClient();
   const { user, userAccount } = useUserAccount();
   const { effectiveRole, effectiveOrgId } = useAuthContext();
+  const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
+  const salesScopeReady = !!effectiveOrgId && (isOrgAdmin || !!userAccount?.branch_id);
+  const salesBranchFilter = isOrgAdmin ? {} : { branch_id: userAccount?.branch_id };
 
   // Abrir Caja debe ser estrictamente lectura: nunca crear productos o precios
   // implícitamente. El diagnóstico se selecciona de los productos/servicios
@@ -105,11 +108,12 @@ function PuntoVentaContent() {
   }, [preloadedVenta, cotizacionOrigen]);
 
   const { data: inventario = [] } = useQuery({
-    queryKey: ['inventario', userAccount?.organization_id],
+    queryKey: ['inventario', userAccount?.organization_id, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Inventario.filter({
-      organization_id: userAccount.organization_id
+      organization_id: effectiveOrgId,
+      ...salesBranchFilter
     }, '-created_date', 500),
-    enabled: !!userAccount?.organization_id,
+    enabled: salesScopeReady,
   });
 
   // Entrada desde "Cobrar diagnóstico": precargar el servicio estándar para
@@ -144,51 +148,57 @@ function PuntoVentaContent() {
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes', userAccount?.organization_id],
+    queryKey: ['clientes', userAccount?.organization_id, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Cliente.filter({
-      organization_id: userAccount.organization_id
+      organization_id: effectiveOrgId,
+      ...salesBranchFilter
     }, '-created_date', 500),
-    enabled: !!userAccount?.organization_id,
+    enabled: salesScopeReady,
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
-    queryKey: ['ordenes-trabajo', userAccount?.organization_id],
+    queryKey: ['ordenes-trabajo', userAccount?.organization_id, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.OrdenTrabajo.filter({
-      organization_id: userAccount.organization_id
+      organization_id: effectiveOrgId,
+      ...salesBranchFilter
     }, '-created_date', 200),
-    enabled: !!userAccount?.organization_id,
+    enabled: salesScopeReady,
   });
 
   const { data: equipos = [] } = useQuery({
-    queryKey: ['equipos-venta', userAccount?.organization_id],
+    queryKey: ['equipos-venta', userAccount?.organization_id, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Equipo.filter({
-      organization_id: userAccount.organization_id
+      organization_id: effectiveOrgId,
+      ...salesBranchFilter
     }, '-created_date', 200),
-    enabled: !!userAccount?.organization_id,
+    enabled: salesScopeReady,
   });
 
   const { data: diagnosticos = [] } = useQuery({
-    queryKey: ['diagnosticos-venta', effectiveOrgId],
+    queryKey: ['diagnosticos-venta', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.DiagnosticoTecnico.filter({
-      organization_id: effectiveOrgId
+      organization_id: effectiveOrgId,
+      ...salesBranchFilter
     }, '-created_date', 200),
-    enabled: !!effectiveOrgId,
+    enabled: salesScopeReady,
   });
 
   const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones-venta', effectiveOrgId],
+    queryKey: ['cotizaciones-venta', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Cotizacion.filter({
-      organization_id: effectiveOrgId
+      organization_id: effectiveOrgId,
+      ...salesBranchFilter
     }, '-created_date', 200),
-    enabled: !!effectiveOrgId,
+    enabled: salesScopeReady,
   });
 
   const { data: garantias = [] } = useQuery({
-    queryKey: ['garantias-venta', effectiveOrgId],
+    queryKey: ['garantias-venta', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Garantia.filter({
-      organization_id: effectiveOrgId
+      organization_id: effectiveOrgId,
+      ...salesBranchFilter
     }, '-created_date', 200),
-    enabled: !!effectiveOrgId,
+    enabled: salesScopeReady,
   });
 
   const { data: activeOrganization } = useQuery({

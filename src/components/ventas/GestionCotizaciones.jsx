@@ -41,9 +41,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const organizationId = userAccount?.organization_id;
 
   const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones', clienteActual],
-    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteActual }, '-created_date', 200),
-    enabled: !!clienteActual,
+    queryKey: ['cotizaciones', organizationId, clienteActual, userAccount?.branch_id],
+    queryFn: () => base44.entities.Cotizacion.filter({ organization_id: organizationId, cliente_id: clienteActual, ...(userAccount?.role !== 'ORG_ADMIN' ? { branch_id: userAccount?.branch_id } : {}) }, '-created_date', 200),
+    enabled: !!clienteActual && !!organizationId && (userAccount?.role === 'ORG_ADMIN' || !!userAccount?.branch_id),
   });
 
   const { data: inventario = [] } = useQuery({

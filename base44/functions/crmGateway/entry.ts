@@ -185,15 +185,15 @@ Deno.serve(async (req) => {
         organization_id: organizationId,
         identificacion,
       });
-      if (postCreateCheck.length > 1) {
-        const sorted = postCreateCheck.sort((a, b) =>
-          new Date(a.created_date) - new Date(b.created_date)
+      // No declaramos ganada la conversión si existen dos clientes con igual
+      // identificación. Resolverlo requiere una restricción UNIQUE real en el
+      // almacén; no eliminamos un expediente potencialmente usado por otra solicitud.
+      if (postCreateCheck.length !== 1 || postCreateCheck[0].id !== cliente.id) {
+        return jsonError(
+          'Conversion pendiente de conciliacion: identificacion duplicada o ambigua',
+          409,
+          'CRM_CONVERSION_CONCURRENT_CONFLICT',
         );
-        const original = sorted[0];
-        if (original.id !== cliente.id) {
-          await base44.asServiceRole.entities.Cliente.delete(cliente.id).catch(() => {});
-          return jsonError('Cliente concurrente detectado; conversion pendiente de conciliacion', 409, 'CRM_CONVERSION_CONCURRENT_CONFLICT');
-        }
       }
 
       try {
@@ -215,8 +215,10 @@ Deno.serve(async (req) => {
             reconciled: true,
           });
         }
-        await base44.asServiceRole.entities.Cliente.delete(cliente.id).catch(() => {});
-        throw updateError;
+        // No destruir automáticamente un expediente si el estado del Lead es
+        // incierto después de una escritura fallida. Recuperación manual segura.
+        console.error('[crmGateway] conversion link write uncertain', updateError?.message || updateError);
+        return jsonError('Conversion pendiente de conciliacion: el cliente fue creado pero el lead no quedo vinculado', 409, 'CRM_CONVERSION_LINK_UNCERTAIN');
       }
     }
 

@@ -20,7 +20,7 @@ import { crmQueryKeys, invokeCrm } from '@/api/crm';
 
 export default function MiDiaSales({ user, effectiveOrgId }) {
   const { t } = useI18n();
-  const { data: crmData } = useQuery({
+  const { data: crmData, isError: crmError, isPending: crmLoading } = useQuery({
     queryKey: crmQueryKeys.list(effectiveOrgId),
     queryFn: () => invokeCrm('list', effectiveOrgId),
     enabled: !!effectiveOrgId,
@@ -28,7 +28,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
   });
   const leads = crmData?.leads || [];
 
-  const { data: cotizaciones = [] } = useQuery({
+  const { data: cotizaciones = [], isError: quotesError, isPending: quotesLoading } = useQuery({
     queryKey: ['cotizaciones', effectiveOrgId],
     queryFn: async () => {
       const cots = await base44.entities.Cotizacion.filter(
@@ -42,7 +42,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
     staleTime: 30000,
   });
 
-  const { data: ventas = [] } = useQuery({
+  const { data: ventas = [], isError: salesError, isPending: salesLoading } = useQuery({
     queryKey: ['ventas', effectiveOrgId],
     queryFn: async () => {
       const ventas = await base44.entities.Venta.filter(
@@ -56,7 +56,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
     staleTime: 30000,
   });
 
-  const { data: citas = [] } = useQuery({
+  const { data: citas = [], isError: agendaError, isPending: agendaLoading } = useQuery({
     queryKey: ['citas-hoy', effectiveOrgId],
     queryFn: async () => {
       const hoy = new Date().toISOString().split('T')[0];
@@ -83,7 +83,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
     return fechaVenta.getTime() === hoy.getTime();
   });
 
-  const ventasPropias = ventasHoy.filter(v => v.created_by_user_id === user?.id);
+  const ventasPropias = ventasHoy.filter(v => v.created_by_user_id === user?.id && v.estado === 'pagada');
   const citasPropias = citas.filter(c => c.tecnico_asignado_id === user?.id);
 
   const leadsSeguimiento = leads.filter(l => 
@@ -125,7 +125,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {leadsSeguimiento.length > 0 ? (
+          {crmError ? (<p role="alert" className="text-sm text-red-700">No se pudieron consultar los prospectos. Abrí CRM para reintentar.</p>) : crmLoading ? (<p className="text-sm text-slate-500">Consultando datos…</p>) : leadsSeguimiento.length > 0 ? (
             <div className="space-y-2">
               {leadsSeguimiento.slice(0, 5).map(lead => (
                 <Link key={lead.id} to={createPageUrl('CRM')}>
@@ -165,14 +165,14 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {cotizacionesPendientesSales.length > 0 ? (
+          {quotesError ? (<p role="alert" className="text-sm text-red-700">No se pudieron consultar las cotizaciones. Abrí Cotizaciones para reintentar.</p>) : quotesLoading ? (<p className="text-sm text-slate-500">Consultando datos…</p>) : cotizacionesPendientesSales.length > 0 ? (
             <div className="space-y-2">
               {cotizacionesPendientesSales.slice(0, 5).map(cot => (
-                <Link key={cot.id} to={createPageUrl('OrdenesTrabajo')}>
+                <Link key={cot.id} to={createPageUrl('VentasCotizaciones')}>
                   <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
                     <div>
                       <p className="font-medium text-slate-900">
-                        ${cot.total?.toFixed(2) || '0.00'}
+                        ₡{Number(cot.total || 0).toLocaleString('es-CR')}
                       </p>
                       <p className="text-sm text-slate-500">
                         Vence: {cot.valida_hasta ? format(new Date(cot.valida_hasta), 'dd/MM/yyyy') : 'N/A'}
@@ -204,13 +204,13 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {ventasPropias.length > 0 ? (
+          {salesError ? (<p role="alert" className="text-sm text-red-700">No se pudieron consultar las ventas. Abrí Caja y Cobros para reintentar.</p>) : salesLoading ? (<p className="text-sm text-slate-500">Consultando datos…</p>) : ventasPropias.length > 0 ? (
             <div className="space-y-2">
               {ventasPropias.map(venta => (
                 <div key={venta.id} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
                   <div>
                     <p className="font-medium text-slate-900">
-                      ${venta.total?.toFixed(2) || '0.00'}
+                      ₡{Number(venta.total || 0).toLocaleString('es-CR')}
                     </p>
                     <p className="text-sm text-slate-500">
                       {format(new Date(venta.created_date), 'HH:mm')}
@@ -248,7 +248,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {citasPropias.length > 0 ? (
+          {agendaError ? (<p role="alert" className="text-sm text-red-700">No se pudo consultar la agenda. Abrí Agenda para reintentar.</p>) : agendaLoading ? (<p className="text-sm text-slate-500">Consultando datos…</p>) : citasPropias.length > 0 ? (
             <div className="space-y-2">
               {citasPropias.map(cita => (
                 <div key={cita.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">

@@ -1018,9 +1018,9 @@ function PuntoVentaContent() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{t('pos.conversionPending','Conversión pendiente')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">{t('pos.conversionBody','Esta venta en borrador proviene de una cotización y tiene más de 2 horas. Puedes continuar con la conversión o cancelarla y volver a la cotización.')}</p>
+            <p className="text-sm text-slate-600">{t('pos.conversionBody','Esta venta en borrador proviene de una cotización y tiene más de 2 horas. Podés continuar o volver a la cotización sin borrar el documento. La cancelación definitiva requiere una operación autorizada.')}</p>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={async () => { try { await base44.entities.Venta.delete(preloadedVenta.id); setShowConversionAntigua(false); toast({ title: t('pos.conversionPending','Conversión cancelada'), description: 'Volvemos a la cotización sin crear una venta.' }); window.history.back(); } catch (error) { console.error('Error al cancelar conversión:', error); toast({ variant: 'destructive', title: 'No se pudo cancelar la conversión', description: 'La venta borrador se mantiene sin cambios. Intenta nuevamente.' }); } }}>{t('sweep.cancelConversion','Cancelar conversión')}</Button>
+              <Button variant="outline" onClick={() => { setShowConversionAntigua(false); toast({ title: "Regreso seguro", description: "El borrador permanece intacto. No se eliminó ninguna venta." }); window.history.back(); }}>Volver sin eliminar borrador</Button>
               <Button onClick={() => setShowConversionAntigua(false)}>{t('pos.continueConversion','Continuar conversión')}</Button>
             </div>
           </div>

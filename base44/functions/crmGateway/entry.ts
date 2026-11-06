@@ -145,20 +145,24 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'convert') {
+      const identificacion = clean(body.identificacion, 120);
+      if (!identificacion) return jsonError('La identificacion es obligatoria', 400);
       if (lead.converted_to_cliente_id) {
         const existing = await base44.asServiceRole.entities.Cliente.filter({
           id: lead.converted_to_cliente_id,
           organization_id: organizationId,
+          ...branchFilter,
         });
+        const linkedCliente = existing?.[0] || null;
+        if (!linkedCliente) return jsonError('Cliente vinculado no disponible para esta sucursal', 409, 'CRM_CONVERT_LINK_INVALID');
+        if (linkedCliente.identificacion !== identificacion) return jsonError('El prospecto ya fue convertido con otra identificacion', 409, 'CRM_CONVERT_IDENTITY_MISMATCH');
         return Response.json({
           lead: projectLead(lead),
-          cliente: existing?.[0] ? projectOperationalReadResult('Cliente', existing[0], authorization) : null,
+          cliente: projectOperationalReadResult('Cliente', linkedCliente, authorization),
           idempotent: true,
         });
       }
 
-      const identificacion = clean(body.identificacion, 120);
-      if (!identificacion) return jsonError('La identificacion es obligatoria', 400);
       const duplicates = await base44.asServiceRole.entities.Cliente.filter({
         organization_id: organizationId,
         identificacion,

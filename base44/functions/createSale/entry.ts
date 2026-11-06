@@ -692,6 +692,20 @@ async function createOrRecoverSale(base44, context) {
       organization_id: orgId,
     });
     if (!preloadSale) throw new SaleError('Venta pre-cargada no encontrada', 'SALE_PRELOAD_NOT_FOUND', 404);
+    // The draft ID is client-supplied. Its tenant alone is insufficient: a
+    // branch/quote/customer mismatch must never repurpose an unrelated draft.
+    if (!preloadSale.branch_id || preloadSale.branch_id !== input.ventaData.branch_id) {
+      throw new SaleError('El borrador pertenece a otra sucursal', 'SALE_PRELOAD_BRANCH_MISMATCH', 409);
+    }
+    if ((preloadSale.cotizacion_id || null) !== (input.ventaData.cotizacion_id || null)) {
+      throw new SaleError('El borrador no pertenece a la cotizacion indicada', 'SALE_PRELOAD_QUOTE_MISMATCH', 409);
+    }
+    if ((preloadSale.cliente_id || null) !== (input.ventaData.cliente_id || null)) {
+      throw new SaleError('El borrador pertenece a otro cliente', 'SALE_PRELOAD_CUSTOMER_MISMATCH', 409);
+    }
+    if ((preloadSale.referencia_ot_id || null) !== (input.ventaData.referencia_ot_id || null)) {
+      throw new SaleError('El borrador pertenece a otra orden de trabajo', 'SALE_PRELOAD_WORK_ORDER_MISMATCH', 409);
+    }
     if (preloadSale.estado !== 'borrador') {
       throw new SaleError(`Venta pre-cargada en estado ${preloadSale.estado}`, 'SALE_PRELOAD_ALREADY_PROCESSED', 409);
     }

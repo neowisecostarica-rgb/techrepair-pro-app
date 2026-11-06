@@ -192,11 +192,7 @@ Deno.serve(async (req) => {
         const original = sorted[0];
         if (original.id !== cliente.id) {
           await base44.asServiceRole.entities.Cliente.delete(cliente.id).catch(() => {});
-          return Response.json({
-            lead: projectLead(lead),
-            cliente: projectOperationalReadResult('Cliente', original, authorization),
-            reconciled: true,
-          });
+          return jsonError('Cliente concurrente detectado; conversion pendiente de conciliacion', 409, 'CRM_CONVERSION_CONCURRENT_CONFLICT');
         }
       }
 

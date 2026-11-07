@@ -488,16 +488,82 @@ function buildAuditEvent(input) {
   }
   return event;
 }
+var AUDIT_LEASE_MS = 6e4;
+var AUDIT_WAIT_MS = 8e3;
+var AUDIT_RETRY_MS = 55;
+var auditWait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function auditLockError(code) {
+  const error = new Error(code);
+  error.code = code;
+  return error;
+}
+async function lockAuditOrganization(base44, organizationId) {
+  const orgs = base44.asServiceRole.entities.Organization;
+  if (!orgs?.filter || !orgs?.updateMany) throw auditLockError("AUDIT_LOCK_UNAVAILABLE");
+  const token = crypto.randomUUID();
+  const until = Date.now() + AUDIT_WAIT_MS;
+  while (Date.now() <= until) {
+    const now = Date.now();
+    const lockData = { audit_lock_token: token, audit_lock_at: new Date(now).toISOString() };
+    let claim;
+    try {
+      claim = await orgs.updateMany({
+        id: organizationId,
+        $or: [
+          { audit_lock_token: { $exists: false } },
+          { audit_lock_token: null },
+          { audit_lock_token: "" }
+        ]
+      }, { $set: lockData });
+    } catch (error) {
+      const org2 = (await orgs.filter({ id: organizationId }, "-created_date", 1))?.[0];
+      if (org2?.audit_lock_token === token) return { token, orgs };
+      throw auditLockError("AUDIT_LOCK_WRITE_UNCERTAIN");
+    }
+    if (claim?.updated === 1) return { token, orgs };
+    const org = (await orgs.filter({ id: organizationId }, "-created_date", 1))?.[0];
+    if (!org) throw auditLockError("AUDIT_ORGANIZATION_NOT_FOUND");
+    if (org.audit_lock_token === token) return { token, orgs };
+    const lockedAt = Date.parse(org.audit_lock_at || "");
+    if (org.audit_lock_token && Number.isFinite(lockedAt) && now - lockedAt > AUDIT_LEASE_MS) {
+      const recovered = await orgs.updateMany({
+        id: organizationId,
+        audit_lock_token: org.audit_lock_token,
+        audit_lock_at: org.audit_lock_at
+      }, { $set: lockData });
+      if (recovered?.updated === 1) return { token, orgs };
+    }
+    if (Date.now() >= until) break;
+    await auditWait(Math.min(AUDIT_RETRY_MS, until - Date.now()));
+  }
+  throw auditLockError("AUDIT_LOCK_TIMEOUT");
+}
 async function appendAuditEvent(base44, input) {
   const event = buildAuditEvent(input);
-  const existing = await findExisting(base44, event);
-  if (existing) return { event: existing, duplicate: true };
+  const lock = await lockAuditOrganization(base44, event.organization_id);
   try {
-    return { event: await base44.asServiceRole.entities.AuditEvent.create(event), duplicate: false };
-  } catch (error) {
-    const reconciled = await findExisting(base44, event);
-    if (reconciled) return { event: reconciled, duplicate: true, reconciled: true };
-    throw error;
+    const existing = await findExisting(base44, event);
+    if (existing) return { event: existing, duplicate: true };
+    try {
+      const created = await base44.asServiceRole.entities.AuditEvent.create(event);
+      return { event: created, duplicate: false };
+    } catch (error) {
+      const reconciled = await findExisting(base44, event);
+      if (reconciled) return { event: reconciled, duplicate: true, reconciled: true };
+      throw error;
+    }
+  } finally {
+    try {
+      const released = await lock.orgs.updateMany({
+        id: event.organization_id,
+        audit_lock_token: lock.token
+      }, { $unset: { audit_lock_token: "", audit_lock_at: "" } });
+      if (released?.updated !== 1) {
+        console.warn("[auditEvent] Audit lock owner changed during operation");
+      }
+    } catch (error) {
+      console.error("[auditEvent] Audit lock release uncertain", error?.message);
+    }
   }
 }
 

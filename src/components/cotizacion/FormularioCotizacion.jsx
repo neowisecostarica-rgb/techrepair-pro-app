@@ -113,7 +113,8 @@ export default function FormularioCotizacion({
     const productosInventario = inventario
       .filter(p => 
         p.nombre?.toLowerCase().includes(textoLower) ||
-        p.codigo_interno?.toLowerCase().includes(textoLower) ||
+        p.sku?.toLowerCase().includes(textoLower) ||
+        p.codigo_barras?.toLowerCase().includes(textoLower) ||
         p.marca?.toLowerCase().includes(textoLower)
       )
       .map(p => ({ 

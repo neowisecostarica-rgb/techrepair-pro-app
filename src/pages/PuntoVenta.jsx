@@ -68,6 +68,8 @@ function PuntoVentaContent() {
   const saleConfirmationLock = useRef(false);
   const [isPreparingSale, setIsPreparingSale] = useState(false);
   const [showConversionAntigua, setShowConversionAntigua] = useState(false);
+  const [isCancellingDraft, setIsCancellingDraft] = useState(false);
+  const draftCancellationKey = useRef(`cancel_${crypto.randomUUID()}`);
   // Identidad del intento: permanece estable durante retries y solo cambia cuando
   // createSale confirma una venta efectiva.
   const [idempotencyKey, setIdempotencyKey] = useState(() => `ik_${crypto.randomUUID()}`);
@@ -107,6 +109,29 @@ function PuntoVentaContent() {
       }
     }
   }, [preloadedVenta, cotizacionOrigen]);
+
+  const cancelDraft = async () => {
+    if (isCancellingDraft || !ventaId || preloadedVenta?.estado !== 'borrador') return;
+    setIsCancellingDraft(true);
+    try {
+      const result = await base44.functions.invoke('cancelDraftSale', {
+        venta_id: ventaId,
+        operation_id: draftCancellationKey.current,
+      });
+      if (result?.data?.success !== true) {
+        throw new Error(result?.data?.error || 'No se confirmó la anulación.');
+      }
+      await queryClient.invalidateQueries({ queryKey: ['ventas'] });
+      await queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
+      setShowConversionAntigua(false);
+      toast({ title: 'Borrador anulado', description: 'El borrador quedó anulado sin descontar inventario.' });
+      window.history.back();
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'No se confirmó la anulación', description: error?.response?.data?.error || error?.message || 'Revisá el estado antes de intentar nuevamente.' });
+    } finally {
+      setIsCancellingDraft(false);
+    }
+  };
 
   const { data: inventario = [] } = useQuery({
     queryKey: ['inventario', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
@@ -1035,8 +1060,9 @@ function PuntoVentaContent() {
           <div className="space-y-4">
             <p className="text-sm text-slate-600">{t('pos.conversionBody','Esta venta en borrador proviene de una cotización y tiene más de 2 horas. Podés continuar o volver a la cotización sin borrar el documento. La cancelación definitiva requiere una operación autorizada.')}</p>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => { setShowConversionAntigua(false); toast({ title: "Regreso seguro", description: "El borrador permanece intacto. No se eliminó ninguna venta." }); window.history.back(); }}>Volver sin eliminar borrador</Button>
-              <Button onClick={() => setShowConversionAntigua(false)}>{t('pos.continueConversion','Continuar conversión')}</Button>
+              <Button variant="outline" disabled={isCancellingDraft} onClick={() => { setShowConversionAntigua(false); window.history.back(); }}>Volver sin eliminar</Button>
+              <Button variant="destructive" disabled={isCancellingDraft} onClick={cancelDraft}>{isCancellingDraft ? 'Anulando...' : 'Anular borrador'}</Button>
+              <Button disabled={isCancellingDraft} onClick={() => setShowConversionAntigua(false)}>{t('pos.continueConversion','Continuar conversión')}</Button>
             </div>
           </div>
         </DialogContent>

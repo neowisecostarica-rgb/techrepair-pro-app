@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { getCanonicalBranchScope } from '../_shared/operationalAuthorization.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
+import { resolveAuthorizedContext } from '../../base44/functions/_shared/userAuthorization.ts';
+import { getCanonicalBranchScope } from '../../base44/functions/_shared/operationalAuthorization.ts';
+import { appendAuditEvent } from '../../base44/functions/_shared/auditEvent.ts';
 
 const response = (message, status, code) =>
   Response.json({ success: false, error: message, code }, { status });

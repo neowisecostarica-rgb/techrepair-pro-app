@@ -154,6 +154,9 @@
       "type": "string",
       "description": "Mensaje resumido del error de rollback para auditor\u00eda (nullable)"
     },
+    "cancel_operation_id": { "type": "string", "description": "Idempotency key of governed draft cancellation", "rls": { "write": false } },
+    "cancelado_at": { "type": "string", "format": "date-time", "rls": { "write": false } },
+    "cancelado_por": { "type": "string", "rls": { "write": false } },
     "created_by_user_id": {
       "type": "string",
       "description": "ID del usuario que cre\u00f3 la venta"

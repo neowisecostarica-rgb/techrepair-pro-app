@@ -212,3 +212,37 @@
 
 ## TRP-IMPORT-005 — 05-nov-2026
 Diagnóstico de bloqueo de bundling cerrado: los imports `../_shared/*` existentes quedan fuera del ámbito permitido por el empaquetador de edición Base44. Candidato de bundle aislado esbuild: 8/8 comprobaciones PASS, 83760 bytes, import externo único del SDK y cero rutas relativas. Pruebas de importador 15/15 PASS. Fuente productiva conservada; archivo candidato temporal en `/tmp`, **no desplegado**. No hubo escrituras de COMPU STORE. Ver `docs/TRP-IMPORT-005-CHECKPOINT-2026-11-05.md`. **Estado: solución técnica candidata PASS; runtime NO VERIFICADO; NO-GO.** Continuar con validación aislada y QA real; no cerrar #12/#13/#15.
+
+---
+
+## ACTUALIZACIÓN MAESTRA — SÁBADO 07-NOV-2026 · PRE-QA COMPU STORE
+
+**Este apartado reemplaza el estado operativo antiguo de las secciones del 04–05 nov; conserva el historial anterior solo como referencia.** Estado de MAIN al cierre previo: `d522311a47bfe85e4abfee8d83cb4b3929981879`. Fuentes de verdad actualizadas: `docs/TRP-PRE-QA-COMPUSTORE-MEGABLOCKS-2026-11-07.md`, `docs/TRP-CODEX-LEGACY-ZIP-COMPARISON-2026-11-07.md` y checkpoint de MAIN del 07-nov.
+
+### Cerrado / no repetir
+- [x] **MB-AUD**: bloqueo CAS de auditoría por organización implementado y registrado en 23 consumidores de backend. Simulación concurrente PASS y prueba nativa Base44 `update_entities` con dos solicitantes: 1 éxito/1 rechazado. Cubre el defecto read-then-create entre escritores cooperantes; no equivale a índice UNIQUE ni transacción ACID.
+- [x] **MB-INVENTARIO**: 4/4 registros actuales de Compu Store correctamente asignados a sucursal Tres Ríos; cantidades verificadas 1/0/0/0; no reimportar ni tocar precios/stock.
+- [x] **MB-CAJA**: versiones backend de ventas y anulación registradas; 29/29 pruebas de venta atómica PASS; 16 ventas pagadas históricas conservadas.
+- [x] **MB-USUARIOS-COMERCIALES**: ORG_ADMIN, BRANCH_ADMIN y SALES activos, con user_id y usuario Base44 coincidente; dos TECHNICIAN también vinculados.
+- [x] **MB-RELEASE**: paquetes de función reconciliados; API de despliegue aceptó versión del checkpoint; URL pública redirige correctamente a login; Base44 MAIN READY. No afirmar UX QA.
+- [x] **MB-CODEX-PREP**: encargo de auditoría diferencial ZIP antiguo vs MAIN redactado y guardado, sin ejecutar la comparación.
+
+### Pendientes de verdad — trabajar por evidencia, no repetir contratos
+| Prioridad | ID | Pendiente | Responsable / criterio de cierre |
+|---|---|---|---|
+| P0 | COMPU-QA-2026-11-09 | QA real de Compu Store el lunes 9-nov: CRM→cotización→proforma→Caja, inventario visible, PDF, búsqueda, cobro/reintento y permisos positivos/negativos | Compu Store reporta PASS/FAIL con evidencia; nosotros corregimos defectos |
+| P0 | P0-AUD-01 / #13 | Verificar CAS de auditoría en flujo **runtime real** e identificar limitaciones de lease y ausencia de UNIQUE/ACID; revisar trazabilidad de nuevas ventas | Ingeniería/QA de Compu Store, sin asumir exactly-once absoluto |
+| P0 | QA-IDENTIDAD / #12 | Recorrido autenticado multiusuario y aislamiento por sucursal/organización; el testing agent previo quedó atascado en onboarding | QA real de roles, sin creación improvisada de cuentas ni duplicación de pruebas |
+| P0 | COM-QA / #15 | Revisar por interfaz que SALES vea stock/precio pero no costo/margen ni edición; verificar OWNER/ORG_ADMIN | Capturas reales y permisos efectivos |
+| P1 | USR-TECH-UNLINKED | Tercera membresía TECHNICIAN aparece `active`, pero carece de `user_id` y no coincide con User de Base44 | Determinar si es invitación pendiente o cuenta obsoleta; vincular únicamente al usuario correcto con autorización |
+| P1 | AUD-HISTORICAL | La consulta a AuditEvent de Compu Store devolvió cero eventos aunque existen 16 ventas `pagada` | Distinguir datos previos del backend de nuevos eventos; no modificar ni fabricar historial |
+| P1 | INVENTARIO-EXCEL-REAL | 10 hojas/132 filas de archivo histórico: QA de previsualización, series, SKU, proveedores, N/A, costos ausentes, stocks y duplicados; no reimportar al tenant de Compu Store | Cliente decide si se realizará importación futura, con respaldo y autorización |
+| P1 | POS-CONCILIATION | Comprobar reintentos, cancelación lógica de borradores, cobros y reserva/consumo de stock bajo datos ficticios y sesión autorizada | QA lunes; cero escrituras no autorizadas |
+| P1 | OT-E2E-001 | Flujo Taller: recepción→OT→diagnóstico→cotización→reparación→prueba→entrega | QA funcional después del comercial |
+| P1 | CODEX-LEGACY-ZIP-001 | Comparar primeros ZIP con MAIN para detectar funciones perdidas, reemplazadas o retiradas por seguridad | Codex; obtener ZIP original (no disponible como ZIP en Biblioteca); reporte diferencial, sin merge/deploy |
+| P2 | UX-RESTANTES | Revisar presentación móvil, navegación, tabla en cola, gráficos vacíos y consultas paginadas | Abrir defectos concretos solo si QA los reproduce |
+
+### Checkpoint para continuar
+- Código: `d522311a47bfe85e4abfee8d83cb4b3929981879`, previo a este apunte documental.
+- Enlace publicado: `https://tech-repair-pro-f473d080.base44.app`.
+- **PLAN CRITERIO:** cerrar por megabloques en MAIN, reutilizar controles probados, conservar inventario Compu Store y no repetir suites sin cambios. No declarar QA aprobado por el cliente en su nombre.

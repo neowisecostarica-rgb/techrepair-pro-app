@@ -39,6 +39,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const clienteActual = clienteId;
   const organizationId = userAccount?.organization_id;
+  const organizationWide = userAccount?.role === 'ORG_ADMIN';
+  const branchId = userAccount?.branch_id;
+  const canReadInventory = !!organizationId && (organizationWide || !!branchId);
 
   const { data: cotizaciones = [] } = useQuery({
     queryKey: ['cotizaciones', organizationId, clienteActual, userAccount?.branch_id],
@@ -47,13 +50,17 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const { data: inventario = [] } = useQuery({
-    queryKey: ['inventario-disponible'],
-    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo' }, '-created_date', 500),
-    enabled: !!organizationId,
+    queryKey: ['inventario-disponible', organizationId, organizationWide ? 'all' : branchId],
+    queryFn: () => base44.entities.Inventario.filter({
+      organization_id: organizationId,
+      estado: 'activo',
+      ...(!organizationWide ? { branch_id: branchId } : {}),
+    }, '-created_date', 500),
+    enabled: canReadInventory,
   });
 
   const { data: servicios = [] } = useQuery({
-    queryKey: ['servicios-disponibles'],
+    queryKey: ['servicios-disponibles', organizationId],
     queryFn: () => base44.entities.Servicio.filter({ organization_id: organizationId, activo: true }, '-created_date', 200),
     enabled: !!organizationId,
   });
@@ -115,9 +122,13 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const { data: cliente } = useQuery({
-    queryKey: ['cliente', clienteActual],
-    queryFn: () => base44.entities.Cliente.filter({ id: clienteActual }).then(res => res[0]),
-    enabled: !!clienteActual,
+    queryKey: ['cliente', organizationId, clienteActual, organizationWide ? 'all' : branchId],
+    queryFn: () => base44.entities.Cliente.filter({
+      id: clienteActual,
+      organization_id: organizationId,
+      ...(!organizationWide ? { branch_id: branchId } : {}),
+    }, '-created_date', 1).then(res => res[0]),
+    enabled: !!clienteActual && canReadInventory,
   });
 
   const { data: organization } = useQuery({
@@ -171,7 +182,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     const productosInventario = inventario
       .filter(p => 
         p.nombre?.toLowerCase().includes(textoLower) ||
-        p.codigo_interno?.toLowerCase().includes(textoLower) ||
+        p.sku?.toLowerCase().includes(textoLower) ||
+        p.codigo_barras?.toLowerCase().includes(textoLower) ||
         p.marca?.toLowerCase().includes(textoLower)
       )
       .map(p => ({ 

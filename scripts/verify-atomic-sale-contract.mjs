@@ -68,6 +68,7 @@ function createScenario({ stock = 10, failure = null, preload = false, postSaleF
     }],
     Venta: preload ? [{
       id: 'sale-preload', organization_id: 'org-a', branch_id: 'branch-1', cliente_id: 'client-1',
+      cotizacion_id: 'quote-1', referencia_ot_id: 'ot-1',
       estado: 'borrador', total: 113, subtotal: 100, impuesto: 13, created_by_user_id: 'user-1',
     }] : [],
     VentaItem: preload ? [{

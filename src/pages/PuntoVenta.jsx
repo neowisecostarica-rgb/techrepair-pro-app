@@ -1058,7 +1058,7 @@ function PuntoVentaContent() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{t('pos.conversionPending','Conversión pendiente')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">{t('pos.conversionBody','Esta venta en borrador proviene de una cotización y tiene más de 2 horas. Podés continuar o volver a la cotización sin borrar el documento. La cancelación definitiva requiere una operación autorizada.')}</p>
+            <p className="text-sm text-slate-600">{'Este borrador tiene más de 2 horas. Podés continuar, volver sin eliminarlo o solicitar su anulación autorizada. Una venta pagada nunca se elimina desde aquí.'}</p>
             <div className="flex justify-end gap-3">
               <Button variant="outline" disabled={isCancellingDraft} onClick={() => { setShowConversionAntigua(false); window.history.back(); }}>Volver sin eliminar</Button>
               <Button variant="destructive" disabled={isCancellingDraft} onClick={cancelDraft}>{isCancellingDraft ? 'Anulando...' : 'Anular borrador'}</Button>

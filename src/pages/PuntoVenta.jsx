@@ -21,6 +21,7 @@ import EnviarWhatsApp from '../components/ventas/EnviarWhatsApp';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { validarVentaPOS } from '@/components/pos/validacionesPOS';
+import { resolveExactCatalogItem } from '@/components/pos/resolveExactCatalogItem';
 import ClienteSearchInput from '@/components/ot/ClienteSearchInput';
 import QuickCreateClienteModal from '@/components/ot/QuickCreateClienteModal';
 import { useToast } from '@/components/ui/use-toast';
@@ -602,12 +603,16 @@ function PuntoVentaContent() {
 
   const handleSearchKeyDown = (e) => {
     if (e.key === 'Enter' && searchTerm && !ventaId) {
-      // Buscar exacto por código de barras
-      const exacto = inventario.find(i => i.codigo_barras === searchTerm);
-      if (exacto) {
-        agregarAlCarrito(exacto, 'producto');
+      // Aceptar código de barras o SKU del cliente, nunca código interno TRP.
+      // No agregar automáticamente si el identificador es ambiguo.
+      const resolution = resolveExactCatalogItem(inventario, searchTerm);
+      if (resolution.status === 'found') {
+        agregarAlCarrito(resolution.item, 'producto');
         setSearchTerm('');
-      } else {
+        setCodigoNoEncontrado('');
+      } else if (resolution.status === 'ambiguous') {
+        toast({ title: 'Código ambiguo', description: 'Hay varios productos con ese identificador. Elegí el artículo de la lista.', variant: 'destructive' });
+      } else if (resolution.status === 'not_found') {
         setCodigoNoEncontrado(searchTerm);
       }
     }

@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { getIdentityOrganization } from '@/api/identity';
@@ -36,24 +36,32 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const navigate = useNavigate();
   const { toast } = useToast();
   const [pendingConversion, setPendingConversion] = useState(null);
+  const savingRef = useRef(false);
 
   const clienteActual = clienteId;
   const organizationId = userAccount?.organization_id;
+  const organizationWide = userAccount?.role === 'ORG_ADMIN';
+  const branchId = userAccount?.branch_id;
+  const canReadInventory = !!organizationId && (organizationWide || !!branchId);
 
   const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones', clienteActual],
-    queryFn: () => base44.entities.Cotizacion.filter({ cliente_id: clienteActual }, '-created_date', 200),
-    enabled: !!clienteActual,
+    queryKey: ['cotizaciones', organizationId, clienteActual, userAccount?.branch_id],
+    queryFn: () => base44.entities.Cotizacion.filter({ organization_id: organizationId, cliente_id: clienteActual, ...(userAccount?.role !== 'ORG_ADMIN' ? { branch_id: userAccount?.branch_id } : {}) }, '-created_date', 200),
+    enabled: !!clienteActual && !!organizationId && (userAccount?.role === 'ORG_ADMIN' || !!userAccount?.branch_id),
   });
 
   const { data: inventario = [] } = useQuery({
-    queryKey: ['inventario-disponible'],
-    queryFn: () => base44.entities.Inventario.filter({ organization_id: organizationId, estado: 'activo' }, '-created_date', 500),
-    enabled: !!organizationId,
+    queryKey: ['inventario-disponible', organizationId, organizationWide ? 'all' : branchId],
+    queryFn: () => base44.entities.Inventario.filter({
+      organization_id: organizationId,
+      estado: 'activo',
+      ...(!organizationWide ? { branch_id: branchId } : {}),
+    }, '-created_date', 500),
+    enabled: canReadInventory,
   });
 
   const { data: servicios = [] } = useQuery({
-    queryKey: ['servicios-disponibles'],
+    queryKey: ['servicios-disponibles', organizationId],
     queryFn: () => base44.entities.Servicio.filter({ organization_id: organizationId, activo: true }, '-created_date', 200),
     enabled: !!organizationId,
   });
@@ -71,6 +79,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const createCotizacionMutation = useMutation({
     mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data)),
+    onSettled: () => { savingRef.current = false; },
+    onError: (error) => toast({ variant: 'destructive', title: 'No se guardó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
     onSuccess: (nuevaCotizacion) => {
       handleGuardar(nuevaCotizacion);
     },
@@ -78,6 +88,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const updateCotizacionMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Cotizacion.update(id, data),
+    onSettled: () => { savingRef.current = false; },
+    onError: (error) => toast({ variant: 'destructive', title: 'No se actualizó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
     onSuccess: () => {
       handleGuardar(null);
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
@@ -115,9 +127,13 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const { data: cliente } = useQuery({
-    queryKey: ['cliente', clienteActual],
-    queryFn: () => base44.entities.Cliente.filter({ id: clienteActual }).then(res => res[0]),
-    enabled: !!clienteActual,
+    queryKey: ['cliente', organizationId, clienteActual, organizationWide ? 'all' : branchId],
+    queryFn: () => base44.entities.Cliente.filter({
+      id: clienteActual,
+      organization_id: organizationId,
+      ...(!organizationWide ? { branch_id: branchId } : {}),
+    }, '-created_date', 1).then(res => res[0]),
+    enabled: !!clienteActual && canReadInventory,
   });
 
   const { data: organization } = useQuery({
@@ -171,7 +187,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     const productosInventario = inventario
       .filter(p => 
         p.nombre?.toLowerCase().includes(textoLower) ||
-        p.codigo_interno?.toLowerCase().includes(textoLower) ||
+        p.sku?.toLowerCase().includes(textoLower) ||
+        p.codigo_barras?.toLowerCase().includes(textoLower) ||
         p.marca?.toLowerCase().includes(textoLower)
       )
       .map(p => ({ 
@@ -243,6 +260,15 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    if (!canReadInventory) {
+      toast({ variant: 'destructive', title: 'Sucursal requerida', description: 'Se necesita un contexto de empresa y sucursal autorizado.' });
+      return;
+    }
+    if (editingCotizacion && editingCotizacion.estado !== 'borrador') {
+      toast({ variant: 'destructive', title: 'Cotización no editable', description: 'Solo se pueden editar borradores.' });
+      return;
+    }
 
     if (!clienteActual) {
       toast({ variant: 'destructive', title: t('quote.selectCustomer','Selecciona un cliente'), description: t('quote.needsCustomerSave','La cotización necesita un cliente antes de guardarse.') });
@@ -268,6 +294,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       notas: formData.get('notas'),
     };
 
+    savingRef.current = true;
     if (editingCotizacion) {
       updateCotizacionMutation.mutate({ id: editingCotizacion.id, data: cotizacionData });
     } else {
@@ -768,8 +795,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
               }}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                Guardar Cotización
+              <Button type="submit" disabled={createCotizacionMutation.isPending || updateCotizacionMutation.isPending}>
+                {createCotizacionMutation.isPending || updateCotizacionMutation.isPending ? 'Guardando...' : 'Guardar Cotización'}
               </Button>
             </div>
           </form>

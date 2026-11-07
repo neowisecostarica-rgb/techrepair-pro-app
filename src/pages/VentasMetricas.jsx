@@ -22,11 +22,14 @@ export default function VentasMetricas() {
 
 function VentasMetricasContent() {
   const { t } = useI18n();
-  const { effectiveOrgId, userAccount, user } = useAuthContext();
+  const { effectiveOrgId, userAccount, user, effectiveRole } = useAuthContext();
   const [rangoPreset, setRangoPreset] = useState('mes');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [alcance, setAlcance] = useState('yo');
+  const canSeeOrganization = effectiveRole === 'ORG_ADMIN';
+  const branchScopeReady = canSeeOrganization || !!userAccount?.branch_id;
+  const safeAlcance = canSeeOrganization ? alcance : (alcance === 'todo' ? 'yo' : alcance);
 
   // Calcular fechas según preset
   useEffect(() => {
@@ -57,15 +60,15 @@ function VentasMetricasContent() {
     setFechaHasta(hasta.toISOString().split('T')[0]);
   }, [rangoPreset]);
 
-  const { data: ventas = [], isLoading } = useQuery({
-    queryKey: ['ventas-metricas', effectiveOrgId, fechaDesde, fechaHasta, alcance, userAccount?.branch_id, user?.id],
+  const { data: ventas = [], isLoading, isError: salesMetricsError } = useQuery({
+    queryKey: ['ventas-metricas', effectiveOrgId, fechaDesde, fechaHasta, safeAlcance, userAccount?.branch_id, user?.id, effectiveRole],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId };
 
       // Filtrar por alcance
-      if (alcance === 'yo') {
+      if (safeAlcance === 'yo') {
         query.created_by_user_id = user?.id;
-      } else if (alcance === 'equipo' && userAccount?.branch_id) {
+      } else if (safeAlcance === 'equipo' && userAccount?.branch_id) {
         query.branch_id = userAccount.branch_id;
       }
 
@@ -81,28 +84,30 @@ function VentasMetricasContent() {
         return ventaFecha >= desde && ventaFecha <= hasta;
       });
     },
-    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta
+    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta && branchScopeReady
   });
 
-  const { data: cotizaciones = [] } = useQuery({
-    queryKey: ['cotizaciones-metricas', effectiveOrgId, alcance, user?.id],
+  const { data: cotizaciones = [], isError: quotesMetricsError } = useQuery({
+    queryKey: ['cotizaciones-metricas', effectiveOrgId, safeAlcance, user?.id, userAccount?.branch_id],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId };
-      if (alcance === 'yo') {
+      if (!canSeeOrganization) query.branch_id = userAccount.branch_id;
+      if (safeAlcance === 'yo') {
         query.vendedor_id = user?.id;
       }
       return await base44.entities.Cotizacion.filter(query, '-created_date', 500);
     },
-    enabled: !!effectiveOrgId
+    enabled: !!effectiveOrgId && branchScopeReady
   });
 
-  const { data: garantias = [] } = useQuery({
-    queryKey: ['garantias-metricas', effectiveOrgId],
+  const { data: garantias = [], isError: warrantiesMetricsError } = useQuery({
+    queryKey: ['garantias-metricas', effectiveOrgId, canSeeOrganization ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Garantia.filter({
       organization_id: effectiveOrgId,
+      ...(!canSeeOrganization ? { branch_id: userAccount.branch_id } : {}),
       estado: 'ACTIVA'
     }, '-created_date', 500),
-    enabled: !!effectiveOrgId
+    enabled: !!effectiveOrgId && branchScopeReady
   });
 
   // Cálculos
@@ -184,6 +189,10 @@ function VentasMetricasContent() {
         onAlcanceChange={setAlcance}
       />
 
+      {!branchScopeReady && <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">Falta confirmar la sucursal autorizada; no se pueden consultar las métricas.</div>}
+      {(salesMetricsError || quotesMetricsError || warrantiesMetricsError) && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm">No se pudieron verificar todas las métricas. Los indicadores permanecen ocultos para evitar presentar ceros incorrectos.</div>}
+      {branchScopeReady && !salesMetricsError && !quotesMetricsError && !warrantiesMetricsError && (
+      <>
       {/* Cards Principales */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-0 shadow-xl bg-gradient-to-br from-emerald-50 to-emerald-100">
@@ -364,6 +373,8 @@ function VentasMetricasContent() {
             <p className="text-slate-500">Intenta ajustar los filtros o realizar tu primera venta</p>
           </CardContent>
         </Card>
+      )}
+      </>
       )}
     </div>
   );

@@ -59,13 +59,15 @@ function InventarioContent() {
 
   const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
   const isSalesReadOnly = effectiveRole === 'SALES';
-  const { data: items = [] } = useQuery({
+  // Never broaden a branch-scoped inventory query when the membership has no branch.
+  const inventoryScopeReady = !!effectiveOrgId && (isOrgAdmin || !!userAccount?.branch_id);
+  const { data: items = [], isError: inventoryReadError, isPending: inventoryReadPending, refetch: retryInventoryRead } = useQuery({
     queryKey: ['inventario', userAccount?.organization_id, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Inventario.filter({
-      organization_id: userAccount.organization_id,
-      ...(!isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {})
+      organization_id: effectiveOrgId,
+      ...(!isOrgAdmin ? { branch_id: userAccount.branch_id } : {})
     }, '-created_date', 200),
-    enabled: !!userAccount?.organization_id,
+    enabled: inventoryScopeReady,
   });
 
   // CARGAR CATEGORÍAS DINÁMICAS
@@ -261,8 +263,20 @@ function InventarioContent() {
 
       {['ORG_ADMIN', 'BRANCH_ADMIN', 'INVENTORY'].includes(effectiveRole) && <TechnicalRequestFulfillmentPanel items={items} />}
 
+      {!inventoryScopeReady && (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          No se pudo confirmar la sucursal autorizada. El inventario permanece sin consultar.
+        </div>
+      )}
+      {inventoryReadError && (
+        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          Falló la consulta de inventario. No interpretes los valores como existencias cero.
+          <Button type="button" variant="outline" size="sm" className="ml-2" onClick={() => retryInventoryRead()}>Reintentar</Button>
+        </div>
+      )}
+      {inventoryReadPending && inventoryScopeReady && <p role="status" className="text-sm text-slate-500">Consultando existencias…</p>}
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {inventoryScopeReady && !inventoryReadError && !inventoryReadPending && <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border border-slate-200 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -299,6 +313,7 @@ function InventarioContent() {
           </CardContent>
         </Card>
       </div>
+      }
 
       {/* Filtros */}
       <Card className="border border-slate-200 shadow-sm">

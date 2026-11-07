@@ -27,7 +27,8 @@ function VentasHistorialContent() {
   const { t } = useI18n();
   const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
   const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
-  const branchFilter = !isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {};
+  const branchScopeReady = isOrgAdmin || !!userAccount?.branch_id;
+  const branchFilter = isOrgAdmin ? {} : { branch_id: userAccount?.branch_id };
   const [busqueda, setBusqueda] = useState('');
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
@@ -39,7 +40,7 @@ function VentasHistorialContent() {
   const [fechaDesde, setFechaDesde] = useState(fechaDesdeDefault.toISOString().split('T')[0]);
   const [fechaHasta, setFechaHasta] = useState(new Date().toISOString().split('T')[0]);
 
-  const { data: ventas = [], isLoading } = useQuery({
+  const { data: ventas = [], isLoading, isError: salesHistoryError } = useQuery({
     queryKey: ['ventas-historial', effectiveOrgId, fechaDesde, fechaHasta, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: async () => {
       const allVentas = await base44.entities.Venta.filter({
@@ -57,19 +58,19 @@ function VentasHistorialContent() {
       });
     },
     select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
-    enabled: !!effectiveOrgId
+    enabled: !!effectiveOrgId && branchScopeReady
   });
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-hist', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
-    enabled: !!effectiveOrgId
+    enabled: !!effectiveOrgId && branchScopeReady
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
     queryKey: ['ot-hist', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
-    enabled: !!effectiveOrgId
+    enabled: !!effectiveOrgId && branchScopeReady
   });
 
   const getClienteName = (clienteId) => {
@@ -104,6 +105,12 @@ function VentasHistorialContent() {
 
     return true;
   });
+
+  if (!branchScopeReady || salesHistoryError) {
+    return <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm">
+      No se pudo verificar el historial de ventas o la sucursal autorizada. No se mostrarán resultados vacíos como si fueran válidos.
+    </div>;
+  }
 
   if (isLoading) {
     return (

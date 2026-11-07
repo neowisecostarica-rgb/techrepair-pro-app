@@ -145,20 +145,24 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'convert') {
+      const identificacion = clean(body.identificacion, 120);
+      if (!identificacion) return jsonError('La identificacion es obligatoria', 400);
       if (lead.converted_to_cliente_id) {
         const existing = await base44.asServiceRole.entities.Cliente.filter({
           id: lead.converted_to_cliente_id,
           organization_id: organizationId,
+          ...branchFilter,
         });
+        const linkedCliente = existing?.[0] || null;
+        if (!linkedCliente) return jsonError('Cliente vinculado no disponible para esta sucursal', 409, 'CRM_CONVERT_LINK_INVALID');
+        if (linkedCliente.identificacion !== identificacion) return jsonError('El prospecto ya fue convertido con otra identificacion', 409, 'CRM_CONVERT_IDENTITY_MISMATCH');
         return Response.json({
           lead: projectLead(lead),
-          cliente: existing?.[0] ? projectOperationalReadResult('Cliente', existing[0], authorization) : null,
+          cliente: projectOperationalReadResult('Cliente', linkedCliente, authorization),
           idempotent: true,
         });
       }
 
-      const identificacion = clean(body.identificacion, 120);
-      if (!identificacion) return jsonError('La identificacion es obligatoria', 400);
       const duplicates = await base44.asServiceRole.entities.Cliente.filter({
         organization_id: organizationId,
         identificacion,
@@ -181,19 +185,15 @@ Deno.serve(async (req) => {
         organization_id: organizationId,
         identificacion,
       });
-      if (postCreateCheck.length > 1) {
-        const sorted = postCreateCheck.sort((a, b) =>
-          new Date(a.created_date) - new Date(b.created_date)
+      // No declaramos ganada la conversión si existen dos clientes con igual
+      // identificación. Resolverlo requiere una restricción UNIQUE real en el
+      // almacén; no eliminamos un expediente potencialmente usado por otra solicitud.
+      if (postCreateCheck.length !== 1 || postCreateCheck[0].id !== cliente.id) {
+        return jsonError(
+          'Conversion pendiente de conciliacion: identificacion duplicada o ambigua',
+          409,
+          'CRM_CONVERSION_CONCURRENT_CONFLICT',
         );
-        const original = sorted[0];
-        if (original.id !== cliente.id) {
-          await base44.asServiceRole.entities.Cliente.delete(cliente.id).catch(() => {});
-          return Response.json({
-            lead: projectLead(lead),
-            cliente: projectOperationalReadResult('Cliente', original, authorization),
-            reconciled: true,
-          });
-        }
       }
 
       try {
@@ -215,8 +215,10 @@ Deno.serve(async (req) => {
             reconciled: true,
           });
         }
-        await base44.asServiceRole.entities.Cliente.delete(cliente.id).catch(() => {});
-        throw updateError;
+        // No destruir automáticamente un expediente si el estado del Lead es
+        // incierto después de una escritura fallida. Recuperación manual segura.
+        console.error('[crmGateway] conversion link write uncertain', updateError?.message || updateError);
+        return jsonError('Conversion pendiente de conciliacion: el cliente fue creado pero el lead no quedo vinculado', 409, 'CRM_CONVERSION_LINK_UNCERTAIN');
       }
     }
 

@@ -152,8 +152,11 @@ async function resolveRecordBranchIds(base44, organizationId, entityName, record
     return ot?.branch_id ? [ot.branch_id] : [];
   }
   if (scope === 'quote') {
+    // Standalone retail quotes have no OT but still belong to a canonical branch.
+    // If both are provided, reject inconsistent branch claims.
     const ot = await loadWorkOrder(base44, organizationId, record.orden_trabajo_id);
-    return ot?.branch_id ? [ot.branch_id] : [];
+    if (record.orden_trabajo_id && (!ot || !ot.branch_id || (record.branch_id && record.branch_id !== ot.branch_id))) return [];
+    return record.branch_id ? [record.branch_id] : (ot?.branch_id ? [ot.branch_id] : []);
   }
   if (scope === 'sale') {
     const sale = await loadSale(base44, organizationId, record.venta_id || record.sale_id);
@@ -699,6 +702,11 @@ Deno.serve(async (req) => {
 
     const authorization = await resolveAuthorization(base44, user, body);
     if (!authorization.ok) return fail(authorization.error, authorization.status, authorization.code || 'OPERATIONAL_AUTH_DENIED');
+    // Paid sales and draft sales are sovereign lifecycle records. Never allow
+    // arbitrary frontend deletion, regardless of the UI or requested role.
+    if (body.entity === 'Venta' && operation === 'delete') {
+      return fail('La eliminación directa de ventas está prohibida; use un comando de cancelación autorizado', 403, 'SALE_DELETE_SOVEREIGN_WRITER_REQUIRED');
+    }
     if (body.entity === 'Branch' && operation !== 'read') {
       if (operation === 'delete') {
         return fail(

@@ -54,7 +54,7 @@ export const OPERATIONAL_ENTITY_POLICIES = Object.freeze({
   Supplier: { read: ADMIN_ROLES, create: ['ORG_ADMIN'], update: ['ORG_ADMIN'], delete: ['ORG_ADMIN'], scope: 'organization' },
   SupplierPayment: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: [], delete: ['ORG_ADMIN'], scope: 'purchase_invoice' },
   TerminosYCondiciones: { read: ALL_OPERATIONAL_ROLES, create: ['ORG_ADMIN'], update: ['ORG_ADMIN'], delete: ['ORG_ADMIN'], scope: 'organization' },
-  Venta: { read: [...COMMERCIAL_ROLES, 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: [], delete: COMMERCIAL_ROLES, scope: 'branch' },
+  Venta: { read: [...COMMERCIAL_ROLES, 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: [], delete: [], scope: 'branch' },
   VentaItem: { read: [...COMMERCIAL_ROLES, 'CUSTOMER_SERVICE'], create: COMMERCIAL_ROLES, update: [], delete: [], scope: 'sale' },
   WorkflowGate: { read: TECHNICAL_ROLES, create: [], update: [], delete: [], scope: 'workflow_gate' },
 });

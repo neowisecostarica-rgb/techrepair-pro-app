@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { getIdentityOrganization } from '@/api/identity';
@@ -36,6 +36,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const navigate = useNavigate();
   const { toast } = useToast();
   const [pendingConversion, setPendingConversion] = useState(null);
+  const savingRef = useRef(false);
 
   const clienteActual = clienteId;
   const organizationId = userAccount?.organization_id;
@@ -78,6 +79,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const createCotizacionMutation = useMutation({
     mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data)),
+    onSettled: () => { savingRef.current = false; },
+    onError: (error) => toast({ variant: 'destructive', title: 'No se guardó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
     onSuccess: (nuevaCotizacion) => {
       handleGuardar(nuevaCotizacion);
     },
@@ -85,6 +88,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const updateCotizacionMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Cotizacion.update(id, data),
+    onSettled: () => { savingRef.current = false; },
+    onError: (error) => toast({ variant: 'destructive', title: 'No se actualizó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
     onSuccess: () => {
       handleGuardar(null);
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
@@ -255,6 +260,15 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    if (!canReadInventory) {
+      toast({ variant: 'destructive', title: 'Sucursal requerida', description: 'Se necesita un contexto de empresa y sucursal autorizado.' });
+      return;
+    }
+    if (editingCotizacion && editingCotizacion.estado !== 'borrador') {
+      toast({ variant: 'destructive', title: 'Cotización no editable', description: 'Solo se pueden editar borradores.' });
+      return;
+    }
 
     if (!clienteActual) {
       toast({ variant: 'destructive', title: t('quote.selectCustomer','Selecciona un cliente'), description: t('quote.needsCustomerSave','La cotización necesita un cliente antes de guardarse.') });
@@ -280,6 +294,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
       notas: formData.get('notas'),
     };
 
+    savingRef.current = true;
     if (editingCotizacion) {
       updateCotizacionMutation.mutate({ id: editingCotizacion.id, data: cotizacionData });
     } else {
@@ -780,8 +795,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
               }}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                Guardar Cotización
+              <Button type="submit" disabled={createCotizacionMutation.isPending || updateCotizacionMutation.isPending}>
+                {createCotizacionMutation.isPending || updateCotizacionMutation.isPending ? 'Guardando...' : 'Guardar Cotización'}
               </Button>
             </div>
           </form>

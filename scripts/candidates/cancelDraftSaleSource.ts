@@ -73,7 +73,11 @@ Deno.serve(async req => {
     try {
       claimed = await base44.asServiceRole.entities.Venta.updateMany({
         id: sale.id, organization_id: orgId, branch_id: sale.branch_id, estado: 'borrador',
-        cancel_operation_id: { $exists: false },
+        $or: [
+          { cancel_operation_id: { $exists: false } },
+          { cancel_operation_id: null },
+          { cancel_operation_id: '' },
+        ],
       }, { $set: {
         estado: 'anulada', cancel_operation_id: body.operation_id,
         cancelado_at: new Date().toISOString(), cancelado_por: user.id,

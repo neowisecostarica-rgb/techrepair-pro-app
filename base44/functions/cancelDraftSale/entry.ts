@@ -1,4 +1,4 @@
-// base44/functions/cancelDraftSale/entry.ts
+// scripts/candidates/cancelDraftSaleSource.ts
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.41";
 
 // base44/functions/_shared/controlledPilotAuthority.ts
@@ -510,7 +510,7 @@ async function appendAuditEvent(base44, input) {
   }
 }
 
-// base44/functions/cancelDraftSale/entry.ts
+// scripts/candidates/cancelDraftSaleSource.ts
 var response = (message, status, code) => Response.json({ success: false, error: message, code }, { status });
 var id = (value) => typeof value === "string" && value.trim().length > 0 && value.length <= 160;
 Deno.serve(async (req) => {
@@ -581,7 +581,11 @@ Deno.serve(async (req) => {
         organization_id: orgId,
         branch_id: sale.branch_id,
         estado: "borrador",
-        cancel_operation_id: { $exists: false }
+        $or: [
+          { cancel_operation_id: { $exists: false } },
+          { cancel_operation_id: null },
+          { cancel_operation_id: "" }
+        ]
       }, { $set: {
         estado: "anulada",
         cancel_operation_id: body.operation_id,

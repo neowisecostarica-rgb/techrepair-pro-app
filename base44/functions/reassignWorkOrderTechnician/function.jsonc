@@ -1,4 +1,4 @@
 {
   "name": "reassignWorkOrderTechnician",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

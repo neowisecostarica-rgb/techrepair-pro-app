@@ -1,4 +1,4 @@
 {
   "name": "adjustInventoryStock",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

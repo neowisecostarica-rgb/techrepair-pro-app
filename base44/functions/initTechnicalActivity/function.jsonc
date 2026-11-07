@@ -1,4 +1,4 @@
 {
   "name": "initTechnicalActivity",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

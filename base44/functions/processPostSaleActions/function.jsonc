@@ -1,4 +1,4 @@
 {
   "name": "processPostSaleActions",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

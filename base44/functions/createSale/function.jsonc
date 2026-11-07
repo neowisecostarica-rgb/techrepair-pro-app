@@ -1,4 +1,4 @@
 {
   "name": "createSale",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

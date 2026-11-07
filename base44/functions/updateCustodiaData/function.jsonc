@@ -1,4 +1,4 @@
 {
   "name": "updateCustodiaData",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

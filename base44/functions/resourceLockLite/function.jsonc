@@ -1,4 +1,4 @@
 {
   "name": "resourceLockLite",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

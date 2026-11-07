@@ -1,4 +1,4 @@
 {
   "name": "dmrUtils",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

@@ -1,4 +1,4 @@
 {
   "name": "processOTEvent",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

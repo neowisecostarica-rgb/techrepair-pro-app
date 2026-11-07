@@ -21,9 +21,25 @@ function memoryBase44() {
       return structuredClone(record);
     },
   };
+  const org = { id: 'org-1' };
+  const organizationEntity = {
+    async filter(query) { return query.id === org.id ? [structuredClone(org)] : []; },
+    async updateMany(query, mutation) {
+      if (query.id !== org.id) return {updated: 0};
+      if (query.audit_lock_token !== undefined && org.audit_lock_token !== query.audit_lock_token) return {updated: 0};
+      if (query.$or && !query.$or.some(match => {
+        const check=match.audit_lock_token;
+        return check && typeof check==='object' && '$exists' in check
+          ? Object.hasOwn(org,'audit_lock_token')===check.$exists : org.audit_lock_token===check;
+      })) return {updated: 0};
+      Object.assign(org, mutation.$set || {});
+      for(const field of Object.keys(mutation.$unset || {})) delete org[field];
+      return {updated: 1};
+    },
+  };
   return {
     records,
-    base44: { asServiceRole: { entities: { AuditEvent: entity } } },
+    base44: { asServiceRole: { entities: { AuditEvent: entity, Organization: organizationEntity } } },
   };
 }
 

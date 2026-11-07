@@ -1,4 +1,4 @@
 {
   "name": "cancelDraftSale",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { isCanonicalActiveUserAccount, resolveAuthorizedContext } from '../base44/functions/_shared/userAuthorization.ts';
 import { authorizeRecordBranch } from '../base44/functions/_shared/operationalAuthorization.ts';
 
-const backendPath = new URL('../base44/functions/getSmartIntakeByWorkOrder/entry.ts', import.meta.url);
+const backendPath = new URL('../scripts/base44-function-sources/getSmartIntakeByWorkOrder/entry.ts', import.meta.url);
 const smartIntakeApiPath = new URL('../src/api/smartIntake.js', import.meta.url);
 const workOrdersPath = new URL('../src/pages/OrdenesTrabajo.jsx', import.meta.url);
 const expedientePath = new URL('../src/components/expediente/ExpedienteTecnico.jsx', import.meta.url);

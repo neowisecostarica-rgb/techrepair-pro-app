@@ -25,7 +25,7 @@ import {
 } from '../base44/functions/_shared/commandExecution.ts';
 import { inspectControlledPilotConfiguration } from '../base44/functions/_shared/controlledPilotAuthority.ts';
 const transitionSource = await readFile(
-  new URL('../base44/functions/transitionWorkOrderStatus/entry.ts', import.meta.url),
+  new URL('../scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts', import.meta.url),
   'utf8',
 );
 const gatewaySource = await readFile(
@@ -33,7 +33,7 @@ const gatewaySource = await readFile(
   'utf8',
 );
 const saleSource = await readFile(
-  new URL('../base44/functions/createSale/entry.ts', import.meta.url),
+  new URL('../scripts/base44-function-sources/createSale/entry.ts', import.meta.url),
   'utf8',
 );
 

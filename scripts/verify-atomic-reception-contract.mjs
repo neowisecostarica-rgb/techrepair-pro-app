@@ -9,8 +9,8 @@ import {
 } from '../base44/functions/_shared/operationalAuthorization.ts';
 import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 
-const backendPath = new URL('../base44/functions/createWorkOrder/entry.ts', import.meta.url);
-const lockBackendPath = new URL('../base44/functions/resourceLockLite/entry.ts', import.meta.url);
+const backendPath = new URL('../scripts/base44-function-sources/createWorkOrder/entry.ts', import.meta.url);
+const lockBackendPath = new URL('../scripts/base44-function-sources/resourceLockLite/entry.ts', import.meta.url);
 const pagePath = new URL('../src/pages/OrdenesTrabajo.jsx', import.meta.url);
 const helperPath = new URL('../src/components/ot/crearOrdenTrabajo.jsx', import.meta.url);
 const [backendSource, lockBackendSource, pageSource, helperSource] = await Promise.all([

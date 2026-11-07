@@ -7,12 +7,12 @@ let passed = 0;
 const pass = name => { passed += 1; console.log(`PASS ${name}`); };
 
 const [init, activity, assignment, qa, qaEvidence, transition, miDia, activeUi, resumeUi] = await Promise.all([
-  read('base44/functions/initTechnicalActivity/entry.ts'),
+  read('scripts/base44-function-sources/initTechnicalActivity/entry.ts'),
   read('base44/functions/technicalActivityCommand/entry.ts'),
-  read('base44/functions/reassignWorkOrderTechnician/entry.ts'),
+  read('scripts/base44-function-sources/reassignWorkOrderTechnician/entry.ts'),
   read('base44/functions/recordTechnicalTest/entry.ts'),
   read('base44/functions/_shared/qaEvidence.ts'),
-  read('base44/functions/transitionWorkOrderStatus/entry.ts'),
+  read('scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts'),
   read('src/components/midia/MiDiaTech.jsx'),
   read('src/components/actividades/ActividadActiva.jsx'),
   read('src/components/ot/retomarOrdenTrabajo.jsx'),

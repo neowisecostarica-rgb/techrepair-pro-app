@@ -187,7 +187,7 @@ async function diagnosticSummaryHandler({ role, assigned = true }) {
   const authorization = role === 'TECHNICIAN'
     ? { ok: true, organizationId: 'org-a', role, persistedRole: role, account: { branch_id: 'branch-a' } }
     : { ok: false, status: 403, error: 'Rol no autorizado' };
-  const handler = await vmHandler('../base44/functions/updateDiagnosticoResumen/entry.ts', 'Deno.serve(async (req) => {', {
+  const handler = await vmHandler('../scripts/base44-function-sources/updateDiagnosticoResumen/entry.ts', 'Deno.serve(async (req) => {', {
     createClientFromRequest: () => ({ auth: { me: async () => user }, asServiceRole: { entities } }),
     resolveAuthorizedContext: async () => authorization,
     authorizeRecordBranch: () => ({ ok: true }),
@@ -268,7 +268,7 @@ test('dmrAuditor projects protected platform audit rows', async () => {
     context: 'created by reception', recorded_at: '2026-08-14T00:00:00.000Z',
     correlation_id: 'trace-a', ip_address: '192.0.2.1', metadata: '{"secret":"internal"}',
   }] };
-  const handler = await vmHandler('../base44/functions/dmrAuditor/entry.ts', 'Deno.serve(async (req) => {', {
+  const handler = await vmHandler('../scripts/base44-function-sources/dmrAuditor/entry.ts', 'Deno.serve(async (req) => {', {
     createClientFromRequest: () => ({
       auth: { me: async () => ({ id: 'platform-a', role: 'SUPER_ADMIN' }) },
       asServiceRole: { entities: entityStore(records) },
@@ -370,7 +370,7 @@ test('transitionWorkOrderStatus handler recovers the original lifecycle evidence
     role: 'TECHNICIAN', persistedRole: 'TECHNICIAN', isSuperAdmin: false,
     capabilities: getRoleCapabilities('TECHNICIAN'),
   };
-  const handler = await vmHandler('../base44/functions/transitionWorkOrderStatus/entry.ts', 'Deno.serve(async (req) => {', {
+  const handler = await vmHandler('../scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts', 'Deno.serve(async (req) => {', {
     createClientFromRequest: () => ({
       auth: { me: async () => ({ id: 'tech-a', email: 'tech-a@example.test' }) },
       asServiceRole: { entities },
@@ -432,7 +432,7 @@ async function publicHandler(scenario, overrides = {}) {
       return { ...entity, filter: overrides[name] };
     },
   });
-  return vmHandler('../base44/functions/getPublicCommercialDocument/entry.ts', 'Deno.serve(async (req) => {', {
+  return vmHandler('../scripts/base44-function-sources/getPublicCommercialDocument/entry.ts', 'Deno.serve(async (req) => {', {
     createClientFromRequest: () => ({ asServiceRole: { entities } }),
     validatePublicTokenRecord, resolvePublicResourceRelations,
     inspectControlledPilotConfiguration,
@@ -502,19 +502,19 @@ test('public work-order handler fails closed on wrong quote/evidence graph nodes
 
 test('all named protected mutation handlers use positive response projectors', async () => {
   const checks = [
-    ['../base44/functions/initTechnicalActivity/entry.ts', /projectTechnicalActivity\(/u],
+    ['../scripts/base44-function-sources/initTechnicalActivity/entry.ts', /projectTechnicalActivity\(/u],
     ['../base44/functions/technicalActivityCommand/entry.ts', /projectTechnicalActivity\(/u],
     ['../base44/functions/recordTechnicalTest/entry.ts', /projectTechnicalTest\(/u],
-    ['../base44/functions/createSale/entry.ts', /projectSaleMutationResult\(/u],
-    ['../base44/functions/createInventoryItem/entry.ts', /projectInventoryAdmin\(/u],
-    ['../base44/functions/updateInventoryItem/entry.ts', /projectInventoryAdmin\(/u],
-    ['../base44/functions/manageOrgUser/entry.ts', /projectUserAccount\(/u],
+    ['../scripts/base44-function-sources/createSale/entry.ts', /projectSaleMutationResult\(/u],
+    ['../scripts/base44-function-sources/createInventoryItem/entry.ts', /projectInventoryAdmin\(/u],
+    ['../scripts/base44-function-sources/updateInventoryItem/entry.ts', /projectInventoryAdmin\(/u],
+    ['../scripts/base44-function-sources/manageOrgUser/entry.ts', /projectUserAccount\(/u],
     ['../base44/functions/notificationCommand/entry.ts', /projectNotification\(/u],
-    ['../base44/functions/dmrAuditor/entry.ts', /\.map\(projectSuperAdminAudit\)/u],
+    ['../scripts/base44-function-sources/dmrAuditor/entry.ts', /\.map\(projectSuperAdminAudit\)/u],
     ['../base44/functions/identityGateway/entry.ts', /auditLogs: \(auditLogs \|\| \[\]\)\.map\(projectSuperAdminAudit\)/u],
   ];
   for (const [path, pattern] of checks) assert.match(await readFile(new URL(path, import.meta.url), 'utf8'), pattern, path);
-  const lifecycleSource = await readFile(new URL('../base44/functions/transitionWorkOrderStatus/entry.ts', import.meta.url), 'utf8');
+  const lifecycleSource = await readFile(new URL('../scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(lifecycleSource, /diagnostico_resumido/u, 'diagnostic summary must have one named writer');
 });
 

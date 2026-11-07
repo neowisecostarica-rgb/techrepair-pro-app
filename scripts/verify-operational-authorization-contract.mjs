@@ -149,11 +149,11 @@ const authorization = (role, branchId = 'branch-a', organizationId = 'org-a') =>
   const sources = await Promise.all([
     read('base44/functions/listWorkOrders/entry.ts'),
     read('base44/functions/getFinancialMetrics/entry.ts'),
-    read('base44/functions/reassignWorkOrderTechnician/entry.ts'),
-    read('base44/functions/createSale/entry.ts'),
-    read('base44/functions/updateInventoryItem/entry.ts'),
-    read('base44/functions/adjustInventoryStock/entry.ts'),
-    read('base44/functions/getSmartIntakeByWorkOrder/entry.ts'),
+    read('scripts/base44-function-sources/reassignWorkOrderTechnician/entry.ts'),
+    read('scripts/base44-function-sources/createSale/entry.ts'),
+    read('scripts/base44-function-sources/updateInventoryItem/entry.ts'),
+    read('scripts/base44-function-sources/adjustInventoryStock/entry.ts'),
+    read('scripts/base44-function-sources/getSmartIntakeByWorkOrder/entry.ts'),
     read('base44/functions/customer360Gateway/entry.ts'),
     read('base44/functions/crmGateway/entry.ts'),
   ]);
@@ -169,9 +169,9 @@ const authorization = (role, branchId = 'branch-a', organizationId = 'org-a') =>
 {
   const [dmr, custody, lifecycleHandler, eventConsumer] = await Promise.all([
     read('base44/functions/dmrOrchestrator/entry.ts'),
-    read('base44/functions/updateCustodiaData/entry.ts'),
-    read('base44/functions/handleOTLifecycleEvent/entry.ts'),
-    read('base44/functions/processOTEvent/entry.ts'),
+    read('scripts/base44-function-sources/updateCustodiaData/entry.ts'),
+    read('scripts/base44-function-sources/handleOTLifecycleEvent/entry.ts'),
+    read('scripts/base44-function-sources/processOTEvent/entry.ts'),
   ]);
   assert.match(dmr, /DMR_ORCHESTRATOR_RETIRED/);
   assert.match(dmr, /createWorkOrder/);

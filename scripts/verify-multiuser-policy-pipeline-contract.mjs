@@ -243,8 +243,8 @@ test('public customer authority remains resource/operation scoped and isolated f
 
 test('representative production entrypoints traverse Evaluate -> Execute -> named writer', async () => {
   const files = {
-    lifecycle: '../base44/functions/transitionWorkOrderStatus/entry.ts',
-    assignment: '../base44/functions/reassignWorkOrderTechnician/entry.ts',
+    lifecycle: '../scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts',
+    assignment: '../scripts/base44-function-sources/reassignWorkOrderTechnician/entry.ts',
     inventory: '../base44/functions/technicalRequestCommand/entry.ts',
     delivery: '../base44/functions/deliverWorkOrder/entry.ts',
     branch: '../base44/functions/manageBranchLifecycle/entry.ts',
@@ -263,7 +263,7 @@ test('representative production entrypoints traverse Evaluate -> Execute -> name
 });
 
 test('unattended processOTEvent still fails closed before payload or event reads', async () => {
-  const source = await readFile(new URL('../base44/functions/processOTEvent/entry.ts', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../scripts/base44-function-sources/processOTEvent/entry.ts', import.meta.url), 'utf8');
   const blocker = source.indexOf('AUTOMATION_TRUST_ATTESTATION_UNAVAILABLE');
   assert.ok(blocker > 0);
   assert.ok(blocker < source.indexOf('body = await req.json()'));

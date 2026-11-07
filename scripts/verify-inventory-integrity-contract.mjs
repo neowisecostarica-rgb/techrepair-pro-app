@@ -371,7 +371,7 @@ test('schemas make the ledger and reservation state backend-owned', async () => 
 });
 
 test('catalog update rejects every sovereign inventory field', async () => {
-  const backend = await source('base44/functions/updateInventoryItem/entry.ts');
+  const backend = await source('scripts/base44-function-sources/updateInventoryItem/entry.ts');
   for (const field of ['cantidad_disponible', 'cantidad_reservada', 'organization_id', 'branch_id', 'last_inventory_operation_key']) {
     assert.match(backend, new RegExp(`'${field}'`));
   }
@@ -381,9 +381,9 @@ test('catalog update rejects every sovereign inventory field', async () => {
 
 test('create, adjust and sale all delegate physical mutations to one service', async () => {
   const [createItem, adjust, sale] = await Promise.all([
-    source('base44/functions/createInventoryItem/entry.ts'),
-    source('base44/functions/adjustInventoryStock/entry.ts'),
-    source('base44/functions/createSale/entry.ts'),
+    source('scripts/base44-function-sources/createInventoryItem/entry.ts'),
+    source('scripts/base44-function-sources/adjustInventoryStock/entry.ts'),
+    source('scripts/base44-function-sources/createSale/entry.ts'),
   ]);
   for (const backend of [createItem, adjust, sale]) assert.match(backend, /executeInventoryCommand\(base44/);
   assert.match(createItem, /movementType: 'INITIAL_BALANCE'/);
@@ -395,9 +395,9 @@ test('create, adjust and sale all delegate physical mutations to one service', a
 test('approved quote identity, reservation, explicit consume and no-double-decrement are wired', async () => {
   const [gateway, transition, activity, sale, quoteSchema] = await Promise.all([
     source('base44/functions/operationalGateway/entry.ts'),
-    source('base44/functions/transitionWorkOrderStatus/entry.ts'),
-    source('base44/functions/initTechnicalActivity/entry.ts'),
-    source('base44/functions/createSale/entry.ts'),
+    source('scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts'),
+    source('scripts/base44-function-sources/initTechnicalActivity/entry.ts'),
+    source('scripts/base44-function-sources/createSale/entry.ts'),
     source('base44/entities/Cotizacion.jsonc'),
   ]);
   assert.match(quoteSchema, /"referencia_id"/);
@@ -419,10 +419,10 @@ test('legacy data gate is read-only and reports deploy-time follow-up', async ()
 
 test('no runtime inventory owner deletes the physical ledger', async () => {
   const owners = await Promise.all([
-    source('base44/functions/createInventoryItem/entry.ts'),
-    source('base44/functions/updateInventoryItem/entry.ts'),
-    source('base44/functions/adjustInventoryStock/entry.ts'),
-    source('base44/functions/createSale/entry.ts'),
+    source('scripts/base44-function-sources/createInventoryItem/entry.ts'),
+    source('scripts/base44-function-sources/updateInventoryItem/entry.ts'),
+    source('scripts/base44-function-sources/adjustInventoryStock/entry.ts'),
+    source('scripts/base44-function-sources/createSale/entry.ts'),
     source('base44/functions/_shared/inventoryMutationService.ts'),
   ]);
   for (const owner of owners) assert.doesNotMatch(owner, /InventarioHistorial\.delete/);

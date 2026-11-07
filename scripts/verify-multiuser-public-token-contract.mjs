@@ -37,7 +37,7 @@ await check('issuer is authenticated, capability scoped and audited', () => {
 });
 
 await check('public readers enforce exact token authority and project no bearer', () => {
-  const source = read('base44/functions/getPublicCommercialDocument/entry.ts');
+  const source = read('scripts/base44-function-sources/getPublicCommercialDocument/entry.ts');
   for (const purpose of ['QUOTE_DECISION', 'WARRANTY_READ', 'RECEIPT_READ', 'WORK_ORDER_STATUS_READ']) assert.ok(source.includes(purpose), purpose);
   for (const projection of ['function publicQuote', 'function publicWarranty', 'function publicWorkOrder']) {
     const start = source.indexOf(projection);
@@ -47,7 +47,7 @@ await check('public readers enforce exact token authority and project no bearer'
 });
 
 await check('public quote decision consumes token and attributes CUSTOMER_TOKEN audit', () => {
-  const source = read('base44/functions/transitionWorkOrderStatus/entry.ts');
+  const source = read('scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts');
   for (const fragment of ["purpose: 'QUOTE_DECISION'", 'public_access_consumed_at: now', "principalClass: 'CUSTOMER_TOKEN'", 'publicTokenReference(token)', "commandPolicyId: 'CP-QUOTE-002'"]) assert.ok(source.includes(fragment), fragment);
   assert.ok(!source.includes("created_by_user_id: 'portal_cliente'"));
 });
@@ -55,7 +55,7 @@ await check('public quote decision consumes token and attributes CUSTOMER_TOKEN 
 await check('client flows request short-lived links instead of persisting bearers', () => {
   const files = ['src/pages/VentasCotizaciones.jsx', 'src/components/ventas/GestionCotizaciones.jsx', 'src/pages/VentasGarantias.jsx', 'src/components/ventas/AccionesPostVenta.jsx', 'src/components/ventas/EnviarWhatsApp.jsx'];
   for (const file of files) assert.ok(read(file).includes('issuePublicDocumentToken') || read(file).includes('issuePublicLink'), file);
-  const productionSources = ['base44/functions/createWorkOrder/entry.ts', 'base44/functions/createSale/entry.ts', 'base44/functions/_shared/deliveryAtomicity.ts', 'base44/functions/operationalGateway/entry.ts'];
+  const productionSources = ['scripts/base44-function-sources/createWorkOrder/entry.ts', 'scripts/base44-function-sources/createSale/entry.ts', 'base44/functions/_shared/deliveryAtomicity.ts', 'base44/functions/operationalGateway/entry.ts'];
   for (const file of productionSources) assert.ok(!read(file).includes('public_access_token:'), file);
 });
 

@@ -4,17 +4,17 @@ import { buildAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 
 const read = relative => readFile(new URL(`../${relative}`, import.meta.url), 'utf8');
 const sources = Object.fromEntries(await Promise.all([
-  ['reception', 'base44/functions/createWorkOrder/entry.ts'],
-  ['assignment', 'base44/functions/reassignWorkOrderTechnician/entry.ts'],
+  ['reception', 'scripts/base44-function-sources/createWorkOrder/entry.ts'],
+  ['assignment', 'scripts/base44-function-sources/reassignWorkOrderTechnician/entry.ts'],
   ['technical', 'base44/functions/technicalActivityCommand/entry.ts'],
   ['qa', 'base44/functions/recordTechnicalTest/entry.ts'],
-  ['lifecycle', 'base44/functions/transitionWorkOrderStatus/entry.ts'],
-  ['sale', 'base44/functions/createSale/entry.ts'],
+  ['lifecycle', 'scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts'],
+  ['sale', 'scripts/base44-function-sources/createSale/entry.ts'],
   ['inventory', 'base44/functions/_shared/inventoryMutationService.ts'],
   ['request', 'base44/functions/technicalRequestCommand/entry.ts'],
   ['delivery', 'base44/functions/deliverWorkOrder/entry.ts'],
   ['branch', 'base44/functions/manageBranchLifecycle/entry.ts'],
-  ['user', 'base44/functions/manageOrgUser/entry.ts'],
+  ['user', 'scripts/base44-function-sources/manageOrgUser/entry.ts'],
   ['token', 'base44/functions/issuePublicDocumentToken/entry.ts'],
   ['provisioning', 'base44/functions/identityGateway/entry.ts'],
 ].map(async ([name, path]) => [name, await read(path)])));

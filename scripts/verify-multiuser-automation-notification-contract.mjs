@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 
 const read = relative => readFile(new URL(`../${relative}`, import.meta.url), 'utf8');
 const [consumer, postSale, command, gateway, hook, schema, blocker] = await Promise.all([
-  read('base44/functions/processOTEvent/entry.ts'),
-  read('base44/functions/processPostSaleActions/entry.ts'),
+  read('scripts/base44-function-sources/processOTEvent/entry.ts'),
+  read('scripts/base44-function-sources/processPostSaleActions/entry.ts'),
   read('base44/functions/notificationCommand/entry.ts'),
   read('base44/functions/operationalGateway/entry.ts'),
   read('src/components/notificaciones/useNotificacionesAutomaticas.jsx'),

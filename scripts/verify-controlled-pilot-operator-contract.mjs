@@ -85,14 +85,14 @@ test('pilot ORG_ADMIN authority is reduced to the configured branch', () => {
 });
 
 const [transition, publicRead, publicPortal, issuer, identity, membership, automation, lifecycle, panel, schema] = await Promise.all([
-  source('base44/functions/transitionWorkOrderStatus/entry.ts'),
-  source('base44/functions/getPublicCommercialDocument/entry.ts'),
+  source('scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts'),
+  source('scripts/base44-function-sources/getPublicCommercialDocument/entry.ts'),
   source('src/pages/PortalCotizacion.jsx'),
   source('base44/functions/issuePublicDocumentToken/entry.ts'),
   source('base44/functions/identityGateway/entry.ts'),
-  source('base44/functions/manageOrgUser/entry.ts'),
-  source('base44/functions/processOTEvent/entry.ts'),
-  source('base44/functions/handleOTLifecycleEvent/entry.ts'),
+  source('scripts/base44-function-sources/manageOrgUser/entry.ts'),
+  source('scripts/base44-function-sources/processOTEvent/entry.ts'),
+  source('scripts/base44-function-sources/handleOTLifecycleEvent/entry.ts'),
   source('src/components/expediente/PanelOperativoDiagnostico.jsx'),
   source('base44/entities/Organization.jsonc'),
 ]);

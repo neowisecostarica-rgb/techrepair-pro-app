@@ -402,8 +402,8 @@ test('33 UTC month calculation is deterministic at month end', () => {
 
 test('34 source files close direct lifecycle and CRUD bypasses', async () => {
   const [transition, postSale, policy, gateway, frontend, auditor] = await Promise.all([
-    readFile(new URL('../base44/functions/transitionWorkOrderStatus/entry.ts', import.meta.url), 'utf8'),
-    readFile(new URL('../base44/functions/processPostSaleActions/entry.ts', import.meta.url), 'utf8'),
+    readFile(new URL('../scripts/base44-function-sources/transitionWorkOrderStatus/entry.ts', import.meta.url), 'utf8'),
+    readFile(new URL('../scripts/base44-function-sources/processPostSaleActions/entry.ts', import.meta.url), 'utf8'),
     readFile(new URL('../base44/functions/_shared/operationalAuthorization.ts', import.meta.url), 'utf8'),
     readFile(new URL('../base44/functions/operationalGateway/entry.ts', import.meta.url), 'utf8'),
     readFile(new URL('../src/components/ot/EntregarOT.jsx', import.meta.url), 'utf8'),

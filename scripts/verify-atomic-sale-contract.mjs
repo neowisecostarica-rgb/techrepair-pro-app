@@ -28,7 +28,7 @@ import {
 import { appendAuditEvent } from '../base44/functions/_shared/auditEvent.ts';
 import { projectSaleMutationResult } from '../base44/functions/_shared/dataProjections.ts';
 
-const backendPath = new URL('../base44/functions/createSale/entry.ts', import.meta.url);
+const backendPath = new URL('../scripts/base44-function-sources/createSale/entry.ts', import.meta.url);
 const posPath = new URL('../src/pages/PuntoVenta.jsx', import.meta.url);
 const [backendSource, posSource] = await Promise.all([
   readFile(backendPath, 'utf8'),

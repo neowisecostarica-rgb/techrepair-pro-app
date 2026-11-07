@@ -378,7 +378,7 @@ test('40 generic CRUD source blocks Branch hard delete and mutations', async () 
 });
 
 test('41 user assignment source validates a canonical active Branch', async () => {
-  const source = await readFile(new URL('../base44/functions/manageOrgUser/entry.ts', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../scripts/base44-function-sources/manageOrgUser/entry.ts', import.meta.url), 'utf8');
   assert.match(source, /validateBranchAssignment/);
   assert.match(source, /assertActiveBranch/);
   assert.match(source, /USER_BRANCH_INVALID/);
@@ -386,10 +386,10 @@ test('41 user assignment source validates a canonical active Branch', async () =
 
 test('42 guards and auditor cover protected domains without legacy writes', async () => {
   const paths = [
-    '../base44/functions/createSale/entry.ts',
+    '../scripts/base44-function-sources/createSale/entry.ts',
     '../base44/functions/_shared/deliveryAtomicity.ts',
     '../base44/functions/_shared/inventoryMutationService.ts',
-    '../base44/functions/initTechnicalActivity/entry.ts',
+    '../scripts/base44-function-sources/initTechnicalActivity/entry.ts',
     '../base44/functions/crmGateway/entry.ts',
     '../base44/functions/customer360Gateway/entry.ts',
   ];
@@ -399,7 +399,7 @@ test('42 guards and auditor cover protected domains without legacy writes', asyn
   assert.match(audit, /truncated/);
   assert.doesNotMatch(audit, /entities\.[A-Za-z0-9_]+\.(create|update|delete)\(/);
   const lifecycle = await readFile(new URL('../base44/functions/_shared/branchLifecycle.ts', import.meta.url), 'utf8');
-  const resourceLock = await readFile(new URL('../base44/functions/resourceLockLite/entry.ts', import.meta.url), 'utf8');
+  const resourceLock = await readFile(new URL('../scripts/base44-function-sources/resourceLockLite/entry.ts', import.meta.url), 'utf8');
   assert.match(lifecycle, /organization_id: organizationId/);
   assert.match(resourceLock, /resolveOrganization\(base44, user, body\.organization_id \|\| null\)/);
 });

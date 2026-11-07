@@ -12,7 +12,7 @@ import {
   SovereignCommandError,
 } from '../base44/functions/_shared/commandExecution.ts';
 
-const backendPath = new URL('../base44/functions/reassignWorkOrderTechnician/entry.ts', import.meta.url);
+const backendPath = new URL('../scripts/base44-function-sources/reassignWorkOrderTechnician/entry.ts', import.meta.url);
 const queuePath = new URL('../src/pages/ColaRevision.jsx', import.meta.url);
 const workOrdersPath = new URL('../src/pages/OrdenesTrabajo.jsx', import.meta.url);
 

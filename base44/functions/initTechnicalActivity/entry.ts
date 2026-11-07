@@ -1,81 +1,1556 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * initTechnicalActivity — Orquestador Técnico P0.2-C (WF-003B)
- * ═══════════════════════════════════════════════════════════════════════════
- * RESPONSABILIDAD:
- *   Punto único de entrada para iniciar una actividad técnica sobre una OT.
- *   El frontend realiza una única solicitud; el backend valida y persiste.
- *
- * ORDEN DE PERSISTENCIA (serializado y con reconciliación):
- *   1. Crear ActividadTecnica (en_progreso)
- *   2. Actualizar OrdenTrabajo.estado → EN_REVISION (vía transitionWorkOrderStatus)
- *      → transitionWorkOrderStatus crea OTEvent TRANSITION_EN_REVISION internamente
- *   3. Actualizar OrdenTrabajo.estado_atencion → ACTIVO (vía updateWorkOrderAttentionStatus)
- *
- * REGLAS DE NEGOCIO:
- *   - diagnostico_habilitado === true es precondición universal
- *   - Estados OT permitidos: ASIGNADA, EN_COLA_REVISION, EN_REVISION
- *   - Actividad en_progreso mismo técnico → idempotente (retornar existente)
- *   - Actividad en_progreso otro técnico → rechazar
- *   - OT EN_REVISION sin ninguna actividad → error (inconsistencia)
- *   - Actividades finalizada/bloqueada no bloquean nueva creación
- *
- * GARANTÍAS RC1:
- *   - No existen transacciones multidocumento en Base44
- *   - Un lock atómico por OT serializa inicio y transición
- *   - Una respuesta ambigua se reconcilia leyendo el estado confirmado
- *   - Solo se elimina la actividad si la OT conserva el estado previo
- * ═══════════════════════════════════════════════════════════════════════════
- */
+// base44/functions/initTechnicalActivity/entry.ts
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
 
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { resolveAuthorizedContext } from '../_shared/userAuthorization.ts';
-import { authorizeRecordBranch } from '../_shared/operationalAuthorization.ts';
-import { executeInventoryCommand } from '../_shared/inventoryMutationService.ts';
-import { assertActiveBranch, BranchProtectionError } from '../_shared/branchProtection.ts';
-import { appendAuditEvent } from '../_shared/auditEvent.ts';
-import { projectTechnicalActivity } from '../_shared/dataProjections.ts';
+// base44/functions/_shared/controlledPilotAuthority.ts
+function cleanId(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+function inspectControlledPilotConfiguration(organization) {
+  if (organization?.controlled_pilot_mode !== true) {
+    return { enabled: false, valid: true, operatorUserId: null, branchId: null };
+  }
+  const operatorUserId = cleanId(organization.controlled_pilot_operator_user_id);
+  const branchId = cleanId(organization.controlled_pilot_branch_id);
+  return {
+    enabled: true,
+    valid: Boolean(operatorUserId && branchId),
+    operatorUserId,
+    branchId
+  };
+}
+function evaluateControlledPilotHumanAccess({ organization, user, account, isSuperAdmin = false }) {
+  const configuration = inspectControlledPilotConfiguration(organization);
+  if (!configuration.enabled) return { ok: true, pilotMode: false };
+  if (!configuration.valid) {
+    return {
+      ok: false,
+      status: 503,
+      code: "CONTROLLED_PILOT_CONFIGURATION_INVALID",
+      error: "La configuracion del piloto controlado es invalida; toda mutacion permanece bloqueada"
+    };
+  }
+  if (isSuperAdmin) {
+    return {
+      ok: false,
+      status: 403,
+      code: "CONTROLLED_PILOT_OPERATOR_REQUIRED",
+      error: "El superadmin no puede mutar una organizacion en piloto controlado"
+    };
+  }
+  const exactOperator = user?.id === configuration.operatorUserId && account?.user_id === configuration.operatorUserId && account?.organization_id === organization?.id && account?.status === "active" && account?.role === "ORG_ADMIN";
+  if (!exactOperator) {
+    return {
+      ok: false,
+      status: 403,
+      code: "CONTROLLED_PILOT_OPERATOR_REQUIRED",
+      error: "Solo el operador designado puede actuar durante el piloto controlado"
+    };
+  }
+  return {
+    ok: true,
+    pilotMode: true,
+    operatorUserId: configuration.operatorUserId,
+    branchId: configuration.branchId
+  };
+}
 
-const ESTADO_ACTIVO = 'en_progreso';
-const ESTADOS_OT_PERMITIDOS = ['ASIGNADA', 'EN_COLA_REVISION', 'EN_REVISION'];
-const ROLES_ADMIN = ['ORG_ADMIN', 'BRANCH_ADMIN'];
-const ROLES_INICIO_TECNICO = [...ROLES_ADMIN, 'TECHNICIAN'];
-const INIT_LOCK_TTL_MS = 15 * 60 * 1000;
+// base44/functions/_shared/roleCapabilities.ts
+var AUTHORIZATION_PRESET_VERSION = "TRP_MULTIUSER_V1";
+var TENANT_ROLES = Object.freeze([
+  "ORG_ADMIN",
+  "BRANCH_ADMIN",
+  "TECHNICIAN",
+  "SALES",
+  "INVENTORY",
+  "CUSTOMER_SERVICE"
+]);
+var CAPABILITIES = Object.freeze([
+  "ORG_ADMINISTRATION",
+  "BRANCH_ADMINISTRATION",
+  "USER_ADMINISTRATION",
+  "RECEPTION_OPERATIONS",
+  "CUSTOMER_READ_OPERATIONAL",
+  "CUSTOMER_SERVICE_OPERATIONS",
+  "TECHNICAL_WORK",
+  "TECHNICAL_SUPERVISION",
+  "TECHNICAL_ASSIGNMENT",
+  "QUOTE_OPERATIONS",
+  "SALE_OPERATIONS",
+  "COMMERCIAL_READ",
+  "FINANCIAL_READ",
+  "INVENTORY_READ",
+  "INVENTORY_OPERATIONS",
+  "INVENTORY_ADMINISTRATION",
+  "DELIVERY_OPERATIONS",
+  "CRM_OPERATIONS",
+  "AGENDA_OPERATIONS"
+]);
+var ROLE_CAPABILITY_PRESETS = Object.freeze({
+  ORG_ADMIN: CAPABILITIES,
+  BRANCH_ADMIN: [
+    "BRANCH_ADMINISTRATION",
+    "RECEPTION_OPERATIONS",
+    "CUSTOMER_READ_OPERATIONAL",
+    "CUSTOMER_SERVICE_OPERATIONS",
+    "TECHNICAL_WORK",
+    "TECHNICAL_SUPERVISION",
+    "TECHNICAL_ASSIGNMENT",
+    "QUOTE_OPERATIONS",
+    "SALE_OPERATIONS",
+    "COMMERCIAL_READ",
+    "FINANCIAL_READ",
+    "INVENTORY_READ",
+    "INVENTORY_OPERATIONS",
+    "INVENTORY_ADMINISTRATION",
+    "DELIVERY_OPERATIONS",
+    "CRM_OPERATIONS",
+    "AGENDA_OPERATIONS"
+  ],
+  TECHNICIAN: [
+    "CUSTOMER_READ_OPERATIONAL",
+    "TECHNICAL_WORK",
+    "COMMERCIAL_READ",
+    "INVENTORY_READ",
+    "INVENTORY_OPERATIONS"
+  ],
+  SALES: [
+    "RECEPTION_OPERATIONS",
+    "CUSTOMER_READ_OPERATIONAL",
+    "CUSTOMER_SERVICE_OPERATIONS",
+    "TECHNICAL_ASSIGNMENT",
+    "QUOTE_OPERATIONS",
+    "SALE_OPERATIONS",
+    "COMMERCIAL_READ",
+    "INVENTORY_READ",
+    "DELIVERY_OPERATIONS",
+    "CRM_OPERATIONS",
+    "AGENDA_OPERATIONS"
+  ],
+  INVENTORY: [
+    "CUSTOMER_READ_OPERATIONAL",
+    "COMMERCIAL_READ",
+    "INVENTORY_READ",
+    "INVENTORY_OPERATIONS",
+    "INVENTORY_ADMINISTRATION"
+  ],
+  CUSTOMER_SERVICE: [
+    "RECEPTION_OPERATIONS",
+    "CUSTOMER_READ_OPERATIONAL",
+    "CUSTOMER_SERVICE_OPERATIONS",
+    "COMMERCIAL_READ",
+    "DELIVERY_OPERATIONS",
+    "AGENDA_OPERATIONS"
+  ]
+});
+function normalizeTenantRole(role) {
+  if (role === "SUPPORT") return "CUSTOMER_SERVICE";
+  return TENANT_ROLES.includes(role) ? role : null;
+}
+function getRoleCapabilities(role) {
+  const normalizedRole = normalizeTenantRole(role);
+  return normalizedRole ? [...ROLE_CAPABILITY_PRESETS[normalizedRole] || []] : [];
+}
+function getRoleScope(role) {
+  const normalizedRole = normalizeTenantRole(role);
+  if (!normalizedRole) return null;
+  return normalizedRole === "ORG_ADMIN" ? "ORGANIZATION" : "SINGLE_BRANCH";
+}
 
+// base44/functions/_shared/userAuthorization.ts
+function isCanonicalActiveUserAccount(account) {
+  return account?.status === "active";
+}
+function getUserDataField(user, field) {
+  return user?.data?.[field] ?? user?.[field] ?? null;
+}
+function isCanonicalSuperAdmin(user) {
+  return user?.role === "admin";
+}
+async function loadActiveOrganization(base44, organizationId) {
+  if (!organizationId) return null;
+  const organizations = await base44.asServiceRole.entities.Organization.filter({
+    id: organizationId,
+    status: "active"
+  }, "-created_date", 2);
+  return organizations?.length === 1 ? organizations[0] : null;
+}
+async function loadActiveBranch(base44, organizationId, branchId) {
+  if (!organizationId || !branchId) return null;
+  const branches = await base44.asServiceRole.entities.Branch.filter({
+    id: branchId,
+    organization_id: organizationId,
+    active: true
+  }, "-created_date", 2);
+  return branches?.length === 1 ? branches[0] : null;
+}
+async function loadCanonicalMemberships(base44, user) {
+  const [byUserId, byEmail] = await Promise.all([
+    base44.asServiceRole.entities.UserAccount.filter({ user_id: user.id }, "-created_date", 100),
+    user.email ? base44.asServiceRole.entities.UserAccount.filter({ user_email: user.email }, "-created_date", 100) : Promise.resolve([])
+  ]);
+  const unique = /* @__PURE__ */ new Map();
+  for (const account of [...byUserId || [], ...byEmail || []]) {
+    if (account?.id) unique.set(account.id, account);
+  }
+  return [...unique.values()];
+}
+async function resolveIdentitySnapshot(base44, user) {
+  if (!user?.id) return { ok: false, status: 401, error: "No autenticado" };
+  const isSuperAdmin = isCanonicalSuperAdmin(user);
+  const memberships = isSuperAdmin ? [] : await loadCanonicalMemberships(base44, user);
+  const activeMemberships = memberships.filter(
+    (account) => account.user_id === user.id && account.organization_id && isCanonicalActiveUserAccount(account)
+  );
+  const pendingInvitations = memberships.filter(
+    (account) => account.user_email === user.email && account.organization_id && account.status === "invited" && (!account.user_id || account.user_id === user.id)
+  );
+  const persistedOrganizationId = getUserDataField(user, "organization_id");
+  const impersonatingOrganizationId = isSuperAdmin ? getUserDataField(user, "impersonating_org_id") : null;
+  const activeAccount = isSuperAdmin ? null : activeMemberships.find((account) => account.organization_id === persistedOrganizationId) || (activeMemberships.length === 1 ? activeMemberships[0] : null);
+  return {
+    ok: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name || null,
+      platform_role: user.role,
+      is_super_admin: isSuperAdmin,
+      organization_id: isSuperAdmin ? impersonatingOrganizationId : activeAccount?.organization_id || null,
+      impersonating_org_id: impersonatingOrganizationId,
+      impersonating_started_at: isSuperAdmin ? getUserDataField(user, "impersonating_started_at") : null
+    },
+    memberships,
+    activeMemberships,
+    pendingInvitations,
+    activeAccount,
+    isSuperAdmin
+  };
+}
+async function resolveAuthorizedContext(base44, user, options = {}) {
+  const {
+    organizationHint = null,
+    allowedRoles = [],
+    requireOrganization = true
+  } = options;
+  const identity = await resolveIdentitySnapshot(base44, user);
+  if (!identity.ok) return identity;
+  if (identity.isSuperAdmin) {
+    const impersonatedOrgId = identity.user.impersonating_org_id;
+    if (organizationHint && organizationHint !== impersonatedOrgId) {
+      return { ok: false, status: 403, error: "La organizacion solicitada no coincide con la impersonacion autorizada" };
+    }
+    if (requireOrganization && !impersonatedOrgId) {
+      return { ok: false, status: 403, error: "Inicia una impersonacion autorizada antes de continuar" };
+    }
+    const organization2 = impersonatedOrgId ? await loadActiveOrganization(base44, impersonatedOrgId) : null;
+    if (impersonatedOrgId && !organization2) {
+      return { ok: false, status: 403, code: "ORGANIZATION_INACTIVE", error: "La organizacion no existe o no esta activa" };
+    }
+    if (organization2) {
+      const pilotAccess2 = evaluateControlledPilotHumanAccess({ organization: organization2, user, account: null, isSuperAdmin: true });
+      if (!pilotAccess2.ok) return pilotAccess2;
+    }
+    return {
+      ok: true,
+      organizationId: impersonatedOrgId || null,
+      role: impersonatedOrgId ? "ORG_ADMIN" : "SUPER_ADMIN",
+      persistedRole: "SUPER_ADMIN",
+      normalizedRole: impersonatedOrgId ? "ORG_ADMIN" : null,
+      capabilities: impersonatedOrgId ? getRoleCapabilities("ORG_ADMIN") : [],
+      scope: impersonatedOrgId ? "ORGANIZATION" : "PLATFORM",
+      branchId: null,
+      principalClass: impersonatedOrgId ? "HUMAN_MEMBER" : "PLATFORM_ADMIN",
+      presetVersion: AUTHORIZATION_PRESET_VERSION,
+      organization: organization2,
+      branch: null,
+      account: null,
+      isSuperAdmin: true,
+      isImpersonating: Boolean(impersonatedOrgId),
+      identity
+    };
+  }
+  const activeAccounts = identity.activeMemberships;
+  const persistedOrgId = identity.user.organization_id;
+  const requestedOrgId = organizationHint || persistedOrgId || null;
+  const matchingAccounts = requestedOrgId ? activeAccounts.filter((candidate) => candidate.organization_id === requestedOrgId) : [];
+  if (matchingAccounts.length > 1) {
+    return {
+      ok: false,
+      status: 409,
+      code: "MEMBERSHIP_AMBIGUOUS",
+      error: "Existen multiples membresias activas para la organizacion"
+    };
+  }
+  const account = requestedOrgId ? matchingAccounts[0] || null : activeAccounts.length === 1 ? activeAccounts[0] : null;
+  if (!account) {
+    const error = activeAccounts.length > 1 ? "Selecciona una organizacion valida antes de continuar" : "No existe una membresia activa para esta organizacion";
+    return { ok: false, status: 403, error };
+  }
+  const normalizedRole = normalizeTenantRole(account.role);
+  if (!normalizedRole) {
+    return { ok: false, status: 403, code: "ROLE_UNKNOWN", error: "La membresia tiene un rol no autorizado" };
+  }
+  const normalizedAllowedRoles = allowedRoles.map(normalizeTenantRole).filter(Boolean);
+  if (normalizedAllowedRoles.length > 0 && !normalizedAllowedRoles.includes(normalizedRole)) {
+    return { ok: false, status: 403, error: "Tu rol no permite realizar esta accion" };
+  }
+  const organization = await loadActiveOrganization(base44, account.organization_id);
+  if (!organization) {
+    return { ok: false, status: 403, code: "ORGANIZATION_INACTIVE", error: "La organizacion no existe o no esta activa" };
+  }
+  const pilotAccess = evaluateControlledPilotHumanAccess({ organization, user, account, isSuperAdmin: false });
+  if (!pilotAccess.ok) return pilotAccess;
+  const scope = getRoleScope(normalizedRole);
+  const effectiveBranchId = pilotAccess.pilotMode ? pilotAccess.branchId : account.branch_id;
+  const branch = scope === "SINGLE_BRANCH" || pilotAccess.pilotMode ? await loadActiveBranch(base44, account.organization_id, effectiveBranchId) : null;
+  if ((scope === "SINGLE_BRANCH" || pilotAccess.pilotMode) && !branch) {
+    return { ok: false, status: 403, code: "BRANCH_INACTIVE", error: "La sucursal canonica no existe o no esta activa" };
+  }
+  return {
+    ok: true,
+    organizationId: account.organization_id,
+    role: normalizedRole,
+    persistedRole: account.role,
+    normalizedRole,
+    capabilities: getRoleCapabilities(normalizedRole),
+    scope,
+    branchId: branch?.id || null,
+    principalClass: "HUMAN_MEMBER",
+    presetVersion: AUTHORIZATION_PRESET_VERSION,
+    organization,
+    branch,
+    account,
+    isSuperAdmin: false,
+    isImpersonating: false,
+    pilotMode: pilotAccess.pilotMode === true,
+    pilotOperatorUserId: pilotAccess.operatorUserId || null,
+    pilotBranchId: pilotAccess.branchId || null,
+    identity
+  };
+}
+
+// base44/functions/_shared/operationalAuthorization.ts
+var ALL_OPERATIONAL_ROLES = [
+  "ORG_ADMIN",
+  "BRANCH_ADMIN",
+  "TECHNICIAN",
+  "SALES",
+  "INVENTORY",
+  "CUSTOMER_SERVICE"
+];
+var ADMIN_ROLES = ["ORG_ADMIN", "BRANCH_ADMIN"];
+var COMMERCIAL_ROLES = ["ORG_ADMIN", "BRANCH_ADMIN", "SALES"];
+var CUSTOMER_ROLES = ["ORG_ADMIN", "BRANCH_ADMIN", "SALES", "CUSTOMER_SERVICE"];
+var TECHNICAL_ROLES = ["ORG_ADMIN", "BRANCH_ADMIN", "TECHNICIAN"];
+var INVENTORY_READ_ROLES = ["ORG_ADMIN", "BRANCH_ADMIN", "TECHNICIAN", "SALES", "INVENTORY"];
+var OPERATIONAL_ENTITY_POLICIES = Object.freeze({
+  ActividadTecnica: { read: ALL_OPERATIONAL_ROLES, create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ["ORG_ADMIN"], scope: "work_order" },
+  BloqueoTecnico: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ADMIN_ROLES, scope: "work_order" },
+  Branch: { read: ALL_OPERATIONAL_ROLES, create: [], update: [], delete: [], scope: "branch" },
+  CategoriaInventario: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: "organization" },
+  Cita: { read: ALL_OPERATIONAL_ROLES, create: ["ORG_ADMIN", "BRANCH_ADMIN", "TECHNICIAN", "SALES"], update: ["ORG_ADMIN", "BRANCH_ADMIN", "TECHNICIAN", "SALES"], delete: ADMIN_ROLES, scope: "branch" },
+  Cliente: { read: CUSTOMER_ROLES, create: CUSTOMER_ROLES, update: CUSTOMER_ROLES, delete: ["ORG_ADMIN"], scope: "customer" },
+  ComprobanteVentaLog: { read: COMMERCIAL_ROLES, create: COMMERCIAL_ROLES, update: [], delete: [], scope: "sale" },
+  Cotizacion: { read: [...COMMERCIAL_ROLES, "TECHNICIAN", "CUSTOMER_SERVICE"], create: COMMERCIAL_ROLES, update: COMMERCIAL_ROLES, delete: ["ORG_ADMIN"], scope: "quote" },
+  DiagnosticMasterRecord: { read: [...TECHNICAL_ROLES, "SALES", "CUSTOMER_SERVICE"], create: [], update: [], delete: [], scope: "work_order" },
+  Diagnostico: { read: [...TECHNICAL_ROLES, "SALES", "CUSTOMER_SERVICE"], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ["ORG_ADMIN"], scope: "work_order" },
+  DiagnosticoDocumento: { read: [...TECHNICAL_ROLES, "SALES", "CUSTOMER_SERVICE"], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ["ORG_ADMIN"], scope: "diagnostic_document" },
+  DiagnosticoEvidencia: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: [], delete: ["ORG_ADMIN"], scope: "work_order" },
+  DiagnosticoResultado: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: [], delete: ["ORG_ADMIN"], scope: "work_order" },
+  DiagnosticoTecnico: { read: [...TECHNICAL_ROLES, "SALES", "CUSTOMER_SERVICE"], create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ["ORG_ADMIN"], scope: "work_order" },
+  EntregaLog: { read: COMMERCIAL_ROLES, create: [], update: [], delete: [], scope: "work_order" },
+  Equipo: { read: [...CUSTOMER_ROLES, "TECHNICIAN"], create: CUSTOMER_ROLES, update: CUSTOMER_ROLES, delete: ["ORG_ADMIN"], scope: "equipment" },
+  Expense: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: ADMIN_ROLES, delete: ADMIN_ROLES, scope: "branch" },
+  Garantia: { read: [...COMMERCIAL_ROLES, "CUSTOMER_SERVICE"], create: COMMERCIAL_ROLES, update: ADMIN_ROLES, delete: [], scope: "warranty" },
+  Inventario: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: "branch" },
+  InventarioHistorial: { read: ["ORG_ADMIN", "BRANCH_ADMIN", "INVENTORY"], create: [], update: [], delete: [], scope: "inventory_history" },
+  InventarioReserva: { read: INVENTORY_READ_ROLES, create: [], update: [], delete: [], scope: "work_order" },
+  NoConformidad: { read: TECHNICAL_ROLES, create: ADMIN_ROLES, update: ADMIN_ROLES, delete: ["ORG_ADMIN"], scope: "work_order_optional" },
+  NotaInterna: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: [], delete: ADMIN_ROLES, scope: "work_order" },
+  Notificacion: { read: ALL_OPERATIONAL_ROLES, create: ALL_OPERATIONAL_ROLES, update: ALL_OPERATIONAL_ROLES, delete: ["ORG_ADMIN"], scope: "notification" },
+  OTEvent: { read: ALL_OPERATIONAL_ROLES, create: [], update: [], delete: [], scope: "work_order" },
+  OrdenTrabajo: { read: ALL_OPERATIONAL_ROLES, create: [], update: CUSTOMER_ROLES, delete: ["ORG_ADMIN"], scope: "branch" },
+  PreDiagnostico: { read: [...TECHNICAL_ROLES, "SALES", "CUSTOMER_SERVICE"], create: [...TECHNICAL_ROLES, "SALES"], update: [...TECHNICAL_ROLES, "SALES"], delete: ["ORG_ADMIN"], scope: "work_order" },
+  PruebaTecnica: { read: TECHNICAL_ROLES, create: [], update: [], delete: [], scope: "work_order" },
+  PurchaseInvoice: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: ADMIN_ROLES, delete: ["ORG_ADMIN"], scope: "branch" },
+  Reciclaje: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ["ORG_ADMIN"], scope: "branch" },
+  RegistroTiempo: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ["ORG_ADMIN"], scope: "work_order" },
+  Servicio: { read: INVENTORY_READ_ROLES, create: ["ORG_ADMIN"], update: ["ORG_ADMIN"], delete: ["ORG_ADMIN"], scope: "organization" },
+  SolicitudTecnica: { read: TECHNICAL_ROLES, create: TECHNICAL_ROLES, update: TECHNICAL_ROLES, delete: ["ORG_ADMIN"], scope: "work_order_optional" },
+  Supplier: { read: ADMIN_ROLES, create: ["ORG_ADMIN"], update: ["ORG_ADMIN"], delete: ["ORG_ADMIN"], scope: "organization" },
+  SupplierPayment: { read: ADMIN_ROLES, create: ADMIN_ROLES, update: [], delete: ["ORG_ADMIN"], scope: "purchase_invoice" },
+  TerminosYCondiciones: { read: ALL_OPERATIONAL_ROLES, create: ["ORG_ADMIN"], update: ["ORG_ADMIN"], delete: ["ORG_ADMIN"], scope: "organization" },
+  Venta: { read: [...COMMERCIAL_ROLES, "CUSTOMER_SERVICE"], create: COMMERCIAL_ROLES, update: [], delete: [], scope: "branch" },
+  VentaItem: { read: [...COMMERCIAL_ROLES, "CUSTOMER_SERVICE"], create: COMMERCIAL_ROLES, update: [], delete: [], scope: "sale" },
+  WorkflowGate: { read: TECHNICAL_ROLES, create: [], update: [], delete: [], scope: "workflow_gate" }
+});
+var PROTECTED_OPERATIONAL_ENTITIES = Object.freeze(Object.keys(OPERATIONAL_ENTITY_POLICIES));
+function isOrganizationWideRole(role) {
+  return role === "ORG_ADMIN";
+}
+function getCanonicalBranchScope(authorization) {
+  if (!authorization?.ok) {
+    return { ok: false, status: authorization?.status || 403, error: authorization?.error || "No autorizado" };
+  }
+  if (authorization.pilotMode === true) {
+    if (!authorization.pilotBranchId) {
+      return { ok: false, status: 503, code: "CONTROLLED_PILOT_CONFIGURATION_INVALID", error: "El piloto no tiene una sucursal canonica valida" };
+    }
+    return { ok: true, organizationWide: false, branchId: authorization.pilotBranchId };
+  }
+  if (isOrganizationWideRole(authorization.role)) {
+    return { ok: true, organizationWide: true, branchId: null };
+  }
+  const branchId = authorization.account?.branch_id || null;
+  if (!branchId) {
+    return {
+      ok: false,
+      status: 403,
+      error: "La membresia operacional no tiene una sucursal canonica asignada",
+      code: "OPERATIONAL_BRANCH_REQUIRED"
+    };
+  }
+  return { ok: true, organizationWide: false, branchId };
+}
+function authorizeRecordBranch(authorization, recordBranchId) {
+  const branchScope = getCanonicalBranchScope(authorization);
+  if (!branchScope.ok) return branchScope;
+  if (branchScope.organizationWide) return { ok: true, branchScope };
+  if (!recordBranchId || recordBranchId !== branchScope.branchId) {
+    return {
+      ok: false,
+      status: 403,
+      code: "OPERATIONAL_CROSS_BRANCH_DENIED",
+      error: "El recurso no pertenece a la sucursal autorizada"
+    };
+  }
+  return { ok: true, branchScope };
+}
+var WORK_ORDER_EDITABLE_FIELDS = Object.freeze([
+  "motivo_ingreso",
+  "observaciones_ingreso",
+  "tipo_ingreso",
+  "prioridad"
+]);
+
+// base44/functions/_shared/inventoryStockCas.ts
+async function applyInventoryProjectionCas(entity, input) {
+  const query = {
+    id: input.inventoryId,
+    organization_id: input.organizationId,
+    cantidad_disponible: input.expectedAvailable
+  };
+  if (Number(input.expectedReserved) === 0) {
+    query.$or = [
+      { cantidad_reservada: 0 },
+      { cantidad_reservada: null },
+      { cantidad_reservada: { $exists: false } }
+    ];
+  } else query.cantidad_reservada = input.expectedReserved;
+  if (input.branchId) query.branch_id = input.branchId;
+  const set = {
+    cantidad_disponible: input.newAvailable,
+    cantidad_reservada: input.newReserved,
+    fecha_ultimo_movimiento: input.movementDate,
+    last_inventory_operation_key: input.operationKey,
+    last_inventory_movement_key: input.movementKey
+  };
+  if (input.legacySaleId) set.last_sale_id = input.legacySaleId;
+  if (input.legacySaleOperationKey) set.last_sale_operation_key = input.legacySaleOperationKey;
+  return entity.updateMany(query, { $set: set });
+}
+async function rollbackInventoryProjectionCas(entity, input) {
+  const query = {
+    id: input.inventoryId,
+    organization_id: input.organizationId,
+    cantidad_disponible: input.expectedAvailable,
+    last_inventory_operation_key: input.operationKey,
+    last_inventory_movement_key: input.movementKey
+  };
+  if (Number(input.expectedReserved) === 0) {
+    query.$or = [
+      { cantidad_reservada: 0 },
+      { cantidad_reservada: null },
+      { cantidad_reservada: { $exists: false } }
+    ];
+  } else query.cantidad_reservada = input.expectedReserved;
+  if (input.branchId) query.branch_id = input.branchId;
+  const unset = {
+    last_inventory_operation_key: "",
+    last_inventory_movement_key: ""
+  };
+  if (input.legacySaleId) unset.last_sale_id = "";
+  if (input.legacySaleOperationKey) unset.last_sale_operation_key = "";
+  return entity.updateMany(query, {
+    $set: {
+      cantidad_disponible: input.previousAvailable,
+      cantidad_reservada: input.previousReserved,
+      fecha_ultimo_movimiento: input.previousMovementDate ?? null
+    },
+    $unset: unset
+  });
+}
+
+// base44/functions/_shared/branchProtection.ts
+var BranchProtectionError = class extends Error {
+  code;
+  status;
+  details;
+  constructor(message, code = "BRANCH_PROTECTION_FAILED", status = 409, details = {}) {
+    super(message);
+    this.name = "BranchProtectionError";
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+};
+async function assertActiveBranch(base44, organizationId, branchId, options = {}) {
+  if (!organizationId || !branchId) {
+    throw new BranchProtectionError(
+      options.message || "La operacion requiere una sucursal activa.",
+      options.code || "ACTIVE_BRANCH_REQUIRED",
+      options.status || 409
+    );
+  }
+  const branches = await base44.asServiceRole.entities.Branch.filter({
+    id: branchId,
+    organization_id: organizationId,
+    active: true
+  }, "-created_date", 1);
+  const branch = branches?.[0] || null;
+  if (!branch) {
+    throw new BranchProtectionError(
+      options.message || "La sucursal no existe, no pertenece a la organizacion o esta inactiva.",
+      options.code || "BRANCH_INACTIVE",
+      options.status || 409,
+      { branch_id: branchId }
+    );
+  }
+  return branch;
+}
+
+// base44/functions/_shared/auditEvent.ts
+var MAX_TEXT = 240;
+function clean(value, max = MAX_TEXT) {
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null;
+}
+function cleanObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return JSON.parse(JSON.stringify(value));
+}
+function stable(value) {
+  if (Array.isArray(value)) return value.map(stable);
+  if (!value || typeof value !== "object") return value ?? null;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]));
+}
+function immutableIdentity(event) {
+  return stable({
+    event_type: event.event_type,
+    principal_class: event.principal_class,
+    actor_user_id: event.actor_user_id,
+    effective_technician_user_id: event.effective_technician_user_id,
+    resource_type: event.resource_type,
+    resource_id: event.resource_id,
+    command_policy_id: event.command_policy_id,
+    operation_semantics: event.operation_semantics || {}
+  });
+}
+function assertCompatible(existing, candidate) {
+  if (JSON.stringify(immutableIdentity(existing)) === JSON.stringify(immutableIdentity(candidate))) return;
+  const error = new Error("AUDIT_OPERATION_ID_COLLISION");
+  error.code = "AUDIT_OPERATION_ID_COLLISION";
+  throw error;
+}
+async function findExisting(base44, event) {
+  const existing = await base44.asServiceRole.entities.AuditEvent.filter({
+    organization_id: event.organization_id,
+    audit_operation_id: event.audit_operation_id
+  }, "-created_date", 2);
+  if (existing?.length > 1) {
+    for (const record of existing) assertCompatible(record, event);
+    const error = new Error("AUDIT_OPERATION_ID_AMBIGUOUS");
+    error.code = "AUDIT_OPERATION_ID_AMBIGUOUS";
+    throw error;
+  }
+  if (existing?.length === 1) {
+    assertCompatible(existing[0], event);
+    return existing[0];
+  }
+  return null;
+}
+function buildAuditEvent(input) {
+  const event = {
+    event_type: clean(input.eventType),
+    principal_class: clean(input.principalClass),
+    actor_user_id: clean(input.actorUserId),
+    actor_primary_role: clean(input.actorPrimaryRole),
+    effective_technician_user_id: clean(input.effectiveTechnicianUserId),
+    organization_id: clean(input.organizationId),
+    branch_id: clean(input.branchId),
+    resource_type: clean(input.resourceType),
+    resource_id: clean(input.resourceId),
+    command_policy_id: clean(input.commandPolicyId),
+    correlation_id: clean(input.correlationId),
+    external_correlation_id: clean(input.externalCorrelationId || input.correlationId),
+    audit_operation_id: clean(input.auditOperationId),
+    operation_key: clean(input.operationKey),
+    operation_semantics: cleanObject(input.operationSemantics),
+    outcome: clean(input.outcome) || "COMMITTED",
+    prior_state: cleanObject(input.priorState),
+    new_state: cleanObject(input.newState),
+    custody_snapshot: cleanObject(input.custodySnapshot),
+    metadata: cleanObject(input.metadata),
+    occurred_at: input.occurredAt || (/* @__PURE__ */ new Date()).toISOString()
+  };
+  for (const field of ["event_type", "principal_class", "organization_id", "resource_type", "resource_id", "command_policy_id", "correlation_id", "audit_operation_id"]) {
+    if (!event[field]) throw new Error(`AUDIT_EVENT_FIELD_REQUIRED:${field}`);
+  }
+  return event;
+}
+async function appendAuditEvent(base44, input) {
+  const event = buildAuditEvent(input);
+  const existing = await findExisting(base44, event);
+  if (existing) return { event: existing, duplicate: true };
+  try {
+    return { event: await base44.asServiceRole.entities.AuditEvent.create(event), duplicate: false };
+  } catch (error) {
+    const reconciled = await findExisting(base44, event);
+    if (reconciled) return { event: reconciled, duplicate: true, reconciled: true };
+    throw error;
+  }
+}
+
+// base44/functions/_shared/inventoryMutationService.ts
+var INVENTORY_MOVEMENT_TYPES = Object.freeze([
+  "INITIAL_BALANCE",
+  "RESERVE",
+  "RELEASE",
+  "CONSUME",
+  "RETURN",
+  "SALE",
+  "ADJUST_IN",
+  "ADJUST_OUT",
+  "REVERSAL"
+]);
+var RESERVATION_TRANSITIONS = Object.freeze({
+  RELEASE: { from: "RESERVED", to: "RELEASED", timestamp: "released_at", key: "release_operation_key" },
+  CONSUME: { from: "RESERVED", to: "CONSUMED", timestamp: "consumed_at", key: "consume_operation_key" },
+  RETURN: { from: "CONSUMED", to: "RETURNED", timestamp: "returned_at", key: "return_operation_key" }
+});
+var InventoryCommandError = class extends Error {
+  constructor(message, code = "INVENTORY_COMMAND_FAILED", status = 409, details = {}) {
+    super(message);
+    this.name = "InventoryCommandError";
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+};
+function finitePositive(value, label = "quantity") {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new InventoryCommandError(`${label} debe ser mayor a cero`, "INVENTORY_QUANTITY_INVALID", 422);
+  }
+  return parsed;
+}
+function finiteNonNegative(value, label) {
+  const parsed = Number(value ?? 0);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new InventoryCommandError(`${label} no es valido`, "INVENTORY_PROJECTION_INVALID", 409);
+  }
+  return parsed;
+}
+function stable2(value) {
+  if (Array.isArray(value)) return value.map(stable2);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable2(value[key])]));
+}
+async function sha256(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+async function commandFingerprint(input, movements) {
+  return sha256(JSON.stringify(stable2({
+    organization_id: input.organizationId,
+    branch_id: input.branchId,
+    operation_key: input.operationKey,
+    reference_type: input.referenceType || null,
+    reference_id: input.referenceId || null,
+    reason: input.reason || null,
+    movements: movements.map((item) => ({
+      inventory_id: item.inventoryId,
+      movement_type: item.movementType,
+      quantity: item.quantity,
+      reservation_id: item.reservationId || null,
+      work_order_id: item.workOrderId || null,
+      quote_id: item.quoteId || null,
+      available_delta: item.availableDelta ?? null,
+      reserved_delta: item.reservedDelta ?? null,
+      reversal_of: item.reversalOf || null
+    }))
+  })));
+}
+function normalizeMovements(rawMovements) {
+  if (!Array.isArray(rawMovements) || rawMovements.length === 0) {
+    throw new InventoryCommandError("Se requiere al menos un movimiento", "INVENTORY_MOVEMENTS_REQUIRED", 400);
+  }
+  const normalized = rawMovements.map((raw) => {
+    const movementType = String(raw.movementType || "").trim().toUpperCase();
+    if (!INVENTORY_MOVEMENT_TYPES.includes(movementType)) {
+      throw new InventoryCommandError(`Movimiento no soportado: ${movementType}`, "INVENTORY_MOVEMENT_INVALID", 422);
+    }
+    const inventoryId = String(raw.inventoryId || "").trim();
+    if (!inventoryId) throw new InventoryCommandError("inventoryId es requerido", "INVENTORY_ID_REQUIRED", 400);
+    return {
+      inventoryId,
+      movementType,
+      quantity: finitePositive(raw.quantity),
+      reservationId: raw.reservationId || null,
+      workOrderId: raw.workOrderId || null,
+      quoteId: raw.quoteId || null,
+      availableDelta: raw.availableDelta == null ? null : Number(raw.availableDelta),
+      reservedDelta: raw.reservedDelta == null ? null : Number(raw.reservedDelta),
+      reversalOf: raw.reversalOf || null
+    };
+  }).sort((left, right) => {
+    const inventoryOrder = left.inventoryId.localeCompare(right.inventoryId);
+    return inventoryOrder || left.movementType.localeCompare(right.movementType) || String(left.reservationId || "").localeCompare(String(right.reservationId || ""));
+  });
+  const duplicateInventory = normalized.find((item, index) => index > 0 && normalized[index - 1].inventoryId === item.inventoryId);
+  if (duplicateInventory) {
+    throw new InventoryCommandError(
+      `Una operacion multi-item solo puede mutar una vez el inventario ${duplicateInventory.inventoryId}`,
+      "INVENTORY_DUPLICATE_RESOURCE",
+      422
+    );
+  }
+  return normalized.map((item, index) => ({ ...item, index }));
+}
+function unwrap(result) {
+  return result?.data ?? result;
+}
+async function correlationUuid(operationKey) {
+  const hex = await sha256(String(operationKey));
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+function createBase44InventoryLockAdapter(base44) {
+  const invoke = async (payload) => {
+    const result = unwrap(await base44.functions.invoke("resourceLockLite", payload));
+    if (result?.success === true) return result;
+    const code = result?.code === "LOCK_FINGERPRINT_CONFLICT" ? "INVENTORY_IDEMPOTENCY_CONFLICT" : result?.code || "INVENTORY_LOCK_FAILED";
+    throw new InventoryCommandError(result?.message || "No fue posible adquirir el lock de inventario", code, code === "LOCK_ACQUIRE_TIMEOUT" ? 423 : 409, {
+      retryable: result?.retryable ?? true
+    });
+  };
+  return {
+    async acquire({ organizationId, operationKey, fingerprint, resources }) {
+      const result = await invoke({
+        action: "acquireMany",
+        operation: "inventory-command",
+        correlation_id: await correlationUuid(operationKey),
+        request_fingerprint: fingerprint,
+        resources: resources.map((id) => `inventory:${id}`).sort(),
+        timeout_ms: 1e4
+      });
+      return result.lease;
+    },
+    async assertOwned({ operationKey, lease }) {
+      await invoke({
+        action: "assertOwned",
+        operation: "inventory-command",
+        correlation_id: await correlationUuid(operationKey),
+        lease
+      });
+      return true;
+    },
+    async release({ operationKey, lease }) {
+      await invoke({
+        action: "releaseMany",
+        operation: "inventory-command",
+        correlation_id: await correlationUuid(operationKey),
+        lease
+      });
+      return true;
+    }
+  };
+}
+async function findOne(entity, query) {
+  const records = await entity.filter(query, "-created_date", 2);
+  if ((records || []).length > 1) {
+    throw new InventoryCommandError("Se encontraron registros duplicados", "INVENTORY_DUPLICATE_STATE", 409, { query });
+  }
+  return records?.[0] || null;
+}
+function calculateProjection(inventory, movement) {
+  const availableBefore = finiteNonNegative(inventory.cantidad_disponible, "AVAILABLE");
+  const reservedBefore = finiteNonNegative(inventory.cantidad_reservada, "RESERVED");
+  const quantity = movement.quantity;
+  let availableDelta = 0;
+  let reservedDelta = 0;
+  switch (movement.movementType) {
+    case "INITIAL_BALANCE":
+      if (availableBefore !== 0 || reservedBefore !== 0) {
+        throw new InventoryCommandError("INITIAL_BALANCE solo se permite sobre inventario en cero", "INVENTORY_INITIAL_BALANCE_CONFLICT", 409);
+      }
+      availableDelta = quantity;
+      break;
+    case "ADJUST_IN":
+    case "RETURN":
+      availableDelta = quantity;
+      break;
+    case "ADJUST_OUT":
+    case "SALE":
+      availableDelta = -quantity;
+      break;
+    case "RESERVE":
+      availableDelta = -quantity;
+      reservedDelta = quantity;
+      break;
+    case "RELEASE":
+      availableDelta = quantity;
+      reservedDelta = -quantity;
+      break;
+    case "CONSUME":
+      reservedDelta = -quantity;
+      break;
+    case "REVERSAL":
+      if (!Number.isFinite(movement.availableDelta) || !Number.isFinite(movement.reservedDelta)) {
+        throw new InventoryCommandError("La reversion requiere deltas explicitos", "INVENTORY_REVERSAL_INVALID", 422);
+      }
+      availableDelta = movement.availableDelta;
+      reservedDelta = movement.reservedDelta;
+      break;
+    default:
+      throw new InventoryCommandError("Movimiento no soportado", "INVENTORY_MOVEMENT_INVALID", 422);
+  }
+  const availableAfter = availableBefore + availableDelta;
+  const reservedAfter = reservedBefore + reservedDelta;
+  if (availableAfter < 0) {
+    throw new InventoryCommandError(
+      `Stock disponible insuficiente. Disponible: ${availableBefore}, solicitado: ${quantity}`,
+      "INVENTORY_INSUFFICIENT_AVAILABLE",
+      409,
+      { available: availableBefore, requested: quantity }
+    );
+  }
+  if (reservedAfter < 0) {
+    throw new InventoryCommandError(
+      `Reserva insuficiente. Reservado: ${reservedBefore}, solicitado: ${quantity}`,
+      "INVENTORY_INSUFFICIENT_RESERVED",
+      409,
+      { reserved: reservedBefore, requested: quantity }
+    );
+  }
+  return {
+    availableBefore,
+    reservedBefore,
+    availableAfter,
+    reservedAfter,
+    availableDelta,
+    reservedDelta,
+    onHandDelta: availableDelta + reservedDelta
+  };
+}
+async function loadReservation(entities, input, movement) {
+  if (movement.movementType === "RESERVE") {
+    if (!movement.workOrderId) {
+      throw new InventoryCommandError("RESERVE requiere workOrderId", "INVENTORY_WORK_ORDER_REQUIRED", 422);
+    }
+    let reservation2 = await findOne(entities.InventarioReserva, {
+      organization_id: input.organizationId,
+      reserve_operation_key: input.operationKey,
+      inventario_id: movement.inventoryId
+    });
+    if (reservation2?.state === "RELEASED" && reservation2.failure_compensated === true) {
+      const reopened = await entities.InventarioReserva.updateMany({
+        id: reservation2.id,
+        organization_id: input.organizationId,
+        state: "RELEASED",
+        reserve_operation_key: input.operationKey,
+        failure_compensated: true
+      }, { $set: { state: "PENDING", failure_compensated: false } });
+      if (reopened?.updated !== 1) {
+        throw new InventoryCommandError("La reserva compensada cambio antes del reintento", "INVENTORY_RESERVATION_CONCURRENT_UPDATE", 409);
+      }
+      reservation2 = await findOne(entities.InventarioReserva, { id: reservation2.id, organization_id: input.organizationId });
+    }
+    if (reservation2) return { reservation: reservation2, created: false, previousState: reservation2.state };
+    const data = {
+      organization_id: input.organizationId,
+      branch_id: input.branchId,
+      work_order_id: movement.workOrderId,
+      inventory_id: movement.inventoryId,
+      inventario_id: movement.inventoryId,
+      quote_id: movement.quoteId || null,
+      quantity: movement.quantity,
+      state: "PENDING",
+      reserve_operation_key: input.operationKey,
+      created_by: input.actorId,
+      reserved_at: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    try {
+      reservation2 = await entities.InventarioReserva.create(data);
+    } catch (error) {
+      reservation2 = await findOne(entities.InventarioReserva, {
+        organization_id: input.organizationId,
+        reserve_operation_key: input.operationKey,
+        inventario_id: movement.inventoryId
+      });
+      if (!reservation2) throw error;
+    }
+    return { reservation: reservation2, created: true, previousState: null };
+  }
+  const transition = RESERVATION_TRANSITIONS[movement.movementType];
+  if (!transition) return { reservation: null, created: false, previousState: null };
+  const query = movement.reservationId ? { id: movement.reservationId, organization_id: input.organizationId } : {
+    organization_id: input.organizationId,
+    branch_id: input.branchId,
+    work_order_id: movement.workOrderId,
+    inventario_id: movement.inventoryId,
+    state: transition.from
+  };
+  const reservation = await findOne(entities.InventarioReserva, query);
+  if (!reservation) {
+    throw new InventoryCommandError("Reserva de inventario no encontrada", "INVENTORY_RESERVATION_NOT_FOUND", 404);
+  }
+  if (reservation.branch_id !== input.branchId || reservation.inventory_id !== movement.inventoryId && reservation.inventario_id !== movement.inventoryId) {
+    throw new InventoryCommandError("La reserva no pertenece al inventario o sucursal autorizada", "INVENTORY_RESERVATION_SCOPE_MISMATCH", 403);
+  }
+  if (Number(reservation.quantity) !== movement.quantity) {
+    throw new InventoryCommandError("La cantidad no coincide con la reserva", "INVENTORY_RESERVATION_QUANTITY_MISMATCH", 409);
+  }
+  if (reservation.state === transition.to && reservation[transition.key] === input.operationKey) {
+    return { reservation, created: false, previousState: transition.from, alreadyCommitted: true };
+  }
+  if (reservation.state !== transition.from) {
+    throw new InventoryCommandError(`La reserva esta en estado ${reservation.state}`, "INVENTORY_RESERVATION_STATE_CONFLICT", 409);
+  }
+  return { reservation, created: false, previousState: reservation.state };
+}
+async function commitReservation(entities, input, movement, reservationContext) {
+  const reservation = reservationContext.reservation;
+  if (!reservation) return null;
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const transition = movement.movementType === "RESERVE" ? { from: "PENDING", to: "RESERVED", timestamp: "reserved_at", key: "reserve_operation_key" } : RESERVATION_TRANSITIONS[movement.movementType];
+  if (reservation.state === transition.to && reservation[transition.key] === input.operationKey) return reservation;
+  let result;
+  try {
+    result = await entities.InventarioReserva.updateMany({
+      id: reservation.id,
+      organization_id: input.organizationId,
+      state: transition.from
+    }, { $set: {
+      state: transition.to,
+      [transition.key]: input.operationKey,
+      [transition.timestamp]: now,
+      last_operation_key: input.operationKey
+    } });
+  } catch (error) {
+    const reconciled = await findOne(entities.InventarioReserva, { id: reservation.id, organization_id: input.organizationId });
+    if (reconciled?.state === transition.to && reconciled?.[transition.key] === input.operationKey) return reconciled;
+    throw error;
+  }
+  if (result?.updated !== 1) {
+    const reconciled = await findOne(entities.InventarioReserva, { id: reservation.id, organization_id: input.organizationId });
+    if (reconciled?.state === transition.to && reconciled?.[transition.key] === input.operationKey) return reconciled;
+    throw new InventoryCommandError("La reserva cambio durante la operacion", "INVENTORY_RESERVATION_CONCURRENT_UPDATE", 409);
+  }
+  return findOne(entities.InventarioReserva, { id: reservation.id, organization_id: input.organizationId });
+}
+async function restoreReservation(entities, input, movement, context) {
+  if (!context?.reservation) return;
+  if (context.created) {
+    await entities.InventarioReserva.updateMany({
+      id: context.reservation.id,
+      organization_id: input.organizationId
+    }, { $set: { state: "RELEASED", released_at: (/* @__PURE__ */ new Date()).toISOString(), failure_compensated: true } });
+    return;
+  }
+  if (!context.previousState) return;
+  await entities.InventarioReserva.updateMany({
+    id: context.reservation.id,
+    organization_id: input.organizationId
+  }, { $set: { state: context.previousState, failure_compensated: true } });
+}
+function ledgerData(input, movement, projection, fingerprint, movementKey, reservationId) {
+  return {
+    organization_id: input.organizationId,
+    branch_id: input.branchId,
+    inventario_id: movement.inventoryId,
+    inventory_id: movement.inventoryId,
+    movement_key: movementKey,
+    movement_type: movement.movementType,
+    quantity: movement.quantity,
+    quantity_delta: projection.onHandDelta,
+    available_delta: projection.availableDelta,
+    reserved_delta: projection.reservedDelta,
+    available_before: projection.availableBefore,
+    available_after: projection.availableAfter,
+    reserved_before: projection.reservedBefore,
+    reserved_after: projection.reservedAfter,
+    reference_type: input.referenceType || null,
+    reference_id: input.referenceId || null,
+    work_order_id: movement.workOrderId || null,
+    quote_id: movement.quoteId || null,
+    reservation_id: reservationId || null,
+    operation_key: input.operationKey,
+    fingerprint,
+    reversal_of: movement.reversalOf || null,
+    modificado_por: input.actorId,
+    actor_user_id: input.actorId,
+    effective_at: (/* @__PURE__ */ new Date()).toISOString(),
+    motivo: input.reason || movement.movementType,
+    campo: "cantidad_disponible",
+    valor_anterior: String(projection.availableBefore),
+    valor_nuevo: String(projection.availableAfter)
+  };
+}
+async function createLedger(entities, data) {
+  try {
+    return await entities.InventarioHistorial.create(data);
+  } catch (error) {
+    const existing = await findOne(entities.InventarioHistorial, {
+      organization_id: data.organization_id,
+      movement_key: data.movement_key
+    });
+    if (existing?.fingerprint === data.fingerprint) return existing;
+    if (existing) {
+      throw new InventoryCommandError("El movement_key ya existe con otro fingerprint", "INVENTORY_IDEMPOTENCY_CONFLICT", 409);
+    }
+    throw error;
+  }
+}
+async function loadInventory(entities, input, movement) {
+  const inventory = await findOne(entities.Inventario, {
+    id: movement.inventoryId,
+    organization_id: input.organizationId
+  });
+  if (!inventory) throw new InventoryCommandError("Producto de inventario no encontrado", "INVENTORY_NOT_FOUND", 404);
+  if (!inventory.branch_id || inventory.branch_id !== input.branchId) {
+    throw new InventoryCommandError("El producto pertenece a otra sucursal", "INVENTORY_CROSS_BRANCH_DENIED", 403);
+  }
+  return inventory;
+}
+async function applyMovement(entities, input, movement, fingerprint) {
+  const baseMovementKey = `${input.operationKey}:${movement.index}`;
+  const priorAttempts = await entities.InventarioHistorial.filter({
+    organization_id: input.organizationId,
+    operation_key: input.operationKey,
+    inventario_id: movement.inventoryId
+  }, "effective_at", 500);
+  const matchingAttempts = (priorAttempts || []).filter((row) => row.movement_key === baseMovementKey || String(row.movement_key || "").startsWith(`${baseMovementKey}:retry:`));
+  const movementKey = matchingAttempts.length === 0 ? baseMovementKey : `${baseMovementKey}:retry:${matchingAttempts.length}`;
+  const inventory = await loadInventory(entities, input, movement);
+  const reservationContext = await loadReservation(entities, input, movement);
+  const projection = calculateProjection(inventory, movement);
+  const movementDate = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  let cas;
+  try {
+    cas = await applyInventoryProjectionCas(entities.Inventario, {
+      inventoryId: movement.inventoryId,
+      organizationId: input.organizationId,
+      branchId: input.branchId,
+      expectedAvailable: projection.availableBefore,
+      expectedReserved: projection.reservedBefore,
+      newAvailable: projection.availableAfter,
+      newReserved: projection.reservedAfter,
+      movementDate,
+      operationKey: input.operationKey,
+      movementKey
+    });
+  } catch (error) {
+    const reconciled = await loadInventory(entities, input, movement);
+    if (reconciled.last_inventory_operation_key === input.operationKey && reconciled.last_inventory_movement_key === movementKey && Number(reconciled.cantidad_disponible) === projection.availableAfter && Number(reconciled.cantidad_reservada || 0) === projection.reservedAfter) {
+      cas = { updated: 1, recovered_ambiguous_update: true };
+    } else {
+      await restoreReservation(entities, input, movement, reservationContext).catch(() => null);
+      throw error;
+    }
+  }
+  if (cas?.updated !== 1) {
+    await restoreReservation(entities, input, movement, reservationContext).catch(() => null);
+    const current = await loadInventory(entities, input, movement);
+    calculateProjection(current, movement);
+    throw new InventoryCommandError("El inventario cambio durante la operacion", "INVENTORY_CONCURRENT_UPDATE", 409, { retryable: true });
+  }
+  let ledger;
+  try {
+    ledger = await createLedger(entities, ledgerData(
+      input,
+      movement,
+      projection,
+      fingerprint,
+      movementKey,
+      reservationContext.reservation?.id
+    ));
+  } catch (ledgerError) {
+    const rollback = await rollbackInventoryProjectionCas(entities.Inventario, {
+      inventoryId: movement.inventoryId,
+      organizationId: input.organizationId,
+      branchId: input.branchId,
+      expectedAvailable: projection.availableAfter,
+      expectedReserved: projection.reservedAfter,
+      previousAvailable: projection.availableBefore,
+      previousReserved: projection.reservedBefore,
+      previousMovementDate: inventory.fecha_ultimo_movimiento || null,
+      operationKey: input.operationKey,
+      movementKey
+    });
+    await restoreReservation(entities, input, movement, reservationContext).catch(() => null);
+    if (rollback?.updated !== 1) {
+      throw new InventoryCommandError(
+        "Fallo el ledger y no fue posible confirmar la compensacion",
+        "INVENTORY_COMPENSATION_INCOMPLETE",
+        500,
+        { cause: ledgerError.message, inventory_id: movement.inventoryId }
+      );
+    }
+    throw new InventoryCommandError("Fallo el ledger; la proyeccion fue revertida", "INVENTORY_LEDGER_WRITE_FAILED", 500, {
+      cause: ledgerError.message
+    });
+  }
+  let reservation = reservationContext.reservation;
+  try {
+    reservation = await commitReservation(entities, input, movement, reservationContext);
+  } catch (reservationError) {
+    const rollback = await rollbackInventoryProjectionCas(entities.Inventario, {
+      inventoryId: movement.inventoryId,
+      organizationId: input.organizationId,
+      branchId: input.branchId,
+      expectedAvailable: projection.availableAfter,
+      expectedReserved: projection.reservedAfter,
+      previousAvailable: projection.availableBefore,
+      previousReserved: projection.reservedBefore,
+      previousMovementDate: inventory.fecha_ultimo_movimiento || null,
+      operationKey: input.operationKey,
+      movementKey
+    });
+    await restoreReservation(entities, input, movement, reservationContext).catch(() => null);
+    if (rollback?.updated === 1) {
+      await createLedger(entities, {
+        ...ledgerData(input, {
+          ...movement,
+          movementType: "REVERSAL",
+          reversalOf: ledger.id
+        }, {
+          availableBefore: projection.availableAfter,
+          reservedBefore: projection.reservedAfter,
+          availableAfter: projection.availableBefore,
+          reservedAfter: projection.reservedBefore,
+          availableDelta: -projection.availableDelta,
+          reservedDelta: -projection.reservedDelta,
+          onHandDelta: -projection.onHandDelta
+        }, fingerprint, `${movementKey}:reservation-compensation`, reservation?.id),
+        operation_key: `${input.operationKey}:reservation-compensation`
+      }).catch(() => null);
+    }
+    throw new InventoryCommandError("No fue posible confirmar la reserva", "INVENTORY_RESERVATION_COMMIT_FAILED", 500, {
+      cause: reservationError.message
+    });
+  }
+  return {
+    inventory_id: movement.inventoryId,
+    movement_id: ledger.id,
+    movement_key: movementKey,
+    movement_type: movement.movementType,
+    available_before: projection.availableBefore,
+    available_after: projection.availableAfter,
+    reserved_before: projection.reservedBefore,
+    reserved_after: projection.reservedAfter,
+    reservation_id: reservation?.id || null
+  };
+}
+async function compensateApplied(entities, input, applied, fingerprint) {
+  const errors = [];
+  for (const result of [...applied].reverse()) {
+    try {
+      const current = await findOne(entities.Inventario, {
+        id: result.inventory_id,
+        organization_id: input.organizationId,
+        branch_id: input.branchId
+      });
+      if (!current) throw new Error("inventory_missing");
+      const reversalKey = `${input.operationKey}:automatic-reversal:${result.movement_id}`;
+      const reversalMovement = {
+        inventoryId: result.inventory_id,
+        movementType: "REVERSAL",
+        quantity: Math.max(1, Math.abs(result.available_after - result.available_before + (result.reserved_after - result.reserved_before))),
+        availableDelta: result.available_before - result.available_after,
+        reservedDelta: result.reserved_before - result.reserved_after,
+        reversalOf: result.movement_id,
+        index: 0
+      };
+      await applyMovement(entities, {
+        ...input,
+        operationKey: reversalKey,
+        referenceType: "INTERNAL_REVERSAL",
+        referenceId: result.movement_id,
+        reason: `Compensacion automatica de ${input.operationKey}`
+      }, reversalMovement, fingerprint);
+      if (result.reservation_id) {
+        const backwards = {
+          RESERVE: { from: "RESERVED", to: "RELEASED", key: "reserve_operation_key" },
+          CONSUME: { from: "CONSUMED", to: "RESERVED", key: "consume_operation_key" },
+          RELEASE: { from: "RELEASED", to: "RESERVED", key: "release_operation_key" },
+          RETURN: { from: "RETURNED", to: "CONSUMED", key: "return_operation_key" }
+        }[result.movement_type];
+        if (backwards) {
+          const restored = await entities.InventarioReserva.updateMany({
+            id: result.reservation_id,
+            organization_id: input.organizationId,
+            state: backwards.from,
+            [backwards.key]: input.operationKey
+          }, { $set: { state: backwards.to, failure_compensated: true } });
+          if (restored?.updated !== 1) throw new Error("reservation_compensation_ownership_lost");
+        }
+      }
+    } catch (error) {
+      errors.push(`${result.inventory_id}:${error.code || error.message}`);
+    }
+  }
+  return errors;
+}
+async function replayResult(entities, input, movements, fingerprint) {
+  const rows = await entities.InventarioHistorial.filter({
+    organization_id: input.organizationId,
+    operation_key: input.operationKey
+  }, "effective_at", 500);
+  if ((rows || []).some((row) => row.fingerprint !== fingerprint)) {
+    throw new InventoryCommandError("La operation key fue reutilizada con otro payload", "INVENTORY_IDEMPOTENCY_CONFLICT", 409);
+  }
+  const primary = [];
+  const businessReversed = /* @__PURE__ */ new Set();
+  for (const movement of movements) {
+    const baseMovementKey = `${input.operationKey}:${movement.index}`;
+    const candidates = (rows || []).filter((row) => row.movement_key === baseMovementKey || String(row.movement_key || "").startsWith(`${baseMovementKey}:retry:`));
+    let committed = null;
+    for (const candidate of [...candidates].reverse()) {
+      const reversals = await entities.InventarioHistorial.filter({
+        organization_id: input.organizationId,
+        reversal_of: candidate.id
+      }, "-effective_at", 20);
+      const automaticallyReversed = (reversals || []).some((row) => {
+        const key = String(row.operation_key || "");
+        return key.includes(":automatic-reversal:") || key.includes(":reservation-compensation");
+      });
+      if (!automaticallyReversed) {
+        committed = candidate;
+        if ((reversals || []).length > 0) businessReversed.add(candidate.id);
+        break;
+      }
+    }
+    if (committed) primary.push(committed);
+  }
+  if (primary.length !== movements.length) return null;
+  for (const row of primary) {
+    if (row.reservation_id && !businessReversed.has(row.id)) {
+      const reservation = await findOne(entities.InventarioReserva, {
+        id: row.reservation_id,
+        organization_id: input.organizationId
+      });
+      const movement = movements.find((item) => `${input.operationKey}:${item.index}` === row.movement_key);
+      if (reservation && movement) {
+        await commitReservation(entities, input, movement, {
+          reservation,
+          created: movement.movementType === "RESERVE",
+          previousState: reservation.state
+        });
+      }
+    }
+  }
+  return {
+    success: true,
+    operation_key: input.operationKey,
+    fingerprint,
+    idempotent: true,
+    results: primary.map((row) => ({
+      inventory_id: row.inventario_id,
+      movement_id: row.id,
+      movement_key: row.movement_key,
+      movement_type: row.movement_type,
+      available_before: row.available_before,
+      available_after: row.available_after,
+      reserved_before: row.reserved_before,
+      reserved_after: row.reserved_after,
+      reservation_id: row.reservation_id || null
+    }))
+  };
+}
+async function executeInventoryCommand(base44, rawInput, providedLockAdapter = null) {
+  const input = {
+    ...rawInput,
+    organizationId: String(rawInput?.organizationId || "").trim(),
+    branchId: String(rawInput?.branchId || "").trim(),
+    actorId: String(rawInput?.actorId || "").trim(),
+    operationKey: String(rawInput?.operationKey || "").trim()
+  };
+  if (!input.organizationId || !input.branchId || !input.actorId || !input.operationKey) {
+    throw new InventoryCommandError(
+      "organizationId, branchId, actorId y operationKey son requeridos",
+      "INVENTORY_COMMAND_CONTEXT_REQUIRED",
+      400
+    );
+  }
+  const movements = normalizeMovements(input.movements);
+  const isRecoveryOnly = movements.every((movement) => movement.type === "REVERSAL");
+  if (!isRecoveryOnly) {
+    try {
+      await assertActiveBranch(base44, input.organizationId, input.branchId, {
+        code: "INVENTORY_BRANCH_INACTIVE",
+        status: 409,
+        message: "La sucursal esta inactiva y no admite mutaciones ordinarias de inventario."
+      });
+    } catch (error) {
+      if (error instanceof BranchProtectionError) {
+        throw new InventoryCommandError(error.message, error.code, error.status, error.details);
+      }
+      throw error;
+    }
+  }
+  const fingerprint = await commandFingerprint(input, movements);
+  if (input.fingerprint && input.fingerprint !== fingerprint) {
+    throw new InventoryCommandError("El fingerprint no coincide con el comando", "INVENTORY_FINGERPRINT_MISMATCH", 409);
+  }
+  const entities = base44.asServiceRole.entities;
+  const auditCommitted = async (result) => {
+    const movementIds = (result.results || []).map((row) => row.movement_id).filter(Boolean).sort();
+    if (movementIds.length !== (result.results || []).length || movementIds.length === 0) {
+      throw new InventoryCommandError("La operacion no produjo identidad durable para auditoria", "AUDIT_OPERATION_ID_SOURCE_REQUIRED", 500);
+    }
+    const auditOperationId = `inventory-command:${await sha256(movementIds)}`;
+    const audit = await appendAuditEvent(base44, {
+      eventType: "INVENTORY_COMMAND_COMMITTED",
+      principalClass: input.principalClass || "HUMAN_MEMBER",
+      actorUserId: input.principalClass === "CUSTOMER_TOKEN" ? null : input.actorId,
+      actorPrimaryRole: input.actorPrimaryRole || null,
+      organizationId: input.organizationId,
+      branchId: input.branchId,
+      resourceType: "InventarioHistorial",
+      resourceId: input.operationKey,
+      commandPolicyId: "CP-INV-001",
+      correlationId: input.correlationId || input.operationKey,
+      auditOperationId,
+      operationKey: input.operationKey,
+      outcome: result.idempotent ? "IDEMPOTENT_REPLAY" : "COMMITTED",
+      newState: { movement_count: result.results?.length || 0 },
+      metadata: {
+        reference_type: input.referenceType || null,
+        reference_id: input.referenceId || null,
+        movements: (result.results || []).map((row) => ({ movement_id: row.movement_id, movement_type: row.movement_type, inventory_id: row.inventory_id, reservation_id: row.reservation_id || null }))
+      }
+    });
+    return { ...result, audit_event_id: audit.event.id };
+  };
+  const preexisting = await replayResult(entities, input, movements, fingerprint);
+  if (preexisting) return auditCommitted(preexisting);
+  const lockAdapter = providedLockAdapter || createBase44InventoryLockAdapter(base44);
+  const lease = await lockAdapter.acquire({
+    organizationId: input.organizationId,
+    operationKey: input.operationKey,
+    fingerprint,
+    resources: movements.map((item) => item.inventoryId)
+  });
+  const applied = [];
+  try {
+    await lockAdapter.assertOwned({ operationKey: input.operationKey, lease });
+    const replay = await replayResult(entities, input, movements, fingerprint);
+    if (replay) return auditCommitted(replay);
+    for (const movement of movements) {
+      await lockAdapter.assertOwned({ operationKey: input.operationKey, lease });
+      const committed = await replayResult(entities, input, [movement], fingerprint);
+      if (committed) applied.push(committed.results[0]);
+      else applied.push(await applyMovement(entities, input, movement, fingerprint));
+    }
+    return auditCommitted({
+      success: true,
+      operation_key: input.operationKey,
+      fingerprint,
+      idempotent: false,
+      results: applied
+    });
+  } catch (error) {
+    if (applied.length > 0) {
+      const compensationErrors = await compensateApplied(entities, input, applied, fingerprint);
+      if (compensationErrors.length > 0) {
+        throw new InventoryCommandError(
+          "La operacion fallo y su compensacion requiere revision",
+          "INVENTORY_MULTI_ITEM_COMPENSATION_INCOMPLETE",
+          500,
+          { cause: error.message, compensation_errors: compensationErrors }
+        );
+      }
+    }
+    throw error;
+  } finally {
+    try {
+      await lockAdapter.release({ operationKey: input.operationKey, lease });
+    } catch (error) {
+      console.error("[inventoryMutationService] lock release failed:", error.message);
+    }
+  }
+}
+
+// base44/functions/_shared/dataProjections.ts
+var ALLOWLISTS = Object.freeze({
+  WORK_ORDER_LIST_OPERATIONAL: ["id", "codigo_ot", "estado", "estado_atencion", "prioridad", "branch_id", "equipo_id", "cliente_id", "tecnico_asignado_id", "motivo_ingreso"],
+  WORK_ORDER_TEAM_AWARENESS: ["id", "codigo_ot", "estado", "estado_atencion", "prioridad", "branch_id", "equipo_id", "tecnico_asignado_id", "motivo_ingreso", "diagnostico_resumido", "ultima_actividad", "ultima_actividad_at"],
+  WORK_ORDER_ASSIGNED_TECHNICAL: ["id", "codigo_ot", "organization_id", "branch_id", "cliente_id", "equipo_id", "serie_ingreso", "accesorios_ingreso", "estado_fisico_ingreso", "estado", "prioridad", "tipo_ingreso", "tecnico_asignado_id", "tecnico_revisor_id", "estado_atencion", "ultima_actividad", "ultima_actividad_at", "motivo_pausa", "motivo_ingreso", "observaciones_ingreso", "diagnostico_resumido", "fecha_ingreso", "fecha_revision_inicio", "fecha_diagnostico", "diagnostico_habilitado", "motivo_bloqueo_diagnostico", "qa_cycle_started_at"],
+  RECEPTION_CUSTOMER: ["id", "nombre_completo", "identificacion", "tipo_cliente", "telefono", "email", "direccion"],
+  RECEPTION_EQUIPMENT: ["id", "cliente_id", "tipo", "marca", "modelo", "serie", "estado_fisico", "accesorios"],
+  RECEPTION_WORK_ORDER: ["id", "codigo_ot", "cliente_id", "equipo_id", "estado", "branch_id", "motivo_ingreso", "observaciones_ingreso", "tipo_ingreso", "fecha_ingreso", "terminos_aceptados", "terminos_aceptados_at", "terminos_version"],
+  CUSTOMER_SERVICE_WORK_ORDER: ["id", "codigo_ot", "branch_id", "cliente_id", "equipo_id", "estado", "prioridad", "tipo_ingreso", "fecha_entrega_estimada", "motivo_ingreso", "diagnostico_resumido", "fecha_ingreso", "cliente_aprobado"],
+  CUSTOMER_SERVICE_APPOINTMENT: ["id", "branch_id", "cliente_id", "tipo", "fecha", "hora_inicio", "hora_fin", "tecnico_asignado_id", "estado", "motivo", "orden_trabajo_id", "recordatorio_enviado"],
+  INVENTORY_READ_CONTEXT: ["id", "branch_id", "codigo_interno", "codigo_barras", "sku", "nombre", "descripcion", "foto_url", "galeria_fotos", "categoria_id", "tipo_item", "marca", "modelo", "cantidad_disponible", "cantidad_reservada", "ubicacion", "precio_venta", "punto_reorden", "estado", "compatibilidades"],
+  INVENTORY_ADMIN_ADDITIONAL: ["costo_unitario", "proveedor", "fecha_compra", "documento_compra", "garantia_proveedor_meses", "garantia_proveedor_vence", "numero_serie", "fecha_ultimo_movimiento"],
+  CUSTOMER_MESSAGE: ["id", "branch_id", "cliente_id", "orden_trabajo_id", "tipo", "asunto", "contenido", "canal", "enviado", "enviado_at", "created_date"],
+  SALE_CUSTOMER_CONTEXT: ["id", "branch_id", "cliente_id", "orden_trabajo_id", "estado", "subtotal", "descuento_total", "impuesto", "total", "saldo_pendiente", "fecha_venta", "created_date"],
+  QUOTE_CUSTOMER_CONTEXT: ["id", "branch_id", "cliente_id", "orden_trabajo_id", "estado", "items", "subtotal", "descuento_total", "impuesto", "total", "cliente_decision_status", "saldo_pendiente", "created_date"],
+  WORK_ORDER_MUTATION_RESULT: [
+    "id",
+    "organization_id",
+    "branch_id",
+    "codigo_ot",
+    "estado",
+    "estado_atencion",
+    "prioridad",
+    "cliente_id",
+    "equipo_id",
+    "tecnico_asignado_id",
+    "tecnico_asignado_email",
+    "motivo_ingreso",
+    "diagnostico_resumido",
+    "ultima_actividad",
+    "ultima_actividad_at",
+    "fecha_ingreso",
+    "fecha_revision_inicio",
+    "fecha_diagnostico",
+    "fecha_cierre",
+    "fecha_entrega",
+    "cliente_aprobado",
+    "cliente_aprobado_at",
+    "estado_custodia",
+    "fecha_ultimo_contacto",
+    "fecha_abandono"
+  ],
+  DELIVERY_LOG_MUTATION_RESULT: [
+    "id",
+    "organization_id",
+    "branch_id",
+    "work_order_id",
+    "orden_trabajo_id",
+    "status",
+    "delivered_at",
+    "acceptance",
+    "warranty_outcome",
+    "warranty_id"
+  ],
+  WARRANTY_MUTATION_RESULT: [
+    "id",
+    "organization_id",
+    "branch_id",
+    "cliente_id",
+    "origen_tipo",
+    "origen_id",
+    "fecha_emision",
+    "fecha_inicio",
+    "fecha_fin",
+    "estado",
+    "texto_snapshot"
+  ]
+});
+function pickProjection(source, fields) {
+  const output = {};
+  for (const field of fields) {
+    if (source?.[field] !== void 0) output[field] = source[field];
+  }
+  return output;
+}
+var OPERATIONAL_MUTATION_IDENTITY_FIELDS = Object.freeze([
+  "id",
+  "organization_id",
+  "branch_id",
+  "created_date",
+  "created_at",
+  "updated_date",
+  "updated_at"
+]);
+var OPERATIONAL_READ_FIELDS = Object.freeze({
+  ActividadTecnica: ["id", "organization_id", "orden_trabajo_id", "tecnico_id", "tecnico_email", "tipo_actividad", "subtipo", "inventario_id", "inventario_cantidad", "inventory_consumption_status", "estado", "started_at", "ended_at", "duracion_minutos", "causa_bloqueo", "resultado", "notas", "soft_deleted", "created_date", "updated_date"],
+  BloqueoTecnico: ["id", "organization_id", "orden_trabajo_id", "tecnico_id", "tipo_bloqueo", "descripcion", "estado", "resuelto_at", "resuelto_por", "created_date", "updated_date"],
+  Branch: ["id", "organization_id", "name", "address", "phone", "active", "is_primary", "created_date", "updated_date"],
+  CategoriaInventario: ["id", "organization_id", "nombre", "permite_stock", "permite_precio", "es_vendible", "activo", "created_date", "updated_date"],
+  Cita: ["id", "organization_id", "branch_id", "cliente_id", "tipo", "fecha", "hora_inicio", "hora_fin", "tecnico_asignado_id", "tecnico_asignado_email", "estado", "motivo", "orden_trabajo_id", "notas", "recordatorio_enviado", "enlace_videollamada", "created_date", "updated_date"],
+  Cliente: ["id", "organization_id", "branch_id", "nombre_completo", "identificacion", "tipo_cliente", "telefono", "email", "direccion", "notas", "created_date", "updated_date"],
+  ComprobanteVentaLog: ["id", "organization_id", "venta_id", "accion", "canal", "formato", "destinatario", "notas", "created_date"],
+  Cotizacion: ["id", "organization_id", "branch_id", "cliente_id", "vendedor_id", "vendedor_nombre", "orden_trabajo_id", "diagnostico_tecnico_id", "version", "items", "subtotal", "descuento_total", "impuesto", "total", "estado", "estado_conversion", "venta_id", "convertida_at", "requiere_aprobacion", "aprobada_por", "aprobada_at", "aprobacion_interna_status", "aprobacion_interna_motivo", "enviada_at", "valida_hasta", "notas", "terminos_version_aceptada", "cliente_rechazo_motivo", "created_date", "updated_date"],
+  DiagnosticMasterRecord: ["id", "organization_id", "orden_trabajo_id", "dmr_number", "created_at", "document_status", "version", "replaces_dmr_id", "cliente_snapshot", "activo_snapshot", "contexto_recepcion", "legal_snapshot", "diagnostico_snapshot", "pdf_url", "signed_at", "voided_at", "replaced_at", "created_date", "updated_date"],
+  Diagnostico: ["id", "organization_id", "orden_trabajo_id", "cliente_id", "equipo_id", "tecnico_id", "tipo_diagnostico", "estado_diagnostico", "conclusion_tecnica", "resumen_cliente", "nivel_riesgo", "propuesta_precio_total", "propuesta_precio_detalle", "completed_at", "created_date", "updated_date"],
+  DiagnosticoDocumento: ["id", "diagnostico_id", "organization_id", "version", "formato", "url_documento", "estado", "emitido_at", "snapshot_data", "aprobacion_status", "aprobacion_at", "aprobacion_canal", "anulado_at", "canal_envio", "enviado_at", "metodo_aprobacion", "created_date", "updated_date"],
+  DiagnosticoEvidencia: ["id", "diagnostico_id", "organization_id", "tipo", "url", "contenido_texto", "descripcion", "created_date", "updated_date"],
+  DiagnosticoResultado: ["id", "diagnostico_id", "organization_id", "categoria", "descripcion_item", "resultado", "observaciones", "created_date", "updated_date"],
+  DiagnosticoTecnico: ["id", "organization_id", "orden_trabajo_id", "tecnico_id", "estado", "tipo_intervencion", "componentes_revisar", "pruebas_realizadas", "hallazgos", "causa_probable", "trabajo_recomendado", "riesgos_no_reparar", "tiempo_estimado_horas", "repuestos_requeridos", "fecha_inicio", "fecha_completado", "bloqueado", "created_date", "updated_date"],
+  EntregaLog: ["id", "organization_id", "branch_id", "orden_trabajo_id", "delivered_at", "acceptance", "checkbox_texto_legal", "nota_entrega", "entrega_con_saldo_pendiente", "delivery_status", "delivery_warranty_outcome", "warranty_id", "intervention_type", "created_date"],
+  Equipo: ["id", "organization_id", "branch_id", "cliente_id", "tipo", "marca", "modelo", "serie", "estado_fisico", "accesorios", "fotos", "created_date", "updated_date"],
+  Expense: ["id", "organization_id", "branch_id", "date", "amount", "category", "frequency", "is_fixed", "description", "payment_method", "created_date", "updated_date"],
+  Garantia: ["id", "organization_id", "branch_id", "cliente_id", "origen_tipo", "origen_id", "equipo_id", "fecha_emision", "fecha_inicio", "fecha_fin", "estado", "texto_snapshot", "activated_at", "created_date", "updated_date"],
+  Inventario: ["id", ...ALLOWLISTS.INVENTORY_READ_CONTEXT, "created_date", "updated_date"],
+  InventarioHistorial: ["id", "organization_id", "branch_id", "inventario_id", "inventory_id", "movement_type", "quantity", "quantity_delta", "available_delta", "reserved_delta", "available_before", "available_after", "reserved_before", "reserved_after", "reference_type", "reference_id", "work_order_id", "quote_id", "reservation_id", "effective_at", "campo", "valor_anterior", "valor_nuevo", "motivo", "sale_id", "created_date"],
+  InventarioReserva: ["id", "organization_id", "branch_id", "work_order_id", "inventario_id", "inventory_id", "quote_id", "quantity", "state", "reserved_at", "consumed_at", "released_at", "returned_at", "failure_compensated", "created_date", "updated_date"],
+  NoConformidad: ["id", "organization_id", "branch_id", "titulo", "tipo", "descripcion", "orden_trabajo_id", "venta_id", "reportado_por", "severidad", "estado", "causa_raiz", "accion_correctiva", "responsable_accion", "fecha_limite", "fecha_cierre", "verificacion_eficacia", "leccion_aprendida", "created_date", "updated_date"],
+  NotaInterna: ["id", "organization_id", "orden_trabajo_id", "autor_id", "autor_nombre", "contenido", "menciones", "tipo", "created_date", "updated_date"],
+  Notificacion: ["id", "organization_id", "branch_id", "user_id", "role_target", "tipo", "mensaje", "referencia_ot_id", "accion_sugerida", "estado", "created_date", "updated_date"],
+  OTEvent: ["id", "organization_id", "orden_trabajo_id", "tipo", "sale_id", "venta_total", "tipo_concepto", "detalle", "processed", "created_at", "created_date"],
+  OrdenTrabajo: [...ALLOWLISTS.WORK_ORDER_ASSIGNED_TECHNICAL, "tracking_code", "responsable_recepcion", "fecha_entrega_estimada", "created_date", "updated_date", "cliente_aprobado", "cliente_aprobado_at", "revision_pagada_at", "revision_venta_id", "estado_custodia", "fecha_inicio_custodia", "fecha_ultimo_contacto", "fecha_abandono", "abandono_observaciones"],
+  PreDiagnostico: ["id", "organization_id", "orden_trabajo_id", "estado", "respuestas", "completado_at", "created_date", "updated_date"],
+  PruebaTecnica: ["id", "organization_id", "orden_trabajo_id", "tecnico_id", "technical_activity_segment_id", "qa_cycle_id", "qa_cycle_started_at", "recorded_at", "tipo_prueba", "descripcion", "resultado", "observaciones", "evidencia_urls", "created_date"],
+  PurchaseInvoice: ["id", "organization_id", "branch_id", "supplier_id", "invoice_number", "date", "due_date", "total_amount", "paid_amount", "notes", "created_date", "updated_date"],
+  Reciclaje: ["id", "organization_id", "branch_id", "tipo_residuo", "descripcion", "peso_kg", "cantidad_unidades", "origen", "orden_trabajo_id", "accion", "destino", "empresa_recicladora", "fecha_proceso", "huella_carbono_evitada_kg", "valor_recuperado", "certificado_url", "notas", "created_date", "updated_date"],
+  RegistroTiempo: ["id", "organization_id", "orden_trabajo_id", "tecnico_id", "actividad", "inicio", "fin", "duracion_minutos", "tipo_actividad", "created_date", "updated_date"],
+  Servicio: ["id", "organization_id", "nombre", "descripcion", "precio", "activo", "categoria", "created_date", "updated_date"],
+  SolicitudTecnica: ["id", "organization_id", "branch_id", "orden_trabajo_id", "tecnico_id", "tipo", "descripcion", "cantidad", "estado", "motivo_rechazo", "aprobado_at", "entregado_at", "inventario_id", "fulfillment_mode", "requested_at", "rejected_at", "fulfilled_at", "fulfillment_status", "fulfillment_error", "created_date", "updated_date"],
+  Supplier: ["id", "organization_id", "name", "contact_name", "phone", "email", "address", "tax_id", "payment_terms_days", "active", "created_date", "updated_date"],
+  SupplierPayment: ["id", "organization_id", "branch_id", "purchase_invoice_id", "amount", "date", "method", "reference", "notes", "created_date"],
+  TerminosYCondiciones: ["id", "organization_id", "version", "texto", "activo", "created_date", "updated_date"],
+  Venta: ["id", "organization_id", "branch_id", "cliente_id", "origen_venta", "origen_detalle", "tipo_concepto", "referencia_ot_id", "referencia_diagnostico_id", "cotizacion_id", "cotizacion_total_original", "cotizacion_subtotal_original", "cotizacion_descuento_original", "total", "subtotal", "impuesto", "descuento_total", "metodo_pago", "estado", "notas", "created_date", "updated_date"],
+  VentaItem: ["id", "organization_id", "venta_id", "tipo", "referencia_id", "descripcion", "cantidad", "precio_unitario", "subtotal", "created_date"],
+  WorkflowGate: ["id", "organization_id", "subject_type", "subject_id", "wait_reason", "provider_key", "status", "resolved_at", "created_date", "updated_date"]
+});
+var projectTechnicalActivity = (record) => pickProjection(record, OPERATIONAL_READ_FIELDS.ActividadTecnica);
+
+// base44/functions/initTechnicalActivity/entry.ts
+var ESTADO_ACTIVO = "en_progreso";
+var ESTADOS_OT_PERMITIDOS = ["ASIGNADA", "EN_COLA_REVISION", "EN_REVISION"];
+var ROLES_ADMIN = ["ORG_ADMIN", "BRANCH_ADMIN"];
+var ROLES_INICIO_TECNICO = [...ROLES_ADMIN, "TECHNICIAN"];
+var INIT_LOCK_TTL_MS = 15 * 60 * 1e3;
 async function ensureTechnicalStartAudit(base44, { authorization, user, ot, activity, correlationId }) {
   return appendAuditEvent(base44, {
-    eventType: 'TECHNICAL_ACTIVITY_STARTED',
+    eventType: "TECHNICAL_ACTIVITY_STARTED",
     principalClass: authorization.principalClass,
     actorUserId: user.id,
     actorPrimaryRole: authorization.persistedRole,
     effectiveTechnicianUserId: user.id,
     organizationId: authorization.organizationId,
     branchId: ot.branch_id,
-    resourceType: 'ActividadTecnica',
+    resourceType: "ActividadTecnica",
     resourceId: activity.id,
-    commandPolicyId: 'CP-TECH-001',
+    commandPolicyId: "CP-TECH-001",
     correlationId,
     auditOperationId: `technical-activity-start:${activity.id}`,
-    custodySnapshot: { work_order_id: ot.id, tecnico_asignado_id: ot.tecnico_asignado_id },
+    custodySnapshot: { work_order_id: ot.id, tecnico_asignado_id: ot.tecnico_asignado_id }
   });
 }
-
-// ── WF-004A: WorkflowGate constants ──────────────────────────────────────────
-// Vertical slice TechRepairPro: wait_reason=COMMERCIAL_AUTHORIZATION, provider_key=COMMERCE_GATEWAY
-const GATE_SUBJECT_TYPE = 'OrdenTrabajo';
-const GATE_WAIT_REASON = 'COMMERCIAL_AUTHORIZATION';
-const GATE_PROVIDER_KEY = 'COMMERCE_GATEWAY';
-
+var GATE_SUBJECT_TYPE = "OrdenTrabajo";
+var GATE_WAIT_REASON = "COMMERCIAL_AUTHORIZATION";
+var GATE_PROVIDER_KEY = "COMMERCE_GATEWAY";
 function buildCorrelationKey(subjectType, subjectId, waitReason) {
   return `${subjectType}:${subjectId}:${waitReason}`;
 }
-
-// Idempotente: crea o reutiliza un gate PENDING para (subject, reason).
-// Retorna el gate existente/creado. No lanza si ya existe (best-effort).
 async function ensurePendingGate(base44, { orgId, subjectId, userId }) {
   const correlationKey = buildCorrelationKey(GATE_SUBJECT_TYPE, subjectId, GATE_WAIT_REASON);
   const existing = await base44.asServiceRole.entities.WorkflowGate.filter(
-    { correlation_key: correlationKey, status: 'PENDING' }, 5
+    { correlation_key: correlationKey, status: "PENDING" },
+    5
   );
   if (existing && existing.length > 0) {
     return { gate: existing[0], created: false };
@@ -86,52 +1561,48 @@ async function ensurePendingGate(base44, { orgId, subjectId, userId }) {
     subject_id: subjectId,
     wait_reason: GATE_WAIT_REASON,
     provider_key: GATE_PROVIDER_KEY,
-    status: 'PENDING',
+    status: "PENDING",
     correlation_key: correlationKey,
     created_by_user_id: userId,
     resolution_payload: null,
     resolved_by_user_id: null,
-    resolved_at: null,
+    resolved_at: null
   });
   return { gate, created: true };
 }
-
 async function loadWorkOrderForInit(base44, orgId, workOrderId) {
   const records = await base44.asServiceRole.entities.OrdenTrabajo.filter({
     id: workOrderId,
-    organization_id: orgId,
+    organization_id: orgId
   });
   return records?.[0] || null;
 }
-
 async function commitExplicitInventoryConsumption(base44, { orgId, ot, activity, inventoryId, quantity, actorId }) {
-  if (activity.inventory_consumption_status === 'COMMITTED') return activity;
+  if (activity.inventory_consumption_status === "COMMITTED") return activity;
   const reservations = await base44.asServiceRole.entities.InventarioReserva.filter({
     organization_id: orgId,
     branch_id: ot.branch_id,
     work_order_id: ot.id,
     inventario_id: inventoryId,
-    state: { $in: ['RESERVED', 'CONSUMED'] },
-  }, '-created_date', 2);
+    state: { $in: ["RESERVED", "CONSUMED"] }
+  }, "-created_date", 2);
   if ((reservations || []).length !== 1) {
-    throw new Error(reservations?.length > 1
-      ? 'Existen reservas duplicadas para el repuesto'
-      : 'No existe una reserva activa para consumir este repuesto');
+    throw new Error(reservations?.length > 1 ? "Existen reservas duplicadas para el repuesto" : "No existe una reserva activa para consumir este repuesto");
   }
   const reservation = reservations[0];
   if (Number(reservation.quantity) !== Number(quantity)) {
-    throw new Error('La cantidad confirmada no coincide con la reserva aprobada');
+    throw new Error("La cantidad confirmada no coincide con la reserva aprobada");
   }
   const operationKey = `technical-consume:${activity.id}:${reservation.id}`;
-  if (reservation.state === 'CONSUMED') {
+  if (reservation.state === "CONSUMED") {
     if (reservation.consume_operation_key !== operationKey) {
-      throw new Error('El repuesto ya fue consumido por otra actividad');
+      throw new Error("El repuesto ya fue consumido por otra actividad");
     }
     return base44.asServiceRole.entities.ActividadTecnica.update(activity.id, {
       inventario_id: inventoryId,
       inventario_cantidad: Number(quantity),
-      inventory_consumption_status: 'COMMITTED',
-      inventory_operation_key: operationKey,
+      inventory_consumption_status: "COMMITTED",
+      inventory_operation_key: operationKey
     });
   }
   try {
@@ -140,43 +1611,41 @@ async function commitExplicitInventoryConsumption(base44, { orgId, ot, activity,
       branchId: ot.branch_id,
       actorId,
       operationKey,
-      referenceType: 'TECHNICAL_ACTIVITY',
+      referenceType: "TECHNICAL_ACTIVITY",
       referenceId: activity.id,
       reason: `Consumo explicito en actividad ${activity.id}`,
       movements: [{
         inventoryId,
-        movementType: 'CONSUME',
+        movementType: "CONSUME",
         quantity: Number(quantity),
         reservationId: reservation.id,
         workOrderId: ot.id,
-        quoteId: reservation.quote_id || null,
-      }],
+        quoteId: reservation.quote_id || null
+      }]
     });
     return await base44.asServiceRole.entities.ActividadTecnica.update(activity.id, {
       inventario_id: inventoryId,
       inventario_cantidad: Number(quantity),
-      inventory_consumption_status: 'COMMITTED',
-      inventory_operation_key: operationKey,
+      inventory_consumption_status: "COMMITTED",
+      inventory_operation_key: operationKey
     });
   } catch (error) {
     await base44.asServiceRole.entities.ActividadTecnica.update(activity.id, {
-      inventory_consumption_status: 'FAILED',
-      inventory_operation_key: operationKey,
+      inventory_consumption_status: "FAILED",
+      inventory_operation_key: operationKey
     }).catch(() => null);
     throw error;
   }
 }
-
 async function acquireInitLock(base44, { ot, orgId, userId }) {
   const token = crypto.randomUUID();
-  const now = new Date().toISOString();
+  const now = (/* @__PURE__ */ new Date()).toISOString();
   const lockData = {
     lifecycle_lock_token: token,
-    lifecycle_lock_operation: 'initTechnicalActivity',
+    lifecycle_lock_operation: "initTechnicalActivity",
     lifecycle_lock_owner_user_id: userId,
-    lifecycle_lock_at: now,
+    lifecycle_lock_at: now
   };
-
   let claim;
   try {
     claim = await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
@@ -185,8 +1654,8 @@ async function acquireInitLock(base44, { ot, orgId, userId }) {
       estado: ot.estado,
       $or: [
         { lifecycle_lock_token: { $exists: false } },
-        { lifecycle_lock_token: null },
-      ],
+        { lifecycle_lock_token: null }
+      ]
     }, { $set: lockData });
   } catch (claimError) {
     const reconciled = await loadWorkOrderForInit(base44, orgId, ot.id);
@@ -195,15 +1664,10 @@ async function acquireInitLock(base44, { ot, orgId, userId }) {
     }
     throw claimError;
   }
-
   if (claim?.updated === 1) return { acquired: true, token, owned: true };
-
   const current = await loadWorkOrderForInit(base44, orgId, ot.id);
-  const lockTimestamp = Date.parse(current?.lifecycle_lock_at || '');
-  const stale = current?.lifecycle_lock_token
-    && Number.isFinite(lockTimestamp)
-    && Date.now() - lockTimestamp > INIT_LOCK_TTL_MS;
-
+  const lockTimestamp = Date.parse(current?.lifecycle_lock_at || "");
+  const stale = current?.lifecycle_lock_token && Number.isFinite(lockTimestamp) && Date.now() - lockTimestamp > INIT_LOCK_TTL_MS;
   if (stale) {
     let takeover;
     try {
@@ -212,7 +1676,7 @@ async function acquireInitLock(base44, { ot, orgId, userId }) {
         organization_id: orgId,
         estado: ot.estado,
         lifecycle_lock_token: current.lifecycle_lock_token,
-        lifecycle_lock_at: current.lifecycle_lock_at,
+        lifecycle_lock_at: current.lifecycle_lock_at
       }, { $set: lockData });
     } catch (takeoverError) {
       const reconciled = await loadWorkOrderForInit(base44, orgId, ot.id);
@@ -222,7 +1686,7 @@ async function acquireInitLock(base44, { ot, orgId, userId }) {
           token,
           owned: true,
           recovered_stale_lock: true,
-          recovered_ambiguous_lock: true,
+          recovered_ambiguous_lock: true
         };
       }
       throw takeoverError;
@@ -231,97 +1695,82 @@ async function acquireInitLock(base44, { ot, orgId, userId }) {
       return { acquired: true, token, owned: true, recovered_stale_lock: true };
     }
   }
-
   return {
     acquired: false,
-    operation: current?.lifecycle_lock_operation || null,
+    operation: current?.lifecycle_lock_operation || null
   };
 }
-
 async function ownsInitLock(base44, { orgId, workOrderId, lock }) {
   const current = await loadWorkOrderForInit(base44, orgId, workOrderId);
   return current?.lifecycle_lock_token === lock?.token;
 }
-
 async function releaseInitLock(base44, { orgId, workOrderId, lock }) {
   if (!lock?.owned) return;
   await base44.asServiceRole.entities.OrdenTrabajo.updateMany({
     id: workOrderId,
     organization_id: orgId,
-    lifecycle_lock_token: lock.token,
+    lifecycle_lock_token: lock.token
   }, {
     $unset: {
-      lifecycle_lock_token: '',
-      lifecycle_lock_operation: '',
-      lifecycle_lock_owner_user_id: '',
-      lifecycle_lock_at: '',
-    },
+      lifecycle_lock_token: "",
+      lifecycle_lock_operation: "",
+      lifecycle_lock_owner_user_id: "",
+      lifecycle_lock_at: ""
+    }
   });
 }
-
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
-
   try {
-    // ── 1. Auth ──────────────────────────────────────────────────────────────
     const runtimeUser = await base44.auth.me();
     if (!runtimeUser) {
-      return Response.json({ error: 'No autenticado' }, { status: 401 });
+      return Response.json({ error: "No autenticado" }, { status: 401 });
     }
-
-    // ── 2. Parsear payload ────────────────────────────────────────────────────
     let body;
     try {
       body = await req.json();
     } catch {
-      return Response.json({ error: 'Body inválido o vacío' }, { status: 400 });
+      return Response.json({ error: "Body inv\xE1lido o vac\xEDo" }, { status: 400 });
     }
-
     const {
-      orden_trabajo_id, tecnico_id, tipo_actividad, subtipo,
-      inventario_id, inventario_cantidad, confirmar_consumo_repuesto, correlation_id,
+      orden_trabajo_id,
+      tecnico_id,
+      tipo_actividad,
+      subtipo,
+      inventario_id,
+      inventario_cantidad,
+      confirmar_consumo_repuesto,
+      correlation_id
     } = body;
-
     if (!orden_trabajo_id) {
-      return Response.json({ error: 'orden_trabajo_id es requerido' }, { status: 400 });
+      return Response.json({ error: "orden_trabajo_id es requerido" }, { status: 400 });
     }
     if (!tecnico_id) {
-      return Response.json({ error: 'tecnico_id es requerido' }, { status: 400 });
+      return Response.json({ error: "tecnico_id es requerido" }, { status: 400 });
     }
     if (!tipo_actividad) {
-      return Response.json({ error: 'tipo_actividad es requerido' }, { status: 400 });
+      return Response.json({ error: "tipo_actividad es requerido" }, { status: 400 });
     }
-
-    // ── 3. Resolver orgId y rol desde UserAccount (SOT) ───────────────────────
     const authorization = await resolveAuthorizedContext(base44, runtimeUser, { allowedRoles: ROLES_INICIO_TECNICO });
     if (!authorization.ok) return Response.json({ error: authorization.error }, { status: authorization.status });
     const orgId = authorization.organizationId;
     const effectiveRole = authorization.role;
     const tecnicoEmail = authorization.account?.user_email || runtimeUser.email;
-    const correlationId = typeof correlation_id === 'string' && correlation_id.trim()
-      ? correlation_id.trim().slice(0, 240)
-      : crypto.randomUUID();
-
-    // CC-001-02: no tratar todo rol no administrativo como técnico.
-    // Rechazar antes de consultar reglas con side-effects o crear registros.
+    const correlationId = typeof correlation_id === "string" && correlation_id.trim() ? correlation_id.trim().slice(0, 240) : crypto.randomUUID();
     if (!ROLES_INICIO_TECNICO.includes(effectiveRole)) {
       return Response.json({
-        error: `El rol "${effectiveRole}" no está autorizado para iniciar actividad técnica.`,
-        codigo: 'ROL_TECNICO_NO_AUTORIZADO',
+        error: `El rol "${effectiveRole}" no est\xE1 autorizado para iniciar actividad t\xE9cnica.`,
+        codigo: "ROL_TECNICO_NO_AUTORIZADO"
       }, { status: 403 });
     }
-
     console.log(`[initTechnicalActivity] orgId=${orgId}, role=${effectiveRole}, tecnico_id=${tecnico_id}, OT=${orden_trabajo_id}`);
-
-    // ── 4. Validar OT existe y pertenece a la org ─────────────────────────────
     const otResults = await base44.asServiceRole.entities.OrdenTrabajo.filter(
-      { id: orden_trabajo_id, organization_id: orgId }, 1
+      { id: orden_trabajo_id, organization_id: orgId },
+      1
     );
-
     if (!otResults || otResults.length === 0) {
-      return Response.json({ error: 'Orden de trabajo no encontrada en esta organización' }, { status: 404 });
+      return Response.json({ error: "Orden de trabajo no encontrada en esta organizaci\xF3n" }, { status: 404 });
     }
-
     const ot = otResults[0];
     const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
     if (!branchAuthorization.ok) {
@@ -329,9 +1778,9 @@ Deno.serve(async (req) => {
     }
     try {
       await assertActiveBranch(base44, orgId, ot.branch_id, {
-        code: 'TECHNICAL_ACTIVITY_BRANCH_INACTIVE',
+        code: "TECHNICAL_ACTIVITY_BRANCH_INACTIVE",
         status: 409,
-        message: 'La sucursal esta inactiva y no admite nuevas actividades tecnicas.',
+        message: "La sucursal esta inactiva y no admite nuevas actividades tecnicas."
       });
     } catch (error) {
       if (error instanceof BranchProtectionError) {
@@ -339,454 +1788,393 @@ Deno.serve(async (req) => {
       }
       throw error;
     }
-    if (confirmar_consumo_repuesto === true
-      && (!inventario_id || !Number.isFinite(Number(inventario_cantidad)) || Number(inventario_cantidad) <= 0)) {
+    if (confirmar_consumo_repuesto === true && (!inventario_id || !Number.isFinite(Number(inventario_cantidad)) || Number(inventario_cantidad) <= 0)) {
       return Response.json({
-        error: 'Para confirmar consumo se requiere inventario_id e inventario_cantidad mayor a cero',
-        codigo: 'INVENTORY_CONSUMPTION_CONFIRMATION_INVALID',
+        error: "Para confirmar consumo se requiere inventario_id e inventario_cantidad mayor a cero",
+        codigo: "INVENTORY_CONSUMPTION_CONFIRMATION_INVALID"
       }, { status: 422 });
     }
     const estadoActualOT = ot.estado;
-
-    console.log(`[initTechnicalActivity] OT encontrada — estado: ${estadoActualOT}`);
-
-    // ── 5. Validar estado de OT permitido ─────────────────────────────────────
+    console.log(`[initTechnicalActivity] OT encontrada \u2014 estado: ${estadoActualOT}`);
     if (!ESTADOS_OT_PERMITIDOS.includes(estadoActualOT)) {
       return Response.json({
-        error: `No se puede iniciar actividad: el estado de la OT "${estadoActualOT}" no está permitido para iniciar trabajo técnico.`,
-        codigo: 'ESTADO_OT_INVALIDO',
-        estado_ot: estadoActualOT,
+        error: `No se puede iniciar actividad: el estado de la OT "${estadoActualOT}" no est\xE1 permitido para iniciar trabajo t\xE9cnico.`,
+        codigo: "ESTADO_OT_INVALIDO",
+        estado_ot: estadoActualOT
       }, { status: 422 });
     }
-
-    // ── 6. Validar diagnostico_habilitado (precondición universal) ────────────
     if (!ot.diagnostico_habilitado) {
       const MOTIVOS_DESCRIPCION = {
-        PENDIENTE_PAGO: 'Revisión pendiente de pago',
-        PENDIENTE_AUTORIZACION_GERENCIA: 'Pendiente de autorización gerencial',
-        EN_GARANTIA_VERIFICACION: 'En verificación de garantía',
-        CLIENTE_CORPORATIVO_CREDITO: 'Cliente corporativo — requiere aprobación de crédito',
-        OTRO: 'Diagnóstico bloqueado — contactar administración',
+        PENDIENTE_PAGO: "Revisi\xF3n pendiente de pago",
+        PENDIENTE_AUTORIZACION_GERENCIA: "Pendiente de autorizaci\xF3n gerencial",
+        EN_GARANTIA_VERIFICACION: "En verificaci\xF3n de garant\xEDa",
+        CLIENTE_CORPORATIVO_CREDITO: "Cliente corporativo \u2014 requiere aprobaci\xF3n de cr\xE9dito",
+        OTRO: "Diagn\xF3stico bloqueado \u2014 contactar administraci\xF3n"
       };
-      const motivo = ot.motivo_bloqueo_diagnostico || 'PENDIENTE_PAGO';
-      const descripcion = MOTIVOS_DESCRIPCION[motivo] || MOTIVOS_DESCRIPCION['OTRO'];
-      console.warn(`[initTechnicalActivity] BLOQUEO DIAGNÓSTICO: OT=${orden_trabajo_id}, motivo=${motivo}`);
-
-      // ── WF-004A: emitir WorkflowGate PENDING (idempotente) ─────────────────
-      // Solo para motivo PENDIENTE_PAGO (autorización comercial vía COMMERCE_GATEWAY).
-      // Otros motivos no pertenecen al vertical slice y se reportan sin gate.
+      const motivo = ot.motivo_bloqueo_diagnostico || "PENDIENTE_PAGO";
+      const descripcion = MOTIVOS_DESCRIPCION[motivo] || MOTIVOS_DESCRIPCION["OTRO"];
+      console.warn(`[initTechnicalActivity] BLOQUEO DIAGN\xD3STICO: OT=${orden_trabajo_id}, motivo=${motivo}`);
       let gateInfo = null;
-      if (motivo === 'PENDIENTE_PAGO') {
+      if (motivo === "PENDIENTE_PAGO") {
         try {
           const { gate, created } = await ensurePendingGate(base44, {
             orgId,
             subjectId: orden_trabajo_id,
-            userId: runtimeUser.id,
+            userId: runtimeUser.id
           });
           gateInfo = { gate_id: gate.id, gate_created: created };
-          console.log(`[initTechnicalActivity] WorkflowGate ${created ? 'creado' : 'reutilizado'} — id=${gate.id}, OT=${orden_trabajo_id}`);
+          console.log(`[initTechnicalActivity] WorkflowGate ${created ? "creado" : "reutilizado"} \u2014 id=${gate.id}, OT=${orden_trabajo_id}`);
         } catch (gateErr) {
-          console.warn(`[initTechnicalActivity] WorkflowGate emit falló (non-critical): ${gateErr.message}`);
+          console.warn(`[initTechnicalActivity] WorkflowGate emit fall\xF3 (non-critical): ${gateErr.message}`);
         }
       }
-
       return Response.json({
-        error: `Diagnóstico bloqueado: ${descripcion}`,
-        codigo: 'DIAGNOSTICO_NO_HABILITADO',
+        error: `Diagn\xF3stico bloqueado: ${descripcion}`,
+        codigo: "DIAGNOSTICO_NO_HABILITADO",
         motivo_bloqueo: motivo,
         descripcion_bloqueo: descripcion,
-        workflow_gate: gateInfo,
+        workflow_gate: gateInfo
       }, { status: 403 });
     }
-
-    // ── 7. Validar técnico asignado y resolver técnico efectivo ───────────────
     if (!ot.tecnico_asignado_id) {
       return Response.json({
-        error: 'La OT no tiene un técnico asignado. No se puede iniciar el trabajo técnico.',
-        codigo: 'TECNICO_FALTANTE',
+        error: "La OT no tiene un t\xE9cnico asignado. No se puede iniciar el trabajo t\xE9cnico.",
+        codigo: "TECNICO_FALTANTE"
       }, { status: 422 });
     }
-
     if (ROLES_ADMIN.includes(effectiveRole)) {
-      // Admin work is never attributed to the currently assigned technician.
-      // The admin must first assume primary custody via the assignment command.
       if (runtimeUser.id !== ot.tecnico_asignado_id || tecnico_id !== runtimeUser.id) {
         return Response.json({
-          error: 'Debes asumir la custodia tecnica de la OT antes de iniciar trabajo.',
-          codigo: 'TECHNICAL_CUSTODY_MUST_BE_ASSUMED',
-          tecnico_asignado: ot.tecnico_asignado_id,
+          error: "Debes asumir la custodia tecnica de la OT antes de iniciar trabajo.",
+          codigo: "TECHNICAL_CUSTODY_MUST_BE_ASSUMED",
+          tecnico_asignado: ot.tecnico_asignado_id
         }, { status: 403 });
       }
     } else {
-      // TECHNICIAN debe ser el usuario autenticado y el técnico asignado a la OT.
-      // El tecnico_id del payload no es una fuente de identidad confiable.
       if (runtimeUser.id !== ot.tecnico_asignado_id || tecnico_id !== runtimeUser.id) {
         return Response.json({
-          error: 'No estás asignado a esta Orden de Trabajo. No puedes iniciar el trabajo técnico.',
-          codigo: 'TECNICO_INCORRECTO',
+          error: "No est\xE1s asignado a esta Orden de Trabajo. No puedes iniciar el trabajo t\xE9cnico.",
+          codigo: "TECNICO_INCORRECTO",
           tecnico_recibido: tecnico_id,
-          tecnico_asignado: ot.tecnico_asignado_id,
+          tecnico_asignado: ot.tecnico_asignado_id
         }, { status: 403 });
       }
     }
     const efectiveTecnicoId = runtimeUser.id;
-
-    // ── 8. Consultar actividades existentes de la OT ─────────────────────────
     const actividadesOT = await base44.asServiceRole.entities.ActividadTecnica.filter({
       organization_id: orgId,
-      orden_trabajo_id: orden_trabajo_id,
-      soft_deleted: false,
+      orden_trabajo_id,
+      soft_deleted: false
     });
-
-    const actividadesActivas = actividadesOT.filter(a => a.estado === ESTADO_ACTIVO);
-
-    // ── 9. Regla: Actividad ACTIVO mismo técnico → idempotente ────────────────
-    const actividadMismoTecnico = actividadesActivas.find(a => a.tecnico_id === efectiveTecnicoId);
-    if (actividadMismoTecnico && estadoActualOT === 'EN_REVISION') {
+    const actividadesActivas = actividadesOT.filter((a) => a.estado === ESTADO_ACTIVO);
+    const actividadMismoTecnico = actividadesActivas.find((a) => a.tecnico_id === efectiveTecnicoId);
+    if (actividadMismoTecnico && estadoActualOT === "EN_REVISION") {
       let recoveredActivity = actividadMismoTecnico;
       if (confirmar_consumo_repuesto === true) {
         if (actividadMismoTecnico.inventario_id && actividadMismoTecnico.inventario_id !== inventario_id) {
-          return Response.json({ error: 'La actividad existente esta asociada a otro repuesto', codigo: 'ACTIVITY_INVENTORY_CONFLICT' }, { status: 409 });
+          return Response.json({ error: "La actividad existente esta asociada a otro repuesto", codigo: "ACTIVITY_INVENTORY_CONFLICT" }, { status: 409 });
         }
         try {
           recoveredActivity = await commitExplicitInventoryConsumption(base44, {
-            orgId, ot, activity: actividadMismoTecnico,
-            inventoryId: inventario_id, quantity: Number(inventario_cantidad), actorId: runtimeUser.id,
+            orgId,
+            ot,
+            activity: actividadMismoTecnico,
+            inventoryId: inventario_id,
+            quantity: Number(inventario_cantidad),
+            actorId: runtimeUser.id
           });
         } catch (error) {
-          return Response.json({ error: error.message, codigo: error.code || 'INVENTORY_CONSUMPTION_FAILED', retryable: true }, { status: error.status || 409 });
+          return Response.json({ error: error.message, codigo: error.code || "INVENTORY_CONSUMPTION_FAILED", retryable: true }, { status: error.status || 409 });
         }
       }
       try {
         await ensureTechnicalStartAudit(base44, {
-          authorization, user: runtimeUser, ot, activity: recoveredActivity,
-          correlationId: recoveredActivity.correlation_id || correlationId,
+          authorization,
+          user: runtimeUser,
+          ot,
+          activity: recoveredActivity,
+          correlationId: recoveredActivity.correlation_id || correlationId
         });
       } catch (error) {
-        return Response.json({ error: 'No se pudo confirmar la auditoria tecnica', codigo: 'TECHNICAL_AUDIT_PENDING', retryable: true }, { status: 500 });
+        return Response.json({ error: "No se pudo confirmar la auditoria tecnica", codigo: "TECHNICAL_AUDIT_PENDING", retryable: true }, { status: 500 });
       }
-      console.log(`[initTechnicalActivity] Idempotencia — actividad activa existente id=${actividadMismoTecnico.id}`);
+      console.log(`[initTechnicalActivity] Idempotencia \u2014 actividad activa existente id=${actividadMismoTecnico.id}`);
       return Response.json({
         success: true,
         idempotent: true,
-        message: 'Actividad activa existente reutilizada.',
+        message: "Actividad activa existente reutilizada.",
         actividad: projectTechnicalActivity(recoveredActivity),
         estado_ot: estadoActualOT,
-        estado_atencion: ot.estado_atencion || null,
+        estado_atencion: ot.estado_atencion || null
       });
     }
-
-    // ── 10. Regla: Actividad ACTIVO otro técnico → rechazar ──────────────────
-    const actividadOtroTecnico = actividadesActivas.find(a => a.tecnico_id !== efectiveTecnicoId);
+    const actividadOtroTecnico = actividadesActivas.find((a) => a.tecnico_id !== efectiveTecnicoId);
     if (actividadOtroTecnico) {
-      console.warn(`[initTechnicalActivity] BLOQUEO: actividad activa de otro técnico id=${actividadOtroTecnico.id}`);
+      console.warn(`[initTechnicalActivity] BLOQUEO: actividad activa de otro t\xE9cnico id=${actividadOtroTecnico.id}`);
       return Response.json({
-        error: 'Existe una actividad activa de otro técnico en esta OT. No se puede iniciar hasta que finalice.',
-        codigo: 'ACTIVIDAD_OTRO_TECNICO',
+        error: "Existe una actividad activa de otro t\xE9cnico en esta OT. No se puede iniciar hasta que finalice.",
+        codigo: "ACTIVIDAD_OTRO_TECNICO",
         actividad_bloqueante_id: actividadOtroTecnico.id,
-        tecnico_bloqueante_id: actividadOtroTecnico.tecnico_id,
+        tecnico_bloqueante_id: actividadOtroTecnico.tecnico_id
       }, { status: 409 });
     }
-
-    // ── 11. Regla: OT EN_REVISION sin ninguna actividad → inconsistencia ─────
-    // El flujo legacy de pago podía avanzar una OT antes de crear la actividad.
-    // Solo se reconcilia cuando existe evidencia persistida del pago; cualquier
-    // otro EN_REVISION sin actividad continúa bloqueado para corrección manual.
-    const recuperacionPostPagoLegacy = estadoActualOT === 'EN_REVISION'
-      && actividadesOT.length === 0
-      && ot.diagnostico_habilitado === true
-      && !!ot.revision_venta_id;
-
-    if (estadoActualOT === 'EN_REVISION' && actividadesOT.length === 0 && !recuperacionPostPagoLegacy) {
-      console.warn(`[initTechnicalActivity] INCONSISTENCIA: EN_REVISION sin actividades — OT=${orden_trabajo_id}`);
+    const recuperacionPostPagoLegacy = estadoActualOT === "EN_REVISION" && actividadesOT.length === 0 && ot.diagnostico_habilitado === true && !!ot.revision_venta_id;
+    if (estadoActualOT === "EN_REVISION" && actividadesOT.length === 0 && !recuperacionPostPagoLegacy) {
+      console.warn(`[initTechnicalActivity] INCONSISTENCIA: EN_REVISION sin actividades \u2014 OT=${orden_trabajo_id}`);
       return Response.json({
-        error: 'Inconsistencia detectada: la OT está en EN_REVISION pero no tiene ninguna actividad técnica registrada. Requiere corrección controlada.',
-        codigo: 'EN_REVISION_SIN_ACTIVIDAD',
-        estado_ot: estadoActualOT,
+        error: "Inconsistencia detectada: la OT est\xE1 en EN_REVISION pero no tiene ninguna actividad t\xE9cnica registrada. Requiere correcci\xF3n controlada.",
+        codigo: "EN_REVISION_SIN_ACTIVIDAD",
+        estado_ot: estadoActualOT
       }, { status: 409 });
     }
-
     if (recuperacionPostPagoLegacy) {
-      console.warn(`[initTechnicalActivity] RECONCILIACION LEGACY: EN_REVISION pagada sin actividad — OT=${orden_trabajo_id}, venta=${ot.revision_venta_id}`);
+      console.warn(`[initTechnicalActivity] RECONCILIACION LEGACY: EN_REVISION pagada sin actividad \u2014 OT=${orden_trabajo_id}, venta=${ot.revision_venta_id}`);
     }
-
-    // ── 12. Validar técnico sin otra OT con estado_atencion ACTIVO ───────────
     const activeSegmentsForTechnician = await base44.asServiceRole.entities.ActividadTecnica.filter({
       organization_id: orgId,
       tecnico_id: efectiveTecnicoId,
       estado: ESTADO_ACTIVO,
-      soft_deleted: false,
+      soft_deleted: false
     });
-
-    const otraOTActiva = activeSegmentsForTechnician.find(segment => segment.orden_trabajo_id !== orden_trabajo_id);
+    const otraOTActiva = activeSegmentsForTechnician.find((segment) => segment.orden_trabajo_id !== orden_trabajo_id);
     if (otraOTActiva) {
       console.warn(`[initTechnicalActivity] BLOQUEO: tecnico ${efectiveTecnicoId} ya ACTIVO en OT ${otraOTActiva.orden_trabajo_id}`);
       return Response.json({
-        error: 'El tecnico ya tiene otro segmento tecnico activo. Finalice o pause esa actividad antes de continuar.',
-        codigo: 'TECNICO_ACTIVO_OTRA_OT',
+        error: "El tecnico ya tiene otro segmento tecnico activo. Finalice o pause esa actividad antes de continuar.",
+        codigo: "TECNICO_ACTIVO_OTRA_OT",
         ot_bloqueante_id: otraOTActiva.orden_trabajo_id,
-        actividad_bloqueante_id: otraOTActiva.id,
+        actividad_bloqueante_id: otraOTActiva.id
       }, { status: 409 });
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // PERSISTENCIA — orden autorizado con compensación
-    // ══════════════════════════════════════════════════════════════════════════
-
     const estadoOTPrevio = estadoActualOT;
-    const necesitaTransicion = estadoActualOT !== 'EN_REVISION';
-
-    // ── 13. Conservar valores previos (para reporte de estado residual) ───────
+    const necesitaTransicion = estadoActualOT !== "EN_REVISION";
     const valoresPrevios = {
       estado_ot: estadoOTPrevio,
-      estado_atencion: ot.estado_atencion || null,
+      estado_atencion: ot.estado_atencion || null
     };
-
     const initLock = await acquireInitLock(base44, {
       ot,
       orgId,
-      userId: runtimeUser.id,
+      userId: runtimeUser.id
     });
     if (!initLock.acquired) {
       return Response.json({
-        error: 'Otra operación del lifecycle está en progreso para esta OT.',
-        codigo: 'LIFECYCLE_OPERATION_IN_PROGRESS',
+        error: "Otra operaci\xF3n del lifecycle est\xE1 en progreso para esta OT.",
+        codigo: "LIFECYCLE_OPERATION_IN_PROGRESS",
         operacion: initLock.operation,
-        retryable: true,
+        retryable: true
       }, { status: 409 });
     }
-
     try {
-
-    // ── 14. PASO 1: Crear ActividadTecnica ───────────────────────────────────
-    const actividadCreadaEsteIntento = !actividadMismoTecnico;
-    let nuevaActividad = actividadMismoTecnico || null;
-    try {
-      if (!nuevaActividad) {
-        nuevaActividad = await base44.asServiceRole.entities.ActividadTecnica.create({
-        organization_id: orgId,
-        orden_trabajo_id,
-        tecnico_id: efectiveTecnicoId,
-        tecnico_email: tecnicoEmail,
-        actor_user_id: runtimeUser.id,
-        actor_primary_role: authorization.persistedRole,
-        effective_technician_user_id: runtimeUser.id,
-        assignment_snapshot: { tecnico_asignado_id: ot.tecnico_asignado_id, branch_id: ot.branch_id },
-        correlation_id: correlationId,
-        tipo_actividad,
-        subtipo: subtipo || '',
-        inventario_id: inventario_id || null,
-        inventario_cantidad: inventario_id ? Number(inventario_cantidad || 0) : null,
-        inventory_consumption_status: confirmar_consumo_repuesto === true ? 'PENDING' : 'NOT_REQUESTED',
-        estado: ESTADO_ACTIVO,
-        started_at: new Date().toISOString(),
-        ended_at: null,
-        duracion_minutos: null,
-        causa_bloqueo: '',
-        resultado: null,
-        notas: '',
-        soft_deleted: false,
-        });
-        console.log(`[initTechnicalActivity] ActividadTecnica creada — id=${nuevaActividad.id}`);
-      } else {
-        console.warn(`[initTechnicalActivity] Recuperando actividad existente — id=${nuevaActividad.id}`);
-      }
-    } catch (createErr) {
-      return Response.json({
-        error: `Fallo al crear ActividadTecnica: ${createErr.message}`,
-        codigo: 'FALLO_CREAR_ACTIVIDAD',
-        paso_fallido: 'crear_actividad',
-      }, { status: 500 });
-    }
-
-    // ── 15. PASO 2: Actualizar OT.estado → EN_REVISION ────────────────────────
-    // transitionWorkOrderStatus valida la transición, actualiza la OT y crea
-    // el OTEvent TRANSITION_EN_REVISION internamente (satisface el paso de OTEvent).
-    let transitionRecovered = false;
-    if (necesitaTransicion) {
-      let transitionOk = false;
-      let transitionErrorMsg = null;
-
+      const actividadCreadaEsteIntento = !actividadMismoTecnico;
+      let nuevaActividad = actividadMismoTecnico || null;
       try {
-        // Preserve the request user's credential. The transition engine resolves
-        // role and organization from that trusted runtime identity.
-        const transitionRes = await base44.functions.invoke('transitionWorkOrderStatus', {
-          orden_trabajo_id,
-          newStatus: 'EN_REVISION',
-          observacion: `Inicio de revisión técnica — actividad ${tipo_actividad}`,
-          _lifecycle_lock_token: initLock.token,
-        });
-
-        const transitionData = transitionRes?.data ?? transitionRes;
-        const transitionStatusOk = transitionRes?.status === undefined || transitionRes.status === 200;
-        if (transitionStatusOk && transitionData?.success === true) {
-          transitionOk = true;
-          console.log(`[initTechnicalActivity] Transición exitosa — OT ahora en EN_REVISION`);
+        if (!nuevaActividad) {
+          nuevaActividad = await base44.asServiceRole.entities.ActividadTecnica.create({
+            organization_id: orgId,
+            orden_trabajo_id,
+            tecnico_id: efectiveTecnicoId,
+            tecnico_email: tecnicoEmail,
+            actor_user_id: runtimeUser.id,
+            actor_primary_role: authorization.persistedRole,
+            effective_technician_user_id: runtimeUser.id,
+            assignment_snapshot: { tecnico_asignado_id: ot.tecnico_asignado_id, branch_id: ot.branch_id },
+            correlation_id: correlationId,
+            tipo_actividad,
+            subtipo: subtipo || "",
+            inventario_id: inventario_id || null,
+            inventario_cantidad: inventario_id ? Number(inventario_cantidad || 0) : null,
+            inventory_consumption_status: confirmar_consumo_repuesto === true ? "PENDING" : "NOT_REQUESTED",
+            estado: ESTADO_ACTIVO,
+            started_at: (/* @__PURE__ */ new Date()).toISOString(),
+            ended_at: null,
+            duracion_minutos: null,
+            causa_bloqueo: "",
+            resultado: null,
+            notas: "",
+            soft_deleted: false
+          });
+          console.log(`[initTechnicalActivity] ActividadTecnica creada \u2014 id=${nuevaActividad.id}`);
         } else {
-          transitionErrorMsg = transitionData?.error || 'Error desconocido en transición';
-          console.error(`[initTechnicalActivity] transitionWorkOrderStatus falló: ${transitionErrorMsg}`);
+          console.warn(`[initTechnicalActivity] Recuperando actividad existente \u2014 id=${nuevaActividad.id}`);
         }
-      } catch (transErr) {
-        transitionErrorMsg = transErr.message;
-        console.error(`[initTechnicalActivity] transitionWorkOrderStatus excepción: ${transitionErrorMsg}`);
-      }
-
-      if (!transitionOk) {
-        // Una excepción o respuesta perdida no demuestra que la transición no
-        // ocurrió. Releer bajo el mismo lock antes de compensar.
-        const reconciledOT = await loadWorkOrderForInit(base44, orgId, orden_trabajo_id);
-        if (reconciledOT?.estado === 'EN_REVISION') {
-          transitionOk = true;
-          transitionRecovered = true;
-          console.warn(`[initTechnicalActivity] Respuesta ambigua reconciliada — OT ya está EN_REVISION`);
-        } else if (reconciledOT?.estado !== estadoOTPrevio) {
-          return Response.json({
-            error: `La OT cambió a "${reconciledOT?.estado || 'desconocido'}" durante el inicio técnico. La actividad se conserva para auditoría.`,
-            codigo: 'TRANSITION_AMBIGUOUS_STATE',
-            paso_fallido: 'reconciliar_transicion',
-            actividad_id: nuevaActividad.id,
-            estado_ot_actual: reconciledOT?.estado || null,
-            retryable: false,
-          }, { status: 409 });
-        }
-      }
-
-      if (!transitionOk) {
-        // CC-001-03: compensar la creación para que la operación sea atómica
-        // solo después de confirmar que la OT conserva el estado previo.
-        const lockTodaviaPropio = await ownsInitLock(base44, {
-          orgId,
-          workOrderId: orden_trabajo_id,
-          lock: initLock,
-        });
-        if (!lockTodaviaPropio) {
-          return Response.json({
-            error: 'El lock fue recuperado por otro intento. La actividad se conserva para evitar borrar trabajo concurrente.',
-            codigo: 'LIFECYCLE_LOCK_LOST',
-            paso_fallido: 'reconciliar_transicion',
-            actividad_id: nuevaActividad.id,
-            actividad_preservada: true,
-            retryable: true,
-          }, { status: 409 });
-        }
-        if (!actividadCreadaEsteIntento) {
-          return Response.json({
-            error: `No se pudo reanudar la transición: ${transitionErrorMsg}`,
-            codigo: 'TRANSITION_RECOVERY_FAILED',
-            paso_fallido: 'transicion_ot',
-            actividad_id: nuevaActividad.id,
-            actividad_preservada: true,
-            retryable: true,
-          }, { status: 500 });
-        }
-        try {
-          await base44.asServiceRole.entities.ActividadTecnica.delete(nuevaActividad.id);
-          console.warn(`[initTechnicalActivity] ROLLBACK completado — actividad=${nuevaActividad.id}`);
-        } catch (rollbackErr) {
-          console.error(`[initTechnicalActivity] ROLLBACK FALLÓ — actividad=${nuevaActividad.id}: ${rollbackErr.message}`);
-          return Response.json({
-            error: `No se pudo iniciar la revisión y falló la compensación de la actividad: ${rollbackErr.message}`,
-            codigo: 'ROLLBACK_ACTIVIDAD_FAILED',
-            paso_fallido: 'rollback_actividad',
-          }, { status: 500 });
-        }
-
+      } catch (createErr) {
         return Response.json({
-          error: `No se pudo iniciar la revisión: ${transitionErrorMsg}`,
-          codigo: 'TRANSITION_FAILED',
-          paso_fallido: 'transicion_ot',
-          rollback: {
-            actividad_eliminada: true,
-            ot_transicionada: false,
-            estado_ot_actual: estadoOTPrevio,
-          },
+          error: `Fallo al crear ActividadTecnica: ${createErr.message}`,
+          codigo: "FALLO_CREAR_ACTIVIDAD",
+          paso_fallido: "crear_actividad"
         }, { status: 500 });
       }
-    } else {
-      console.log(`[initTechnicalActivity] OT ya en EN_REVISION — transición omitida`);
-    }
-
-    // ── 16. PASO 3: Actualizar estado_atencion → ACTIVO (best-effort) ─────────
-    // Si falla, la actividad ya está creada y la OT transicionada.
-    // No revertir: la trazabilidad de tiempo ya quedó registrada.
-    let atencionOk = true;
-    try {
-      const attentionRes = await base44.functions.invoke('updateWorkOrderAttentionStatus', {
-        orden_trabajo_id,
-        estado_atencion: 'ACTIVO',
-        observaciones: `Actividad técnica iniciada: ${tipo_actividad}${subtipo ? ` — ${subtipo}` : ''}`,
-      });
-
-      if (!attentionRes || attentionRes.status !== 200) {
-        console.warn(`[initTechnicalActivity] updateWorkOrderAttentionStatus retornó ${attentionRes?.status} — no crítico`);
-        atencionOk = false;
+      let transitionRecovered = false;
+      if (necesitaTransicion) {
+        let transitionOk = false;
+        let transitionErrorMsg = null;
+        try {
+          const transitionRes = await base44.functions.invoke("transitionWorkOrderStatus", {
+            orden_trabajo_id,
+            newStatus: "EN_REVISION",
+            observacion: `Inicio de revisi\xF3n t\xE9cnica \u2014 actividad ${tipo_actividad}`,
+            _lifecycle_lock_token: initLock.token
+          });
+          const transitionData = transitionRes?.data ?? transitionRes;
+          const transitionStatusOk = transitionRes?.status === void 0 || transitionRes.status === 200;
+          if (transitionStatusOk && transitionData?.success === true) {
+            transitionOk = true;
+            console.log(`[initTechnicalActivity] Transici\xF3n exitosa \u2014 OT ahora en EN_REVISION`);
+          } else {
+            transitionErrorMsg = transitionData?.error || "Error desconocido en transici\xF3n";
+            console.error(`[initTechnicalActivity] transitionWorkOrderStatus fall\xF3: ${transitionErrorMsg}`);
+          }
+        } catch (transErr) {
+          transitionErrorMsg = transErr.message;
+          console.error(`[initTechnicalActivity] transitionWorkOrderStatus excepci\xF3n: ${transitionErrorMsg}`);
+        }
+        if (!transitionOk) {
+          const reconciledOT = await loadWorkOrderForInit(base44, orgId, orden_trabajo_id);
+          if (reconciledOT?.estado === "EN_REVISION") {
+            transitionOk = true;
+            transitionRecovered = true;
+            console.warn(`[initTechnicalActivity] Respuesta ambigua reconciliada \u2014 OT ya est\xE1 EN_REVISION`);
+          } else if (reconciledOT?.estado !== estadoOTPrevio) {
+            return Response.json({
+              error: `La OT cambi\xF3 a "${reconciledOT?.estado || "desconocido"}" durante el inicio t\xE9cnico. La actividad se conserva para auditor\xEDa.`,
+              codigo: "TRANSITION_AMBIGUOUS_STATE",
+              paso_fallido: "reconciliar_transicion",
+              actividad_id: nuevaActividad.id,
+              estado_ot_actual: reconciledOT?.estado || null,
+              retryable: false
+            }, { status: 409 });
+          }
+        }
+        if (!transitionOk) {
+          const lockTodaviaPropio = await ownsInitLock(base44, {
+            orgId,
+            workOrderId: orden_trabajo_id,
+            lock: initLock
+          });
+          if (!lockTodaviaPropio) {
+            return Response.json({
+              error: "El lock fue recuperado por otro intento. La actividad se conserva para evitar borrar trabajo concurrente.",
+              codigo: "LIFECYCLE_LOCK_LOST",
+              paso_fallido: "reconciliar_transicion",
+              actividad_id: nuevaActividad.id,
+              actividad_preservada: true,
+              retryable: true
+            }, { status: 409 });
+          }
+          if (!actividadCreadaEsteIntento) {
+            return Response.json({
+              error: `No se pudo reanudar la transici\xF3n: ${transitionErrorMsg}`,
+              codigo: "TRANSITION_RECOVERY_FAILED",
+              paso_fallido: "transicion_ot",
+              actividad_id: nuevaActividad.id,
+              actividad_preservada: true,
+              retryable: true
+            }, { status: 500 });
+          }
+          try {
+            await base44.asServiceRole.entities.ActividadTecnica.delete(nuevaActividad.id);
+            console.warn(`[initTechnicalActivity] ROLLBACK completado \u2014 actividad=${nuevaActividad.id}`);
+          } catch (rollbackErr) {
+            console.error(`[initTechnicalActivity] ROLLBACK FALL\xD3 \u2014 actividad=${nuevaActividad.id}: ${rollbackErr.message}`);
+            return Response.json({
+              error: `No se pudo iniciar la revisi\xF3n y fall\xF3 la compensaci\xF3n de la actividad: ${rollbackErr.message}`,
+              codigo: "ROLLBACK_ACTIVIDAD_FAILED",
+              paso_fallido: "rollback_actividad"
+            }, { status: 500 });
+          }
+          return Response.json({
+            error: `No se pudo iniciar la revisi\xF3n: ${transitionErrorMsg}`,
+            codigo: "TRANSITION_FAILED",
+            paso_fallido: "transicion_ot",
+            rollback: {
+              actividad_eliminada: true,
+              ot_transicionada: false,
+              estado_ot_actual: estadoOTPrevio
+            }
+          }, { status: 500 });
+        }
       } else {
-        console.log(`[initTechnicalActivity] estado_atencion actualizado a ACTIVO`);
+        console.log(`[initTechnicalActivity] OT ya en EN_REVISION \u2014 transici\xF3n omitida`);
       }
-    } catch (attentionErr) {
-      console.warn(`[initTechnicalActivity] updateWorkOrderAttentionStatus excepción (non-fatal): ${attentionErr.message}`);
-      atencionOk = false;
-    }
-
-    if (confirmar_consumo_repuesto === true) {
+      let atencionOk = true;
       try {
-        nuevaActividad = await commitExplicitInventoryConsumption(base44, {
-          orgId, ot, activity: nuevaActividad,
-          inventoryId: inventario_id, quantity: Number(inventario_cantidad), actorId: runtimeUser.id,
+        const attentionRes = await base44.functions.invoke("updateWorkOrderAttentionStatus", {
+          orden_trabajo_id,
+          estado_atencion: "ACTIVO",
+          observaciones: `Actividad t\xE9cnica iniciada: ${tipo_actividad}${subtipo ? ` \u2014 ${subtipo}` : ""}`
+        });
+        if (!attentionRes || attentionRes.status !== 200) {
+          console.warn(`[initTechnicalActivity] updateWorkOrderAttentionStatus retorn\xF3 ${attentionRes?.status} \u2014 no cr\xEDtico`);
+          atencionOk = false;
+        } else {
+          console.log(`[initTechnicalActivity] estado_atencion actualizado a ACTIVO`);
+        }
+      } catch (attentionErr) {
+        console.warn(`[initTechnicalActivity] updateWorkOrderAttentionStatus excepci\xF3n (non-fatal): ${attentionErr.message}`);
+        atencionOk = false;
+      }
+      if (confirmar_consumo_repuesto === true) {
+        try {
+          nuevaActividad = await commitExplicitInventoryConsumption(base44, {
+            orgId,
+            ot,
+            activity: nuevaActividad,
+            inventoryId: inventario_id,
+            quantity: Number(inventario_cantidad),
+            actorId: runtimeUser.id
+          });
+        } catch (error) {
+          return Response.json({
+            error: error.message,
+            codigo: error.code || "INVENTORY_CONSUMPTION_FAILED",
+            actividad_id: nuevaActividad.id,
+            consumo_pendiente: true,
+            retryable: true
+          }, { status: error.status || 409 });
+        }
+      }
+      try {
+        await ensureTechnicalStartAudit(base44, {
+          authorization,
+          user: runtimeUser,
+          ot,
+          activity: nuevaActividad,
+          correlationId
         });
       } catch (error) {
         return Response.json({
-          error: error.message,
-          codigo: error.code || 'INVENTORY_CONSUMPTION_FAILED',
+          error: "La actividad existe pero la auditoria requerida esta pendiente de reconciliacion",
+          codigo: "TECHNICAL_AUDIT_PENDING",
           actividad_id: nuevaActividad.id,
-          consumo_pendiente: true,
-          retryable: true,
-        }, { status: error.status || 409 });
+          retryable: true
+        }, { status: 500 });
       }
-    }
-
-    // ── 17. Respuesta unificada ───────────────────────────────────────────────
-    // OTEvent (TRANSITION_EN_REVISION) fue creado por transitionWorkOrderStatus en PASO 2.
-    try {
-      await ensureTechnicalStartAudit(base44, {
-        authorization, user: runtimeUser, ot, activity: nuevaActividad, correlationId,
-      });
-    } catch (error) {
+      console.log(`[initTechnicalActivity] \u2713 Flujo completo \u2014 OT=${orden_trabajo_id}, actividad=${nuevaActividad.id}`);
       return Response.json({
-        error: 'La actividad existe pero la auditoria requerida esta pendiente de reconciliacion',
-        codigo: 'TECHNICAL_AUDIT_PENDING',
-        actividad_id: nuevaActividad.id,
-        retryable: true,
-      }, { status: 500 });
-    }
-    console.log(`[initTechnicalActivity] ✓ Flujo completo — OT=${orden_trabajo_id}, actividad=${nuevaActividad.id}`);
-
-    return Response.json({
-      success: true,
-      idempotent: false,
-      message: 'Actividad técnica iniciada correctamente.',
-      actividad: projectTechnicalActivity(nuevaActividad),
-      estado_ot: 'EN_REVISION',
-      estado_atencion: atencionOk ? 'ACTIVO' : (valoresPrevios.estado_atencion),
-      advertencia: atencionOk ? null : 'estado_atencion no pudo actualizarse — actividad y OT transicionadas correctamente.',
-      reconciliacion_legacy: recuperacionPostPagoLegacy,
-      transition_recovered: transitionRecovered,
-      recovered_stale_lock: initLock.recovered_stale_lock === true,
-      recovered_ambiguous_lock: initLock.recovered_ambiguous_lock === true,
-    });
-
+        success: true,
+        idempotent: false,
+        message: "Actividad t\xE9cnica iniciada correctamente.",
+        actividad: projectTechnicalActivity(nuevaActividad),
+        estado_ot: "EN_REVISION",
+        estado_atencion: atencionOk ? "ACTIVO" : valoresPrevios.estado_atencion,
+        advertencia: atencionOk ? null : "estado_atencion no pudo actualizarse \u2014 actividad y OT transicionadas correctamente.",
+        reconciliacion_legacy: recuperacionPostPagoLegacy,
+        transition_recovered: transitionRecovered,
+        recovered_stale_lock: initLock.recovered_stale_lock === true,
+        recovered_ambiguous_lock: initLock.recovered_ambiguous_lock === true
+      });
     } finally {
       try {
         await releaseInitLock(base44, {
           orgId,
           workOrderId: orden_trabajo_id,
-          lock: initLock,
+          lock: initLock
         });
       } catch (releaseError) {
-        console.error(`[initTechnicalActivity] No se pudo liberar el lock — OT=${orden_trabajo_id}: ${releaseError.message}`);
+        console.error(`[initTechnicalActivity] No se pudo liberar el lock \u2014 OT=${orden_trabajo_id}: ${releaseError.message}`);
       }
     }
-
   } catch (error) {
     console.error(`[initTechnicalActivity] Error no controlado: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });

@@ -1,4 +1,4 @@
 {
   "name": "migrateSupportRole",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

@@ -1,1 +1,4 @@
-{"name":"manageEnterpriseOffboarding","entry":"entry.ts"}
+{
+  "name": "manageEnterpriseOffboarding",
+  "entry": "bundle.ts"
+}

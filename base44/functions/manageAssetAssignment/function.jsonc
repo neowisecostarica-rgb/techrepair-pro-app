@@ -1,1 +1,4 @@
-{"name":"manageAssetAssignment","entry":"entry.ts"}
+{
+  "name": "manageAssetAssignment",
+  "entry": "bundle.ts"
+}

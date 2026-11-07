@@ -1,4 +1,4 @@
 {
   "name": "deliverWorkOrder",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

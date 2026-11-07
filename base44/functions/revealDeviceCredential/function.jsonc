@@ -1,4 +1,4 @@
 {
   "name": "revealDeviceCredential",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

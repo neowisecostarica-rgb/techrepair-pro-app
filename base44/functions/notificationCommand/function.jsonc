@@ -1,4 +1,4 @@
 {
   "name": "notificationCommand",
-  "entry": "entry.ts"
+  "entry": "bundle.ts"
 }

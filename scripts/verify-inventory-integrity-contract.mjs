@@ -31,6 +31,7 @@ function applyMutation(record, mutation) {
 
 function createScenario({ available = 10, reserved = 0, branchId = 'branch-a', failures = [] } = {}) {
   const collections = {
+    Organization: [{ id: 'org-a', name: 'Fixture organization' }],
     Branch: [...new Set(['branch-a', branchId])].map(id => ({
       id, organization_id: 'org-a', name: id === 'branch-a' ? 'Central' : 'Secondary', active: true,
     })),
@@ -73,6 +74,7 @@ function createScenario({ available = 10, reserved = 0, branchId = 'branch-a', f
   const base44 = {
     asServiceRole: {
       entities: {
+        Organization: entity('Organization'),
         Branch: entity('Branch'),
         Inventario: entity('Inventario'),
         InventarioHistorial: entity('InventarioHistorial'),

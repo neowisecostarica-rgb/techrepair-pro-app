@@ -217,8 +217,13 @@ pass('sovereign authority requires native admin plus the explicit platform marke
   const functionFiles = (await walk(join(rootPath, 'base44', 'functions'))).filter(path => extname(path) === '.ts');
   const creators = [];
   for (const path of functionFiles) {
-    const source = await readFile(path, 'utf8');
     const normalized = relative(rootPath, path).replaceAll('\\', '/');
+    if (normalized.endsWith('/bundle.ts')) continue;
+    const bundledSource = await readFile(path, 'utf8');
+    const originalSource = join(rootPath, 'scripts/base44-function-sources', normalized.replace(/^base44\/functions\//, ''));
+    const source = normalized.endsWith('/entry.ts') && bundledSource.startsWith('// base44/functions/')
+      ? await readFile(originalSource, 'utf8').catch(() => bundledSource)
+      : bundledSource;
     if (/SuperAdminAudit\.create/.test(source)) creators.push(relative(rootPath, path).replaceAll('\\', '/'));
     assert.doesNotMatch(source, /SuperAdminAudit\.(?:update|updateMany|delete)/, relative(rootPath, path));
     if (!normalized.endsWith('/_shared/userAuthorization.ts') && normalized !== 'base44/functions/_shared/userAuthorization.ts' && normalized !== 'base44/functions/identityGateway/entry.ts') {

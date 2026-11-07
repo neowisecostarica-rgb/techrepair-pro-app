@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,6 +43,7 @@ export default function FormularioCotizacion({
   const [clienteSeleccionadoInterno, setClienteSeleccionadoInterno] = useState(clienteId || cotizacionEditar?.cliente_id || '');
   const [showCrearCliente, setShowCrearCliente] = useState(false);
   const queryClient = useQueryClient();
+  const savingRef = useRef(false);
 
   const clienteActual = clienteId || clienteSeleccionadoInterno;
 
@@ -64,6 +65,7 @@ export default function FormularioCotizacion({
 
   const createCotizacionMutation = useMutation({
     mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data, userAccount)),
+    onSettled: () => { savingRef.current = false; },
     onSuccess: (nuevaCotizacion) => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
@@ -73,6 +75,7 @@ export default function FormularioCotizacion({
 
   const updateCotizacionMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Cotizacion.update(id, data),
+    onSettled: () => { savingRef.current = false; },
     onSuccess: (cotizacionActualizada) => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
@@ -185,6 +188,15 @@ export default function FormularioCotizacion({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    if (!canReadInventory) {
+      toast({ variant: 'destructive', title: 'Sucursal requerida', description: 'No se puede guardar una cotización sin una organización y sucursal autorizadas.' });
+      return;
+    }
+    if (cotizacionEditar && cotizacionEditar.estado !== 'borrador') {
+      toast({ variant: 'destructive', title: 'Cotización no editable', description: 'Solo se pueden editar cotizaciones en borrador.' });
+      return;
+    }
 
     if (!clienteActual) {
       toast({ title: 'Selecciona un cliente', description: 'La cotización necesita un cliente antes de guardarse.' });
@@ -210,10 +222,16 @@ export default function FormularioCotizacion({
       notas: formData.get('notas'),
     };
 
-    if (cotizacionEditar) {
-      updateCotizacionMutation.mutate({ id: cotizacionEditar.id, data: cotizacionData });
-    } else {
-      createCotizacionMutation.mutate(cotizacionData);
+    savingRef.current = true;
+    try {
+      if (cotizacionEditar) {
+        updateCotizacionMutation.mutate({ id: cotizacionEditar.id, data: cotizacionData });
+      } else {
+        createCotizacionMutation.mutate(cotizacionData);
+      }
+    } catch (error) {
+      savingRef.current = false;
+      throw error;
     }
   };
 

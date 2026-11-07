@@ -638,6 +638,24 @@ test('preloaded quote sale is claimed and committed without a second Venta', asy
   assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 5);
 });
 
+test('preloaded sale cannot claim a draft from a different quote, OT, customer or branch', async () => {
+  const mismatches = [
+    ['cotizacion_id', 'other-quote', 'SALE_PRELOAD_QUOTE_MISMATCH'],
+    ['referencia_ot_id', 'other-ot', 'SALE_PRELOAD_WORK_ORDER_MISMATCH'],
+    ['cliente_id', 'other-client', 'SALE_PRELOAD_CUSTOMER_MISMATCH'],
+    ['branch_id', 'other-branch', 'SALE_PRELOAD_BRANCH_MISMATCH'],
+  ];
+  for (const [field, value, expectedCode] of mismatches) {
+    const scenario = createScenario({ preload: true });
+    scenario.collections.Venta[0][field] = value;
+    const result = await invoke(loadHandler(scenario.client), repairPayload({ ventaPreloadId: 'sale-preload' }));
+    assert.equal(result.status, 409, JSON.stringify(result.body));
+    assert.equal(result.body.code, expectedCode);
+    assert.equal(scenario.collections.Venta[0].estado, 'borrador');
+    assert.equal(scenario.collections.Inventario[0].cantidad_disponible, 10);
+  }
+});
+
 test('source contract delegates inventory to the canonical command service', () => {
   assert.match(backendSource, /sale_lock_token/);
   assert.match(backendSource, /updateMany\(\{/);

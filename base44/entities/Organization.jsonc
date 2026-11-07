@@ -96,6 +96,8 @@
       "format": "date-time",
       "description": "\u00daltima actualizaci\u00f3n del saldo de caja"
     },
+    "audit_lock_token": { "type": "string", "rls": { "read": false, "write": false } },
+    "audit_lock_at": { "type": "string", "format": "date-time", "rls": { "read": false, "write": false } },
     "inventario_config": {
       "type": "object",
       "description": "Configuraci\u00f3n de inventario",

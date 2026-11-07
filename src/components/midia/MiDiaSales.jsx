@@ -59,7 +59,8 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
   const { data: citas = [], isError: agendaError, isPending: agendaLoading } = useQuery({
     queryKey: ['citas-hoy', effectiveOrgId],
     queryFn: async () => {
-      const hoy = new Date().toISOString().split('T')[0];
+      // Citas usan fecha calendario local, no el día UTC (puede ser mañana en Costa Rica).
+      const hoy = format(new Date(), 'yyyy-MM-dd');
       const citas = await base44.entities.Cita.filter(
         { 
           organization_id: effectiveOrgId,
@@ -74,14 +75,11 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
     staleTime: 60000,
   });
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-
-  const ventasHoy = ventas.filter(v => {
-    const fechaVenta = new Date(v.created_date);
-    fechaVenta.setHours(0, 0, 0, 0);
-    return fechaVenta.getTime() === hoy.getTime();
-  });
+  const hoyLocal = format(new Date(), 'yyyy-MM-dd');
+  const ventasHoy = ventas.filter(v =>
+    v.created_date && !Number.isNaN(new Date(v.created_date).getTime()) &&
+    format(new Date(v.created_date), 'yyyy-MM-dd') === hoyLocal
+  );
 
   const ventasPropias = ventasHoy.filter(v => v.created_by_user_id === user?.id && v.estado === 'pagada');
   const citasPropias = citas.filter(c => c.tecnico_asignado_id === user?.id);

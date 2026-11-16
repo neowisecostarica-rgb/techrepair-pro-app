@@ -58,7 +58,7 @@ function scenario({ stock = 5, memberBranch = 'branch-a', requestState = 'reques
 function handler(client) {
   const executable = source
     .replace(/^import[\s\S]*?;\s*/gmu, '')
-    .replace('Deno.serve(async req => {', 'globalThis.__handler = async req => {')
+    .replace(/Deno\.serve\(async\s*\(?req\)?\s*=>\s*\{/u, 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   const context = { __client: client, resolveAuthorizedContext, authorizeRecordBranch, executeInventoryCommand, appendAuditEvent, evaluateCommandPolicyWithShadow, ExecuteSovereignCommand, crypto: webcrypto, TextEncoder, Request, Response, structuredClone, console };
   context.globalThis = context;

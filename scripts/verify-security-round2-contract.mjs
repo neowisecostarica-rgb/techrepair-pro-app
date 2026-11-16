@@ -46,7 +46,7 @@ async function vmHandler(path, serveSignature, context) {
   const source = await readFile(new URL(path, import.meta.url), 'utf8');
   const executable = source
     .replace(/^import[\s\S]*?;\s*/gmu, '')
-    .replace(serveSignature, 'globalThis.__handler = async (req) => {')
+    .replace(/Deno\.serve\(async\s*\(?req\)?\s*=>\s*\{/u, 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   context.globalThis = context;
   vm.runInNewContext(executable, context, { filename: path });

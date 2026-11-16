@@ -2,7 +2,7 @@
 
 **App principal:** 695d708948469128f473d080 (Technology Reliability Platform)  
 **Rama:** main; sin ramas nuevas  
-**Estado:** código compilable; release transaccional **NO-GO**; E2E real aún bloqueado  
+**Estado:** código compilable; Test Data habilitado; paquete pre-QA disponible; release transaccional **NO-GO**; E2E autenticado aún bloqueado  
 **Fuente de verdad:** main Base44, issues GitHub #12, #13 y #15 y checkpoints 10-nov.
 
 ## Trabajo de esta sesión
@@ -36,7 +36,7 @@ Los contratos no escriben en el backend de Base44: utilizan código fuente, fixt
 
 ## Bloqueos reales para E2E y entrega
 
-1. **Test Data deshabilitado:** comprobado el 16-nov por API oficial de Base44 (dev_environment_enabled=false). La documentación oficial exige Builder o superior; activar crea BD de datos vacía separada. Falta aprobación específica del cambio y confirmar plan/alcance.
+1. **Test Data habilitado:** autorizado expresamente por Dirección General el 16-nov y verificado por API Base44 (dev_environment_enabled=true). La BD Test es separada/vacía, pero falta comprobación humana del selector/contexto Test. El cambio no publicó una nueva versión ni aisló usuarios nativos o canales externos.
 2. **Usuarios compartidos entre Test y Production:** el toggle no aísla cuentas nativas Base44 ni roles. #12: faltan dos identidades de QA controladas, memberships verificadas y prueba multiempresa/multisucursal real. Nunca usar usuarios o permisos operativos Compu Store para simular QA.
 3. **Canales externos reales incluso con Test Data:** processOTEvent y handleOTLifecycleEvent pueden invocar Core.SendEmail en estados de OT. Debe acreditarse bloqueo efectivo de salidas para pruebas sin interrumpir comunicaciones productivas. No disparar eventos externos hasta certificación.
 4. **AuditEvent sin garantía transaccional exactly-once:** mitigación por CAS/lease en Organization, sin UNIQUE durable; writer lento o expiración pueden duplicar. GitHub #13 abierto. Se requiere almacenamiento/operación persistente atómica aprobada y prueba concurrente real aislada.
@@ -45,10 +45,12 @@ Los contratos no escriben en el backend de Base44: utilizan código fuente, fixt
 
 ## Orden de continuación sin afectar producción
 
-- Gate A: autorizar/configurar Test Data en TRP únicamente tras revisar plan/impacto y confirmar entorno Test activo.
+- Gate A: activación de Test Data COMPLETADA y verificada por API; pendiente comprobación humana de selección efectiva de Test antes de cualquier escritura.
 - Gate B: preparar identidades y organizaciones ficticias sin cambiar User nativos productivos; limitar canales externos y pagos a sandbox/bloqueo real comprobado.
 - Gate C: cerrar #13 con garantía de auditoría persistente aprobada, y validar concurrencia/reintentos.
 - Gate D: ejecutar una sola matriz E2E de fixture ficticio A/B y QA visual con operador; ninguna escritura de Compu Store.
 - Gate E: cerrar #12/#15, corregir defectos reales, reconciliar backend y preparar entrega comercial con aprobación de Dirección General.
+
+**Actualización 16-nov:** se ejecutó la matriz completa de 56 comandos test:*; 39 PASS y 17 FAIL. Lint y build PASS. Se recuperó solo la compatibilidad de tres verificadores, sin alterar backend operativo. Se creó el paquete integral para QA: docs/TRP-E2E-QA-HANDOFF-2026-11-16.md (31 módulos/casos, E2E taller, seguridad y evidencia). No hubo E2E autenticado porque el navegador independiente llegó al login de Base44.
 
 **No declarar MVP final ni piloto real GO antes de esos gates.**

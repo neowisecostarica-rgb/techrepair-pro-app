@@ -67,6 +67,7 @@ function createScenario({
       };
   const workOrders = [{ organization_id: 'org-a', branch_id: 'branch-a', ...workOrder }];
   const auditEvents = [];
+  const organizations = [{ id: 'org-a', status: 'active' }];
   const userAccounts = [
     {
       id: 'caller-account',
@@ -93,7 +94,15 @@ function createScenario({
   const entities = {
     Organization: {
       async filter(query) {
-        return query.id === 'org-a' && query.status === 'active' ? [{ id: 'org-a', status: 'active' }] : [];
+        return organizations
+          .filter(record => matches(record, query))
+          .map(record => structuredClone(record));
+      },
+      async updateMany(query, update) {
+        const record = organizations.find(candidate => matches(candidate, query));
+        if (!record) return { updated: 0 };
+        applyUpdate(record, update);
+        return { updated: 1 };
       },
     },
     Branch: {

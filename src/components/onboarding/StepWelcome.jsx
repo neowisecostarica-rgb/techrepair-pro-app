@@ -1,6 +1,6 @@
 import React from 'react';
 import { useI18n } from '@/i18n';
-import { CheckCircle2, Building2, Package, Users, Wrench } from 'lucide-react';
+import { CheckCircle2, Building2, Package, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function StepWelcome({ organizationName, onContinue }) {

@@ -10,7 +10,11 @@ import {
 import { getCanonicalBranchScope } from '../base44/functions/_shared/operationalAuthorization.ts';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const source = relative => readFile(join(root, relative), 'utf8');
+// Bundled TypeScript may use either quote style; contracts check behavior, not formatting.
+const source = async relative => {
+  const text = await readFile(join(root, relative), 'utf8');
+  return relative.endsWith('.ts') ? text.replaceAll('"', "'") : text;
+};
 let passed = 0;
 
 function test(name, fn) {

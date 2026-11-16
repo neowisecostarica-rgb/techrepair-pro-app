@@ -92,7 +92,7 @@ async function loadTechnicalHandler(scenario) {
   const source = await readFile(new URL('../base44/functions/technicalRecordCommand/entry.ts', import.meta.url), 'utf8');
   const executable = source
     .replace(/^import[\s\S]*?;\s*/gmu, '')
-    .replace('Deno.serve(async req => {', 'globalThis.__handler = async req => {')
+    .replace(/Deno\.serve\(async\s*\(?req\)?\s*=>\s*\{/u, 'globalThis.__handler = async (req) => {')
     .replace(/\}\);\s*$/u, '};');
   const context = {
     createClientFromRequest: () => scenario.client,

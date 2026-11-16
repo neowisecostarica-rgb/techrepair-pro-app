@@ -14,7 +14,7 @@ import { createPageUrl } from '@/utils';
 import { MENU_ITEMS } from '@/config/menuConfig';
 import { isMenuItemEligible } from '@/components/layout/SidebarMenu';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Search, Hash, Wrench, Users, Laptop, Package, CornerDownLeft } from 'lucide-react';
+import { Search, Wrench, Users, Laptop, Package, CornerDownLeft } from 'lucide-react';
 
 const SEARCH_LIMIT = 8;
 const DEBOUNCE_MS = 300;

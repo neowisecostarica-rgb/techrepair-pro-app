@@ -82,6 +82,9 @@ function entityStore(records) {
 function technicalScenario(role = 'TECHNICIAN') {
   const user = { id: role === 'TECHNICIAN' ? 'tech-a' : 'admin-a', email: `${role.toLowerCase()}@example.test`, full_name: 'Actor' };
   const records = {
+    Organization: [{ id: 'org-a', status: 'active', controlled_pilot_mode: false }],
+    Branch: [{ id: 'branch-a', organization_id: 'org-a', active: true }],
+    UserAccount: [{ id: 'membership-a', user_id: user.id, user_email: user.email, organization_id: 'org-a', branch_id: 'branch-a', role, status: 'active' }],
     OrdenTrabajo: [
       { id: 'ot-a', organization_id: 'org-a', branch_id: 'branch-a', cliente_id: 'client-a', equipo_id: 'equipment-a', tecnico_asignado_id: 'tech-a' },
       { id: 'ot-b', organization_id: 'org-a', branch_id: 'branch-a', cliente_id: 'client-b', equipo_id: 'equipment-b', tecnico_asignado_id: 'tech-a' },

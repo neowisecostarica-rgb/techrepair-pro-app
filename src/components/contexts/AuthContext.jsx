@@ -17,11 +17,13 @@ export function AuthProvider({ children }) {
   const hasInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
   const last429Timestamp = useRef(null);
+  // Base44 rate-limit responses can require nearly one minute before retrying.
+  const rateLimitCooldownMs = 60 * 1000;
   const lastSessionUserIdRef = useRef(null);
 
   const loadAuthData = async () => {
     if (isLoadingRef.current) return;
-    if (last429Timestamp.current && Date.now() - last429Timestamp.current < 10000) return;
+    if (last429Timestamp.current && Date.now() - last429Timestamp.current < rateLimitCooldownMs) return;
 
     isLoadingRef.current = true;
     // Never expose a previous identity's authority while resolving the current session.

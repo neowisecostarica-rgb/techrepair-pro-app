@@ -84,7 +84,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       const now = Date.now();
       if (paymentRefreshRef.current.key === paymentKey && now - paymentRefreshRef.current.at < 3 * 60 * 1000) return;
       paymentRefreshRef.current = { key: paymentKey, at: now };
-      const cargarEstados = async () {
+      const cargarEstados = async () => {
         const nuevosEstados = {};
         const otsLimitadas = ordenes.slice(0, 10);
         for (const ot of otsLimitadas) {

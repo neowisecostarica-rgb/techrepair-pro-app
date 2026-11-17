@@ -60,6 +60,23 @@ function entityStore(records) {
       return {
         async filter(query) { return clone(records[name].filter(record => matches(record, query))); },
         async list() { return clone(records[name]); },
+        async updateMany(query, mutation) {
+          let updated = 0;
+          for (const record of records[name]) {
+            const matchesQuery = Object.entries(query || {}).every(([key, value]) => {
+              if (key === '$or') return value.some(clause => Object.entries(clause).every(([field, predicate]) =>
+                predicate && typeof predicate === 'object' && '$exists' in predicate
+                  ? (field in record) === predicate.$exists
+                  : record[field] === predicate));
+              return record[key] === value;
+            });
+            if (!matchesQuery) continue;
+            Object.assign(record, clone(mutation.$set || {}));
+            for (const field of Object.keys(mutation.$unset || {})) delete record[field];
+            updated += 1;
+          }
+          return { updated };
+        },
         async create(data) {
           const record = { id: `${String(name).toLowerCase()}-${records[name].length + 1}`, ...clone(data) };
           records[name].push(record);

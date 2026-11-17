@@ -126,7 +126,7 @@ function OrdenesTrabajoContent() {
     },
     enabled: !!effectiveOrgId,
     staleTime: 30 * 1000,
-    refetchInterval: 10 * 1000,
+    refetchInterval: 60 * 1000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });

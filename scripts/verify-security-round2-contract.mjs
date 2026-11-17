@@ -218,6 +218,8 @@ test('operationalGateway projects real protected list/filter/get responses befor
   const records = { OrdenTrabajo: [{
     id: 'ot-a', organization_id: 'org-a', branch_id: 'branch-a', estado: 'EN_REVISION', codigo_ot: 'OT-1',
     contrasena_ingreso: '9999', public_access_token: 'bearer-secret', lifecycle_lock_token: 'lock-secret',
+  }, {
+    id: 'ot-b', organization_id: 'org-b', branch_id: 'branch-b', estado: 'EN_REVISION', codigo_ot: 'OT-B',
   }] };
   const entities = entityStore(records);
   const authorization = { ok: true, organizationId: 'org-a', role: 'ORG_ADMIN', account: null, isPlatformGlobal: false };
@@ -231,6 +233,10 @@ test('operationalGateway projects real protected list/filter/get responses befor
     projectOperationalMutationResult, projectOperationalReadResult,
     Response, console,
   });
+  // A tenant-scoped list must never expose records from another organization.
+  const tenantList = await call(handler, 'gateway', { operation: 'read', method: 'list', entity: 'OrdenTrabajo', limit: 20 });
+  assert.equal(tenantList.response.status, 200, JSON.stringify(tenantList.body));
+  assert.deepEqual(tenantList.body.records.map((record) => record.id), ['ot-a']);
   for (const [adapterMethod, method] of [['list', 'list'], ['filter', 'filter'], ['get', 'filter']]) {
     const result = await call(handler, 'gateway', { operation: 'read', method, entity: 'OrdenTrabajo', filter: { id: 'ot-a' }, limit: 1 });
     assert.equal(result.response.status, 200, JSON.stringify(result.body));

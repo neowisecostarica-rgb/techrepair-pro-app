@@ -327,9 +327,9 @@ async function handleRead(base44, authorization, decision, body) {
 
   const limit = Math.min(Math.max(Number(body.limit) || 100, 1), MAX_QUERY_LIMIT);
   const fetchLimit = directBranchScope || decision.policy.scope === 'organization' ? limit : MAX_QUERY_LIMIT;
-  const records = body.method === 'list'
-    ? await entity.list(body.sort || '-created_date', fetchLimit)
-    : await entity.filter(filter, body.sort || '-created_date', fetchLimit);
+  // All read methods, including list, must carry the server-derived tenant filter.
+  // A raw service-role list would bypass organization isolation.
+  const records = await entity.filter(filter, body.sort || '-created_date', fetchLimit);
 
   if (authorization.isPlatformGlobal || (decision.branchScope.organizationWide && !requested) || decision.policy.scope === 'organization') {
     return {

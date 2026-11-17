@@ -314,10 +314,10 @@ test('dmrAuditor projects protected platform audit rows', async () => {
 test('audit operation identity separates external tracing from mutation evidence', async () => {
   const events = [];
   const base44 = {
-    asServiceRole: { entities: { AuditEvent: {
-      async filter(query) { return clone(events.filter(event => matches(event, query))); },
-      async create(event) { events.push(clone(event)); return clone(event); },
-    } } },
+    asServiceRole: { entities: entityStore({
+      Organization: [{ id: 'org-a', status: 'active' }],
+      AuditEvent: events,
+    }) },
   };
   const common = {
     eventType: 'WORK_ORDER_STATUS_TRANSITIONED', principalClass: 'HUMAN_MEMBER', actorUserId: 'tech-a',

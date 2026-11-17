@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { getSmartIntakeByWorkOrder } from '@/api/smartIntake';
@@ -58,6 +58,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
   const [botonesDeshabilitados, setBotonesDeshabilitados] = useState({});
   const [transicionEnCurso, setTransicionEnCurso] = useState(false);
   const [estadosPago, setEstadosPago] = useState({});
+  const paymentRefreshRef = useRef({ key: '', at: 0 });
   const [pendingSwitchOT, setPendingSwitchOT] = useState(null);
   const [pendingPaymentOT, setPendingPaymentOT] = useState(null);
 
@@ -72,14 +73,18 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       estado: { $in: ['ASIGNADA', 'EN_REVISION', 'EN_REPARACION', 'PRUEBAS'] }
     }, '-created_date', 200),
     enabled: !!user?.id && !!effectiveOrgId,
-    refetchInterval: 10 * 1000,
+    refetchInterval: 60 * 1000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
     if (ordenes.length > 0 && effectiveOrgId) {
-      const cargarEstados = async () => {
+      const paymentKey = `${effectiveOrgId}:${ordenes.slice(0, 10).map((ot) => ot.id).join(',')}`;
+      const now = Date.now();
+      if (paymentRefreshRef.current.key === paymentKey && now - paymentRefreshRef.current.at < 3 * 60 * 1000) return;
+      paymentRefreshRef.current = { key: paymentKey, at: now };
+      const cargarEstados = async () {
         const nuevosEstados = {};
         const otsLimitadas = ordenes.slice(0, 10);
         for (const ot of otsLimitadas) {

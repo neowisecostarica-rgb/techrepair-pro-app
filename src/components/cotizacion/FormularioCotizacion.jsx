@@ -538,7 +538,7 @@ export default function FormularioCotizacion({
           setClienteSeleccionadoInterno(cliente.id);
           setShowCrearCliente(false);
         }}
-        userAccount={userAccount}
+        effectiveOrgId={organizationId}
         clientes={clientes}
       />
     </>

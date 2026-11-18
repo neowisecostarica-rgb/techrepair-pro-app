@@ -470,6 +470,18 @@ async function safeTrack(base44, eventName, properties = {}) {
     console.warn(`[processOTEvent] analytics_track_failed: ${err.message}`);
   }
 }
+async function dispatchExternalEmail(base44, message) {
+  const mode = Deno.env.get("TRP_EXTERNAL_EFFECTS_MODE");
+  if (mode !== "PRODUCTION") {
+    return { status: "suppressed_for_qa", mode: mode || "CONFIGURATION_INVALID" };
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail(message);
+    return { status: "sent", mode };
+  } catch (error) {
+    return { status: "failed", mode, error: error?.message || String(error) };
+  }
+}
 var EMAIL_TEMPLATES = {
   CREATED: {
     flag: "email_created_sent",
@@ -669,12 +681,17 @@ Deno.serve(async (req) => {
         }
         let emailSent = false;
         try {
-          await base44.asServiceRole.integrations.Core.SendEmail({
+          const effect = await dispatchExternalEmail(base44, {
             to: toEmail,
             subject: tmpl.subject(ot),
             body: tmpl.body(ot, cliente)
           });
-          emailSent = true;
+          if (effect.status === "suppressed_for_qa") {
+            await safeTrack(base44, "ot_email_suppressed_for_qa", { tipo: "CREATED", ot_id: ot.id, org: organization_id });
+            break;
+          }
+          if (effect.status === "failed") throw new Error(effect.error);
+          emailSent = effect.status === "sent";
           console.log(`[processOTEvent] [CREATED] Email enviado \u2014 OT: ${ot.id}, to: ${toEmail}`);
         } catch (emailErr) {
           console.error(`[processOTEvent] [CREATED] SendEmail fall\xF3 \u2014 OT: ${ot.id}: ${emailErr.message}`);
@@ -723,12 +740,17 @@ Deno.serve(async (req) => {
         }
         let emailSentF = false;
         try {
-          await base44.asServiceRole.integrations.Core.SendEmail({
+          const effect = await dispatchExternalEmail(base44, {
             to: toEmailF,
             subject: tmplF.subject(otF),
             body: tmplF.body(otF, clienteF)
           });
-          emailSentF = true;
+          if (effect.status === "suppressed_for_qa") {
+            await safeTrack(base44, "ot_email_suppressed_for_qa", { tipo: "FINALIZADA", ot_id: otF.id, org: organization_id });
+            break;
+          }
+          if (effect.status === "failed") throw new Error(effect.error);
+          emailSentF = effect.status === "sent";
           console.log(`[processOTEvent] [FINALIZADA] Email enviado \u2014 OT: ${otF.id}, to: ${toEmailF}`);
         } catch (emailErrF) {
           console.error(`[processOTEvent] [FINALIZADA] SendEmail fall\xF3 \u2014 OT: ${otF.id}: ${emailErrF.message}`);
@@ -777,12 +799,17 @@ Deno.serve(async (req) => {
         }
         let emailSentE = false;
         try {
-          await base44.asServiceRole.integrations.Core.SendEmail({
+          const effect = await dispatchExternalEmail(base44, {
             to: toEmailE,
             subject: tmplE.subject(otE),
             body: tmplE.body(otE, clienteE)
           });
-          emailSentE = true;
+          if (effect.status === "suppressed_for_qa") {
+            await safeTrack(base44, "ot_email_suppressed_for_qa", { tipo: "ENTREGADA", ot_id: otE.id, org: organization_id });
+            break;
+          }
+          if (effect.status === "failed") throw new Error(effect.error);
+          emailSentE = effect.status === "sent";
           console.log(`[processOTEvent] [ENTREGADA] Email enviado \u2014 OT: ${otE.id}, to: ${toEmailE}`);
         } catch (emailErrE) {
           console.error(`[processOTEvent] [ENTREGADA] SendEmail fall\xF3 \u2014 OT: ${otE.id}: ${emailErrE.message}`);
@@ -831,12 +858,17 @@ Deno.serve(async (req) => {
         }
         let emailSentC = false;
         try {
-          await base44.asServiceRole.integrations.Core.SendEmail({
+          const effect = await dispatchExternalEmail(base44, {
             to: toEmailC,
             subject: tmplC.subject(otC),
             body: tmplC.body(otC, clienteC)
           });
-          emailSentC = true;
+          if (effect.status === "suppressed_for_qa") {
+            await safeTrack(base44, "ot_email_suppressed_for_qa", { tipo: "CANCELADA", ot_id: otC.id, org: organization_id });
+            break;
+          }
+          if (effect.status === "failed") throw new Error(effect.error);
+          emailSentC = effect.status === "sent";
           console.log(`[processOTEvent] [CANCELADA] Email enviado \u2014 OT: ${otC.id}, to: ${toEmailC}`);
         } catch (emailErrC) {
           console.error(`[processOTEvent] [CANCELADA] SendEmail fall\xF3 \u2014 OT: ${otC.id}: ${emailErrC.message}`);

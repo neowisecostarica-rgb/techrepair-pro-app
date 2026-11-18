@@ -112,6 +112,15 @@ function dispatch(action) {
 
 const DEFAULT_DURATION = 5000; // ms
 
+/**
+ * @param {{
+ *   duration?: number,
+ *   title?: import("react").ReactNode,
+ *   description?: import("react").ReactNode,
+ *   variant?: "default" | "destructive",
+ *   action?: import("react").ReactNode
+ * }} options
+ */
 function toast({ duration, ...props }) {
   const id = genId();
 

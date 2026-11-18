@@ -242,7 +242,14 @@ Diagnóstico de bloqueo de bundling cerrado: los imports `../_shared/*` existent
 | P1 | CODEX-LEGACY-ZIP-001 | Comparar primeros ZIP con MAIN para detectar funciones perdidas, reemplazadas o retiradas por seguridad | Codex; obtener ZIP original (no disponible como ZIP en Biblioteca); reporte diferencial, sin merge/deploy |
 | P2 | UX-RESTANTES | Revisar presentación móvil, navegación, tabla en cola, gráficos vacíos y consultas paginadas | Abrir defectos concretos solo si QA los reproduce |
 
+### Correcciones directas en MAIN — 18-nov-2026
+- **Typecheck:** de 3.149 a 379 diagnósticos (-2.770; 88,0 % menos) al declarar props reales de componentes UI compartidos: Button, Card, Input, Label, Textarea, Badge, Alert, Tabs, Select, Table, Dialog, Toast, AlertDialog y DropdownMenu. No se desactivó `checkJs` ni se suprimieron archivos con `@ts-nocheck`.
+- **Corrección funcional Cotizaciones:** `FormularioCotizacion` ahora pasa `effectiveOrgId={organizationId}` a `CrearClienteRapido`; antes enviaba `userAccount` y el componente exigía `effectiveOrgId`, por lo que impedía crear un cliente nuevo desde una cotización.
+- **Corrección funcional Taller:** `DashboardOrgAdmin` ahora proporciona a `RecentOrders` un manejador para abrir `/expediente/:id`; antes la tarjeta aceptaba clic pero no navegaba por ausencia de callback.
+- **Regresión técnica:** Vite build PASS, ESLint PASS, contrato flujo comercial 16/16 PASS y contrato integridad comercial 12/12 PASS. Sin Publish, datos, permisos, backend ni Render modificados.
+- **Pendiente:** 379 diagnósticos de tipos/lógica y QA de navegador autenticado de ambos recorridos. No confundir reducción de diagnósticos con igual número de bugs de negocio resueltos; NO-GO general sin los gates históricos.
+
 ### Checkpoint para continuar
-- Código: `d522311a47bfe85e4abfee8d83cb4b3929981879`, previo a este apunte documental.
+- Código: `d522311a47bfe85e4abfee8d83cb4b3929981879`, previo al apunte documental histórico; para estado actualizado usar checkpoint Base44 de 18-nov.
 - Enlace publicado: `https://tech-repair-pro-f473d080.base44.app`.
 - **PLAN CRITERIO:** cerrar por megabloques en MAIN, reutilizar controles probados, conservar inventario Compu Store y no repetir suites sin cambios. No declarar QA aprobado por el cliente en su nombre.

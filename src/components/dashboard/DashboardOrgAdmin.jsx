@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -36,6 +37,7 @@ function dateKey(value) {
 
 export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branchId = null }) {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const hoy = new Date();
   const isBranchAdmin = effectiveRole === 'BRANCH_ADMIN';
   const canonicalBranchId = isBranchAdmin ? branchId : null;
@@ -327,7 +329,12 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <RecentOrders orders={ordenes.slice(0, 10)} />
+          <RecentOrders
+            orders={ordenes.slice(0, 10)}
+            onSelectOrder={(order) => {
+              if (order?.id) navigate(`/expediente/${encodeURIComponent(order.id)}`);
+            }}
+          />
         </div>
 
         <QuickActions />

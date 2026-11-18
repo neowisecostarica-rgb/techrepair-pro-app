@@ -38,7 +38,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const [pendingConversion, setPendingConversion] = useState(null);
   const savingRef = useRef(false);
 
-  const clienteActual = clienteId;
+  const clienteActual = clienteId || editingCotizacion?.cliente_id || clienteSeleccionadoInterno;
   const organizationId = userAccount?.organization_id;
   const organizationWide = userAccount?.role === 'ORG_ADMIN';
   const branchId = userAccount?.branch_id;

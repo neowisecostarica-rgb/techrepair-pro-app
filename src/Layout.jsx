@@ -136,7 +136,7 @@ function LayoutContent({ children, currentPageName }) {
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('ops.sessionValid','Sesión válida · Servicio de identidad no disponible')}</h2>
           <p className="text-slate-600 mb-6">
-            Base44 reconoce tu sesión, pero TRP no pudo cargar la autorización del usuario. El acceso permanece bloqueado de forma segura.
+            TRP no pudo verificar tus permisos de acceso en este momento. Por seguridad, el acceso permanece bloqueado. Intentá nuevamente o contactá al administrador.
           </p>
           <div className="flex gap-3 justify-center">
             <Button onClick={reloadAuth} className="bg-teal-700 hover:bg-teal-800">

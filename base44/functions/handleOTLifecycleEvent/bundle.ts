@@ -508,6 +508,16 @@ async function ensureOTEvent(base44, record, config) {
   console.log(`[handleOTLifecycleEvent] ensureOTEvent neutralizado \u2014 tipo: ${config.eventType}, OT: ${record.id} \u2014 handled_by_gateway`);
   return { created: false, reason: "handled_by_gateway" };
 }
+async function dispatchExternalEmail(base44, message) {
+  const mode = Deno.env.get("TRP_EXTERNAL_EFFECTS_MODE");
+  if (mode !== "PRODUCTION") return { status: "suppressed_for_qa", mode: mode || "CONFIGURATION_INVALID" };
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail(message);
+    return { status: "sent", mode };
+  } catch (error) {
+    return { status: "failed", mode, error: error?.message || String(error) };
+  }
+}
 async function sendEmailIfNeeded(base44, record, cliente, config) {
   const flag = config.emailFlag;
   if (config.eventType === "ENTREGADA") {
@@ -524,11 +534,16 @@ async function sendEmailIfNeeded(base44, record, cliente, config) {
     return { sent: false, skipped: true, reason: "no_email" };
   }
   try {
-    await base44.asServiceRole.integrations.Core.SendEmail({
+    const effect = await dispatchExternalEmail(base44, {
       to,
       subject: config.subject(record),
       body: config.body(record, cliente)
     });
+    if (effect.status === "suppressed_for_qa") {
+      await safeTrack(base44, "ot_email_suppressed_for_qa", { tipo: config.eventType, ot_id: record.id, org: record.organization_id });
+      return { sent: false, suppressed_for_qa: true, skipped: true, status: effect.status };
+    }
+    if (effect.status === "failed") throw new Error(effect.error);
     await base44.asServiceRole.entities.OrdenTrabajo.update(record.id, {
       [flag]: true
     });

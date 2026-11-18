@@ -34,7 +34,16 @@ const buttonVariants = cva(
   }
 )
 
-const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
+const Button = React.forwardRef(
+  /**
+   * @param {import("react").ButtonHTMLAttributes<HTMLButtonElement> & {
+   *   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link",
+   *   size?: "default" | "sm" | "lg" | "icon",
+   *   asChild?: boolean
+   * }} props
+   * @param {import("react").ForwardedRef<HTMLButtonElement>} ref
+   */
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
   return (
     (<Comp

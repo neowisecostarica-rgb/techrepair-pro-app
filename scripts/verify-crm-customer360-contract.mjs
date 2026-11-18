@@ -107,7 +107,7 @@ pass('Customer 360 messaging is tenant-scoped and backend-owned');
 
 assert.match(onboarding, /bootstrapIdentityOrganization/);
 assert.doesNotMatch(onboarding, /entities\.(UserAccount|Organization|User)/);
-assert.match(identityGateway, /status:\s*'active',[\s\S]*active:\s*true/);
+assert.match(identityGateway, /status:\s*['"]active['"],[\s\S]*active:\s*true/);
 assert.match(identityGateway, /accepted_at:/);
 assert.doesNotMatch(onboarding, /find\(a\s*=>\s*a\.active\s*&&/);
 pass('onboarding activates invitations with canonical status and tenant context');

@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { issuePublicLink } from '@/api/publicLinks';
 
 // ── Bloque colapsable ─────────────────────────────────────────────────────
-function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge, children }) {
+function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge = null, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border border-slate-100 rounded-xl overflow-hidden">

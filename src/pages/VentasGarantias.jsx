@@ -89,7 +89,7 @@ function VentasGarantiasContent() {
   const calcularDiasParaVencer = (fechaFin) => {
     const hoy = new Date();
     const fin = new Date(fechaFin);
-    const diffTime = fin - hoy;
+    const diffTime = fin.getTime() - hoy.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };

@@ -96,7 +96,7 @@ function PuntoVentaContent() {
       if (cotizacionOrigen && preloadedVenta.estado === 'borrador') {
         const createdDate = new Date(preloadedVenta.created_date);
         const ahora = new Date();
-        const horasTranscurridas = (ahora - createdDate) / (1000 * 60 * 60);
+        const horasTranscurridas = (ahora.getTime() - createdDate.getTime()) / (1000 * 60 * 60);
         
         if (horasTranscurridas > 2) {
           setShowConversionAntigua(true);

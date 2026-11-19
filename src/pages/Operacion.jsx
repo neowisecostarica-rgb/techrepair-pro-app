@@ -206,7 +206,7 @@ function OperacionContent() {
   const otsDemoradasDetalle = otsDemoradas
     .map(ot => {
       const activityDate = new Date(ot.ultima_actividad_at || ot.updated_date);
-      const diasDemora = Math.floor((ahora - activityDate) / (1000 * 60 * 60 * 24));
+      const diasDemora = Math.floor((ahora.getTime() - activityDate.getTime()) / (1000 * 60 * 60 * 24));
       const cliente = clientes.find(c => c.id === ot.cliente_id);
       const tecnico = tecnicos.find(t => t.user_id === ot.tecnico_asignado_id);
       const sucursal = sucursales.find(s => s.id === ot.branch_id);

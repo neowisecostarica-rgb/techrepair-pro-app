@@ -25,7 +25,7 @@ export default function ActividadActiva({ actividad, onUpdated }) {
       if (actividad?.started_at) {
         const inicio = new Date(actividad.started_at);
         const ahora = new Date();
-        const minutos = Math.floor((ahora - inicio) / 60000);
+        const minutos = Math.floor((ahora.getTime() - inicio.getTime()) / 60000);
         setDuracionVista(minutos);
       }
     };

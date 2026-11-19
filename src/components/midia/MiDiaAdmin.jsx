@@ -149,7 +149,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
     if (g.estado !== 'ACTIVA') return false;
     const hoy = new Date();
     const fin = new Date(g.fecha_fin);
-    const diffDays = Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
     return diffDays > 0 && diffDays <= 15;
   });
 

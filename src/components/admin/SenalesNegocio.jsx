@@ -43,7 +43,7 @@ export default function SenalesNegocio({ userAccount }) {
 
   const otSinMovimiento = ordenes.filter(o => {
     const lastActivity = new Date(o.ultima_actividad_at || o.created_date);
-    const hoursInactive = (Date.now() - lastActivity) / (1000 * 60 * 60);
+    const hoursInactive = (Date.now() - lastActivity.getTime()) / (1000 * 60 * 60);
     return hoursInactive > 4 && !['FINALIZADA', 'ENTREGADA', 'CANCELADA'].includes(o.estado);
   });
 

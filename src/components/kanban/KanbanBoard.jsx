@@ -59,7 +59,7 @@ export default function KanbanBoard({ onCardClick }) {
       items.sort((a, b) => {
         const fa = new Date(a.fecha_ingreso || a.created_date || 0);
         const fb = new Date(b.fecha_ingreso || b.created_date || 0);
-        return fa - fb; // ASC: más antiguas arriba
+        return fa.getTime() - fb.getTime(); // ASC: más antiguas arriba
       });
       acc[colId] = items;
       return acc;

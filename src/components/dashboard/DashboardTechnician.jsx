@@ -51,7 +51,7 @@ export default function DashboardTechnician({ effectiveOrgId, userId }) {
     ? ordenesCompletadas.reduce((sum, o) => {
         const start = new Date(o.created_date);
         const end = new Date(o.fecha_cierre);
-        const diffDays = (end - start) / (1000 * 60 * 60 * 24);
+        const diffDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
         return sum + diffDays;
       }, 0) / ordenesCompletadas.length
     : 0;

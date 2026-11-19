@@ -16,6 +16,8 @@ export function AuthProvider({ children }) {
   const [authorizedOrganizations, setAuthorizedOrganizations] = useState([]);
   const hasInitializedRef = useRef(false);
   const isLoadingRef = useRef(false);
+  // Invalidates late identity responses after a native user switch or explicit refresh.
+  const authRequestVersionRef = useRef(0);
   const last429Timestamp = useRef(null);
   // Base44 rate-limit responses can require nearly one minute before retrying.
   const rateLimitCooldownMs = 60 * 1000;
@@ -25,6 +27,7 @@ export function AuthProvider({ children }) {
     if (isLoadingRef.current) return;
     if (last429Timestamp.current && Date.now() - last429Timestamp.current < rateLimitCooldownMs) return;
 
+    const requestVersion = ++authRequestVersionRef.current;
     isLoadingRef.current = true;
     // Never expose a previous identity's authority while resolving the current session.
     setStatus('loading');
@@ -37,6 +40,7 @@ export function AuthProvider({ children }) {
     setErrorCode(null);
     try {
       const context = await getIdentityContext();
+      if (requestVersion !== authRequestVersionRef.current) return;
       const contextUser = context.user;
       lastSessionUserIdRef.current = contextUser?.id || null;
       const account = contextUser?.is_super_admin && contextUser?.impersonating_org_id
@@ -61,6 +65,7 @@ export function AuthProvider({ children }) {
       last429Timestamp.current = null;
       setStatus('ready');
     } catch (error) {
+      if (requestVersion !== authRequestVersionRef.current) return;
       console.error('AuthContext: identity gateway failed', error);
       const gatewayStatus = error?.response?.status || error?.status || null;
       if (gatewayStatus === 429) {
@@ -73,6 +78,7 @@ export function AuthProvider({ children }) {
         // or unlock protected pages without identityGateway authorization.
         try {
           const sessionUser = await base44.auth.me();
+          if (requestVersion !== authRequestVersionRef.current) return;
           if (sessionUser?.id) {
             console.warn('AuthContext: Base44 session valid; identityGateway unavailable');
             setUser(sessionUser);
@@ -88,13 +94,14 @@ export function AuthProvider({ children }) {
             setStatus('error');
           }
         } catch (sessionError) {
+          if (requestVersion !== authRequestVersionRef.current) return;
           console.error('AuthContext: Base44 session probe failed', sessionError);
           setErrorCode(sessionError?.response?.status || sessionError?.status || gatewayStatus || 'AUTH_REQUIRED');
           setStatus('error');
         }
       }
     } finally {
-      isLoadingRef.current = false;
+      if (requestVersion === authRequestVersionRef.current) isLoadingRef.current = false;
     }
   };
 

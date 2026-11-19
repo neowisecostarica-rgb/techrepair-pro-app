@@ -177,6 +177,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     setBusquedaProductos(prev => ({ ...prev, [index]: '' }));
   };
 
+  /** @returns {Array<Record<string, any>>} */
   const getItemsDisponibles = (index) => {
     const busqueda = busquedaProductos[index] || '';
     if (!busqueda || busqueda.length < 2) return [];
@@ -454,7 +455,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                       </Badge>
                     )}
                     {cot.requiere_aprobacion && !cot.aprobada_por && (
-                      <AlertCircle className="w-3 h-3 text-yellow-500 shrink-0" title="Requiere aprobación" />
+                      <span title="Requiere aprobación"><AlertCircle className="w-3 h-3 text-yellow-500 shrink-0" /></span>
                     )}
                     <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
                       {format(new Date(cot.created_date), 'dd/MM/yy')}

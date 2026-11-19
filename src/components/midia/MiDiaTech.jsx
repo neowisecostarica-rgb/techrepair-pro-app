@@ -1031,7 +1031,6 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
               <TabsContent value="solicitudes">
                 <SolicitudesTecnicas
                   ordenTrabajoId={selectedOT.id}
-                  tecnicoId={user.id}
                   userAccount={userAccount}
                 />
               </TabsContent>
@@ -1047,7 +1046,6 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
               <TabsContent value="pruebas">
                 <PruebasTecnicas
                   ordenTrabajoId={selectedOT.id}
-                  tecnicoId={user.id}
                   userAccount={userAccount}
                 />
               </TabsContent>

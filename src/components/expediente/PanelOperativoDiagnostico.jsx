@@ -216,8 +216,7 @@ export default function PanelOperativoDiagnostico({
     });
     const completion = response?.data ?? response;
     if (!completion?.success) {
-      const error = new Error(completion?.error || 'No se pudo completar el diagnostico');
-      error.code = completion?.code;
+      const error = Object.assign(new Error(completion?.error || 'No se pudo completar el diagnostico'), { code: completion?.code });
       throw error;
     }
     return completion;

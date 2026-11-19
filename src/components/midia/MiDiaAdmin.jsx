@@ -257,7 +257,6 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
       <div className="mb-8">
         <AprobacionesPanel 
           userAccount={{ organization_id: effectiveOrgId }} 
-          user={user} 
         />
       </div>
 

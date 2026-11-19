@@ -115,6 +115,7 @@ function InventarioInvertidoContent() {
     });
 
     // Top 10 productos con más inversión
+    /** @type {Array<Record<string, any>>} */
     const top10 = inventario
       .map(item => ({
         ...item,

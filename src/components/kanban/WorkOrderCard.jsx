@@ -35,7 +35,7 @@ const PRIORIDAD_CONFIG = {
   low:     { className: 'bg-slate-100 text-slate-500',   label: 'Baja'    },
 };
 
-export default function WorkOrderCard({ ot, tecnicos = [], onClick }) {
+export default function WorkOrderCard({ ot, tecnicos = [], onClick = null }) {
   const statusConfig = WORK_ORDER_STATUSES[ot.estado] || { label: ot.estado, color: 'bg-slate-100 text-slate-700' };
 
   // ── Técnico ────────────────────────────────────────────────────────────────

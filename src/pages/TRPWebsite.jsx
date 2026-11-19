@@ -65,6 +65,7 @@ export default function TRPWebsite() {
   React.useEffect(() => {
     document.title = t('website.meta.title');
     const setMeta = (name, content) => {
+      /** @type {HTMLMetaElement|null} */
       let el = document.querySelector(`meta[name="${name}"]`);
       if (!el) { el = document.createElement('meta'); el.name = name; document.head.appendChild(el); }
       el.content = content;
@@ -72,6 +73,7 @@ export default function TRPWebsite() {
     setMeta('description', t('website.meta.description'));
     setMeta('robots', 'index, follow');
     const setProperty = (property, content) => {
+      /** @type {HTMLMetaElement|null} */
       let el = document.querySelector(`meta[property="${property}"]`);
       if (!el) { el = document.createElement('meta'); el.setAttribute('property', property); document.head.appendChild(el); }
       el.content = content;

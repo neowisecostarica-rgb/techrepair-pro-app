@@ -643,6 +643,7 @@ function PuntoVentaContent() {
     }
   };
 
+  /** @type {Array<Record<string, any>>} */
   const itemsBusqueda = [
     ...inventario.filter(i =>
       i.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||

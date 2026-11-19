@@ -203,6 +203,7 @@ function OperacionContent() {
     }));
 
   // Top 10 OTs demoradas
+  /** @type {Array<Record<string, any>>} */
   const otsDemoradasDetalle = otsDemoradas
     .map(ot => {
       const activityDate = new Date(ot.ultima_actividad_at || ot.updated_date);

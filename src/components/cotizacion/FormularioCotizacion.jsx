@@ -109,6 +109,7 @@ export default function FormularioCotizacion({
     setBusquedaProductos(prev => ({ ...prev, [index]: '' }));
   };
 
+  /** @returns {Array<Record<string, any>>} */
   const getItemsDisponibles = (index) => {
     const busqueda = busquedaProductos[index] || '';
     if (!busqueda || busqueda.length < 2) return [];

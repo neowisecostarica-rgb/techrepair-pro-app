@@ -127,7 +127,7 @@ function ColaRevisionContent() {
         queryClient.invalidateQueries({ queryKey: ['todas-ordenes', effectiveOrgId] }),
       ]);
     },
-    onError: (error) => {
+    onError: (/** @type {any} */ error) => {
       console.log('[asignarMutation] → onError');
       // Extraer únicamente el string del mensaje — nunca serializar el objeto error completo
       const backendMessage = error?.response?.data?.error || error?.backendMessage;
@@ -183,9 +183,6 @@ function ColaRevisionContent() {
               <div className="flex-1">
                 <WorkOrderCard
                   ot={orden}
-                  index={index}
-                  clientes={clientes}
-                  equipos={equipos}
                   tecnicos={tecnicos}
                 />
               </div>
@@ -223,9 +220,6 @@ function ColaRevisionContent() {
             <WorkOrderCard
               key={orden.id}
               ot={orden}
-              index={index}
-              clientes={clientes}
-              equipos={equipos}
               tecnicos={tecnicos}
             />
           ))}

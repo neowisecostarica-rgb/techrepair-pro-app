@@ -23,7 +23,7 @@ export default function ProductPhotoUploader({ fotos = [], onChange, max = 5, di
     try {
       const uploaded = [];
       for (const file of files.slice(0, space)) {
-        const res = await base44.integrations.Core.UploadPublicFile({ file });
+        const res = await (/** @type {any} */ (base44.integrations.Core)).UploadPublicFile({ file });
         if (res?.file_url) uploaded.push(res.file_url);
       }
       onChange([...fotos, ...uploaded]);

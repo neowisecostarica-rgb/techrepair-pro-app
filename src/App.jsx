@@ -39,7 +39,8 @@ function ScrollToTopOnModuleChange() {
 }
 
 const PUBLIC_PAGE_NAMES = ['PortalCliente', 'PortalCotizacion', 'PortalComprobante', 'PortalGarantia'];
-const MARKETING_PATHS = ['/trp', '/website'];
+// The public TRP presentation is the default entry; operational pages stay on their own routes.
+const MARKETING_PATHS = ['/', '/trp', '/website'];
 const PUBLIC_ROUTE_ALIASES = { '/cotizacion': 'PortalCotizacion' };
 
 const AuthenticatedApp = () => {
@@ -72,7 +73,7 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
-      <Route path="/" element={
+      <Route path="/app" element={
         <LayoutWrapper currentPageName={mainPageKey}>
           <MainPage />
         </LayoutWrapper>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-export default function StatsCard({ title, value, icon: Icon, trend, trendValue, bgColor = 'bg-emerald-500', subtitle }) {
+export default function StatsCard({ title, value, icon: Icon, trend = null, trendValue = null, bgColor = 'bg-emerald-500', subtitle = null }) {
   const isPositive = trend === 'up';
 
   return (

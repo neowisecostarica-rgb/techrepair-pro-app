@@ -30,7 +30,7 @@ import AccionesCustodia from '@/components/expediente/AccionesCustodia';
 import RevealDeviceCredential from '@/components/expediente/RevealDeviceCredential';
 
 // ── Bloque colapsable reutilizable ─────────────────────────────────────────
-function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge, children }) {
+function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600', defaultOpen = true, badge = null, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border border-slate-100 rounded-xl overflow-hidden">

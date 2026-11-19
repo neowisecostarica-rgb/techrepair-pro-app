@@ -10,10 +10,12 @@ import {
   LogOut,
   ChevronRight,
   ChevronLeft,
+  Menu,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarMenu from '@/components/layout/SidebarMenu';
 import { MENU_ITEMS } from '@/config/menuConfig';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import useGlobalSearchShortcut from '@/components/search/useGlobalSearchShortcut';
@@ -21,12 +23,30 @@ import { Search } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { endIdentityImpersonation } from '@/api/identity';
 
-function WorkspaceHeader({ currentPageName, t, platform = false }) {
+function MobileNavigation({ open, onOpenChange, effectiveRole, capabilities, currentPageName, sectionsOpen, toggleSection }) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" className="w-[min(85vw,20rem)] border-r border-white/10 bg-[#0b1422] p-0 text-white md:hidden">
+        <SheetTitle className="sr-only">Menú de TRP</SheetTitle>
+        <div className="border-b border-white/10 px-5 py-6">
+          <span className="text-lg font-black tracking-[-0.04em] text-white">TRP</span>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-300">Technology Reliability Platform</p>
+        </div>
+        <nav className="h-[calc(100%-96px)] overflow-y-auto px-4 py-5" aria-label="Navegación móvil">
+          <SidebarMenu effectiveRole={effectiveRole} capabilities={capabilities} currentPageName={currentPageName} sidebarOpen={true} sectionsOpen={sectionsOpen} toggleSection={toggleSection} onNavigate={() => onOpenChange(false)} />
+        </nav>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function WorkspaceHeader({ currentPageName, t, platform = false, onOpenMenu }) {
   const module = MENU_ITEMS.find(item => item.path === currentPageName);
   const title = module?.i18nKey ? t(module.i18nKey, module.label) : module?.label || currentPageName;
   return (
     <header className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#e3ece9] bg-white px-5 py-4 shadow-[0_12px_40px_-32px_rgba(7,25,35,0.4)] sm:px-6">
       <div className="flex min-w-0 items-center gap-4">
+        <button type="button" onClick={onOpenMenu} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#e3ece9] text-slate-800 md:hidden" aria-label="Abrir menú de navegación"><Menu className="h-5 w-5" /></button>
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[#0b1422] text-xs font-black tracking-[-0.04em] text-white">TRP</span>
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-700">Technology Reliability Platform · {platform ? 'Platform' : 'Workspace'}</p>
@@ -42,6 +62,7 @@ function LayoutContent({ children, currentPageName }) {
   const { t } = useI18n();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, userAccount, effectiveRole, isImpersonating, effectiveOrgId, status, errorCode, reloadAuth, identityStatus, multiOrgAccounts, authorizedOrganizations, selectOrganization, capabilities, authorizationReady } = useAuthContext();
 
   useGlobalSearchShortcut(setSearchOpen);
@@ -271,10 +292,11 @@ function LayoutContent({ children, currentPageName }) {
 
         <main className="md:ml-64">
           <div className="px-4 py-5 sm:px-6 md:p-8">
-            <WorkspaceHeader currentPageName={currentPageName} t={t} platform />
+            <WorkspaceHeader currentPageName={currentPageName} t={t} platform onOpenMenu={() => setMobileMenuOpen(true)} />
             {children}
           </div>
         </main>
+        <MobileNavigation open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} effectiveRole="SUPER_ADMIN" capabilities={[]} currentPageName={currentPageName} sectionsOpen={{}} toggleSection={() => {}} />
       </div>
     );
   }
@@ -519,12 +541,13 @@ function LayoutContent({ children, currentPageName }) {
       {/* Main Content */}
       <main className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
         <div className="px-5 py-6 md:px-8 md:py-8 xl:px-10">
-          <WorkspaceHeader currentPageName={currentPageName} t={t} />
+          <WorkspaceHeader currentPageName={currentPageName} t={t} onOpenMenu={() => setMobileMenuOpen(true)} />
           {children}
         </div>
       </main>
     </div>
 
+    <MobileNavigation open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} effectiveRole={effectiveRole} capabilities={capabilities} currentPageName={currentPageName} sectionsOpen={sectionsOpen} toggleSection={toggleSection} />
     <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
   </>
   );

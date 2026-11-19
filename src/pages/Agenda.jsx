@@ -217,6 +217,21 @@ function AgendaContent() {
       tecnicoAsignadoId = formData.get('tecnico_asignado_id');
     }
 
+    if (!tecnicoAsignadoId) {
+      toast({ variant: 'destructive', title: 'Técnico requerido', description: 'Seleccioná un técnico activo antes de guardar el evento.' });
+      setValidando(false);
+      return;
+    }
+
+    const fecha = formData.get('fecha');
+    const horaInicio = formData.get('hora_inicio');
+    const horaFin = formData.get('hora_fin');
+    if (!fecha || !horaInicio || !horaFin || String(horaFin) <= String(horaInicio)) {
+      toast({ variant: 'destructive', title: 'Horario inválido', description: 'Indicá la fecha y un horario de finalización posterior al inicio.' });
+      setValidando(false);
+      return;
+    }
+
     const data = {
       cliente_id: formData.get('cliente_id') || null,
       tipo: formData.get('tipo'),

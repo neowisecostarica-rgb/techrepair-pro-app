@@ -5,7 +5,7 @@ const storage = isNode ? {
   setItem: (key, value) => { nodeStorage.set(key, value); },
   removeItem: (key) => { nodeStorage.delete(key); }
 } : window.localStorage;
-const runtimeEnv = (/** @type {ImportMeta & {env: Record<string, string>}} */ (import.meta)).env;
+const runtimeEnv = /** @type {Record<string, string>} */ (import.meta.env);
 
 const toSnakeCase = (str) => {
 	return str.replace(/([A-Z])/g, '_$1').toLowerCase();

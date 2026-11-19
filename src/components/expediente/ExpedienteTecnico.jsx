@@ -49,11 +49,11 @@ function Bloque({ label, icon: Icon, accentClass = 'bg-slate-50 text-slate-600',
 }
 
 // ── Fila de dato ──────────────────────────────────────────────────────────
-function Dato({ label, children }) {
+function Dato({ label, children, className = '' }) {
   return (
     <div className="flex gap-2 py-1 border-b border-slate-50 last:border-0">
       <span className="text-xs text-slate-400 w-32 shrink-0">{label}</span>
-      <span className="text-xs text-slate-800 font-medium">{children}</span>
+      <span className={`text-xs text-slate-800 font-medium ${className}`}>{children}</span>
     </div>
   );
 }

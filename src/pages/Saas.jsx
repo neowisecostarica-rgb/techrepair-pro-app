@@ -208,7 +208,7 @@ function SaasContent() {
   };
 
   const toggleOrgStatusMutation = useMutation({
-    mutationFn: async (/** @type {{orgId: string, newStatus: string, auditContext: Record<string, any>}} */ { orgId, newStatus, auditContext }) => {
+    mutationFn: async (/** @type {{orgId: string, newStatus: string, auditContext: string}} */ { orgId, newStatus, auditContext }) => {
       return await adminUpdateIdentityOrganization(orgId, { status: newStatus }, auditContext);
     },
     onSuccess: () => {

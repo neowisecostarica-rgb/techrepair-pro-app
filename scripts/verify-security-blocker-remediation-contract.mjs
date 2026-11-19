@@ -294,7 +294,7 @@ test('the effective technician writes through the named command with server-owne
   assert.equal(Object.hasOwn(result.body.record, 'public_access_token'), false);
   assert.equal(Object.hasOwn(result.body.record, 'lifecycle_lock_token'), false);
   assert.equal(scenario.audits.length, 1);
-  assert.equal(scenario.audits[0].eventType, 'TECHNICAL_RECORD_MUTATED');
+  assert.equal(scenario.audits[0].event_type, 'TECHNICAL_RECORD_MUTATED');
 });
 
 test('a technical child cannot attach to a diagnostic outside the authorized tenant', async () => {

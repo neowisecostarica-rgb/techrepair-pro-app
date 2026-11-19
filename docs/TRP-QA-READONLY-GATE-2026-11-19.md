@@ -39,4 +39,12 @@ Suites en FAIL:
 5. Resolver el requisito P0-AUD-01 (unicidad durable) y reconciliar versión preview/runtime publicado antes de decidir Publish.
 6. Una vez E2E y auditoría PASS, obtener GO de Dirección General y publicar con verificación móvil.
 
-**Dictamen:** QA estático y lectura de logs ejecutados; E2E autenticado/transaccional no ejecutado por riesgo de copia de datos reales y de efectos externos. Checkpoint nuevo requerido para conservar evidencia.
+**Dictamen:** QA estático y lectura de logs ejecutados; E2E autenticado/transaccional no ejecutado por riesgo de copia de datos reales y de efectos externos.
+
+## Cierre de desarrollo adicional · 19 nov
+- Se corrigió una condición de carrera en `src/components/contexts/AuthContext.jsx`: la carga de identidad utiliza un contador de versión para descartar respuestas, errores y resultados de `auth.me()` de solicitudes superadas tras refrescar o cambiar sesión. El estado `isLoadingRef` solo se libera desde la solicitud vigente. El backend continúa decidiendo permisos.
+- Comprobación puntual tras el cambio: `test:identity-tenant-security` **7/7 PASS**, `test:multiuser-navigation` **8/8 PASS**, `npm run typecheck` y `npm run build` **PASS**. No se repitieron las 56 suites ni se realizaron mutaciones operativas.
+- La falla de `test:multiuser-public-tokens` se localizó en la comprobación estática de comillas simples para `PUBLIC_TOKEN_REVOKED`, mientras el bundle generado usa comillas dobles; el código sí contiene ese evento. No se alteró el emisor público para satisfacer la prueba.
+- Entrega a Compu Store: QA humano de lectura primero en SALES/TECHNICIAN, registrando **rol, módulo, sucursal, hora de Costa Rica, acción, captura, código HTTP y respuesta del servidor sin secretos**. No generar ventas, cobros, envíos ni cambios de permisos con datos reales para validar errores. Dirección General decidirá GO después de recibir esos hallazgos y resolver P0-AUD-01.
+
+**Liberación:** NO PUBLISH. La integridad durable de auditoría y la evidencia de roles reales siguen pendientes; no se crearon recursos externos ni se modificaron datos de Compu Store.

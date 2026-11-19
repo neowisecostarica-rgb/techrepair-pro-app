@@ -211,9 +211,9 @@ function LayoutContent({ children, currentPageName }) {
     return (
       <div className="trp-workspace min-h-screen">
         {/* Sidebar for SUPER_ADMIN */}
-        <aside className="hidden md:block fixed left-0 top-0 h-screen w-64 bg-[#0b1220] border-r border-slate-800 z-40">
+        <aside className="hidden md:block fixed left-0 top-0 h-screen w-64 bg-[#0b1422] border-r border-white/10 z-40">
           <div className="flex flex-col h-full">
-            <div className="p-5 border-b border-slate-800">
+            <div className="p-5 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-teal-400/10 ring-1 ring-inset ring-teal-300/20 rounded-xl flex items-center justify-center">
                   <span className="text-sm font-black tracking-[-0.04em] text-teal-300">TRP</span>
@@ -229,7 +229,7 @@ function LayoutContent({ children, currentPageName }) {
             <div className="px-4 pb-2">
               <button
                 onClick={() => setSearchOpen(true)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 hover:text-white hover:border-slate-600 transition-colors text-sm"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.05] text-slate-300 hover:bg-white/10 hover:text-white hover:border-teal-400/30 transition-colors text-sm"
               >
                 <Search className="w-4 h-4" />
                 <span>Buscar...</span>
@@ -250,7 +250,7 @@ function LayoutContent({ children, currentPageName }) {
             </nav>
 
             {user && (
-              <div className="p-4 border-t border-slate-800">
+              <div className="p-4 border-t border-white/10">
                 <div className="px-4 py-3 bg-white/5 ring-1 ring-inset ring-white/5 rounded-xl mb-3">
                   <p className="text-sm font-medium text-slate-100">{user.full_name}</p>
                   <p className="text-xs text-slate-500 truncate">{user.email}</p>
@@ -427,10 +427,10 @@ function LayoutContent({ children, currentPageName }) {
 
     <div className={`trp-workspace min-h-screen ${isImpersonating && organization?.status === 'suspended' ? 'pt-28' : isImpersonating ? 'pt-16' : ''}`}>
       {/* Sidebar */}
-      <aside className={`hidden md:block fixed left-0 top-0 h-screen bg-[#0b1220] border-r border-slate-800 transition-all duration-300 z-40 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+      <aside className={`hidden md:block fixed left-0 top-0 h-screen bg-[#0b1422] border-r border-white/10 transition-all duration-300 z-40 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-5 border-b border-slate-800">
+          <div className="p-5 border-b border-white/10">
             <div className="flex items-center justify-between">
               {sidebarOpen && (
                 <div className="flex items-center gap-3">
@@ -457,7 +457,7 @@ function LayoutContent({ children, currentPageName }) {
           <div className="px-4 pb-2">
             <button
               onClick={() => setSearchOpen(true)}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/50 text-slate-400 hover:text-white hover:border-slate-600 transition-colors text-sm ${
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.05] text-slate-300 hover:bg-white/10 hover:text-white hover:border-teal-400/30 transition-colors text-sm ${
                 sidebarOpen ? '' : 'justify-center'
               }`}
             >
@@ -481,7 +481,7 @@ function LayoutContent({ children, currentPageName }) {
 
           {/* User Section */}
           {user && (
-            <div className="p-4 border-t border-slate-800">
+            <div className="p-4 border-t border-white/10">
               {sidebarOpen ? (
                 <div className="space-y-3">
                   <div className="px-4 py-3 bg-white/5 ring-1 ring-inset ring-white/5 rounded-xl">

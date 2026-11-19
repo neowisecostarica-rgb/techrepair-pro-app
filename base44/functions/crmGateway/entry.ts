@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
       const [leads, accounts] = await Promise.all([
         base44.asServiceRole.entities.Lead.filter({ organization_id: organizationId, ...branchFilter }, '-created_date', 500),
         role === 'ORG_ADMIN'
-          ? base44.asServiceRole.entities.UserAccount.filter({ organization_id: organizationId, role: 'SALES' }, 200)
+          ? base44.asServiceRole.entities.UserAccount.filter({ organization_id: organizationId, role: 'SALES' }, '-created_date', 200)
           : Promise.resolve([]),
       ]);
 

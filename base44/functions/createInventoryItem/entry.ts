@@ -1666,7 +1666,7 @@ Deno.serve(async (req) => {
   const [category] = await base44.asServiceRole.entities.CategoriaInventario.filter({
     id: itemData.categoria_id,
     organization_id: orgId
-  }, 1);
+  }, '-created_date', 1);
   if (!category) return Response.json({ error: "categoria_id invalida para la organizacion" }, { status: 400 });
   const salePrice = Number(itemData.precio_venta ?? 0);
   if (!category.permite_stock && initialQuantity > 0) {
@@ -1739,7 +1739,7 @@ Deno.serve(async (req) => {
         movements: [{ inventoryId: created.id, movementType: "INITIAL_BALANCE", quantity: initialQuantity }]
       });
     } catch (error) {
-      const [current] = await base44.asServiceRole.entities.Inventario.filter({ id: created.id, organization_id: orgId }, 1).catch(() => []);
+      const [current] = await base44.asServiceRole.entities.Inventario.filter({ id: created.id, organization_id: orgId }, '-created_date', 1).catch(() => []);
       const ledger = await base44.asServiceRole.entities.InventarioHistorial.filter({
         organization_id: orgId,
         operation_key: initialOperationKey
@@ -1753,7 +1753,7 @@ Deno.serve(async (req) => {
       const status = error instanceof InventoryCommandError ? error.status : 500;
       return Response.json({ error: error.message, code: error.code || "INVENTORY_INITIAL_BALANCE_FAILED" }, { status });
     }
-    const [reloaded] = await base44.asServiceRole.entities.Inventario.filter({ id: created.id, organization_id: orgId }, 1).catch(() => []);
+    const [reloaded] = await base44.asServiceRole.entities.Inventario.filter({ id: created.id, organization_id: orgId }, '-created_date', 1).catch(() => []);
     finalItem = reloaded || { ...created, cantidad_disponible: initialQuantity, cantidad_reservada: 0 };
   }
   return Response.json({ success: true, data: projectInventoryAdmin(finalItem) }, { status: 201 });

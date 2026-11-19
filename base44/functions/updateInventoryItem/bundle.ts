@@ -615,7 +615,7 @@ Deno.serve(async (req) => {
     return Response.json({ error: `Campos no permitidos: ${unknown.join(", ")}`, code: "INVENTORY_FIELD_NOT_ALLOWED" }, { status: 422 });
   }
   const orgId = authorization.organizationId;
-  const [current] = await base44.asServiceRole.entities.Inventario.filter({ id, organization_id: orgId }, 1);
+  const [current] = await base44.asServiceRole.entities.Inventario.filter({ id, organization_id: orgId }, '-created_date', 1);
   if (!current) return Response.json({ error: "Producto no encontrado" }, { status: 404 });
   const scope = getCanonicalBranchScope(authorization);
   if (!scope.ok) return Response.json({ error: scope.error, code: scope.code }, { status: scope.status });
@@ -623,7 +623,7 @@ Deno.serve(async (req) => {
     return Response.json({ error: "Producto fuera de la sucursal autorizada", code: "INVENTORY_CROSS_BRANCH_DENIED" }, { status: 403 });
   }
   const categoryId = updateData.categoria_id || current.categoria_id;
-  const [category] = await base44.asServiceRole.entities.CategoriaInventario.filter({ id: categoryId, organization_id: orgId }, 1);
+  const [category] = await base44.asServiceRole.entities.CategoriaInventario.filter({ id: categoryId, organization_id: orgId }, '-created_date', 1);
   if (!category) return Response.json({ error: "categoria_id invalida" }, { status: 400 });
   if (!category.permite_stock && Number(current.cantidad_disponible || 0) + Number(current.cantidad_reservada || 0) > 0) {
     return Response.json({ error: "No se puede asignar una categoria sin stock mientras ON_HAND sea mayor a cero" }, { status: 409 });

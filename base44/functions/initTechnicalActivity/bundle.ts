@@ -1616,7 +1616,7 @@ async function ensurePendingGate(base44, { orgId, subjectId, userId }) {
   const correlationKey = buildCorrelationKey(GATE_SUBJECT_TYPE, subjectId, GATE_WAIT_REASON);
   const existing = await base44.asServiceRole.entities.WorkflowGate.filter(
     { correlation_key: correlationKey, status: "PENDING" },
-    5
+    '-created_date', 5
   );
   if (existing && existing.length > 0) {
     return { gate: existing[0], created: false };
@@ -1832,7 +1832,7 @@ Deno.serve(async (req) => {
     console.log(`[initTechnicalActivity] orgId=${orgId}, role=${effectiveRole}, tecnico_id=${tecnico_id}, OT=${orden_trabajo_id}`);
     const otResults = await base44.asServiceRole.entities.OrdenTrabajo.filter(
       { id: orden_trabajo_id, organization_id: orgId },
-      1
+      '-created_date', 1
     );
     if (!otResults || otResults.length === 0) {
       return Response.json({ error: "Orden de trabajo no encontrada en esta organizaci\xF3n" }, { status: 404 });

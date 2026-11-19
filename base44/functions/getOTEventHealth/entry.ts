@@ -54,19 +54,19 @@ Deno.serve(async (req) => {
       // 3a. Total de eventos pendientes (processed=false)
       base44.asServiceRole.entities.OTEvent.filter(
         { processed: false },
-        50
+        '-created_date', 50
       ),
 
       // 3b. Eventos atascados: processed=false y created_at viejo
       base44.asServiceRole.entities.OTEvent.filter(
         { processed: false, created_at: { $lt: stuckThreshold } },
-        20
+        '-created_date', 20
       ),
 
       // 3c. Volumen reciente: todos los eventos en la ventana definida
       base44.asServiceRole.entities.OTEvent.filter(
         { created_at: { $gte: recentThreshold } },
-        200
+        '-created_date', 200
       ),
     ]);
 

@@ -549,13 +549,13 @@ Deno.serve(async (req) => {
     const workOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
       id: workOrderId,
       organization_id: access.orgId
-    }, 1);
+    }, '-created_date', 1);
     const workOrder = workOrders?.[0] || null;
     if (!workOrder) {
       try {
         const unscopedWorkOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
           id: workOrderId
-        }, 1);
+        }, '-created_date', 1);
         console.warn("[getSmartIntakeByWorkOrder] work order lookup denied", {
           organizationId: access.orgId,
           workOrderId,

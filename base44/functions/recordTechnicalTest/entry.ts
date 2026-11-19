@@ -743,7 +743,7 @@ Deno.serve(async (req) => {
   const [ot] = await base44.asServiceRole.entities.OrdenTrabajo.filter({
     id: orden_trabajo_id,
     organization_id: authorization.organizationId
-  }, 1);
+  }, '-created_date', 1);
   if (!ot) return errorResponse(404, "WORK_ORDER_NOT_FOUND", "Orden de trabajo no encontrada");
   const branchAuthorization = authorizeRecordBranch(authorization, ot.branch_id);
   if (!branchAuthorization.ok) return errorResponse(branchAuthorization.status, branchAuthorization.code, branchAuthorization.error);
@@ -774,7 +774,7 @@ Deno.serve(async (req) => {
       id: ot.id,
       organization_id: authorization.organizationId,
       lifecycle_lock_token: lockToken
-    }, 1);
+    }, '-created_date', 1);
     if (!lockedOt || lockedOt.estado !== "PRUEBAS") {
       return errorResponse(409, "QA_CYCLE_CONFLICT", "La OT ya no se encuentra en el ciclo de PRUEBAS");
     }

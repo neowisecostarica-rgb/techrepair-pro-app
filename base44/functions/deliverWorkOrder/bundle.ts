@@ -1808,7 +1808,7 @@ Deno.serve(async (req) => {
     const [workOrder] = await base44.asServiceRole.entities.OrdenTrabajo.filter({
       id: workOrderId,
       organization_id: authorization.organizationId
-    }, 1);
+    }, '-created_date', 1);
     if (!workOrder) throw new DeliveryCommandError("Orden de trabajo no encontrada.", "DELIVERY_WORK_ORDER_NOT_FOUND", 404);
     const branchDecision = authorizeRecordBranch(authorization, workOrder.branch_id);
     const compatibilityAllowed = DELIVERY_ROLES.includes(authorization.role) && branchDecision.ok && ["FINALIZADA", "ENTREGADA"].includes(workOrder.estado);

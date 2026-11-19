@@ -454,7 +454,7 @@ function resolveEmailAddress(ot, cliente) {
 async function getClienteForOT(base44, ot) {
   if (!ot?.cliente_id) return null;
   try {
-    const clientes = await base44.asServiceRole.entities.Cliente.filter({ id: ot.cliente_id }, 1);
+    const clientes = await base44.asServiceRole.entities.Cliente.filter({ id: ot.cliente_id }, '-created_date', 1);
     return Array.isArray(clientes) && clientes.length > 0 ? clientes[0] : null;
   } catch (err) {
     console.warn(`[processOTEvent] cliente_lookup_failed: ${err.message}`);
@@ -561,7 +561,7 @@ Deno.serve(async (req) => {
     }
     let evento;
     try {
-      const eventos = await base44.asServiceRole.entities.OTEvent.filter({ id: eventId }, 1);
+      const eventos = await base44.asServiceRole.entities.OTEvent.filter({ id: eventId }, '-created_date', 1);
       if (!eventos || eventos.length === 0) {
         console.error(`[processOTEvent] OTEvent no encontrado \u2014 event_id: ${eventId}`);
         return Response.json({
@@ -629,7 +629,7 @@ Deno.serve(async (req) => {
       const currentOrders = await base44.asServiceRole.entities.OrdenTrabajo.filter({
         id: orden_trabajo_id,
         organization_id
-      }, 1);
+      }, '-created_date', 1);
       const currentOrder = currentOrders?.[0] || null;
       if (!currentOrder || !eventMatchesCurrentWorkOrderState(tipo, currentOrder)) {
         await safeTrack(base44, "ot_event_skipped", {
@@ -658,7 +658,7 @@ Deno.serve(async (req) => {
           const ots = await base44.asServiceRole.entities.OrdenTrabajo.filter({
             id: orden_trabajo_id,
             organization_id
-          }, 1);
+          }, '-created_date', 1);
           ot = Array.isArray(ots) && ots.length > 0 ? ots[0] : null;
         } catch (otErr) {
           console.warn(`[processOTEvent] [CREATED] Error cargando OT ${orden_trabajo_id}: ${otErr.message}`);
@@ -717,7 +717,7 @@ Deno.serve(async (req) => {
             id: orden_trabajo_id,
             organization_id,
             estado: "FINALIZADA"
-          }, 1);
+          }, '-created_date', 1);
           otF = Array.isArray(otsF) && otsF.length > 0 ? otsF[0] : null;
         } catch (otErrF) {
           console.warn(`[processOTEvent] [FINALIZADA] Error cargando OT ${orden_trabajo_id}: ${otErrF.message}`);
@@ -776,7 +776,7 @@ Deno.serve(async (req) => {
             id: orden_trabajo_id,
             organization_id,
             estado: "ENTREGADA"
-          }, 1);
+          }, '-created_date', 1);
           otE = Array.isArray(otsE) && otsE.length > 0 ? otsE[0] : null;
         } catch (otErrE) {
           console.warn(`[processOTEvent] [ENTREGADA] Error cargando OT ${orden_trabajo_id}: ${otErrE.message}`);
@@ -835,7 +835,7 @@ Deno.serve(async (req) => {
             id: orden_trabajo_id,
             organization_id,
             estado: "CANCELADA"
-          }, 1);
+          }, '-created_date', 1);
           otC = Array.isArray(otsC) && otsC.length > 0 ? otsC[0] : null;
         } catch (otErrC) {
           console.warn(`[processOTEvent] [CANCELADA] Error cargando OT ${orden_trabajo_id}: ${otErrC.message}`);
@@ -918,7 +918,7 @@ Deno.serve(async (req) => {
         const [currentEvent] = await base44.asServiceRole.entities.OTEvent.filter({
           id: eventId,
           organization_id
-        }, 1);
+        }, '-created_date', 1);
         if (currentEvent?.processed !== true) {
           throw new Error("El evento cambio concurrentemente y no pudo confirmarse como procesado");
         }

@@ -478,7 +478,7 @@ Deno.serve(async (req) => {
       const ots = await base44.asServiceRole.entities.OrdenTrabajo.filter({
         id: orden_trabajo_id,
         organization_id: orgId
-      }, 1);
+      }, '-created_date', 1);
       ot = Array.isArray(ots) && ots.length > 0 ? ots[0] : null;
     } catch (err) {
       return Response.json({ error: `Error al cargar OrdenTrabajo: ${err.message}` }, { status: 500 });

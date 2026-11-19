@@ -443,7 +443,7 @@ async function resolvePendingGates(base44, { orgId, subjectId, saleId: saleId2, 
   const correlationKey = buildCorrelationKey(GATE_SUBJECT_TYPE, subjectId, GATE_WAIT_REASON);
   const pending = await base44.asServiceRole.entities.WorkflowGate.filter(
     { organization_id: orgId, correlation_key: correlationKey, status: "PENDING" },
-    10
+    '-created_date', 10
   );
   const resolved = [];
   for (const gate of pending || []) {
@@ -493,7 +493,7 @@ Deno.serve(async (req) => {
   const ventas = await base44.asServiceRole.entities.Venta.filter({
     id: sale_id,
     organization_id: orgId
-  }, 1);
+  }, '-created_date', 1);
   if (!ventas || ventas.length === 0) {
     return Response.json({ error: `Venta "${sale_id}" no encontrada en esta organizaci\xF3n` }, { status: 404 });
   }
@@ -528,7 +528,7 @@ Deno.serve(async (req) => {
   const ordenes = await base44.asServiceRole.entities.OrdenTrabajo.filter({
     id: referencia_ot_id,
     organization_id: orgId
-  }, 1);
+  }, '-created_date', 1);
   if (!ordenes || ordenes.length === 0) {
     console.warn(`[processPostSaleActions] OT "${referencia_ot_id}" no encontrada. Venta: ${sale_id}`);
     return Response.json({
@@ -549,7 +549,7 @@ Deno.serve(async (req) => {
     orden_trabajo_id: referencia_ot_id,
     tipo: tipoEvento,
     sale_id
-  }, 1);
+  }, '-created_date', 1);
   const yaExiste = existingEvents && existingEvents.length > 0;
   if (!yaExiste) {
     try {

@@ -1002,7 +1002,7 @@ async function loadWorkOrder(base44, orgId, workOrderId) {
   const records = await base44.asServiceRole.entities.OrdenTrabajo.filter({
     id: workOrderId,
     organization_id: orgId
-  }, 1);
+  }, '-created_date', 1);
   return records?.[0] || null;
 }
 async function resolveCaller(base44, user) {
@@ -1026,7 +1026,7 @@ async function loadDestinationTechnician(base44, orgId, technicianUserId, option
   const accounts = await base44.asServiceRole.entities.UserAccount.filter({
     user_id: technicianUserId,
     organization_id: orgId
-  }, 5);
+  }, '-created_date', 5);
   return (accounts || []).find((account) => {
     if (!isCanonicalActiveUserAccount(account)) return false;
     const role = normalizeTenantRole(account.role);

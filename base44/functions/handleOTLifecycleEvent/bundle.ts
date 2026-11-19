@@ -493,7 +493,7 @@ async function getCliente(base44, record) {
   try {
     const clientes = await base44.asServiceRole.entities.Cliente.filter(
       { id: record.cliente_id },
-      1
+      '-created_date', 1
     );
     return Array.isArray(clientes) && clientes.length > 0 ? clientes[0] : null;
   } catch (error) {

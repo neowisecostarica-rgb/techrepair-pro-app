@@ -1466,7 +1466,7 @@ Deno.serve(async (req) => {
     return Response.json({ error: "operation_key estable es requerido", code: "INVENTORY_OPERATION_KEY_REQUIRED" }, { status: 400 });
   }
   const orgId = authorization.organizationId;
-  const [inventory] = await base44.asServiceRole.entities.Inventario.filter({ id: inventario_id, organization_id: orgId }, 1);
+  const [inventory] = await base44.asServiceRole.entities.Inventario.filter({ id: inventario_id, organization_id: orgId }, '-created_date', 1);
   if (!inventory) return Response.json({ error: "Producto no encontrado" }, { status: 404 });
   const scope = getCanonicalBranchScope(authorization);
   if (!scope.ok) return Response.json({ error: scope.error, code: scope.code }, { status: scope.status });

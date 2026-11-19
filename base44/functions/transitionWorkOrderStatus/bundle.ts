@@ -3563,7 +3563,7 @@ Deno.serve(async (req) => {
     const ordenes = await base44.asServiceRole.entities.OrdenTrabajo.filter({
       id: orden_trabajo_id,
       organization_id: orgId
-    }, 1);
+    }, '-created_date', 1);
     if (!ordenes || ordenes.length === 0) {
       return Response.json({ error: "Orden de trabajo no encontrada en esta organizaci\xF3n" }, { status: 404 });
     }
@@ -3724,12 +3724,12 @@ Deno.serve(async (req) => {
       const diagActivos = await base44.asServiceRole.entities.DiagnosticoTecnico.filter({
         orden_trabajo_id,
         bloqueado: false
-      }, 1);
+      }, '-created_date', 1);
       const diagId = diagActivos?.[0]?.id;
       if (diagId) {
         const docs = await base44.asServiceRole.entities.DiagnosticoDocumento.filter({
           diagnostico_id: diagId
-        }, 5);
+        }, '-created_date', 5);
         const docConAprobacion = docs?.find((d) => d.aprobacion_status === "APROBADA");
         if (!docConAprobacion) {
           return Response.json({

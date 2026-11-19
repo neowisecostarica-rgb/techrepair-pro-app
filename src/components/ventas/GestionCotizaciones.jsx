@@ -80,7 +80,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const createCotizacionMutation = useMutation({
     mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Cotizacion.create(withOrgId(data)),
     onSettled: () => { savingRef.current = false; },
-    onError: (error) => toast({ variant: 'destructive', title: 'No se guardó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
+    onError: (/** @type {any} */ error) => toast({ variant: 'destructive', title: 'No se guardó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
     onSuccess: (nuevaCotizacion) => {
       handleGuardar(nuevaCotizacion);
     },
@@ -89,7 +89,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const updateCotizacionMutation = useMutation({
     mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Cotizacion.update(id, data),
     onSettled: () => { savingRef.current = false; },
-    onError: (error) => toast({ variant: 'destructive', title: 'No se actualizó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
+    onError: (/** @type {any} */ error) => toast({ variant: 'destructive', title: 'No se actualizó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
     onSuccess: () => {
       handleGuardar(null);
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
@@ -97,7 +97,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const enviarSeguimientoMutation = useMutation({
-    mutationFn: async (/** @type {{_cotizacion: string, cliente: Record<string, any>}} */ { cotizacion: _cotizacion, cliente }) => {
+    mutationFn: async (/** @type {{cotizacion: Record<string, any>, cliente: Record<string, any>}} */ { cotizacion: _cotizacion, cliente }) => {
       const canal = cliente.telefono ? 'whatsapp' : 'email';
       const mensaje = `Hola ${cliente.nombre_completo}, te escribo para dar seguimiento a la cotización que te compartimos. Quedo atento(a) si tienes alguna duda. — ${user.full_name || 'El equipo'}`;
 
@@ -166,9 +166,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     newItems[index].origen = item.origen;
     
     // Recalcular subtotal
-    const cantidad = parseFloat(newItems[index].cantidad) || 0;
-    const precio = parseFloat(newItems[index].precio_unitario) || 0;
-    const descuento = parseFloat(newItems[index].descuento_porcentaje) || 0;
+    const cantidad = parseFloat(String(newItems[index].cantidad)) || 0;
+    const precio = parseFloat(String(newItems[index].precio_unitario)) || 0;
+    const descuento = parseFloat(String(newItems[index].descuento_porcentaje)) || 0;
     const subtotalSinDescuento = cantidad * precio;
     newItems[index].subtotal = subtotalSinDescuento - (subtotalSinDescuento * descuento / 100);
     
@@ -228,9 +228,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     newItems[index][field] = value;
 
     if (field === 'cantidad' || field === 'precio_unitario' || field === 'descuento_porcentaje') {
-      const cantidad = parseFloat(newItems[index].cantidad) || 0;
-      const precio = parseFloat(newItems[index].precio_unitario) || 0;
-      const descuento = parseFloat(newItems[index].descuento_porcentaje) || 0;
+      const cantidad = parseFloat(String(newItems[index].cantidad)) || 0;
+      const precio = parseFloat(String(newItems[index].precio_unitario)) || 0;
+      const descuento = parseFloat(String(newItems[index].descuento_porcentaje)) || 0;
       const subtotalSinDescuento = cantidad * precio;
       newItems[index].subtotal = subtotalSinDescuento - (subtotalSinDescuento * descuento / 100);
     }
@@ -241,9 +241,9 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const calcularTotales = () => {
     const subtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
     const descuentoTotal = items.reduce((sum, item) => {
-      const cantidad = parseFloat(item.cantidad) || 0;
-      const precio = parseFloat(item.precio_unitario) || 0;
-      const descuento = parseFloat(item.descuento_porcentaje) || 0;
+      const cantidad = parseFloat(String(item.cantidad)) || 0;
+      const precio = parseFloat(String(item.precio_unitario)) || 0;
+      const descuento = parseFloat(String(item.descuento_porcentaje)) || 0;
       return sum + (cantidad * precio * descuento / 100);
     }, 0);
     const impuesto = subtotal * 0.13; // 13% IVA
@@ -252,7 +252,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
     // Mantener la indicación visual alineada con la autoridad backend:
     // cualquier línea por encima del umbral exige aprobación.
     const requiereAprobacion = items.some(
-      item => (parseFloat(item.descuento_porcentaje) || 0) > DESCUENTO_MAXIMO_SIN_APROBACION
+      item => (parseFloat(String(item.descuento_porcentaje)) || 0) > DESCUENTO_MAXIMO_SIN_APROBACION
     );
 
     return { subtotal, descuentoTotal, impuesto, total, requiereAprobacion };

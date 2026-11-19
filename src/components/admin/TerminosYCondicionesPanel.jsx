@@ -31,7 +31,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       const response = await base44.functions.invoke('manageTerms', {
         action: 'CREATE_VERSION',
         texto: data.texto,
@@ -50,7 +50,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
   });
 
   const activarMutation = useMutation({
-    mutationFn: async (terminoId) => {
+    mutationFn: async (/** @type {string} */ terminoId) => {
       const response = await base44.functions.invoke('manageTerms', {
         action: 'ACTIVATE',
         termino_id: terminoId,

@@ -30,7 +30,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
   const { toast } = useToast();
 
   const createMensajeMutation = useMutation({
-    mutationFn: (data) => recordCustomerMessage(clienteId, data),
+    mutationFn: (/** @type {Record<string, any>} */ data) => recordCustomerMessage(clienteId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customer360QueryKeys.detail(clienteId) });
       setShowModal(false);

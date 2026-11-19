@@ -101,7 +101,7 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
 
   // Crear diagnóstico al iniciar
   const createDiagnosticoMutation = useMutation({
-    mutationFn: (data) => base44.entities.Diagnostico.create(withOrgId(data, userAccount)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Diagnostico.create(withOrgId(data, userAccount)),
     onSuccess: (data) => {
       setDiagnostico(data);
     },
@@ -109,22 +109,22 @@ export default function WizardDiagnostico({ ordenTrabajo, onClose, onComplete })
 
   // Actualizar diagnóstico
   const updateDiagnosticoMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Diagnostico.update(id, data),
+    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Diagnostico.update(id, data),
   });
 
   // Guardar resultados de checklist
   const saveResultadoMutation = useMutation({
-    mutationFn: (data) => base44.entities.DiagnosticoResultado.create(withOrgId(data, userAccount)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.DiagnosticoResultado.create(withOrgId(data, userAccount)),
   });
 
   // Guardar evidencias
   const saveEvidenciaMutation = useMutation({
-    mutationFn: (data) => base44.entities.DiagnosticoEvidencia.create(withOrgId(data, userAccount)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.DiagnosticoEvidencia.create(withOrgId(data, userAccount)),
   });
 
   // Completar diagnóstico
   const completeDiagnosticoMutation = useMutation({
-    mutationFn: async (diagnosticoId) => {
+    mutationFn: async (/** @type {string} */ diagnosticoId) => {
       // 1. Actualizar diagnóstico (pre-diagnóstico NO cambia estado de OT)
       await base44.entities.Diagnostico.update(diagnosticoId, {
         estado_diagnostico: 'completado',

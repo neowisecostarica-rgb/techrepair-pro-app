@@ -46,7 +46,7 @@ function CRMContent() {
   const salesUsers = crmData?.salesUsers || [];
 
   const createLeadMutation = useMutation({
-    mutationFn: (data) => invokeCrm('create', effectiveOrgId, { lead: data }),
+    mutationFn: (/** @type {Record<string, any>} */ data) => invokeCrm('create', effectiveOrgId, { lead: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm'] });
       setShowCreateModal(false);
@@ -55,7 +55,7 @@ function CRMContent() {
   });
 
   const updateLeadMutation = useMutation({
-    mutationFn: ({ id, data }) => invokeCrm('update', effectiveOrgId, {
+    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => invokeCrm('update', effectiveOrgId, {
       lead_id: id,
       changes: data,
     }),
@@ -68,7 +68,7 @@ function CRMContent() {
   });
 
   const convertToClienteMutation = useMutation({
-    mutationFn: ({ lead, identificacion }) => invokeCrm('convert', effectiveOrgId, {
+    mutationFn: (/** @type {{lead: Record<string, any>, identificacion: string}} */ { lead, identificacion }) => invokeCrm('convert', effectiveOrgId, {
       lead_id: lead.id,
       identificacion,
     }),

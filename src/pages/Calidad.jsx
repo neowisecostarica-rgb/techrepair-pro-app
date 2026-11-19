@@ -59,7 +59,7 @@ function CalidadContent() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.NoConformidad.create({
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.NoConformidad.create({
       ...data,
       organization_id: effectiveOrgId
     }),
@@ -71,7 +71,7 @@ function CalidadContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.NoConformidad.update(id, data),
+    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.NoConformidad.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['no-conformidades'] });
       setShowModal(false);

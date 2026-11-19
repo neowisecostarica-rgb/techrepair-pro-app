@@ -65,7 +65,7 @@ function CuentasPorPagarContent() {
 
   // Mutaciones
   const createInvoiceMutation = useMutation({
-    mutationFn: (data) => base44.entities.PurchaseInvoice.create(withOrgId(data, userAccount)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.PurchaseInvoice.create(withOrgId(data, userAccount)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-invoices'] });
       setShowModalFactura(false);
@@ -73,7 +73,7 @@ function CuentasPorPagarContent() {
   });
 
   const createPaymentMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       const payment = await base44.entities.SupplierPayment.create(withOrgId(data, userAccount));
       
       // Actualizar paid_amount en la factura

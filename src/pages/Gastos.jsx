@@ -61,7 +61,7 @@ function GastosContent() {
 
   // Mutaciones
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Expense.create(withOrgId(data, userAccount)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Expense.create(withOrgId(data, userAccount)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gastos'] });
       setShowModal(false);
@@ -70,7 +70,7 @@ function GastosContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Expense.update(id, data),
+    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Expense.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gastos'] });
       setShowModal(false);
@@ -79,7 +79,7 @@ function GastosContent() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Expense.delete(id),
+    mutationFn: (/** @type {string} */ id) => base44.entities.Expense.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gastos'] });
     }

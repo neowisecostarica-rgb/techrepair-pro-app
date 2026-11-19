@@ -45,7 +45,7 @@ export default function TenantManageDialog({ organization, onClose }) {
   });
 
   const updateDetailsMutation = useMutation({
-    mutationFn: (changes) => adminUpdateIdentityOrganization(organization.id, changes, 'Edición de detalles del tenant desde consola'),
+    mutationFn: (/** @type {Record<string, any>} */ changes) => adminUpdateIdentityOrganization(organization.id, changes, 'Edición de detalles del tenant desde consola'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['identity', 'admin-overview'] });
       queryClient.invalidateQueries({ queryKey: ['identity', 'organization', organization.id] });
@@ -55,7 +55,7 @@ export default function TenantManageDialog({ organization, onClose }) {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: (data) => base44.functions.invoke('manageOrgUser', { action: 'invite', organizationId: organization.id, data }),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.functions.invoke('manageOrgUser', { action: 'invite', organizationId: organization.id, data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['identity', 'accounts', organization.id] });
       toast({ title: 'Invitación enviada' });
@@ -64,7 +64,7 @@ export default function TenantManageDialog({ organization, onClose }) {
   });
 
   const updateAccountMutation = useMutation({
-    mutationFn: ({ targetAccountId, data }) => base44.functions.invoke('manageOrgUser', { action: 'updateAccount', organizationId: organization.id, targetAccountId, data }),
+    mutationFn: (/** @type {{targetAccountId: string, data: Record<string, any>}} */ { targetAccountId, data }) => base44.functions.invoke('manageOrgUser', { action: 'updateAccount', organizationId: organization.id, targetAccountId, data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['identity', 'accounts', organization.id] });
       toast({ title: 'Cuenta actualizada' });
@@ -73,7 +73,7 @@ export default function TenantManageDialog({ organization, onClose }) {
   });
 
   const branchMutation = useMutation({
-    mutationFn: (data) => base44.functions.invoke('manageBranchLifecycle', { ...data, organization_id: organization.id }).then(r => r?.data ?? r),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.functions.invoke('manageBranchLifecycle', { ...data, organization_id: organization.id }).then(r => r?.data ?? r),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-branches', organization.id] });
       queryClient.invalidateQueries({ queryKey: ['all-branches'] });

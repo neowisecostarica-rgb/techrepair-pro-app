@@ -147,7 +147,7 @@ function AgendaContent() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       // P1-06: Validación atómica backend (overlap check + create en una operación)
       return await base44.functions.invoke('createAppointment', {
         action: 'create',
@@ -168,7 +168,7 @@ function AgendaContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => {
       // P1-06: Validación atómica backend (overlap check + update en una operación)
       return await base44.functions.invoke('createAppointment', {
         action: 'update',

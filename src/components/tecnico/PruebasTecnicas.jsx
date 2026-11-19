@@ -26,7 +26,7 @@ export default function PruebasTecnicas({ ordenTrabajoId, userAccount }) {
   });
 
   const createPruebaMutation = useMutation({
-    mutationFn: (data) => base44.functions.invoke('recordTechnicalTest', data),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.functions.invoke('recordTechnicalTest', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pruebas-tecnicas'] });
       setShowModal(false);

@@ -45,7 +45,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   };
 
   const inviteUserMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       if (!organizationId) {
         throw new Error('No se puede invitar usuarios sin una organización activa');
       }
@@ -76,7 +76,7 @@ export default function UserManagementPanel({ organizationId, currentUserId, bra
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => {
       const response = await base44.functions.invoke('manageOrgUser', {
         action: 'updateAccount',
         organizationId,

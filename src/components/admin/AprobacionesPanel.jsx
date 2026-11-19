@@ -95,7 +95,7 @@ export default function AprobacionesPanel({ userAccount }) {
 
   // Rechazar solicitud técnica
   const rechazarSolicitudMutation = useMutation({
-    mutationFn: ({ id, motivo }) => base44.functions.invoke('technicalRequestCommand', {
+    mutationFn: (/** @type {{id: string, motivo: string}} */ { id, motivo }) => base44.functions.invoke('technicalRequestCommand', {
       action: 'REJECT', request_id: id, reason: motivo, correlation_id: crypto.randomUUID(),
     }),
     onSuccess: () => {

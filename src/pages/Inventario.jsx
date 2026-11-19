@@ -81,7 +81,7 @@ function InventarioContent() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       const res = await base44.functions.invoke('createInventoryItem', {
         itemData: { ...data, organization_id: effectiveOrgId, foto_url: fotos[0] || null, galeria_fotos: fotos },
       });
@@ -101,7 +101,7 @@ function InventarioContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => {
       const res = await base44.functions.invoke('updateInventoryItem', {
         id,
         updateData: { ...data, foto_url: fotos[0] || null, galeria_fotos: fotos },

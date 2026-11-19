@@ -91,7 +91,7 @@ export default function PortalCotizacion() {
   const customerDecisionEnabled = portalData?.customer_decision_enabled !== false;
 
   const decisionMutation = useMutation({
-    mutationFn: async ({ newStatus, rejectionReason = '' }) => {
+    mutationFn: async (/** @type {{newStatus: string, rejectionReason?: string}} */ { newStatus, rejectionReason = '' }) => {
       const response = await base44.functions.invoke('transitionWorkOrderStatus', {
         customer_token: token,
         newStatus,

@@ -208,7 +208,7 @@ function SaasContent() {
   };
 
   const toggleOrgStatusMutation = useMutation({
-    mutationFn: async ({ orgId, newStatus, auditContext }) => {
+    mutationFn: async (/** @type {{orgId: string, newStatus: string, auditContext: Record<string, any>}} */ { orgId, newStatus, auditContext }) => {
       return await adminUpdateIdentityOrganization(orgId, { status: newStatus }, auditContext);
     },
     onSuccess: () => {
@@ -340,7 +340,7 @@ function SaasContent() {
   const totalHealthIssues = secondaryHealthVerified ? Object.values(healthChecks).reduce((a, b) => a + b, 0) : null;
 
   const createOrgMutation = useMutation({
-    mutationFn: (data) => adminCreateIdentityOrganization(data.organization, data.admin_email),
+    mutationFn: (/** @type {Record<string, any>} */ data) => adminCreateIdentityOrganization(data.organization, data.admin_email),
     onSuccess: (result) => {
       const newOrg = result.organization;
       // P0: Resetear guard de idempotencia

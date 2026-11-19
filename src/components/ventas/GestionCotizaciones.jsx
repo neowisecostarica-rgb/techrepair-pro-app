@@ -78,7 +78,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const withOrgId = (data) => ({ ...data, organization_id: organizationId });
 
   const createCotizacionMutation = useMutation({
-    mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Cotizacion.create(withOrgId(data)),
     onSettled: () => { savingRef.current = false; },
     onError: (error) => toast({ variant: 'destructive', title: 'No se guardó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
     onSuccess: (nuevaCotizacion) => {
@@ -87,7 +87,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const updateCotizacionMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Cotizacion.update(id, data),
+    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Cotizacion.update(id, data),
     onSettled: () => { savingRef.current = false; },
     onError: (error) => toast({ variant: 'destructive', title: 'No se actualizó la cotización', description: error?.response?.data?.error || error?.message || 'Reintentá después de verificar los datos.' }),
     onSuccess: () => {
@@ -97,7 +97,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   });
 
   const enviarSeguimientoMutation = useMutation({
-    mutationFn: async ({ cotizacion: _cotizacion, cliente }) => {
+    mutationFn: async (/** @type {{_cotizacion: string, cliente: Record<string, any>}} */ { cotizacion: _cotizacion, cliente }) => {
       const canal = cliente.telefono ? 'whatsapp' : 'email';
       const mensaje = `Hola ${cliente.nombre_completo}, te escribo para dar seguimiento a la cotización que te compartimos. Quedo atento(a) si tienes alguna duda. — ${user.full_name || 'El equipo'}`;
 

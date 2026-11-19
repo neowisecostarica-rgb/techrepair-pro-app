@@ -41,7 +41,7 @@ export default function GarantiaPanel({ organizationId }) {
   }, [config]);
 
   const guardarMutation = useMutation({
-    mutationFn: async (configData) => {
+    mutationFn: async (/** @type {Record<string, any>} */ configData) => {
       await updateIdentityOrganization(organizationId, {
         garantia_config: configData
       });

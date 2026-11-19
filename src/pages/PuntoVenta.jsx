@@ -304,7 +304,7 @@ function PuntoVentaContent() {
   };
 
   const createVentaMutation = useMutation({
-    mutationFn: async (ventaData) => {
+    mutationFn: async (/** @type {Record<string, any>} */ ventaData) => {
       // Validaciones UX previas (frontend)
       if (!ventaData.total || ventaData.total <= 0) {
         throw new Error('El total de la venta debe ser mayor a cero');

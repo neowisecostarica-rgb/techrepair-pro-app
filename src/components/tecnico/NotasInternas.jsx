@@ -22,7 +22,7 @@ export default function NotasInternas({ ordenTrabajoId, user, userAccount }) {
   });
 
   const createNotaMutation = useMutation({
-    mutationFn: (data) => base44.entities.NotaInterna.create(withOrgId(data, userAccount)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.NotaInterna.create(withOrgId(data, userAccount)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notas-internas'] });
       setContenido('');

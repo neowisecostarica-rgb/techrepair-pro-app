@@ -19,7 +19,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
   const { user, effectiveOrgId } = useAuthContext();
   const { toast } = useToast();
   const logMutation = useMutation({
-    mutationFn: async (logData) => {
+    mutationFn: async (/** @type {Record<string, any>} */ logData) => {
       return await base44.entities.ComprobanteVentaLog.create({
         organization_id: effectiveOrgId,
         venta_id: venta.id,

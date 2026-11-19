@@ -54,7 +54,7 @@ function ReciclajeContent() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Reciclaje.create({
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Reciclaje.create({
       ...data,
       organization_id: effectiveOrgId
     }),
@@ -66,7 +66,7 @@ function ReciclajeContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Reciclaje.update(id, data),
+    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Reciclaje.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reciclaje'] });
       setShowModal(false);

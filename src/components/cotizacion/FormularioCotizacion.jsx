@@ -64,7 +64,7 @@ export default function FormularioCotizacion({
   });
 
   const createCotizacionMutation = useMutation({
-    mutationFn: (data) => base44.entities.Cotizacion.create(withOrgId(data, userAccount)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Cotizacion.create(withOrgId(data, userAccount)),
     onSettled: () => { savingRef.current = false; },
     onError: (error) => toast({ variant: 'destructive', title: 'No se guardó la cotización', description: error?.response?.data?.error || error?.message || 'Verificá los datos y reintentá.' }),
     onSuccess: (nuevaCotizacion) => {
@@ -75,7 +75,7 @@ export default function FormularioCotizacion({
   });
 
   const updateCotizacionMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Cotizacion.update(id, data),
+    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Cotizacion.update(id, data),
     onSettled: () => { savingRef.current = false; },
     onError: (error) => toast({ variant: 'destructive', title: 'No se actualizó la cotización', description: error?.response?.data?.error || error?.message || 'Verificá los datos y reintentá.' }),
     onSuccess: (cotizacionActualizada) => {

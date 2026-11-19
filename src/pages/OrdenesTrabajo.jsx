@@ -206,7 +206,7 @@ function OrdenesTrabajoContent() {
   const [guardandoOT, setGuardandoOT] = useState(false);
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       return crearOrdenTrabajo(data);
     },
     onSuccess: (result) => {
@@ -279,7 +279,7 @@ function OrdenesTrabajoContent() {
   }, [editingOT, showModal]);
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => {
       // Solo actualizar campos editables — estado y organization_id son inmutables desde aquí
       await base44.entities.OrdenTrabajo.update(id, {
         motivo_ingreso: data.motivo_ingreso,

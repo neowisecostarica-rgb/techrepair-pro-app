@@ -46,7 +46,7 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
   });
 
   const marcarVistaMutation = useMutation({
-    mutationFn: (id) => base44.entities.Notificacion.update(id, { estado: 'vista' }),
+    mutationFn: (/** @type {string} */ id) => base44.entities.Notificacion.update(id, { estado: 'vista' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
     },
@@ -54,7 +54,7 @@ export default function NotificacionesPanel({ userAccount, compact = false }) {
   });
 
   const marcarResueltaMutation = useMutation({
-    mutationFn: (id) => base44.entities.Notificacion.update(id, { estado: 'resuelta' }),
+    mutationFn: (/** @type {string} */ id) => base44.entities.Notificacion.update(id, { estado: 'resuelta' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificaciones'] });
     },

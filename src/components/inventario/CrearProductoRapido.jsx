@@ -37,7 +37,7 @@ export default function CrearProductoRapido({ open, onClose, codigoBarras, onPro
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       const res = await base44.functions.invoke('createInventoryItem', {
         itemData: { ...data, organization_id: effectiveOrgId },
       });

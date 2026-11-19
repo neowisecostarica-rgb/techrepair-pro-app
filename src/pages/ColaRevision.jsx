@@ -91,7 +91,7 @@ function ColaRevisionContent() {
 
   // ── FIX P1: Usar reassignWorkOrderTechnician con sanitización anti-circular ──
   const asignarMutation = useMutation({
-    mutationFn: async ({ ordenId, tecnicoId }) => {
+    mutationFn: async (/** @type {{ordenId: string, tecnicoId: string}} */ { ordenId, tecnicoId }) => {
       console.log('[asignarMutation] → entrada mutationFn', { ordenId, tecnicoId });
       const tecnico = tecnicos.find(t => t.user_id === tecnicoId);
       const res = await base44.functions.invoke('reassignWorkOrderTechnician', {

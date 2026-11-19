@@ -32,7 +32,7 @@ export default function ConfiguracionNegocio() {
   });
 
   const updateOrgMutation = useMutation({
-    mutationFn: (data) => updateIdentityOrganization(effectiveOrgId, data),
+    mutationFn: (/** @type {Record<string, any>} */ data) => updateIdentityOrganization(effectiveOrgId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organization'] });
       setShowSuccess(true);

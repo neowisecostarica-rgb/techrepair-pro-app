@@ -27,7 +27,7 @@ export default function BloqueosTecnicos({ ordenTrabajoId, tecnicoId, userAccoun
   });
 
   const createBloqueoMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       const bloqueo = await base44.entities.BloqueoTecnico.create(withOrgId(data, userAccount));
       // Sincronizar estado_atencion de la OT → ESPERANDO al reportar bloqueo activo
       await cambiarEstadoAtencionOT({

@@ -38,7 +38,7 @@ function ProveedoresContent() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Supplier.create(withOrgId(data, userAccount)),
+    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Supplier.create(withOrgId(data, userAccount)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proveedores'] });
       setShowModal(false);
@@ -47,7 +47,7 @@ function ProveedoresContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Supplier.update(id, data),
+    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Supplier.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proveedores'] });
       setShowModal(false);
@@ -56,7 +56,7 @@ function ProveedoresContent() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Supplier.delete(id),
+    mutationFn: (/** @type {string} */ id) => base44.entities.Supplier.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proveedores'] });
     }

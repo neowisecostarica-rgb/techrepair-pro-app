@@ -106,7 +106,10 @@ export default function TRPWebsite() {
             <a href="#planes">{t('website.nav.plans')}</a>
             <a href="#enterprise">{t('website.nav.enterprise')}</a>
           </div>
-          <Button>{t('website.nav.demo')} <ArrowRight size={15} /></Button>
+          <div className="flex items-center gap-3">
+            <a href="/Home" className="whitespace-nowrap rounded-full px-3 py-3 text-sm font-semibold text-slate-800 transition hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">{t('website.nav.login')}</a>
+            <Button>{t('website.nav.demo')} <ArrowRight size={15} /></Button>
+          </div>
         </div>
       </nav>
 

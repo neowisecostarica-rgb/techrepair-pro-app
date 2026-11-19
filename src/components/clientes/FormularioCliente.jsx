@@ -83,7 +83,8 @@ export default function FormularioCliente({
       onGuardar(response.data);
     } catch (error) {
       console.error('Error creando cliente:', error);
-      setApiError('Error al crear cliente: ' + error.message);
+      const apiError = /** @type {{response?: {data?: {error?: string}}}} */ (error);
+      setApiError('Error al crear cliente: ' + (apiError?.response?.data?.error || error.message));
     } finally {
       setSaving(false);
     }
@@ -115,7 +116,8 @@ export default function FormularioCliente({
         onGuardar(response.data);
       } catch (error) {
         console.error('Error actualizando cliente:', error);
-        setApiError('Error al actualizar cliente: ' + error.message);
+        const apiError = /** @type {{response?: {data?: {error?: string}}}} */ (error);
+        setApiError('Error al actualizar cliente: ' + (apiError?.response?.data?.error || error.message));
       } finally {
         setSaving(false);
       }

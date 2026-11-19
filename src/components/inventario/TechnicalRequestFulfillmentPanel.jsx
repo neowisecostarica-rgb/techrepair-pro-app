@@ -23,7 +23,7 @@ export default function TechnicalRequestFulfillmentPanel({ items }) {
     || request.fulfillment_mode === 'NEW_SPEND' && request.estado === 'approved');
 
   const mutation = useMutation({
-    mutationFn: async /** @type {Record<string, any>} */ request => {
+    mutationFn: async (/** @type {Record<string, any>} */ request) => {
       const operationKey = request.inventory_operation_key || operationKeys[request.id] || crypto.randomUUID();
       setOperationKeys(current => ({ ...current, [request.id]: operationKey }));
       const response = await base44.functions.invoke('technicalRequestCommand', {

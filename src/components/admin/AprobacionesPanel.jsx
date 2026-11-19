@@ -47,7 +47,7 @@ export default function AprobacionesPanel({ userAccount }) {
 
   // Aprobar cotización
   const aprobarCotizacionMutation = useMutation({
-    mutationFn: async (cotizacionId) => {
+    mutationFn: async (/** @type {string} */ cotizacionId) => {
       const response = await base44.functions.invoke('approveCotizacion', {
         cotizacion_id: cotizacionId,
         action: 'APPROVE_INTERNAL',
@@ -64,7 +64,7 @@ export default function AprobacionesPanel({ userAccount }) {
 
   // Rechazar cotización
   const rechazarCotizacionMutation = useMutation({
-    mutationFn: async ({ id, motivo }) => {
+    mutationFn: async (/** @type {{id: string, motivo: string}} */ { id, motivo }) => {
       const response = await base44.functions.invoke('approveCotizacion', {
         cotizacion_id: id,
         action: 'REJECT_INTERNAL',
@@ -85,7 +85,7 @@ export default function AprobacionesPanel({ userAccount }) {
 
   // Aprobar solicitud técnica
   const aprobarSolicitudMutation = useMutation({
-    mutationFn: (solicitudId) => base44.functions.invoke('technicalRequestCommand', {
+    mutationFn: (/** @type {string} */ solicitudId) => base44.functions.invoke('technicalRequestCommand', {
       action: 'APPROVE', request_id: solicitudId, correlation_id: crypto.randomUUID(),
     }),
     onSuccess: () => {

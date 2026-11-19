@@ -150,23 +150,23 @@ function InventarioContent() {
       marca: formData.get('marca'),
       modelo: formData.get('modelo'),
       ubicacion: formData.get('ubicacion'),
-      costo_unitario: parseFloat(formData.get('costo_unitario')) || 0,
-      precio_venta: categoriaSeleccionada?.es_vendible ? (parseFloat(formData.get('precio_venta')) || 0) : 0,
+      costo_unitario: parseFloat(String(formData.get('costo_unitario') ?? '')) || 0,
+      precio_venta: categoriaSeleccionada?.es_vendible ? (parseFloat(String(formData.get('precio_venta') ?? '')) || 0) : 0,
       punto_reorden: formData.get('punto_reorden') === '' ? 5 : Number(formData.get('punto_reorden')),
       proveedor: formData.get('proveedor'),
       fecha_compra: formData.get('fecha_compra') || undefined,
       documento_compra: formData.get('documento_compra') || undefined,
-      garantia_proveedor_meses: parseFloat(formData.get('garantia_proveedor_meses')) || undefined,
+      garantia_proveedor_meses: parseFloat(String(formData.get('garantia_proveedor_meses') ?? '')) || undefined,
       estado: formData.get('estado') || 'activo',
       // Campos de reciclaje (opcionales)
-      co2_evitado: parseFloat(formData.get('co2_evitado')) || 0,
-      valor_recuperado: parseFloat(formData.get('valor_recuperado')) || 0,
+      co2_evitado: parseFloat(String(formData.get('co2_evitado') ?? '')) || 0,
+      valor_recuperado: parseFloat(String(formData.get('valor_recuperado') ?? '')) || 0,
       notas_reciclaje: formData.get('notas_reciclaje') || undefined
     };
 
     if (!editingItem) {
       data.cantidad_disponible = categoriaSeleccionada?.permite_stock
-        ? (parseFloat(formData.get('cantidad_disponible')) || 0)
+        ? (parseFloat(String(formData.get('cantidad_disponible') ?? '')) || 0)
         : 0;
     }
 

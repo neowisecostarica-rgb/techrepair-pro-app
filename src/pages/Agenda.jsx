@@ -247,7 +247,7 @@ function AgendaContent() {
     };
 
     // P0.4: Validar que si es diagnóstico/reparación, debe tener OT
-    if (['diagnostico', 'reparacion'].includes(data.tipo) && !data.orden_trabajo_id) {
+    if (['diagnostico', 'reparacion'].includes(String(data.tipo)) && !data.orden_trabajo_id) {
       toast({ variant: 'destructive', title: 'Orden requerida', description: 'Los eventos de diagnóstico y reparación deben estar asociados a una orden de trabajo.' });
       setValidando(false);
       return;

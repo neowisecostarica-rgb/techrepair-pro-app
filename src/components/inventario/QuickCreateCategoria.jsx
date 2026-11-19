@@ -95,7 +95,7 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
               <Checkbox
                 id="stock"
                 checked={permiteStock}
-                onCheckedChange={setPermiteStock}
+                onCheckedChange={(checked) => setPermiteStock(checked === true)}
                 disabled={saving}
               />
               <Label htmlFor="stock" className="cursor-pointer">
@@ -107,7 +107,7 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
               <Checkbox
                 id="precio"
                 checked={permitePrecio}
-                onCheckedChange={setPermitePrecio}
+                onCheckedChange={(checked) => setPermitePrecio(checked === true)}
                 disabled={saving}
               />
               <Label htmlFor="precio" className="cursor-pointer">
@@ -119,7 +119,7 @@ export default function QuickCreateCategoria({ open, onOpenChange, organizationI
               <Checkbox
                 id="vendible"
                 checked={esVendible}
-                onCheckedChange={setEsVendible}
+                onCheckedChange={(checked) => setEsVendible(checked === true)}
                 disabled={saving}
               />
               <Label htmlFor="vendible" className="cursor-pointer">

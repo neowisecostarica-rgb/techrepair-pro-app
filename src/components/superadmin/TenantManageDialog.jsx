@@ -51,7 +51,7 @@ export default function TenantManageDialog({ organization, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['identity', 'organization', organization.id] });
       toast({ title: 'Detalles actualizados' });
     },
-    onError: (e) => toast({ variant: 'destructive', title: 'No se pudo actualizar', description: e?.message }),
+    onError: (/** @type {any} */ e) => toast({ variant: 'destructive', title: 'No se pudo actualizar', description: e?.message }),
   });
 
   const inviteMutation = useMutation({
@@ -60,7 +60,7 @@ export default function TenantManageDialog({ organization, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['identity', 'accounts', organization.id] });
       toast({ title: 'Invitación enviada' });
     },
-    onError: (e) => toast({ variant: 'destructive', title: 'No se pudo invitar', description: e?.data?.error || e?.message }),
+    onError: (/** @type {any} */ e) => toast({ variant: 'destructive', title: 'No se pudo invitar', description: e?.data?.error || e?.message }),
   });
 
   const updateAccountMutation = useMutation({
@@ -69,7 +69,7 @@ export default function TenantManageDialog({ organization, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['identity', 'accounts', organization.id] });
       toast({ title: 'Cuenta actualizada' });
     },
-    onError: (e) => toast({ variant: 'destructive', title: 'No se pudo actualizar', description: e?.data?.error || e?.message }),
+    onError: (/** @type {any} */ e) => toast({ variant: 'destructive', title: 'No se pudo actualizar', description: e?.data?.error || e?.message }),
   });
 
   const branchMutation = useMutation({
@@ -78,7 +78,7 @@ export default function TenantManageDialog({ organization, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['tenant-branches', organization.id] });
       queryClient.invalidateQueries({ queryKey: ['all-branches'] });
     },
-    onError: (e) => toast({ variant: 'destructive', title: 'No se pudo gestionar la sucursal', description: e?.message }),
+    onError: (/** @type {any} */ e) => toast({ variant: 'destructive', title: 'No se pudo gestionar la sucursal', description: e?.message }),
   });
 
   if (!organization) return null;

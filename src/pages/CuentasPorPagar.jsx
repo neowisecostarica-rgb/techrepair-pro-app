@@ -114,7 +114,7 @@ function CuentasPorPagarContent() {
       invoice_number,
       date: formData.get('date'),
       due_date: formData.get('due_date'),
-      total_amount: parseFloat(formData.get('total_amount')),
+      total_amount: parseFloat(String(formData.get('total_amount') ?? '')),
       paid_amount: 0,
       notes: formData.get('notes') || null,
       created_by: user.id
@@ -123,7 +123,7 @@ function CuentasPorPagarContent() {
     if (branchIdFijo) data.branch_id = branchIdFijo;
 
     // Validar due_date >= date
-    if (new Date(data.due_date) < new Date(data.date)) {
+    if (new Date(String(data.due_date)) < new Date(String(data.date))) {
       toast({ variant: 'destructive', title: 'Fecha de vencimiento inválida', description: 'La fecha de vencimiento debe ser igual o posterior a la fecha de factura.' });
       return;
     }
@@ -135,7 +135,7 @@ function CuentasPorPagarContent() {
     e.preventDefault();
     const formData = new FormData(e.target);
     
-    const amount = parseFloat(formData.get('amount'));
+    const amount = parseFloat(String(formData.get('amount') ?? ''));
     const saldo = facturaSeleccionada.saldo;
     
     if (amount > saldo) {

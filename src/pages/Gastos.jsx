@@ -102,7 +102,7 @@ function GastosContent() {
     
     const data = {
       date: formData.get('date'),
-      amount: parseFloat(formData.get('amount')),
+      amount: parseFloat(String(formData.get('amount') ?? '')),
       category: formData.get('category'),
       frequency: formData.get('frequency'),
       is_fixed: formData.get('is_fixed') === 'on',

@@ -321,7 +321,7 @@ function ReciclajeForm({ editingItem, onSubmit, onCancel }) {
       tipo_residuo: formData.get('tipo_residuo'),
       descripcion: formData.get('descripcion'),
       peso_kg: pesoNormalizado,
-      cantidad_unidades: parseInt(formData.get('cantidad_unidades')) || 0,
+      cantidad_unidades: parseInt(String(formData.get('cantidad_unidades') ?? '')) || 0,
       origen: formData.get('origen'),
       orden_trabajo_id: formData.get('orden_trabajo_id') || undefined,
       accion: formData.get('accion'),

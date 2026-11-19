@@ -233,7 +233,7 @@ function OrdenesTrabajoContent() {
         navigate(result.navigate_to);
       }
     },
-    onError: (error) => {
+    onError: (/** @type {any} */ error) => {
       setGuardandoOT(false);
       receptionSubmitInFlightRef.current = false;
       const payload = error?.data || error?.response?.data || {};

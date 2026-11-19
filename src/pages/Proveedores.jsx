@@ -73,7 +73,7 @@ function ProveedoresContent() {
       email: formData.get('email') || null,
       address: formData.get('address') || null,
       tax_id: formData.get('tax_id') || null,
-      payment_terms_days: parseInt(formData.get('payment_terms_days')) || 30,
+      payment_terms_days: parseInt(String(formData.get('payment_terms_days') ?? '')) || 30,
       active: true
     };
 

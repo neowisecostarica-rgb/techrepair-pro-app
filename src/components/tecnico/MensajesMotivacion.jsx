@@ -156,7 +156,7 @@ const MENSAJES_PROTECCION = {
   espera_cliente: "🛡️ Espera justificada. El tiempo de pausa está registrado correctamente.",
 };
 
-export default function MensajesMotivacion({ tipo, contexto, role }) {
+export default function MensajesMotivacion({ tipo, contexto = null, role = null }) {
   const [fraseDelDia] = useState(() => {
     const dia = new Date().getDate(); // 1-31
     const index = dia - 1; // 0-30

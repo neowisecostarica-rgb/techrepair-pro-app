@@ -33,7 +33,7 @@ const MENSAJES_RECONOCIMIENTO = {
   ],
 };
 
-export default function MensajesMotivacionVentas({ tipo, contexto }) {
+export default function MensajesMotivacionVentas({ tipo, contexto = null }) {
   const [fraseDelDia] = useState(() => {
     const index = new Date().getDate() % FRASES_DIARIAS.length;
     return FRASES_DIARIAS[index];

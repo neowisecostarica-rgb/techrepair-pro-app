@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Building2, Plus, Search, ShieldAlert, AlertCircle } from 'lucide-react';
 import PlatformActivityMetrics from '@/components/superadmin/PlatformActivityMetrics';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PageGuard from '../components/guards/PageGuard';
 import { useAuthContext } from '../components/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -105,7 +105,11 @@ export default function Saas() {
 function SaasContent() {
   const { t } = useI18n();
   const { toast } = useToast();
-  const [consoleSection, setConsoleSection] = useState(() => typeof window !== 'undefined' ? (window.location.hash.replace('#', '') || 'overview') : 'overview');
+  const { hash } = useLocation();
+  const requestedSection = hash.slice(1);
+  const consoleSection = ['overview', 'organizations', 'commercial', 'health', 'audit', 'pilot'].includes(requestedSection)
+    ? requestedSection
+    : 'overview';
   const [user, setUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showSuspenderModal, setShowSuspenderModal] = useState(false);
@@ -147,11 +151,9 @@ function SaasContent() {
     }
   }, [authUser]);
 
-  useEffect(() => {
-    const syncSection = () => setConsoleSection(window.location.hash.replace('#', '') || 'overview');
-    window.addEventListener('hashchange', syncSection);
-    return () => window.removeEventListener('hashchange', syncSection);
-  }, []);
+  // React Router's Link updates browser history without a guaranteed
+  // native hashchange event. Derive the active panel from router location
+  // so the sidebar and in-console navigation stay in sync.
 
   const showSection = (section) => consoleSection === section || consoleSection === 'overview';
 
@@ -517,7 +519,7 @@ function SaasContent() {
             ['audit', t('saas.navAudit','Auditoría')],
             ['pilot', t('saas.navPilot','Control de piloto')],
           ].map(([target, label]) => (
-            <Button key={target} variant="outline" size="sm" onClick={() => { window.location.hash = target; document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+            <Button key={target} variant="outline" size="sm" onClick={() => navigate(`/Saas#${target}`)}>
               {label}
             </Button>
           ))}
@@ -937,7 +939,7 @@ function SaasContent() {
                 <p className="font-medium text-slate-900">Unidad comercial: organización</p>
                 <p className="text-sm text-slate-600 mt-1">Los usuarios no son el medidor primario. El alcance se controla por paquete y capacidades habilitadas para cada organización.</p>
               </div>
-              <Button variant="outline" onClick={() => { window.location.hash = 'organizations'; }}>Administrar paquetes</Button>
+              <Button variant="outline" onClick={() => navigate('/Saas#organizations')}>Administrar paquetes</Button>
             </CardContent>
           </Card>
         </div>

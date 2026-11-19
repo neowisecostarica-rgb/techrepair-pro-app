@@ -133,7 +133,7 @@ export default function GlobalSearch({ open, onOpenChange }) {
           type: 'client',
           id: c.id,
           label: c.nombre_completo,
-          subtitle: `${c.identificacion || ''} · ${c.telefono || ''}`.trim(' ·'),
+          subtitle: `${c.identificacion || ''} · ${c.telefono || ''}`.replace(/^[ ·]+|[ ·]+$/g, ''),
           icon: Users,
           action: () => {
             navigate(`${createPageUrl('Clientes')}?cliente_id=${c.id}`);

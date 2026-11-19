@@ -13,12 +13,30 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarMenu from '@/components/layout/SidebarMenu';
+import { MENU_ITEMS } from '@/config/menuConfig';
 import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import useGlobalSearchShortcut from '@/components/search/useGlobalSearchShortcut';
 import { Search } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { endIdentityImpersonation } from '@/api/identity';
+
+function WorkspaceHeader({ currentPageName, t, platform = false }) {
+  const module = MENU_ITEMS.find(item => item.path === currentPageName);
+  const title = module?.i18nKey ? t(module.i18nKey, module.label) : module?.label || currentPageName;
+  return (
+    <header className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#e3ece9] bg-white px-5 py-4 shadow-[0_12px_40px_-32px_rgba(7,25,35,0.4)] sm:px-6">
+      <div className="flex min-w-0 items-center gap-4">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[#0b1422] text-xs font-black tracking-[-0.04em] text-white">TRP</span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-teal-700">Technology Reliability Platform · {platform ? 'Platform' : 'Workspace'}</p>
+          <h2 className="truncate text-xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-2xl">{title}</h2>
+        </div>
+      </div>
+      <a href="/" className="inline-flex min-h-10 items-center rounded-full border border-[#e3ece9] bg-[#f6f9f8] px-4 text-xs font-semibold text-slate-700 transition-colors hover:border-teal-300 hover:text-teal-800">{t('website.nav.product', 'Producto TRP')} ↗</a>
+    </header>
+  );
+}
 
 function LayoutContent({ children, currentPageName }) {
   const { t } = useI18n();
@@ -191,7 +209,7 @@ function LayoutContent({ children, currentPageName }) {
 
     // SUPER_ADMIN in Saas or AdminReset page: Render minimal layout
     return (
-      <div className="min-h-screen bg-[#f6f8fb]">
+      <div className="trp-workspace min-h-screen">
         {/* Sidebar for SUPER_ADMIN */}
         <aside className="hidden md:block fixed left-0 top-0 h-screen w-64 bg-[#0b1220] border-r border-slate-800 z-40">
           <div className="flex flex-col h-full">
@@ -252,7 +270,10 @@ function LayoutContent({ children, currentPageName }) {
         </aside>
 
         <main className="md:ml-64">
-          <div className="px-4 py-5 sm:px-6 md:p-8">{children}</div>
+          <div className="px-4 py-5 sm:px-6 md:p-8">
+            <WorkspaceHeader currentPageName={currentPageName} t={t} platform />
+            {children}
+          </div>
         </main>
       </div>
     );
@@ -404,7 +425,7 @@ function LayoutContent({ children, currentPageName }) {
       </div>
     )}
 
-    <div className={`min-h-screen bg-[#f6f8fb] ${isImpersonating && organization?.status === 'suspended' ? 'pt-28' : isImpersonating ? 'pt-16' : ''}`}>
+    <div className={`trp-workspace min-h-screen ${isImpersonating && organization?.status === 'suspended' ? 'pt-28' : isImpersonating ? 'pt-16' : ''}`}>
       {/* Sidebar */}
       <aside className={`hidden md:block fixed left-0 top-0 h-screen bg-[#0b1220] border-r border-slate-800 transition-all duration-300 z-40 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className="flex flex-col h-full">
@@ -498,6 +519,7 @@ function LayoutContent({ children, currentPageName }) {
       {/* Main Content */}
       <main className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
         <div className="px-5 py-6 md:px-8 md:py-8 xl:px-10">
+          <WorkspaceHeader currentPageName={currentPageName} t={t} />
           {children}
         </div>
       </main>

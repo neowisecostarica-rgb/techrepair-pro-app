@@ -4,32 +4,33 @@
 
 @layer base {
   :root {
-    --background: 220 33% 98%;
-    --foreground: 222 47% 11%;
+    /* TRP visual language: public presentation and authenticated workspace. */
+    --background: 160 18% 97%;
+    --foreground: 222 47% 10%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 174 84% 27%;
+    --primary: 174 84% 30%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 218 31% 95%;
+    --secondary: 170 20% 95%;
     --secondary-foreground: 222 47% 11%;
-    --muted: 218 31% 95%;
+    --muted: 160 15% 96%;
     --muted-foreground: 215 16% 47%;
     --accent: 172 57% 93%;
     --accent-foreground: 174 84% 22%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 216 24% 90%;
-    --input: 216 24% 90%;
+    --border: 160 15% 90%;
+    --input: 160 15% 87%;
     --ring: 174 84% 27%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.75rem;
-    --sidebar-background: 222 47% 9%;
+    --radius: 1.125rem;
+    --sidebar-background: 222 53% 8%;
     --sidebar-foreground: 214 32% 91%;
     --sidebar-primary: 174 84% 37%;
     --sidebar-primary-foreground: 222 47% 8%;
@@ -83,6 +84,26 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
+}
+
+/* Applied only to the authenticated shell. The public landing page keeps its
+   own editorial layout, while all operational modules share these fundamentals. */
+.trp-workspace {
+  background: #f6f9f8;
+  color: #0b1422;
+}
+
+.trp-workspace :is(h1, h2, h3) {
+  letter-spacing: -0.035em;
+}
+
+.trp-workspace :is(input, textarea, select, button, a):focus-visible {
+  outline-offset: 3px;
+}
+
+.trp-workspace ::selection {
+  background: #99f6e4;
+  color: #0b1422;
 }

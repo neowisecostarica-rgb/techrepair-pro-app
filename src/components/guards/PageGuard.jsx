@@ -30,7 +30,7 @@ export default function PageGuard({ allowedRoles = [], requiredAnyCapabilities =
   // Si no está autenticado, redirigir a login
   if (!user) {
     if (typeof window !== 'undefined') {
-      base44.auth.redirectToLogin();
+      base44.auth.redirectToLogin(window.location.href);
     }
     return null;
   }

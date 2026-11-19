@@ -80,6 +80,7 @@ function technicalScenario({ role = 'TECHNICIAN', assignedUserId = 'tech-a', aud
     principalClass: 'HUMAN_MEMBER',
     organizationId: 'org-a',
     branchId: role === 'ORG_ADMIN' ? null : 'branch-a',
+    account: { organization_id: 'org-a', branch_id: role === 'ORG_ADMIN' ? null : 'branch-a', role, status: 'active' },
     role,
     persistedRole: role,
     capabilities: getRoleCapabilities(role),

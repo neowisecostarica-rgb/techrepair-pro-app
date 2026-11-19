@@ -6,7 +6,7 @@ const checks=[
  ['suspension UI requires a reason', /!selectedOrg \|\| !suspendReason\.trim\(\)/.test(saas)],
  ['suspension passes reason as audit context', /auditContext: `Suspensión administrativa: \$\{suspendReason\.trim\(\)\}`/.test(saas)],
  ['identity API transports audit context separately from org fields', /audit_context: auditContext/.test(api)],
- ['backend sanitizes audit context', /context: clean\(body\.audit_context, 2000\)/.test(gateway)],
+ ['backend sanitizes audit context', /context: clean3\(body\.audit_context, 2e3\)/.test(gateway) && /context: clean\(input\.context, 2e3\)/.test(gateway)],
  ['admin audit records changed fields', /metadata: \{ changed_fields: Object\.keys\(updates\) \}/.test(gateway)],
 ];
 let failed=0; for(const [name,ok] of checks){ console.log(`${ok?'PASS':'FAIL'} ${name}`); if(!ok) failed++; }

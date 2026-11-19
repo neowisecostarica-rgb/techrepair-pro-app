@@ -137,10 +137,10 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
                       {config.label}
                     </Badge>
                     {mensaje.enviado && (
-                      <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" title={t('comm.sent','Enviado')} />
+                      <span title={t('comm.sent','Enviado')}><CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" /></span>
                     )}
                     {mensaje.leido && (
-                      <Mail className="w-3 h-3 text-blue-400 shrink-0" title={t('comm.read','Leído')} />
+                      <span title={t('comm.read','Leído')}><Mail className="w-3 h-3 text-blue-400 shrink-0" /></span>
                     )}
                     <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
                       {format(new Date(mensaje.created_date), 'dd/MM/yy', { locale: es })}

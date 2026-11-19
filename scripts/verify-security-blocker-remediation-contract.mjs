@@ -47,6 +47,7 @@ function publicClient(collections) {
 function technicalScenario({ role = 'TECHNICIAN', assignedUserId = 'tech-a', auditFailure = false } = {}) {
   const user = { id: role === 'TECHNICIAN' ? 'tech-a' : 'admin-a', email: `${role.toLowerCase()}@example.com`, full_name: 'Actor' };
   const records = {
+    Organization: [{ id: 'org-a', audit_lock_token: null }], AuditEvent: [],
     OrdenTrabajo: [{ id: 'ot-a', organization_id: 'org-a', branch_id: 'branch-a', cliente_id: 'client-a', equipo_id: 'equipment-a', tecnico_asignado_id: assignedUserId }],
     Diagnostico: [], DiagnosticoTecnico: [], DiagnosticoDocumento: [], DiagnosticoEvidencia: [], DiagnosticoResultado: [],
     BloqueoTecnico: [], NotaInterna: [], RegistroTiempo: [],
@@ -59,9 +60,21 @@ function technicalScenario({ role = 'TECHNICIAN', assignedUserId = 'tech-a', aud
       return {
         async filter(query) { return clone(records[name].filter(record => matches(record, query))); },
         async create(data) {
+          if (name === 'AuditEvent' && auditFailure) throw new Error('simulated audit failure');
           const record = { id: `${String(name).toLowerCase()}-${++sequence}`, ...clone(data) };
           records[name].push(record);
+          if (name === 'AuditEvent') audits.push(clone(record));
           return clone(record);
+        },
+        async updateMany(query, mutation) {
+          if (name !== 'Organization') throw new Error(`Unexpected updateMany for ${String(name)}`);
+          const organization = records.Organization.find(row => row.id === query.id);
+          if (!organization) return { updated: 0 };
+          if (query.$or && organization.audit_lock_token != null && organization.audit_lock_token !== '') return { updated: 0 };
+          if (Object.hasOwn(query, 'audit_lock_token') && organization.audit_lock_token !== query.audit_lock_token) return { updated: 0 };
+          if (mutation.$set) Object.assign(organization, clone(mutation.$set));
+          if (mutation.$unset) for (const field of Object.keys(mutation.$unset)) delete organization[field];
+          return { updated: 1 };
         },
         async update(id, data) {
           const record = records[name].find(item => item.id === id);
@@ -105,11 +118,6 @@ async function loadTechnicalHandler(scenario) {
         ? { ok: true }
         : { ok: false, status: 403, code: 'BRANCH_SCOPE_DENIED', error: 'Sucursal denegada' }
     ),
-    appendAuditEvent: async (_base44, event) => {
-      if (scenario.auditFailure) throw new Error('simulated audit failure');
-      scenario.audits.push(clone(event));
-      return event;
-    },
     pickProjection,
     evaluateCommandPolicyWithShadow,
     ExecuteSovereignCommand,

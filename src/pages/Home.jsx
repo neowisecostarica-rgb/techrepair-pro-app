@@ -13,7 +13,7 @@ export default function Home() {
     if (loading) return;
 
     if (!user) {
-      base44.auth.redirectToLogin();
+      base44.auth.redirectToLogin(window.location.href);
       return;
     }
 

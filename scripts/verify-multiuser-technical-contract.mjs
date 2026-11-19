@@ -61,8 +61,11 @@ const [init, activity, assignment, qa, qaEvidence, transition, miDia, activeUi, 
 }
 
 {
-  assert.doesNotMatch(qa, /account\.organization_id/);
-  assert.match(qa, /allowedRoles:\s*\['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'\]/);
+  // Los helpers compartidos sí leen account.organization_id para autorizar el tenant;
+  // el handler QA no debe usar ese campo directamente para atribuir autoría.
+  const qaHandler = qa.slice(qa.indexOf('Deno.serve('));
+  assert.doesNotMatch(qaHandler, /account\.organization_id/);
+  assert.match(qaHandler, /allowedRoles:\s*\[[^\]]*['"]ORG_ADMIN['"][^\]]*['"]BRANCH_ADMIN['"][^\]]*['"]TECHNICIAN['"]/);
   assert.match(qa, /QA_ACTIVE_SEGMENT_REQUIRED/);
   assert.match(qa, /effective_technician_user_id:\s*user\.id/);
   assert.match(qa, /appendAuditEvent/);

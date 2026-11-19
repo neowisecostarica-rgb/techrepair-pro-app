@@ -81,7 +81,7 @@ async function downloadTemplate() {
   sheet.getColumn(8).numFmt = '#,##0.00';
   sheet.getColumn(9).numFmt = '0';
   sheet.getColumn(3).numFmt = '@';
-  sheet.dataValidations.add('A2:A1001', { type: 'list', allowBlank: false, formulae: ['"Producto,Servicio"'] });
+  /** @type {any} */ (sheet).dataValidations.add('A2:A1001', { type: 'list', allowBlank: false, formulae: ['"Producto,Servicio"'] });
   const guide = workbook.addWorksheet('Cómo usar');
   guide.getColumn(1).width = 32;
   guide.getColumn(2).width = 105;

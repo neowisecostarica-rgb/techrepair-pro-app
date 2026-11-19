@@ -17,7 +17,7 @@ export function isMenuItemEligible(item, { effectiveRole, capabilities }) {
   return item.anyCapabilities?.some(capability => capabilities.includes(capability)) === true;
 }
 
-export default function SidebarMenu({ effectiveRole, capabilities = [], currentPageName, sidebarOpen, sectionsOpen, toggleSection }) {
+export default function SidebarMenu({ effectiveRole, capabilities = [], currentPageName, sidebarOpen, sectionsOpen, toggleSection, onNavigate }) {
   const { t } = useI18n();
   const categoryKey = {NEGOCIO:'cat.business',TALLER:'cat.workshop','CLIENTES Y VENTAS':'cat.sales','CONFIGURACIÓN':'cat.settings',PLATAFORMA:'cat.platform',CONTROL:'cat.control',SENSITIVE:'cat.sensitive'};
   const allowedItems = MENU_ITEMS.filter(item => isMenuItemEligible(item, { effectiveRole, capabilities }));
@@ -67,6 +67,7 @@ export default function SidebarMenu({ effectiveRole, capabilities = [], currentP
                   key={`${item.path}-${item.label}`}
                   to={`${createPageUrl(item.path)}${item.hash ? `#${item.hash}` : ''}`}
                   title={sidebarOpen ? (item.tooltip || item.label) : item.label}
+                  onClick={onNavigate}
                   className={`flex items-center gap-3 px-4 py-3 rounded-[14px] transition-all duration-200 group ${
                     isActive
                       ? 'bg-teal-400/15 text-teal-100 ring-1 ring-inset ring-teal-300/25 shadow-[inset_3px_0_0_0_#2dd4bf]'

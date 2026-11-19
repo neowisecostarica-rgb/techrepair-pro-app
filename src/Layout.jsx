@@ -290,7 +290,7 @@ function LayoutContent({ children, currentPageName }) {
           </div>
         </aside>
 
-        <main className="md:ml-64">
+        <main data-trp-scroll-root className="md:ml-64">
           <div className="px-4 py-5 sm:px-6 md:p-8">
             <WorkspaceHeader currentPageName={currentPageName} t={t} platform onOpenMenu={() => setMobileMenuOpen(true)} />
             {children}
@@ -539,7 +539,7 @@ function LayoutContent({ children, currentPageName }) {
       </aside>
 
       {/* Main Content */}
-      <main className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
+      <main data-trp-scroll-root className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
         <div className="px-5 py-6 md:px-8 md:py-8 xl:px-10">
           <WorkspaceHeader currentPageName={currentPageName} t={t} onOpenMenu={() => setMobileMenuOpen(true)} />
           {children}

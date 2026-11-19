@@ -66,7 +66,7 @@ export default function FormularioCotizacion({
   const createCotizacionMutation = useMutation({
     mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Cotizacion.create(withOrgId(data, userAccount)),
     onSettled: () => { savingRef.current = false; },
-    onError: (error) => toast({ variant: 'destructive', title: 'No se guardó la cotización', description: error?.response?.data?.error || error?.message || 'Verificá los datos y reintentá.' }),
+    onError: (/** @type {any} */ error) => toast({ variant: 'destructive', title: 'No se guardó la cotización', description: error?.response?.data?.error || error?.message || 'Verificá los datos y reintentá.' }),
     onSuccess: (nuevaCotizacion) => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
@@ -77,7 +77,7 @@ export default function FormularioCotizacion({
   const updateCotizacionMutation = useMutation({
     mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Cotizacion.update(id, data),
     onSettled: () => { savingRef.current = false; },
-    onError: (error) => toast({ variant: 'destructive', title: 'No se actualizó la cotización', description: error?.response?.data?.error || error?.message || 'Verificá los datos y reintentá.' }),
+    onError: (/** @type {any} */ error) => toast({ variant: 'destructive', title: 'No se actualizó la cotización', description: error?.response?.data?.error || error?.message || 'Verificá los datos y reintentá.' }),
     onSuccess: (cotizacionActualizada) => {
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });

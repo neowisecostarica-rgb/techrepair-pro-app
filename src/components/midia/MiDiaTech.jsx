@@ -147,7 +147,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
       
       if (prioA !== prioB) return prioB - prioA;
       
-      return new Date(a.ultima_actividad_at || a.created_date) - new Date(b.ultima_actividad_at || b.created_date);
+      return new Date(a.ultima_actividad_at || a.created_date).getTime() - new Date(b.ultima_actividad_at || b.created_date).getTime();
     });
   
   const ordenesEsperando = ordenes.filter(o => o.estado_atencion === 'ESPERANDO');

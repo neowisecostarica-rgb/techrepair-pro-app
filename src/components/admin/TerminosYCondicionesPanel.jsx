@@ -79,7 +79,7 @@ export default function TerminosYCondicionesPanel({ organizationId }) {
   };
 
   const terminosOrdenados = [...terminos].sort((a, b) => 
-    new Date(b.created_date) - new Date(a.created_date)
+    new Date(b.created_date).getTime() - new Date(a.created_date).getTime()
   );
 
   const versionActiva = terminos.find(t => t.activo);

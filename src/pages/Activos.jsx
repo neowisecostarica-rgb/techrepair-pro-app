@@ -51,7 +51,7 @@ function ActivosContent() {
   const ordenesByEquipo = React.useMemo(() => {
     const map = {};
     ordenes.forEach(ot => { (map[ot.equipo_id] ||= []).push(ot); });
-    Object.values(map).forEach(list => list.sort((a,b) => new Date(b.fecha_ingreso || b.created_date) - new Date(a.fecha_ingreso || a.created_date)));
+    Object.values(map).forEach(list => list.sort((a,b) => new Date(b.fecha_ingreso || b.created_date).getTime() - new Date(a.fecha_ingreso || a.created_date).getTime()));
     return map;
   }, [ordenes]);
 

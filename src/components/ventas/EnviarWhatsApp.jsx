@@ -55,7 +55,7 @@ ${resumen}
 💳 Pagado con ${venta.metodo_pago}
 
 ${garantia ? `🛡️ *Garantía:*
-${Math.floor((new Date(garantia.fecha_fin) - new Date(garantia.fecha_inicio)) / (1000 * 60 * 60 * 24 * 30))} meses de cobertura
+${Math.floor((new Date(garantia.fecha_fin).getTime() - new Date(garantia.fecha_inicio).getTime()) / (1000 * 60 * 60 * 24 * 30))} meses de cobertura
 Válida hasta ${new Date(garantia.fecha_fin).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
 
 📄 *Documentos:*

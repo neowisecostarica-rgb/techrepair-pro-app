@@ -53,7 +53,7 @@ function GastosContent() {
       return allGastos.filter(g => {
         const fecha = new Date(g.date);
         return fecha >= inicioMes && fecha <= finMes;
-      }).sort((a, b) => new Date(b.date) - new Date(a.date));
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     },
     enabled: !!effectiveOrgId,
     staleTime: 300000 // 5 min

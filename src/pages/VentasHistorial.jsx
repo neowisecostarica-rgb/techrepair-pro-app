@@ -57,7 +57,7 @@ function VentasHistorialContent() {
         return ventaFecha >= desde && ventaFecha <= hasta;
       });
     },
-    select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
+    select: (data) => data.sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()),
     enabled: !!effectiveOrgId && branchScopeReady
   });
 

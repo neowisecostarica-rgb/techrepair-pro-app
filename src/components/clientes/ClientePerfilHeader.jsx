@@ -60,7 +60,7 @@ export default function ClientePerfilHeader({ cliente, ordenes = [], onEditarCli
   // OT activa más reciente (orden por fecha_ingreso desc)
   const otActiva = ordenes
     .filter(o => ESTADOS_OT_ACTIVA.includes(o.estado))
-    .sort((a, b) => new Date(b.fecha_ingreso || b.created_date) - new Date(a.fecha_ingreso || a.created_date))[0] || null;
+    .sort((a, b) => new Date(b.fecha_ingreso || b.created_date).getTime() - new Date(a.fecha_ingreso || a.created_date).getTime())[0] || null;
 
   const iniciales = (cliente.nombre_completo || 'C')
     .split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();

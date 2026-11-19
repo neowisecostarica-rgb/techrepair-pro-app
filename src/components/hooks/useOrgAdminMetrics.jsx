@@ -83,7 +83,7 @@ export function useOrgAdminMetrics({ days = 7, branchId = null }) {
     const countUnique = (arr) => new Set(arr).size;
 
     // Helper: días desde fecha
-    const diasDesde = (fecha) => Math.floor((new Date() - new Date(fecha)) / (1000 * 60 * 60 * 24));
+    const diasDesde = (fecha) => Math.floor((new Date().getTime() - new Date(fecha).getTime()) / (1000 * 60 * 60 * 24));
 
     // Estados cerrados
     const estadosCerrados = ['CERRADA', 'FINALIZADA', 'ENTREGADA', 'CANCELADA'];

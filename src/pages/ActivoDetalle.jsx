@@ -79,7 +79,7 @@ function ActivoDetalleContent() {
 
   const owner = clientes[0];
   const branchById = Object.fromEntries(branches.map(b => [b.id, b]));
-  const history = [...ordenes].sort((a,b) => new Date(b.fecha_ingreso || b.created_date) - new Date(a.fecha_ingreso || a.created_date));
+  const history = [...ordenes].sort((a,b) => new Date(b.fecha_ingreso || b.created_date).getTime() - new Date(a.fecha_ingreso || a.created_date).getTime());
   const otIds = new Set(history.map(o => o.id));
   const assetSales = ventas.filter(v => otIds.has(v.referencia_ot_id) && v.estado === 'pagada');
   const totalCost = assetSales.reduce((sum, v) => sum + Number(v.total || 0), 0);

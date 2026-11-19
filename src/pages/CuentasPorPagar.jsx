@@ -57,7 +57,7 @@ function CuentasPorPagarContent() {
       if (branchIdFijo) query.branch_id = branchIdFijo;
 
       const allInvoices = await base44.entities.PurchaseInvoice.filter(query, '-created_date', 200);
-      return aplicarStatusInvoices(allInvoices).sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+      return aplicarStatusInvoices(allInvoices).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
     },
     enabled: !!effectiveOrgId,
     staleTime: 60000
@@ -167,7 +167,7 @@ function CuentasPorPagarContent() {
 
   const venceProximo = facturas
     .filter(f => {
-      const diasHastaVenc = (new Date(f.due_date) - new Date()) / (1000 * 60 * 60 * 24);
+      const diasHastaVenc = (new Date(f.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
       return f.status !== 'paid' && diasHastaVenc <= 7 && diasHastaVenc >= 0;
     })
     .reduce((sum, f) => sum + f.saldo, 0);

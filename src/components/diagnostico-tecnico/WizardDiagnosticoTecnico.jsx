@@ -69,7 +69,7 @@ export default function WizardDiagnosticoTecnico({
       // Si hay múltiples activos, bloquear todos excepto el más reciente
       if (diagnosticosActivos.length > 1) {
         const ordenadosPorFecha = diagnosticosActivos.sort((a, b) => 
-          new Date(b.created_date || 0) - new Date(a.created_date || 0)
+          new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime()
         );
         
         // Bloquear todos excepto el primero (más reciente)

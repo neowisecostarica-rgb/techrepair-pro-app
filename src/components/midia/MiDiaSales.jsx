@@ -91,7 +91,7 @@ export default function MiDiaSales({ user, effectiveOrgId }) {
 
   const cotizacionesPendientesSales = cotizaciones
     .filter(c => c.estado === 'enviada' && c.vendedor_id === user?.id)
-    .sort((a, b) => new Date(a.valida_hasta) - new Date(b.valida_hasta));
+    .sort((a, b) => new Date(a.valida_hasta).getTime() - new Date(b.valida_hasta).getTime());
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">

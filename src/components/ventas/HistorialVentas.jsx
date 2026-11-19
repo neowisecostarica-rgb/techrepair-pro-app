@@ -24,7 +24,7 @@ export default function HistorialVentas() {
     queryFn: () => base44.entities.Venta.filter({
       organization_id: effectiveOrgId
     }, '-created_date', 500),
-    select: (data) => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
+    select: (data) => data.sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime())
   });
 
   const { data: clientes = [] } = useQuery({

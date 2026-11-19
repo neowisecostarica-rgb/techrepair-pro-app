@@ -48,7 +48,7 @@ export default function SenalesNegocio({ userAccount }) {
   });
 
   const cotizacionesSinCierre = cotizaciones.filter(c => {
-    const daysSent = c.enviada_at ? (Date.now() - new Date(c.enviada_at)) / (1000 * 60 * 60 * 24) : 0;
+    const daysSent = c.enviada_at ? (Date.now() - new Date(c.enviada_at).getTime()) / (1000 * 60 * 60 * 24) : 0;
     return c.estado === 'enviada' && daysSent > 3;
   });
 

@@ -91,7 +91,7 @@ function InventarioInvertidoContent() {
 
       // Dinero dormido
       if (item.fecha_ultimo_movimiento && costo > 0 && stock > 0) {
-        const diasSinMovimiento = (hoy - new Date(item.fecha_ultimo_movimiento)) / (1000 * 60 * 60 * 24);
+        const diasSinMovimiento = (hoy - new Date(item.fecha_ultimo_movimiento).getTime()) / (1000 * 60 * 60 * 24);
         if (diasSinMovimiento > diasDormido) {
           dineroDormido += valor;
           itemsDormidos.push({ ...item, valor, diasSinMovimiento });

@@ -137,7 +137,7 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
 
   const cotizacionesPorVencer = cotizaciones
     .filter(c => c.estado === 'enviada' && c.valida_hasta)
-    .sort((a, b) => new Date(a.valida_hasta) - new Date(b.valida_hasta))
+    .sort((a, b) => new Date(a.valida_hasta).getTime() - new Date(b.valida_hasta).getTime())
     .slice(0, 5);
 
   const ventasSinCobrar = ventas.filter(v =>

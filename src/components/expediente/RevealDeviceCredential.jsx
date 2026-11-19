@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useAuthContext } from '@/components/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { KeyRound, Eye, EyeOff, Loader2, ShieldAlert } from 'lucide-react';
 
@@ -15,11 +16,14 @@ export default function RevealDeviceCredential({ ot, effectiveRole }) {
   const [pin, setPin] = useState(null);
   const [error, setError] = useState(null);
   const [show, setShow] = useState(false);
+  const { user } = useAuthContext();
 
   if (!ot?.id) return null;
 
   // Solo técnicos/admins pueden revelar; el backend valida asignación
-  if (!['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN', 'SUPER_ADMIN'].includes(effectiveRole)) return null;
+  if (!['TECHNICIAN', 'ORG_ADMIN', 'BRANCH_ADMIN'].includes(effectiveRole)) return null;
+  // El backend exige al técnico efectivo asignado; no ofrecer un botón que siempre dará 403.
+  if (!user?.id || ot.tecnico_asignado_id !== user.id) return null;
 
   const handleReveal = async () => {
     setLoading(true);
@@ -35,7 +39,8 @@ export default function RevealDeviceCredential({ ot, effectiveRole }) {
       if (result?.error) throw new Error(result.error);
       setPin(result.contrasena_ingreso);
     } catch (e) {
-      setError(e?.message || 'No se pudo revelar la credencial. Verifica que tengas la OT asignada.');
+      const apiError = /** @type {{response?: {data?: {error?: string}}}} */ (e);
+      setError(apiError?.response?.data?.error || e?.message || 'No se pudo revelar la credencial. Verifica que tengas la OT asignada.');
     } finally {
       setLoading(false);
     }

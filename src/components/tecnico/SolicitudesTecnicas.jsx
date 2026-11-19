@@ -36,7 +36,7 @@ export default function SolicitudesTecnicas({ ordenTrabajoId, userAccount }) {
   });
 
   const commandMutation = useMutation({
-    mutationFn: async /** @type {Record<string, any>} */ data => {
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
       const response = await base44.functions.invoke('technicalRequestCommand', data);
       return response?.data || response;
     },

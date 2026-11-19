@@ -380,7 +380,7 @@ export default function MiDiaTech({ user, userAccount, effectiveOrgId, effective
     otro: t('midia.pauseOther','Otro')
   };
 
-  useNotificacionesAutomaticas(transicionEnCurso ? null : userAccount);
+  useNotificacionesAutomaticas();
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">

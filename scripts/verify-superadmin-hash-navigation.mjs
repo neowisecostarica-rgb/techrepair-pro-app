@@ -17,12 +17,12 @@ const checks = [
 
 const sections = ['overview', 'organizations', 'commercial', 'health', 'audit', 'pilot'];
 for (const section of sections) {
-  checks.push([\`Sidebar route exists: \$\{section\}\`, () => assert.match(menu, new RegExp(\`hash: ['"]\$\{section\}['"]\`))]);
-  checks.push([\`Console route exists: \$\{section\}\`, () => assert.ok(saas.includes(\`'\$\{section\}'\`))]);
+  checks.push(['Sidebar route exists: ' + section, () => assert.ok(menu.includes("hash: '" + section + "'"))]);
+  checks.push(['Console route exists: ' + section, () => assert.ok(saas.includes("'" + section + "'"))]);
 }
 
 for (const [label, verify] of checks) {
   verify();
-  process.stdout.write(\`PASS: \$\{label\}\\n\`);
+  process.stdout.write('PASS: ' + label + '\n');
 }
-process.stdout.write(\`PASS: \$\{checks.length\}/\$\{checks.length\} Super Admin hash-navigation contracts\\n\`);
+process.stdout.write('PASS: ' + checks.length + '/' + checks.length + ' Super Admin hash-navigation contracts\n');

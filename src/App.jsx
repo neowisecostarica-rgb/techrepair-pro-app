@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import ExpedienteOT from './pages/ExpedienteOT';
 import ActivoDetalle from './pages/ActivoDetalle';
@@ -19,22 +19,42 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
 
-// Every new module should open from its heading, never inherit the previous
-// module's page scroll. Hash links keep their native anchor behavior.
+// A new module always starts at the top, including platform-console tabs.
+// Real hash anchors on other pages (e.g. a document section) keep their target.
 function ScrollToTopOnModuleChange() {
   const { pathname, hash } = useLocation();
+  const platformTab = pathname.toLowerCase() === '/saas';
+  const destination = platformTab ? `${pathname}${hash}` : pathname;
+
+  useEffect(() => {
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    return () => { window.history.scrollRestoration = previous; };
+  }, []);
+
   useLayoutEffect(() => {
-    if (hash) return;
+    if (hash && !platformTab) return;
+
     const reset = () => {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      document.querySelectorAll('[data-trp-scroll-root]').forEach(el => { el.scrollTop = 0; });
     };
     reset();
-    // Browsers may restore the old position when a route settles; clear it
-    // once more after the new module paints, without touching sidebar/modals.
-    const frame = window.requestAnimationFrame(reset);
-    return () => window.cancelAnimationFrame(frame);
-  }, [pathname]);
+    let nextFrame;
+    const frame = window.requestAnimationFrame(() => {
+      reset();
+      nextFrame = window.requestAnimationFrame(reset);
+    });
+    // Allow the new route's layout to settle before the browser restores scroll.
+    const timer = window.setTimeout(reset, 80);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (nextFrame) window.cancelAnimationFrame(nextFrame);
+      window.clearTimeout(timer);
+    };
+  }, [destination]);
   return null;
 }
 

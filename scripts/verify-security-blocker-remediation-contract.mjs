@@ -93,10 +93,12 @@ async function loadTechnicalHandler(scenario) {
   const executable = source
     .replace(/^import[\s\S]*?;\s*/gmu, '')
     .replace(/Deno\.serve\(async\s*\(?req\)?\s*=>\s*\{/u, 'globalThis.__handler = async (req) => {')
+    // The deployed entry bundles its own identity resolver; inject the fixture only at the command boundary.
+    .replace('const authorization = await resolveAuthorizedContext(base44, user);', 'const authorization = await globalThis.__testResolveAuthorizedContext(base44, user);')
     .replace(/\}\);\s*$/u, '};');
   const context = {
     createClientFromRequest: () => scenario.client,
-    resolveAuthorizedContext: async () => scenario.authorization,
+    __testResolveAuthorizedContext: async () => scenario.authorization,
     authorizeRecordBranch: (authorization, branchId) => (
       authorization.role === 'ORG_ADMIN' || authorization.branchId === branchId
         ? { ok: true }

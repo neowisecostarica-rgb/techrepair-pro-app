@@ -6,6 +6,7 @@ export const websiteMessages = {
     website: {
       nav: {
         demo: 'Solicitar demo',
+        login: 'Ingresar',
         product: 'Producto',
         howItWorks: 'Cómo funciona',
         forWhom: 'Para quién',
@@ -155,6 +156,7 @@ export const websiteMessages = {
     website: {
       nav: {
         demo: 'Request demo',
+        login: 'Log in',
         product: 'Product',
         howItWorks: 'How it works',
         forWhom: 'For whom',
@@ -304,6 +306,7 @@ export const websiteMessages = {
     website: {
       nav: {
         demo: 'Solicitar demonstração',
+        login: 'Entrar',
         product: 'Produto',
         howItWorks: 'Como funciona',
         forWhom: 'Para quem',
@@ -453,6 +456,7 @@ export const websiteMessages = {
     website: {
       nav: {
         demo: 'Demander une démo',
+        login: 'Connexion',
         product: 'Produit',
         howItWorks: 'Comment ça marche',
         forWhom: 'Pour qui',
@@ -602,6 +606,7 @@ export const websiteMessages = {
     website: {
       nav: {
         demo: 'Be om demo',
+        login: 'Logg inn',
         product: 'Produkt',
         howItWorks: 'Slik fungerer det',
         forWhom: 'For hvem',

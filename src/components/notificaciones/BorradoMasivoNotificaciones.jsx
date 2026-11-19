@@ -14,7 +14,9 @@ export default function BorradoMasivoNotificaciones({ organizationId }) {
   const { effectiveRole } = useAuthContext();
 
   // Solo SUPER_ADMIN y ORG_ADMIN
-  const canDelete = ['SUPER_ADMIN', 'ORG_ADMIN'].includes(effectiveRole);
+  // Acción temporalmente suspendida: la antigua llamada delete({query}) no es válida
+  // y el borrado masivo requiere una operación backend autorizada y auditable.
+  const canDelete = false;
 
   // Contar notificaciones antes de borrar
   const { data: count = 0 } = useQuery({
@@ -28,10 +30,7 @@ export default function BorradoMasivoNotificaciones({ organizationId }) {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      // Usar delete con query filter
-      await base44.entities.Notificacion.delete({ 
-        query: { organization_id: organizationId } 
-      });
+      throw new Error('Borrado masivo temporalmente deshabilitado hasta disponer de un comando backend seguro');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notificaciones'] });

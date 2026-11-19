@@ -35,9 +35,9 @@ const [init, activity, assignment, qa, qaEvidence, transition, miDia, activeUi, 
 }
 
 {
-  assert.match(activity, /action === 'RESUME'/);
+  assert.match(activity, /action === ['"]RESUME['"]/);
   assert.match(activity, /ActividadTecnica\.create/);
-  assert.match(activity, /action === 'PAUSE'/);
+  assert.match(activity, /action === ['"]PAUSE['"]/);
   assert.match(activity, /estado: nextSegmentState/);
   assert.doesNotMatch(activity, /ActividadTecnica\.update\([^)]*\{[\s\S]*estado:\s*'en_progreso'/);
   pass('PAUSE closes a segment and RESUME creates a new segment');

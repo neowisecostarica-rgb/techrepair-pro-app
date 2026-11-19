@@ -52,7 +52,7 @@ function SeccionCompacta({ icon: Icon, iconColor, titulo, count, children }) {
 }
 
 // ── Fila compacta genérica ────────────────────────────────────────────────────
-function FilaCompacta({ left, badge, badgeClass, fecha, sub }) {
+function FilaCompacta({ left, badge, badgeClass, fecha, sub = null }) {
   return (
     <div className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50/70 transition-colors group">
       {/* Concepto principal */}

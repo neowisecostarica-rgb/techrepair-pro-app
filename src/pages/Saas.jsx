@@ -473,23 +473,23 @@ function SaasContent() {
 
   return (
     <>
-      <div id="overview" className="min-h-screen bg-[#f6f8fb] p-8 scroll-mt-6">
+      <div id="overview" className="min-h-screen min-w-0 bg-[#f6f8fb] px-4 py-6 sm:p-6 lg:p-8 scroll-mt-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-8">
+          <div className="min-w-0">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 mb-1">{t('saas.consoleTitle','TRP Platform Console')}</h1>
             <p className="text-slate-600">{t('saas.consoleSubtitle','Administración de organizaciones, operación comercial y estado de plataforma')}</p>
             {user && (
-              <div className="flex items-center gap-2 mt-3">
+              <div className="flex flex-wrap items-center gap-2 mt-3">
                 <Badge className="bg-slate-800 text-white border-0">
                   {t('saas.platformAdmin','🔒 Administración de plataforma')}
                 </Badge>
-                <span className="text-sm text-slate-600 font-mono">{user.email}</span>
+                <span className="min-w-0 break-all text-sm text-slate-600 font-mono">{user.email}</span>
               </div>
             )}
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button
               onClick={() => base44.auth.logout()}
               variant="outline"

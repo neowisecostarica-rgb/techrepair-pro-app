@@ -1618,6 +1618,14 @@ Deno.serve(async (req) => {
       code: diagnosticCode,
       message: error?.message || String(error)
     });
+    const message = String(error?.message || "");
+    if (/Rate limit exceeded:\s*entity_list\b/i.test(message)) {
+      const retryAfter = Math.min(Math.max(Number(message.match(/Retry after\s+(\d+)s/i)?.[1]) || 60, 1), 120);
+      return Response.json(
+        { error: "Demasiadas consultas. Espera un momento antes de reintentar.", code: "ENTITY_LIST_RATE_LIMITED", retry_after_seconds: retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
     return jsonError("No se pudo completar la operacion de identidad", 500, diagnosticCode);
   }
 });

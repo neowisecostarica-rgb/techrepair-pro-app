@@ -253,3 +253,16 @@ Diagnóstico de bloqueo de bundling cerrado: los imports `../_shared/*` existent
 - Código: `d522311a47bfe85e4abfee8d83cb4b3929981879`, previo al apunte documental histórico; para estado actualizado usar checkpoint Base44 de 18-nov.
 - Enlace publicado: `https://tech-repair-pro-f473d080.base44.app`.
 - **PLAN CRITERIO:** cerrar por megabloques en MAIN, reutilizar controles probados, conservar inventario Compu Store y no repetir suites sin cambios. No declarar QA aprobado por el cliente en su nombre.
+
+## Actualización de continuidad — viernes 20-nov-2026 · Prioridades P0/P1 y protección del SOT
+
+**Este apartado es el corte operativo más reciente; los bloques históricos anteriores no se borran ni se reinterpretan.** Leer [TRP-CONTINUIDAD-P0-P1-2026-11-20.md](TRP-CONTINUIDAD-P0-P1-2026-11-20.md) para la matriz integral de producto y el handoff paralelo a la web comercial. La definición oficial del producto sigue siendo MB2 del 15-sep; OT/Expediente y flujo F0–F8 intocables.
+
+- **P0 código corregido:** React Query 429 conserva control de reintento y se repararon dos errores TS2339 de tipado en `src/lib/query-client.js`; `typecheck`, `lint`, `build` PASS. Controles de consultas OT 9/9 y backend 429 8/8 PASS en modelo/contrato. Fuente backend del checkpoint previo ya incluía deduplicación de contexto en `operationalGateway` y respuesta 429/Retry-After en tres gateways; la versión runtime aún requiere reconciliación. Ninguna función backend se editó en esta sesión.
+- **P0 auditoría:** test de concurrencia heredado estaba desfasado respecto a CAS por organización. Reemplazado el fixture del test (no writer productivo): 3/3 PASS de modelo, incluyendo escenario negativo sin CAS verdaderamente atómico que **duplica**. P0-AUD-01 #13 **NO-GO**, no existe verificación de unicidad durable ACID.
+- **P0 datos/OT:** 39 OTs históricas de Compu Store preservadas y visibles en captura autenticada reciente. El problema de cuota `entity_list` estaba probado en logs; el 403 de métricas financieras se investiga por separado. No se borró ni importó ningún registro.
+- **P0 QA y seguridad:** #12 fixture/identidad sintética, #15 Inventario SALES/OWNER, pruebas multitenant/roles, validación de efectos externos, E2E comercial y técnico, reconciliación backend/editor/publicado y autorización de release **PENDIENTES**. Sin Publish, infraestructura nueva, cobros, emails ni mutaciones de Compu Store.
+- **P1:** onboarding hacia primera OT, coherencia visual Hoy/Negocio/Operación, QA Super Admin, importación Excel multihoja en vista previa, reportes a escala (evitar truncamiento por límites) y contextualización de Calidad/Reciclaje sin borrar capacidades. Continúan en desarrollo/QA, no certificados en runtime.
+- **Roadmap:** MB3 branding/posicionamiento, MB4 packaging, MB5 web comercial en otro chat, MB6 piloto, MB7 runtime/cutover, MB8 QA humano E2E, MB9 publicación autorizada. No crear un roadmap paralelo ni inventar pricing.
+- **Regresiones:** SDK 58 firmas, identidad 7/7, autorización 9 grupos, CRM 8/8, flujo 16/16, comercial 12/12, inventario 22/22, venta 29/29, seguridad 7/7 + round2 13/13, sesión 10/10, Super Admin 5/5, policy 12/12, recepción 24/24, entrega 35/35, CAS modelo 3/3; todos PASS en fuente/fixtures. No confundir con QA autenticado.
+

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { transformSync } from 'esbuild';
+import { queryClientInstance } from '../src/lib/query-client.js';
 import {
   resolveIdentitySnapshot,
   resolveAuthorizedContext,
@@ -74,4 +75,9 @@ for (const file of files) {
 }
 assert.doesNotMatch(read('base44/functions/listWorkOrders/entry.ts'), /error:\s*error\.message/);
 pass('la lista OT no expone mensajes internos al cliente');
+const retry = queryClientInstance.getDefaultOptions().queries.retry;
+assert.equal(retry(0, { response: { status: 429 } }), false);
+assert.equal(retry(0, { response: { status: 500 } }), true);
+assert.equal(retry(1, { response: { status: 500 } }), false);
+pass('React Query no reintenta la cuota 429 ni duplica un segundo intento');
 console.log(`\n${checks}/${checks} controles backend rate-limit/aislamiento PASS`);

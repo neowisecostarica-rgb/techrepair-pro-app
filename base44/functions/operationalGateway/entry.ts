@@ -87,6 +87,7 @@ async function resolveAuthorization(base44, user, body) {
 
   return resolveAuthorizedContext(base44, user, {
     organizationHint: cleanId(body.organization_id || body.filter?.organization_id),
+    identitySnapshot: identity, // Misma identidad canónica: evita dos filtros de UserAccount adicionales.
   });
 }
 
@@ -751,6 +752,15 @@ Deno.serve(async (req) => {
     if (!result.ok) return fail(result.error, result.status, result.code);
     return Response.json(operation === 'read' ? { records: result.records } : result.record);
   } catch (error) {
+    const message = String(error?.message || '');
+    if (/Rate limit exceeded:\s*entity_list\b/i.test(message)) {
+      const retryAfter = Math.min(Math.max(Number(message.match(/Retry after\s+(\d+)s/i)?.[1]) || 60, 1), 120);
+      console.warn('[operationalGateway] entity_list quota exhausted', { retry_after_seconds: retryAfter });
+      return Response.json(
+        { error: 'Demasiadas consultas. Espera un momento antes de reintentar.', code: 'ENTITY_LIST_RATE_LIMITED', retry_after_seconds: retryAfter },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      );
+    }
     console.error('[operationalGateway]', error?.message || error);
     return fail('No fue posible completar la operacion operacional', 500, 'OPERATIONAL_INTERNAL_ERROR');
   }

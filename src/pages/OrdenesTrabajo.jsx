@@ -144,6 +144,7 @@ function OrdenesTrabajoContent() {
     },
     enabled: !!effectiveOrgId && showModal,
     staleTime: 2 * 60 * 1000, // Datos completos solo al abrir recepción/edición.
+    retry: false,
   });
 
   const { data: equipos = [] } = useQuery({
@@ -155,6 +156,7 @@ function OrdenesTrabajoContent() {
     },
     enabled: !!effectiveOrgId && showModal,
     staleTime: 2 * 60 * 1000, // Datos completos solo al abrir recepción/edición.
+    retry: false,
   });
 
   // branches y tecnicos aún desde base44 (no migrados)
@@ -162,6 +164,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['branches', effectiveOrgId],
     queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
     enabled: !!effectiveOrgId && showModal,
+    retry: false,
   });
 
   // P0.4: eliminadas queries de diagnosticos y ventas — no se usan en esta vista, causaban slowdown
@@ -185,6 +188,7 @@ function OrdenesTrabajoContent() {
       activo: true
     }, '-created_date', 50),
     enabled: !!effectiveOrgId && showModal,
+    retry: false,
   });
 
   useEffect(() => {

@@ -8,6 +8,13 @@
 
 > Leer este archivo al retomar TRP. No declarar PASS de runtime a partir de pruebas de código. No ejecutar Publish, deploy, creación de clientes/cobros o cambios sobre datos reales sin autorización expresa. No reabrir correcciones comerciales COM-001..004 salvo regresión demostrada.
 
+## Seguimiento 20-nov — consultas 500 de Compu Store (mitigación sin Publish)
+- Las **39 OTs** existentes de COMPU STORE COSTA RICA siguen en la entidad, sin pérdida acreditada; no reiniciar ni duplicar.
+- Logs reales `identityGateway` y `operationalGateway` a las 12:35/12:49 UTC: Base44 excedió `entity_list` (140 lecturas/60s por llamador), devolviendo 500; el 500 de `listWorkOrders` requiere cuerpo de respuesta específico para atribuirle idéntica causa. El 403 de métricas financieras es otro incidente.
+- Candidato de frontend optimizado: Órdenes reutiliza proyección de cliente/equipo y demora lecturas de formularios; sondeos de `MiDiaAdmin` y `ExpedienteOT` pasan de 10s a 60s; Órdenes a 120s; sin reintentos automáticos en esas lecturas. Regresión de presupuesto **9/9 PASS**, identidad **7/7**, autorización operacional **9 grupos**, navegación **8/8**, sesión **10/10**, seguridad round-2 **13/13**, typecheck/build PASS.
+- **Sin edición de backend** porque Base44 puede sincronizar funciones al escribir; sigue pendiente corregir doble lectura de membresía en `operationalGateway` y propagar HTTP 429. Sin Publish, redeploy manual, datos ni permisos modificados; QA de Compu Store y reconciliación runtime siguen **PENDIENTES**. P0-AUD-01 / E2E continúan **NO-GO**.
+- Evidencia detallada: [Diagnóstico OT 500 y mitigación de consultas del 20-nov](TRP-OT-500-READONLY-DIAGNOSIS-2026-11-20.md).
+
 ## Decisiones de Dirección General
 - Secuencia comercial-first: CRM → cotizaciones/proformas → inventario → ventas/cobros → OT recepción-entrega.
 - Beta privada condicionada a evidencia técnica y QA; no hay clientes reales en la fase descrita.

@@ -378,6 +378,8 @@ test('transitionWorkOrderStatus handler recovers the original lifecycle evidence
   };
   const auditEvents = [];
   const entities = {
+    // Synthetic organization CAS fixture: audits must acquire and release their lock.
+    Organization: entityStore({ Organization: [{ id: 'org-a', status: 'active' }] }).Organization,
     OrdenTrabajo: {
       async filter(query) { return matches(workOrder, query) ? [clone(workOrder)] : []; },
       async updateMany(query, update) {

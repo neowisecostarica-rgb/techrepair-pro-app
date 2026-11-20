@@ -37,7 +37,9 @@ for (const [key, next] of [
   ["queryKey: ['terminos'", "useEffect(() =>"],
 ]) {
   check(`${key} solo se consulta al abrir formulario`, () => {
-    assert.match(section(orders, key, next), /enabled:\s*!!effectiveOrgId && showModal/);
+    const formQuery = section(orders, key, next);
+    assert.match(formQuery, /enabled:\s*!!effectiveOrgId && showModal/);
+    assert.match(formQuery, /retry:\s*false/);
   });
 }
 check('órdenes espera 120 segundos, sin reintentos ni refrescos por foco', () => {

@@ -47,6 +47,16 @@ Deno.serve(async (req) => {
 
     return Response.json({ records, has_more: hasMore, next_cursor: nextCursor });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    const message = String(error?.message || '');
+    if (/Rate limit exceeded:\s*entity_list\b/i.test(message)) {
+      const retryAfter = Math.min(Math.max(Number(message.match(/Retry after\s+(\d+)s/i)?.[1]) || 60, 1), 120);
+      console.warn('[listWorkOrders] entity_list quota exhausted', { retry_after_seconds: retryAfter });
+      return Response.json(
+        { error: 'Demasiadas consultas. Espera un momento antes de reintentar.', code: 'ENTITY_LIST_RATE_LIMITED', retry_after_seconds: retryAfter },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      );
+    }
+    console.error('[listWorkOrders] unexpected failure', { code: error?.code || 'WORK_ORDER_LIST_FAILED', message: message.slice(0, 240) });
+    return Response.json({ error: 'No se pudieron consultar las órdenes de trabajo.', code: 'WORK_ORDER_LIST_FAILED' }, { status: 500 });
   }
 });

@@ -19,18 +19,35 @@ const test = (name, run) => groups.push({ name, run });
 
 function auditRuntime({ failCreate = false } = {}) {
   const events = [];
+  const organization = { id: 'org-a', status: 'active' };
   return {
     events,
     base44: {
       asServiceRole: {
         entities: {
+          Organization: {
+            filter: async query => query.id === organization.id ? [structuredClone(organization)] : [],
+            updateMany: async (query, mutation) => {
+              if (query.id !== organization.id) return { updated: 0 };
+              const matchesClaim = !query.$or || query.$or.some(clause => {
+                const requested = clause.audit_lock_token;
+                if (requested && typeof requested === 'object' && '$exists' in requested) {
+                  return Object.hasOwn(organization, 'audit_lock_token') === requested.$exists;
+                }
+                return organization.audit_lock_token === requested;
+              });
+              const matchesOwner = !Object.hasOwn(query, 'audit_lock_token')
+                || organization.audit_lock_token === query.audit_lock_token;
+              if (!matchesClaim || !matchesOwner) return { updated: 0 };
+              Object.assign(organization, structuredClone(mutation.$set || {}));
+              for (const key of Object.keys(mutation.$unset || {})) delete organization[key];
+              return { updated: 1 };
+            },
+          },
           AuditEvent: {
             filter: async query => events.filter(event => (
               event.organization_id === query.organization_id
-              && event.correlation_id === query.correlation_id
-              && event.event_type === query.event_type
-              && event.resource_type === query.resource_type
-              && event.resource_id === query.resource_id
+              && event.audit_operation_id === query.audit_operation_id
             )),
             create: async event => {
               if (failCreate) throw new Error('simulated shadow audit failure');

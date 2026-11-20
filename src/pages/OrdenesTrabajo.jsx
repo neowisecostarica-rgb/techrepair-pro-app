@@ -125,10 +125,11 @@ function OrdenesTrabajoContent() {
       return all.map(normalizarOrden);
     },
     enabled: !!effectiveOrgId,
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 60 * 1000,
+    refetchInterval: 120 * 1000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    retry: false, // Los errores del gateway no deben disparar solicitudes en cascada.
   });
 
   // P0.4: Se eliminó el loop de carga de estados de pago (N queries secuenciales).
@@ -141,8 +142,8 @@ function OrdenesTrabajoContent() {
       const data = await base44.entities.Cliente.filter({ organization_id: effectiveOrgId }, '-created_date', 500);
       return (data || []).map(normalizarCliente);
     },
-    enabled: !!effectiveOrgId,
-    staleTime: 2 * 60 * 1000, // P0.4: 2 min
+    enabled: !!effectiveOrgId && showModal,
+    staleTime: 2 * 60 * 1000, // Datos completos solo al abrir recepción/edición.
   });
 
   const { data: equipos = [] } = useQuery({
@@ -152,15 +153,15 @@ function OrdenesTrabajoContent() {
       const data = await base44.entities.Equipo.filter({ organization_id: effectiveOrgId }, '-created_date', 500);
       return (data || []).map(normalizarEquipo);
     },
-    enabled: !!effectiveOrgId,
-    staleTime: 2 * 60 * 1000, // P0.4: 2 min
+    enabled: !!effectiveOrgId && showModal,
+    staleTime: 2 * 60 * 1000, // Datos completos solo al abrir recepción/edición.
   });
 
   // branches y tecnicos aún desde base44 (no migrados)
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', effectiveOrgId],
     queryFn: () => base44.entities.Branch.filter({ organization_id: effectiveOrgId }, '-created_date', 200),
-    enabled: !!effectiveOrgId,
+    enabled: !!effectiveOrgId && showModal,
   });
 
   // P0.4: eliminadas queries de diagnosticos y ventas — no se usan en esta vista, causaban slowdown
@@ -173,6 +174,8 @@ function OrdenesTrabajoContent() {
       return accounts.filter(account => account.role === 'TECHNICIAN' && account.status === 'active');
     },
     enabled: !!effectiveOrgId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 
   const { data: terminos = [] } = useQuery({
@@ -181,7 +184,7 @@ function OrdenesTrabajoContent() {
       organization_id: effectiveOrgId,
       activo: true
     }, '-created_date', 50),
-    enabled: !!effectiveOrgId,
+    enabled: !!effectiveOrgId && showModal,
   });
 
   useEffect(() => {
@@ -385,13 +388,17 @@ function OrdenesTrabajoContent() {
     return tec ? (tec.user_email?.split('@')[0] || tec.user_email) : t('workOrders.techNotFound','Técnico no encontrado');
   };
 
-  const getClienteName = (clienteId) => {
-    const cliente = clientes.find(c => c.id === clienteId);
+  // listWorkOrders ya proyecta nombres seguros para la lista; no recargar
+  // Cliente/Equipo completos hasta que el usuario abra el formulario.
+  const getClienteName = (orden) => {
+    if (orden.cliente_nombre_completo) return orden.cliente_nombre_completo;
+    const cliente = clientes.find(c => c.id === orden.cliente_id);
     return cliente?.nombre_completo || cliente?.full_name || cliente?.name || t('workOrders.unidentifiedClient','Cliente sin identificar');
   };
 
-  const getEquipoInfo = (equipoId) => {
-    const equipo = equipos.find(e => e.id === equipoId);
+  const getEquipoInfo = (orden) => {
+    if (orden.equipo_display) return orden.equipo_display;
+    const equipo = equipos.find(e => e.id === orden.equipo_id);
     if (!equipo) return t('workOrders.unknownEquipment','Equipo desconocido');
     return `${equipo.marca || equipo.brand || ''} ${equipo.modelo || equipo.model || ''}`.trim() || t('workOrders.unidentifiedEquipment','Equipo sin identificar');
   };
@@ -523,12 +530,12 @@ function OrdenesTrabajoContent() {
                         <p className="text-xs font-mono text-teal-700 font-bold mb-1">
                           {orden.codigo_ot || 'OT-LEGACY'}
                         </p>
-                        <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
+                        <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden)}</h3>
                         <p className="text-sm text-slate-600 font-medium">
                           {orden.motivo_ingreso}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {getEquipoInfo(orden.equipo_id)}
+                          {getEquipoInfo(orden)}
                         </p>
                         <p className="text-xs text-slate-400">
                           {t('workOrders.intakeLabel','Ingreso')}: {formatDateTime(orden.fecha_ingreso || orden.created_date, locale)}
@@ -624,9 +631,9 @@ function OrdenesTrabajoContent() {
                             <p className="text-xs font-mono text-teal-700 font-bold mb-1">
                               {orden.codigo_ot || 'OT-LEGACY'}
                             </p>
-                            <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden.cliente_id)}</h3>
+                            <h3 className="font-bold text-slate-900 text-lg">{getClienteName(orden)}</h3>
                             <p className="text-sm text-slate-600 font-medium">{orden.motivo_ingreso}</p>
-                            <p className="text-xs text-slate-500">{getEquipoInfo(orden.equipo_id)}</p>
+                            <p className="text-xs text-slate-500">{getEquipoInfo(orden)}</p>
                             <p className="text-xs text-slate-400">
                               Ingreso: {formatDateTime(orden.fecha_ingreso || orden.created_date, locale)}
                             </p>

@@ -192,9 +192,14 @@ export async function resolveAuthorizedContext(base44, user, options = {}) {
     organizationHint = null,
     allowedRoles = [],
     requireOrganization = true,
+    // Un snapshot solo se reutiliza dentro de la misma solicitud, tras
+    // resolverlo con el SDK del usuario autenticado (no desde el payload).
+    identitySnapshot = null,
   } = options;
 
-  const identity = await resolveIdentitySnapshot(base44, user);
+  const identity = user?.id && identitySnapshot?.ok === true && identitySnapshot.user?.id === user.id
+    ? identitySnapshot
+    : await resolveIdentitySnapshot(base44, user);
   if (!identity.ok) return identity;
 
   if (identity.isSuperAdmin) {

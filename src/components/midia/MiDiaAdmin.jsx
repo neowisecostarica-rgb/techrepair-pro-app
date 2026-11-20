@@ -36,10 +36,11 @@ export default function MiDiaAdmin({ user, effectiveOrgId, effectiveRole }) {
       return ots;
     },
     enabled: !!effectiveOrgId,
-    staleTime: 30000,
-    refetchInterval: 10 * 1000,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    retry: false, // Evita duplicar solicitudes durante una saturación del gateway.
   });
 
   const { data: ventas = [] } = useQuery({

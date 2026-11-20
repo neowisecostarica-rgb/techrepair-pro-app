@@ -1,5 +1,9 @@
 # TRP — índice de documentación para continuidad
 
+**ESTADO ACTUAL Y VISIÓN COMPARTIDA (20-nov):** [TRP-CONTINUIDAD-P0-P1-2026-11-20.md](TRP-CONTINUIDAD-P0-P1-2026-11-20.md) — P0/P1, QA verificado vs pendiente, roadmap y handoff a la web comercial sin cambiar el SOT de producto.
+
+**DEFINICIÓN DE PRODUCTO INMUTABLE:** [TRP-PRODUCT-DEFINITION-MB2-2026-09-15.md](TRP-PRODUCT-DEFINITION-MB2-2026-09-15.md) — objeto OT/Expediente, F0–F8, roles y capacidades core/avanzadas. Mantener toda la visión.
+
 **Entrada para programación:** [AGENTS.md](../AGENTS.md), con reglas, gates, comandos y handoff obligatorio.
 
 **CANDIDATO BETA / QA VIGENTE (04-nov):** [TRP-MB-06-BETA-CANDIDATE-QA-2026-11-04.md](TRP-MB-06-BETA-CANDIDATE-QA-2026-11-04.md) — SHA conciliado, una matriz QA, bloqueos reales y release NO-GO.

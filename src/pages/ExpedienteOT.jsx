@@ -60,10 +60,11 @@ function ExpedienteOTContent() {
       return results[0] || null;
     },
     enabled: !!id && !!effectiveOrgId,
-    staleTime: 30 * 1000,
-    refetchInterval: 10 * 1000,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    retry: false, // Las mutaciones invalidan esta OT; no sondea cada 10 segundos.
   });
 
   // ── Carga paralela de datos relacionados ─────────────────────────────────
@@ -96,8 +97,9 @@ function ExpedienteOTContent() {
     queryFn: () => base44.entities.Venta.filter({ referencia_ot_id: id }),
     enabled: !!id && canReadCommercial,
     staleTime: 60 * 1000,
-    refetchInterval: 10 * 1000,
+    refetchInterval: 60 * 1000,
     refetchIntervalInBackground: false,
+    retry: false,
   });
 
   // ── Carga de cotizaciones ─────────────────────────────────────────────────

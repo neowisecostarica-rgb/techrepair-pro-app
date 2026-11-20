@@ -227,3 +227,11 @@
 - docs/TRP-SEC-002-TESTING-AGENT-CHECKPOINT-2026-11-03.md
 - docs/TRP-SEC-003-IDENTITY-TESTING-AGENT-2026-11-03.md
 - docs/TRP-MASTER-EXECUTION-PLAN-2026-09-16.md (roadmap histórico; esta auditoría posterior actualiza el estado de validación)
+- docs/TRP-OT-500-READONLY-DIAGNOSIS-2026-11-20.md (39 OTs Compu Store existentes; HTTP 500 listWorkOrders por resolver)
+
+## Actualización de continuidad — 2026-11-20 · Compu Store / Órdenes
+- Se constató **solo lectura** la existencia de **39 OTs de COMPU STORE COSTA RICA** (23-feb–05-ago 2026) y sus relaciones de 29 clientes y 36 equipos. La pantalla «Órdenes» muestra HTTP 500, **no una lista vacía**. No reiniciar, borrar ni duplicar OTs.
+- Endpoint involucrado: función Base44 `listWorkOrders`; el `catch` no registra la excepción. Logs Prod sin líneas en ventana consultada; Preview contiene una línea de error de respuesta sin detalle. Backend desplegado devuelve `truncated:true`; causa exacta del 500 **NO VERIFICADA**.
+- GitHub `techrepair-pro-app` y Render Neo Wise accesibles (ver documento); esta consulta de OTs usa Base44 directamente. No atribuir el fallo a Render.
+- Contratos actualizados por mocks/patrones desfasados (solo `scripts/`): seguridad 13/13, policy pipeline 12/12, impersonación 10/10 PASS, diff-check PASS. No son E2E ni certificación del 500.
+- **Siguiente acción P0:** respuesta exacta de una llamada autenticada `listWorkOrders` y correlación con el runtime, para corregir la excepción sin tocar datos reales. P0-AUD-01/SEC-QA permanecen **NO-GO**. Informe detallado: `docs/TRP-OT-500-READONLY-DIAGNOSIS-2026-11-20.md`.

@@ -251,3 +251,6 @@
 - GitHub `techrepair-pro-app` y Render Neo Wise accesibles (ver documento); esta consulta de OTs usa Base44 directamente. No atribuir el fallo a Render.
 - Contratos actualizados por mocks/patrones desfasados (solo `scripts/`): seguridad 13/13, policy pipeline 12/12, impersonación 10/10 PASS, diff-check PASS. No son E2E ni certificación del 500.
 - **Siguiente acción P0:** respuesta exacta de una llamada autenticada `listWorkOrders` y correlación con el runtime, para corregir la excepción sin tocar datos reales. P0-AUD-01/SEC-QA permanecen **NO-GO**. Informe detallado: `docs/TRP-OT-500-READONLY-DIAGNOSIS-2026-11-20.md`.
+
+## A1 — 23-nov-2026
+Baseline 3b5b74f; build/lint/typecheck configurado PASS; 7 de 13 suites fallidas históricas ahora PASS, 6 Enterprise aún FAIL. Tres scripts de contrato corregidos sin modificar código operativo: tokens públicos 8/8, automatizaciones 6/6, provisión 6/6. Ver continuidad A1 en `docs/TRP-BACKLOG-MASTER-2026-11-04.md`. No se ejecutó E2E autenticado ni se modificó backend, datos o permisos. NO-GO se mantiene.

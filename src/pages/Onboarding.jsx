@@ -15,7 +15,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import GuidedOnboardingWizard from '@/components/onboarding/GuidedOnboardingWizard';
 import { appParams } from '@/lib/app-params';
-import { progressKey, readProgress, saveProgress } from '@/components/onboarding/onboardingProgress';
+import { progressKey, readProgress, saveProgress, optionalProgressStorage } from '@/components/onboarding/onboardingProgress';
 
 export default function Onboarding() {
   const { toast } = useToast();
@@ -58,7 +58,7 @@ export default function Onboarding() {
       if (activeAccount) {
         const org = context.organizations?.find(o => o.id === activeAccount.organization_id);
         const key = progressKey(appParams.appId, context.user.id, activeAccount.organization_id);
-        const resumeStep = readProgress(window.localStorage, key);
+        const resumeStep = readProgress(optionalProgressStorage(), key);
         if (resumeStep && activeAccount.role === 'ORG_ADMIN' && activeAccount.status === 'active' && org?.status === 'active' && org?.provisioning_status === 'READY') {
           const branches = await base44.entities.Branch.filter({ organization_id: org.id, active: true }, '-created_date', 100);
           const primary = branches.filter(b => b.organization_id === org.id && b.active === true && b.is_primary === true);
@@ -161,7 +161,7 @@ export default function Onboarding() {
         throw new Error('PROVISIONING_UNCONFIRMED');
       }
       const key = progressKey(appParams.appId, user.id, result.organization.id);
-      saveProgress(window.localStorage, key, 'welcome');
+      saveProgress(optionalProgressStorage(), key, 'welcome');
       setWizardKey(key);
       setInitialStep('welcome');
       setPrimaryBranchId(result.branch.id);
@@ -286,7 +286,7 @@ export default function Onboarding() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="country">País *</Label>
                 <Select 
@@ -296,7 +296,7 @@ export default function Onboarding() {
                   value={selectedCountry}
                   onValueChange={setSelectedCountry}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="country">
                     <SelectValue placeholder="Selecciona" />
                   </SelectTrigger>
                   <SelectContent>
@@ -333,7 +333,7 @@ export default function Onboarding() {
                   value={selectedCurrency}
                   onValueChange={setSelectedCurrency}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="currency">
                     <SelectValue placeholder="Selecciona" />
                   </SelectTrigger>
                   <SelectContent>

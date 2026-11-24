@@ -1,5 +1,8 @@
 // Local UX state only. It must never authorize tenant access or a backend write.
 export const ONBOARDING_STEPS = ['welcome','business','team','first_ot'];
+export function optionalProgressStorage(browser = typeof window === "undefined" ? null : window) {
+  try { return browser?.localStorage ?? null; } catch { return null; }
+}
 export function progressKey(appId,userId,orgId){
   if (![appId,userId,orgId].every(x=>typeof x==='string'&&x.length>0)) return null;
   return 'trp:onboarding:v1:'+JSON.stringify([appId,userId,orgId]);

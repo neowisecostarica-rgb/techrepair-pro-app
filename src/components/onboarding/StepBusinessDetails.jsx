@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Loader2, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,13 +9,17 @@ import { updateIdentityOrganization } from '@/api/identity';
 export default function StepBusinessDetails({ effectiveOrgId, onSkip, onContinue }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
   const [form, setForm] = useState({
     telefono_negocio: '',
     direccion_comercial: '',
     email: '',
   });
 
-  const handleSave = async () => {
+  const handleSave = async (event) => {
+    event.preventDefault();
+    if (saveInFlight.current) return;
+    saveInFlight.current = true;
     setSaving(true);
     try {
       const changes = {};
@@ -30,12 +34,13 @@ export default function StepBusinessDetails({ effectiveOrgId, onSkip, onContinue
     } catch (err) {
       toast({ variant: 'destructive', title: 'No se pudo guardar', description: err?.message });
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <form className="space-y-6" onSubmit={handleSave}>
       <div>
         <h2 className="text-xl font-bold text-slate-900">Datos de tu negocio</h2>
         <p className="mt-1 text-sm text-slate-500">
@@ -53,6 +58,7 @@ export default function StepBusinessDetails({ effectiveOrgId, onSkip, onContinue
               id="telefono_negocio"
               className="pl-9"
               placeholder="Ej: +506 2222-3333"
+              disabled={saving}
               value={form.telefono_negocio}
               onChange={e => setForm({ ...form, telefono_negocio: e.target.value })}
             />
@@ -67,6 +73,7 @@ export default function StepBusinessDetails({ effectiveOrgId, onSkip, onContinue
               id="direccion_comercial"
               className="pl-9"
               placeholder="Ej: San José, Costa Rica"
+              disabled={saving}
               value={form.direccion_comercial}
               onChange={e => setForm({ ...form, direccion_comercial: e.target.value })}
             />
@@ -79,6 +86,7 @@ export default function StepBusinessDetails({ effectiveOrgId, onSkip, onContinue
             id="email"
             type="email"
             placeholder="contacto@minegocio.com"
+            disabled={saving}
             value={form.email}
             onChange={e => setForm({ ...form, email: e.target.value })}
           />
@@ -86,13 +94,13 @@ export default function StepBusinessDetails({ effectiveOrgId, onSkip, onContinue
       </div>
 
       <div className="flex gap-3">
-        <Button variant="outline" onClick={onSkip} className="flex-1" disabled={saving}>
+        <Button type="button" variant="outline" onClick={() => { if (!saveInFlight.current) onSkip(); }} className="flex-1" disabled={saving}>
           Saltar por ahora
         </Button>
-        <Button onClick={handleSave} className="flex-1" disabled={saving}>
+        <Button type="submit" className="flex-1" disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar y continuar'}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

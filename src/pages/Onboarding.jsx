@@ -15,6 +15,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import GuidedOnboardingWizard from '@/components/onboarding/GuidedOnboardingWizard';
 import { appParams } from '@/lib/app-params';
+import { matchesInitialTenant } from '@/components/onboarding/onboardingEntitlement';
 import { progressKey, readProgress, saveProgress, optionalProgressStorage } from '@/components/onboarding/onboardingProgress';
 
 export default function Onboarding() {
@@ -36,6 +37,7 @@ export default function Onboarding() {
   const hasCheckedRef = React.useRef(false);
   const isLinkingRef = React.useRef(false);
   const isCreatingOrgRef = React.useRef(false);
+  const pendingBootstrap = React.useRef(null);
 
   useEffect(() => {
     if (hasCheckedRef.current) return; // Ya ejecutado
@@ -49,6 +51,8 @@ export default function Onboarding() {
       const context = await getIdentityContext();
       if (!context?.user?.id || !Array.isArray(context.memberships)) throw new Error('IDENTITY_CONTEXT_UNAVAILABLE');
       setUser(context.user);
+      const expected = pendingBootstrap.current;
+      if (expected && !matchesInitialTenant(context, expected)) throw new Error('INITIAL_ENTITLEMENT_UNCONFIRMED');
       if (context.user?.is_super_admin) {
         window.location.href = createPageUrl('Saas');
         return;
@@ -58,11 +62,12 @@ export default function Onboarding() {
       if (activeAccount) {
         const org = context.organizations?.find(o => o.id === activeAccount.organization_id);
         const key = progressKey(appParams.appId, context.user.id, activeAccount.organization_id);
-        const resumeStep = readProgress(optionalProgressStorage(), key);
+        const resumeStep = expected ? 'welcome' : readProgress(optionalProgressStorage(), key);
         if (resumeStep && activeAccount.role === 'ORG_ADMIN' && activeAccount.status === 'active' && org?.status === 'active' && org?.provisioning_status === 'READY') {
           const branches = await base44.entities.Branch.filter({ organization_id: org.id, active: true }, '-created_date', 100);
           const primary = branches.filter(b => b.organization_id === org.id && b.active === true && b.is_primary === true);
-          if (primary.length !== 1) throw new Error('PRIMARY_BRANCH_UNCONFIRMED');
+          if (primary.length !== 1 || (expected && primary[0].id !== expected.branchId)) throw new Error('PRIMARY_BRANCH_UNCONFIRMED');
+          pendingBootstrap.current = null;
           setCreatedOrg(org);
           setEffectiveOrgId(org.id);
           setPrimaryBranchId(primary[0].id);
@@ -145,7 +150,7 @@ export default function Onboarding() {
 
     try {
       const companyName = e.target.company_name.value.trim();
-      if (!companyName || !selectedCountry || !selectedCurrency) {
+      if (!companyName || companyName.length > 240 || !selectedCountry || !selectedCurrency) {
         toast({ variant: 'destructive', title: 'Faltan datos requeridos', description: 'Completa los campos obligatorios antes de continuar.' });
         isCreatingOrgRef.current = false;
         setCreating(false);
@@ -157,9 +162,10 @@ export default function Onboarding() {
         country: selectedCountry,
         currency: selectedCurrency,
       });
-      if (!result?.success || !result?.readiness?.ready || !result?.organization?.id || !result?.branch?.id || result.branch.organization_id !== result.organization.id || result.branch.active !== true || result.branch.is_primary !== true || result.account?.role !== 'ORG_ADMIN' || result.account?.organization_id !== result.organization.id || result.account?.status !== 'active') {
+      if (!result?.success || !result?.readiness?.ready || !result?.organization?.id || !result?.branch?.id || result.branch.organization_id !== result.organization.id || result.branch.active !== true || result.branch.is_primary !== true || result.account?.role !== 'ORG_ADMIN' || result.account?.organization_id !== result.organization.id || result.account?.status !== 'active' || result.account?.user_id !== user.id || result.organization.status !== 'active' || result.organization.provisioning_status !== 'READY' || result.organization.plan !== 'basic' || result.organization.country !== selectedCountry || result.organization.currency !== selectedCurrency) {
         throw new Error('PROVISIONING_UNCONFIRMED');
       }
+      pendingBootstrap.current = { orgId: result.organization.id, branchId: result.branch.id, userId: user.id, country: selectedCountry, currency: selectedCurrency };
       const key = progressKey(appParams.appId, user.id, result.organization.id);
       saveProgress(optionalProgressStorage(), key, 'welcome');
       setWizardKey(key);
@@ -167,7 +173,7 @@ export default function Onboarding() {
       setPrimaryBranchId(result.branch.id);
       setCreatedOrg(result.organization);
       setEffectiveOrgId(result?.organization?.id || null);
-      setMode('wizard');
+      await checkUserStatus();
     } catch (err) {
       console.error('Error creating company:', err);
       toast({ variant: 'destructive', title: 'No se pudo confirmar la creación', description: 'Verifica el estado de tu cuenta antes de volver a crear el taller.' });
@@ -280,6 +286,7 @@ export default function Onboarding() {
               <Input
                 id="company_name"
                 name="company_name"
+                maxLength={240}
                 placeholder="Ej: Mi taller técnico"
                 required
                 disabled={creating}

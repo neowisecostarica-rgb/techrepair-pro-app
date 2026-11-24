@@ -198,3 +198,8 @@ No sumar `test:audit-concurrency-boundary` al conteo de pruebas de seguridad res
 ## Al cerrar cualquier sesión
 
 Actualizar primero `docs/TRP-AUDIT-MASTER-STATUS-2026-11-03.md` con hallazgos, pruebas, cambios y bloqueos; enlazar documentos específicos; crear checkpoint Base44 para que el progreso sea restaurable. Conservar GitHub y Base44 reconciliados. Escribir **PENDIENTE / NO VERIFICADO** cuando falte evidencia.
+
+
+## RF-HANDOFF-001 — continuidad obligatoria (2026-11-24)
+
+Antes de emitir un informe, planificar o modificar código, leer docs/NEOWISE-RF-HANDOFF-2026-11-24.md y contrastar con el backlog/checkpoint vigente y CEOs (6a6a5193a918484256ebe9af). Directrices comerciales del 24/11 prevalecen sobre propuestas anteriores, sin sustituir contratos, QA ni autorización de publicación. En Menús QR reportar expresamente nuevas tarifas y estado del cutover. Preservar historial, verificar evidencia y registrar discrepancias.

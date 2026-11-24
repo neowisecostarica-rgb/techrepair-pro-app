@@ -254,3 +254,6 @@
 
 ## A1 — 23-nov-2026
 Baseline 3b5b74f; build/lint/typecheck configurado PASS; 7 de 13 suites fallidas históricas ahora PASS, 6 Enterprise aún FAIL. Tres scripts de contrato corregidos sin modificar código operativo: tokens públicos 8/8, automatizaciones 6/6, provisión 6/6. Ver continuidad A1 en `docs/TRP-BACKLOG-MASTER-2026-11-04.md`. No se ejecutó E2E autenticado ni se modificó backend, datos o permisos. NO-GO se mantiene.
+
+## A2 — 23-nov-2026
+Seis suites Enterprise recuperadas (53/53 controles estáticos); regresión completa de package.json 56/56 suites PASS, lint y typecheck configurado PASS. Correcciones solo en scripts de pruebas, no backend. Revisión de código detectó riesgos potenciales de replay y alcance en Enterprise, pendientes de reproducción sintética y remediación autorizada. Ver backlog maestro A2. Gates P0 y NO-GO siguen vigentes.

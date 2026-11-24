@@ -1,0 +1,9 @@
+# A4.2 — Integration gate (NO-GO)
+The isolated replay proof candidate validates canonical tenant, branch, actor, action, resource, operation key and SHA-256 of normalized effective payload against a trusted committed receipt. It must NOT be fed client-supplied receipt or actor. Legacy replay without proof must reconcile, not silently succeed. Candidate returns decision only, never raw record.
+Integration requirements:
+1. Resolve canonical actor and branch; validate requested branch belongs to active tenant; reject null branch for branch-scoped roles. Resolve entity and entitlement before replay.
+2. Construct effective payload from validated fields and defaults for each action. Include every mutation-relevant field; bind operation key to immutable resource, actor and action. For OPEN allocate stable resource ID through durable reservation, not random per retry.
+3. Use atomic persistent unique operation reservation per tenant/key, distinguish PENDING/COMMITTED/FAILED_UNCERTAIN, reconcile interrupted business mutation before returning success; no duplicate side effects. Audit receipt must be verified from trusted ledger. Audit ledger alone cannot make Base44 and PostgreSQL one transaction.
+4. Store only redacted audit data; fingerprints of sensitive low-entropy payloads require threat review and possibly keyed HMAC. No secrets in logs; output positive projection.
+5. Test synthetic concurrent requests across processes, failure after business write and before audit, retries after lost response, legacy keys, branch/actor/action/payload conflicts, tenant separation and rollback. Preserve existing records.
+No PostgreSQL binary identified in sandbox PATH. Existing PostgreSQL candidate and SQLite model are not runtime evidence. No provider or database created, no secrets read or changed. Explicit backend synchronization approval and isolated environment required.

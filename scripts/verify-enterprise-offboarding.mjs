@@ -7,7 +7,7 @@ const access=read('base44/entities/OffboardingAccessItem.jsonc');
 const page=read('src/pages/EnterpriseOffboarding.jsx');
 const checks=[
  ['records backend-owned', /"create":false/.test(entity)&&/"update":false/.test(access)],
- ['open is idempotent', /operation_key/.test(fn)&&/idempotent:true/.test(fn)],
+ ['open is idempotent', /operation_key/.test(fn)&&/idempotent:\s*true/.test(fn)],
  ['duplicate open case blocked', /OFFBOARDING_ALREADY_OPEN/.test(fn)],
  ['close checks active custody', /AssetAssignment\.filter/.test(fn)&&/OFFBOARDING_NOT_READY/.test(fn)],
  ['close checks access confirmations', /pending_access/.test(fn)],

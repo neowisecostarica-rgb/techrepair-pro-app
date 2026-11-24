@@ -260,3 +260,6 @@ Seis suites Enterprise recuperadas (53/53 controles estáticos); regresión comp
 
 ## A3.1 — 23-nov-2026
 Dashboard y Finanzas corregidos para evitar caché financiera compartida por rol/sucursal, falsas métricas cero y lecturas sin sucursal asignada. Nuevo contrato 8/8; OT cuota 8/8, presupuesto 9/9, flujo comercial 16/16, venta atómica 29/29, build/typecheck/lint PASS. QA autenticado y reconciliación runtime pendientes; no cierre del incidente histórico 403/500 ni autorización Publish. Ver backlog maestro A3.1.
+
+## A4.1 — 23-nov-2026
+Tres defectos de replay Enterprise reproducidos localmente; candidatos aislados 9/9 controles PASS, sin integración ni despliegue. Ledger CAS 3/3 (incluye reproducción del defecto), candidato SQL 4/4 y SQLite modelo concurrente PASS. P0 de replay y #13 abiertos; QA remoto pendiente. Ver backlog maestro A4.1.

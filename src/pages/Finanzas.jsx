@@ -118,7 +118,7 @@ function FinanzasContent() {
   });
 
   const { data: ventasPagadas = [], isError: salesError, isLoading: loadingSales, refetch: retrySales } = useQuery({
-    queryKey: ['finanzas-linea', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
+    queryKey: ['finanzas-linea', effectiveOrgId, effectiveRole, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId, estado: 'pagada' };
       if (branchIdFijo) query.branch_id = branchIdFijo;

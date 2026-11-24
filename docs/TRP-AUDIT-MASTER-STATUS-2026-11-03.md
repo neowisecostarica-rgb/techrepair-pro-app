@@ -257,3 +257,6 @@ Baseline 3b5b74f; build/lint/typecheck configurado PASS; 7 de 13 suites fallidas
 
 ## A2 — 23-nov-2026
 Seis suites Enterprise recuperadas (53/53 controles estáticos); regresión completa de package.json 56/56 suites PASS, lint y typecheck configurado PASS. Correcciones solo en scripts de pruebas, no backend. Revisión de código detectó riesgos potenciales de replay y alcance en Enterprise, pendientes de reproducción sintética y remediación autorizada. Ver backlog maestro A2. Gates P0 y NO-GO siguen vigentes.
+
+## A3.1 — 23-nov-2026
+Dashboard y Finanzas corregidos para evitar caché financiera compartida por rol/sucursal, falsas métricas cero y lecturas sin sucursal asignada. Nuevo contrato 8/8; OT cuota 8/8, presupuesto 9/9, flujo comercial 16/16, venta atómica 29/29, build/typecheck/lint PASS. QA autenticado y reconciliación runtime pendientes; no cierre del incidente histórico 403/500 ni autorización Publish. Ver backlog maestro A3.1.

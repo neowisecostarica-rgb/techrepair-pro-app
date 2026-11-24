@@ -26,3 +26,22 @@ test("blocked localStorage getter is optional and never throws",()=>{
  const s=storage();assert.equal(optionalProgressStorage({localStorage:s}),s);
  assert.equal(readProgress(optionalProgressStorage(browser),progressKey("a","u","o")),null);
 });
+
+test('optional browser storage is used at all onboarding progress call sites',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ for(const file of ['src/pages/Onboarding.jsx','src/components/onboarding/GuidedOnboardingWizard.jsx']){
+  const source=await readFile(new URL('../'+file,import.meta.url),'utf8');
+  assert.ok(source.includes('optionalProgressStorage()'));
+  assert.ok(!source.includes('window.localStorage'));
+ }
+});
+test('business details uses native form validation and synchronous save guard',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const s=await readFile(new URL('../src/components/onboarding/StepBusinessDetails.jsx',import.meta.url),'utf8');
+ assert.match(s,/<form[^>]+onSubmit=\{handleSave\}/);
+ assert.match(s,/type="email"/);
+ assert.match(s,/if \(saveInFlight.current\) return;\s*saveInFlight.current = true;/);
+ assert.match(s,/finally\s*\{\s*saveInFlight.current = false;/);
+ assert.match(s,/type="button"[^>]+if \(!saveInFlight.current\) onSkip\(\)/);
+ assert.match(s,/type="submit"/);
+});

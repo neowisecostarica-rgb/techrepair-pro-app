@@ -347,3 +347,8 @@ Idea de Dirección: invitar a los técnicos de TRP a visitar y seguir la cuenta 
 - Comercial 12/12 y venta atómica 29/29 PASS, modelos/contratos. No se modificó ningún documento existente, esquema, función backend, permisos ni plan. No se ha certificado operación internacional.
 - Pendiente A5.3d: inventariar flujos monetarios y fixtures históricos, preparar integración por fases; autorización antes de sincronizar funciones/esquemas. NO-GO general e internacional. Preservar A4.3, #12/#13/#15, 403/500 y A6.1.
 - Skills: base44-remote-dev consultada y ejecutada; neowise-web-qa y neowise-zeus-orchestrator como metodología documental recuperada en A1, no activación nativa confirmada.
+
+## A5.3d — Inventario de flujos y revisión histórica · 2026-11-23
+- Baseline e977365. Matriz de diez frentes en docs/TRP-A53-MONETARY-INTEGRATION-MATRIX-2026-11-23.md. Hallazgos P0 internacional: 13% fijo en POS/commercialIntegrity; importador elimina símbolos y deduce separadores sin autoridad monetaria. No alterar cálculo o importación productiva.
+- Candidato aislado scripts/candidates/monetaryHistoryReview.mjs, solo propuesta en memoria, 19/19 pruebas PASS. No reetiqueta históricos por moneda actual o símbolo; exige evidencia revisada por documento/tenant, preserva importes y snapshot existente; discrepancias a revisión. Contrato A5.3c 23/23 PASS repetido. No backend, schemas, datos, cobros ni Publish.
+- Skills: base44-remote-dev consultada y ejecutada; neowise-web-qa y neowise-zeus-orchestrator metodología documental previa. A5.3e pendiente autorización explícita de backend/esquemas y entorno sintético. NO-GO general/internacional; A4.3 y A6.1 preservados.

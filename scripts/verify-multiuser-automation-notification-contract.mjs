@@ -34,7 +34,8 @@ test('post-sale side effects require authenticated authorized context', () => {
 });
 
 test('notification materialization is authenticated, scoped, deduplicated and audited', () => {
-  for (const fragment of ['base44.auth.me()', 'resolveAuthorizedContext', 'authorizeRecordBranch', 'eventKey', 'source_event_id', 'appendAuditEvent', "commandPolicyId: 'CP-NOTIF-001'"]) assert.ok(command.includes(fragment), fragment);
+  for (const fragment of ['base44.auth.me()', 'resolveAuthorizedContext', 'authorizeRecordBranch', 'eventKey', 'source_event_id', 'appendAuditEvent']) assert.ok(command.includes(fragment), fragment);
+  assert.match(command, /commandPolicyId:\s*['"]CP-NOTIF-001['"]/);
 });
 
 test('generic CRUD and browser inference cannot produce workflow notifications', () => {

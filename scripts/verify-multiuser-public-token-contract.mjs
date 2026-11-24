@@ -33,7 +33,8 @@ await check('revocation and one-use consumption fail closed', () => {
 
 await check('issuer is authenticated, capability scoped and audited', () => {
   const source = read('base44/functions/issuePublicDocumentToken/entry.ts');
-  for (const fragment of ['base44.auth.me()', 'resolveAuthorizedContext', 'authorization.capabilities.includes', 'authorizeRecordBranch', 'issuePublicTokenMetadata', 'appendAuditEvent', "'PUBLIC_TOKEN_REVOKED'", "'PUBLIC_TOKEN_ISSUED'"]) assert.ok(source.includes(fragment), fragment);
+  for (const fragment of ['base44.auth.me()', 'resolveAuthorizedContext', 'authorization.capabilities.includes', 'authorizeRecordBranch', 'issuePublicTokenMetadata', 'appendAuditEvent', "PUBLIC_TOKEN_REVOKED", "PUBLIC_TOKEN_ISSUED"]) assert.ok(source.includes(fragment), fragment);
+  assert.match(source, /eventType:\s*action\s*===\s*['"]revoke['"]\s*\?\s*['"]PUBLIC_TOKEN_REVOKED['"]\s*:\s*['"]PUBLIC_TOKEN_ISSUED['"]/);
 });
 
 await check('public readers enforce exact token authority and project no bearer', () => {

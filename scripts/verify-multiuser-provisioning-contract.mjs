@@ -70,15 +70,17 @@ test('validator denies missing artifacts and READY marker', async () => {
 
 test('both identity entry paths use shared seed, validator and provisioning audit', async () => {
   const source = await readFile(new URL('../base44/functions/identityGateway/entry.ts', import.meta.url), 'utf8');
-  assert.equal((source.match(/seedBaselineCategories\(/g) || []).length, 2);
+  assert.equal((source.match(/await\s+seedBaselineCategories\(/g) || []).length, 2);
   assert.ok(source.includes('finalizeProvisioning'));
-  assert.ok(source.includes("eventType: 'TENANT_PROVISIONED'"));
+  assert.match(source, /eventType:\s*['"]TENANT_PROVISIONED['"]/);
   assert.ok(source.includes('validateTenantReadiness'));
 });
 
 test('SUPPORT migration is dry-run by default, explicit, auditable and recoverable', async () => {
   const source = await readFile(new URL('../base44/functions/migrateSupportRole/entry.ts', import.meta.url), 'utf8');
-  for (const fragment of ["const apply = body.apply === true", "role: 'SUPPORT'", "role: 'CUSTOMER_SERVICE'", 'appendAuditEvent', 'ROLE_MIGRATION_RECOVERY_REQUIRED', 'operation_key requerido']) assert.ok(source.includes(fragment), fragment);
+  for (const fragment of ["const apply = body.apply === true", 'appendAuditEvent', 'ROLE_MIGRATION_RECOVERY_REQUIRED', 'operation_key requerido']) assert.ok(source.includes(fragment), fragment);
+  assert.match(source, /role:\s*['"]SUPPORT['"]/);
+  assert.match(source, /role:\s*['"]CUSTOMER_SERVICE['"]/);
   assert.ok(!source.includes('Deno.cron'));
 });
 

@@ -22,6 +22,7 @@ export default function Onboarding() {
   const [creating, setCreating] = useState(false);
   const [createdOrg, setCreatedOrg] = useState(null);
   const [effectiveOrgId, setEffectiveOrgId] = useState(null);
+  const [primaryBranchId, setPrimaryBranchId] = useState(null);
   
   // Estados controlados para Selects (P0: hardening)
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -40,7 +41,9 @@ export default function Onboarding() {
 
   const checkUserStatus = async () => {
     try {
+      setMode('checking');
       const context = await getIdentityContext();
+      if (!context?.user?.id || !Array.isArray(context.memberships)) throw new Error('IDENTITY_CONTEXT_UNAVAILABLE');
       setUser(context.user);
       if (context.user?.is_super_admin) {
         window.location.href = createPageUrl('Saas');
@@ -62,7 +65,8 @@ export default function Onboarding() {
         return;
       }
 
-      const invitation = context.pendingInvitations?.[0];
+      const invitation = context.pendingInvitations?.length === 1 ? context.pendingInvitations[0] : null;
+      if (context.pendingInvitations?.length > 1) { setMode('multiple_invitations'); return; }
       if (invitation) {
         if (isLinkingRef.current) {
           return;
@@ -95,7 +99,7 @@ export default function Onboarding() {
       setMode('orphaned_user');
     } catch (err) {
       console.error('Error checking user status:', err);
-      setMode('orphaned_user');
+      setMode('check_error');
     }
   };
 
@@ -134,14 +138,18 @@ export default function Onboarding() {
         country: selectedCountry,
         currency: selectedCurrency,
       });
-      isCreatingOrgRef.current = false;
-      setCreatedOrg(result?.organization || null);
+      if (!result?.success || !result?.readiness?.ready || !result?.organization?.id || !result?.branch?.id || result.branch.organization_id !== result.organization.id || result.branch.active !== true || result.branch.is_primary !== true || result.account?.role !== 'ORG_ADMIN' || result.account?.organization_id !== result.organization.id || result.account?.status !== 'active') {
+        throw new Error('PROVISIONING_UNCONFIRMED');
+      }
+      setPrimaryBranchId(result.branch.id);
+      setCreatedOrg(result.organization);
       setEffectiveOrgId(result?.organization?.id || null);
       setMode('wizard');
     } catch (err) {
-      console.error('❌ Error creating company:', err);
-      isCreatingOrgRef.current = false;
-      toast({ variant: 'destructive', title: 'No se pudo crear la empresa', description: err.message });
+      console.error('Error creating company:', err);
+      toast({ variant: 'destructive', title: 'No se pudo confirmar la creación', description: 'Verifica el estado de tu cuenta antes de volver a crear el taller.' });
+      setMode('check_error');
+    } finally {
       isCreatingOrgRef.current = false;
       setCreating(false);
     }
@@ -178,7 +186,23 @@ export default function Onboarding() {
       <GuidedOnboardingWizard
         organization={createdOrg}
         effectiveOrgId={effectiveOrgId}
+        primaryBranchId={primaryBranchId}
       />
+    );
+  }
+
+  if (mode === 'check_error' || mode === 'multiple_invitations') {
+    return (
+      <div className="min-h-screen bg-[#f6f8fb] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-xl">
+          <CardContent className="p-8 space-y-4 text-center">
+            <h2 className="text-xl font-semibold">{mode === 'multiple_invitations' ? 'Varias invitaciones pendientes' : 'No pudimos verificar tu cuenta'}</h2>
+            <p role="alert" className="text-sm text-slate-600">{mode === 'multiple_invitations' ? 'Confirma con tu administrador cuál invitación corresponde antes de continuar.' : 'Tu cuenta no se ha declarado desactivada. Verifica de nuevo antes de crear otro taller.'}</p>
+            <Button className="w-full" onClick={checkUserStatus}>Verificar de nuevo</Button>
+            <Button className="w-full" variant="ghost" onClick={() => base44.auth.logout()}>Cerrar sesión</Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -231,7 +255,7 @@ export default function Onboarding() {
               <Input
                 id="company_name"
                 name="company_name"
-                placeholder="Ej: Compu Store Costa Rica"
+                placeholder="Ej: Mi taller técnico"
                 required
                 disabled={creating}
               />
@@ -303,7 +327,7 @@ export default function Onboarding() {
 
             <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
               <p className="text-sm text-teal-900">
-                <strong>Serás el administrador principal</strong> de esta empresa con acceso completo a todas las funciones.
+                <strong>Serás el administrador principal</strong> de esta empresa con acceso a las funciones habilitadas para tu plan.
               </p>
             </div>
 
@@ -327,7 +351,7 @@ export default function Onboarding() {
             </Button>
             
             <p className="text-xs text-center text-slate-500 mt-2">
-              Si refrescas la página, no se duplicará tu empresa
+              Si la creación se interrumpe, verifica tu cuenta antes de reintentar.
             </p>
           </form>
         </CardContent>

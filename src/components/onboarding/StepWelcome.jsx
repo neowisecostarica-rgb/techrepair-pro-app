@@ -8,7 +8,7 @@ export default function StepWelcome({ organizationName, onContinue }) {
   const autoConfigured = [
     { icon: Building2, label: 'Sucursal Principal', detail: 'Lista para recibir equipos' },
     { icon: Package, label: '5 categorías de inventario', detail: 'Servicios, Repuestos, Equipos, Accesorios, Reciclaje' },
-    { icon: Users, label: 'Tu cuenta de administrador', detail: 'Acceso completo a todas las funciones' },
+    { icon: Users, label: 'Tu cuenta de administrador', detail: 'Funciones habilitadas según tu plan' },
   ];
 
   return (

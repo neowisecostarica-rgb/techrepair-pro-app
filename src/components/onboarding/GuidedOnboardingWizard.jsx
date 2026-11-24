@@ -8,7 +8,7 @@ import StepFirstRecepcion from './StepFirstRecepcion';
 
 const STEP_ORDER = ['welcome', 'business', 'team', 'first_ot'];
 
-export default function GuidedOnboardingWizard({ organization, effectiveOrgId }) {
+export default function GuidedOnboardingWizard({ organization, effectiveOrgId, primaryBranchId }) {
   const [step, setStep] = useState('welcome');
 
   const currentIndex = STEP_ORDER.indexOf(step);
@@ -40,6 +40,7 @@ export default function GuidedOnboardingWizard({ organization, effectiveOrgId })
             {step === 'team' && (
               <StepInviteTeam
                 effectiveOrgId={effectiveOrgId}
+                primaryBranchId={primaryBranchId}
                 onSkip={goSkip}
                 onContinue={goNext}
               />

@@ -16,10 +16,11 @@ const ROLES = [
   { value: 'CUSTOMER_SERVICE', label: 'Servicio al cliente' },
 ];
 
-export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
+export default function StepInviteTeam({ effectiveOrgId, primaryBranchId, onSkip, onContinue }) {
   const { t } = useI18n();
   const { toast } = useToast();
   const [inviting, setInviting] = useState(false);
+  const inviteInFlight = React.useRef(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('TECHNICIAN');
 
@@ -28,21 +29,26 @@ export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
       onContinue();
       return;
     }
+    if (inviteInFlight.current) return;
+    if (!primaryBranchId || !effectiveOrgId) { toast({variant:'destructive',title:'Sucursal no verificada',description:'Puedes continuar e invitar a tu equipo desde Configuración.'}); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { toast({variant:'destructive',title:'Correo inválido'}); return; }
+    inviteInFlight.current = true;
     setInviting(true);
     try {
       const response = await base44.functions.invoke('manageOrgUser', {
         action: 'invite',
         organizationId: effectiveOrgId,
-        data: { user_email: email.trim().toLowerCase(), role },
+        data: { user_email: email.trim().toLowerCase(), role, branch_id: primaryBranchId },
       });
       if (!response?.data?.success) {
         throw new Error(response?.data?.error || 'No se pudo invitar');
       }
-      toast({ title: 'Invitación enviada', description: `${email.trim()} recibirá un correo para unirse.` });
+      toast({ title: 'Invitación registrada', description: 'El estado de la invitación se puede consultar en Configuración.' });
       onContinue();
     } catch (err) {
       toast({ variant: 'destructive', title: 'No se pudo invitar', description: err?.message });
     } finally {
+      inviteInFlight.current = false;
       setInviting(false);
     }
   };
@@ -53,7 +59,7 @@ export default function StepInviteTeam({ effectiveOrgId, onSkip, onContinue }) {
         <h2 className="text-xl font-bold text-slate-900">{t('preGo.inviteTeam','Invita a tu equipo')}</h2>
         <p className="mt-1 text-sm text-slate-500">
           TRP funciona mejor cuando tu equipo opera desde la misma plataforma.
-          Invita al menos a un técnico para recibir y diagnosticar equipos.
+          Si trabajas solo, puedes continuar sin invitar a nadie.
           Puedes invitar a más personas después.
         </p>
       </div>

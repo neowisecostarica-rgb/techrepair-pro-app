@@ -386,3 +386,8 @@ Idea de Dirección: invitar a los técnicos de TRP a visitar y seguir la cuenta 
 - Laboratorio 6b05082dcec60a91bcc0a9a5 listo, 2 organizaciones, 3 sucursales, 3 clientes sintéticos; consulta posterior confirma que las organizaciones reales del principal permanecen separadas. Sin publicación.
 - Corrección portátil lectura OT en laboratorio: 340f823, checkpoint 6b050aa138d2846c714c2c5e. Contrato records, errores explícitos y paginación segura; 130/130 pruebas. No promovida aún.
 - Cuarentena exclusiva laboratorio: 5fc7068, invitaciones bloqueadas, correos OT suprimidos; 207/207 pruebas adicionales de código/mocks. Total 337/337; lint/typecheck/build PASS. NO promover cuarentena a principal. Falta reconciliación runtime, identidades nativas, E2E y ledger durable; 403 financiero pendiente. Mantener NO-GO.
+
+## PROMOTION.1 — Transferencia selectiva QA-FUNC.1 · 2026-11-23
+- Autorización dirección: trasladar mejoras comprobadas a TRP principal, sin Publish en este bloque. Respaldo previo 6b0510e9ad9df38bf1aab2bc (c400eb7).
+- Aplicado diff exacto del laboratorio 340f823: 7 archivos frontend/pruebas; Dashboard, OT, Cola, Kanban, helper paginación y dos pruebas. No backend, esquemas, secretos, workflows ni registros modificados. 30/30 regresiones sobre principal, lint/typecheck/build PASS. Pendiente QA visual y publicación autorizada; no afirmar runtime público actualizado.
+- No trasladar cuarentena QA-FUNC.2. Finanzas QA-FUNC.3 permanece en laboratorio por falta de sesión real. P0 auditoría durable/E2E y lanzamiento siguen abiertos.

@@ -42,6 +42,6 @@ test('business details uses native form validation and synchronous save guard',a
  assert.match(s,/type="email"/);
  assert.match(s,/if \(saveInFlight.current\) return;\s*saveInFlight.current = true;/);
  assert.match(s,/finally\s*\{\s*saveInFlight.current = false;/);
- assert.match(s,/type="button"[^>]+if \(!saveInFlight.current\) onSkip\(\)/);
+ assert.match(s,/type="button".*onClick=\{\(\) => \{ if \(!saveInFlight.current\) onSkip\(\); \}\}/);
  assert.match(s,/type="submit"/);
 });

@@ -2,6 +2,7 @@ import { useI18n } from '@/i18n';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { collectWorkOrderPages } from '@/lib/workOrderPagination';
 import { listIdentityAccounts } from '@/api/identity';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,22 +38,17 @@ function ColaRevisionContent() {
   const { toast } = useToast();
 
   // ── Cargar OTs directamente desde Base44 SDK (mismo contrato que OrdenesTrabajo) ──
-  const { data: todasOrdenes = [], isLoading: isLoadingOrdenes } = useQuery({
+  const { data: todasOrdenes = [], isLoading: isLoadingOrdenes, isError: ordersError, refetch: retryOrders } = useQuery({
     queryKey: ['ordenes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      let cursor = null;
-      const all = [];
-      do {
-        const response = await base44.functions.invoke('listWorkOrders', { limit: 200, ...(cursor ? { cursor } : {}) });
-        const page = response.data || {};
-        all.push(...(page.records || []));
-        cursor = page.has_more ? page.next_cursor : null;
-      } while (cursor);
+      const all = await collectWorkOrderPages(payload => base44.functions.invoke('listWorkOrders', payload));
       return all;
     },
     enabled: !!effectiveOrgId,
-    staleTime: 30 * 1000,
+    staleTime: 60 * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const ordenesCola = todasOrdenes.filter(o => o.estado === 'EN_COLA_REVISION');
@@ -152,6 +148,9 @@ function ColaRevisionContent() {
     asignarMutation.mutate({ ordenId: selectedOT.id, tecnicoId: tecnicoSeleccionado });
   };
 
+  if (ordersError) {
+    return <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">No se pudieron consultar las órdenes de revisión. <Button variant="outline" onClick={() => retryOrders()}>Reintentar</Button></div>;
+  }
   if (isLoadingOrdenes) {
     return (
       <div className="flex items-center justify-center py-24">

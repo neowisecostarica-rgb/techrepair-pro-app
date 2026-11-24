@@ -3,6 +3,7 @@ import { formatDateTime } from '@/i18n/format';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { collectWorkOrderPages } from '@/lib/workOrderPagination';
 import { listIdentityAccounts } from '@/api/identity';
 
 
@@ -114,14 +115,7 @@ function OrdenesTrabajoContent() {
     queryKey: ['ordenes', effectiveOrgId],
     queryFn: async () => {
       if (!effectiveOrgId) return [];
-      let cursor = null;
-      const all = [];
-      do {
-        const response = await base44.functions.invoke('listWorkOrders', { limit: 200, ...(cursor ? { cursor } : {}) });
-        const page = response.data || {};
-        all.push(...(page.records || []));
-        cursor = page.has_more ? page.next_cursor : null;
-      } while (cursor);
+      const all = await collectWorkOrderPages(payload => base44.functions.invoke('listWorkOrders', payload));
       return all.map(normalizarOrden);
     },
     enabled: !!effectiveOrgId,

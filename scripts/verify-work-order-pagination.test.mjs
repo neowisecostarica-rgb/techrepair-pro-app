@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {collectWorkOrderPages} from '../src/lib/workOrderPagination.js';
+const page=(records,has_more=false,next_cursor=null)=>({data:{records,has_more,next_cursor}});
+test('canonical records shown in dashboard and workshop',async()=>assert.deepEqual(await collectWorkOrderPages(async()=>page([{id:'ot-1'}])),[{id:'ot-1'}]));
+test('empty result is only valid when backend confirms it',async()=>assert.deepEqual(await collectWorkOrderPages(async()=>page([])),[]));
+test('two pages preserve records and cursor',async()=>{const calls=[];const rows=await collectWorkOrderPages(async p=>{calls.push(p);return p.cursor?page([{id:'b'}]):page([{id:'a'}],true,'next')});assert.deepEqual(rows,[{id:'a'},{id:'b'}]);assert.deepEqual(calls,[{limit:200},{limit:200,cursor:'next'}])});
+for(const [label,p] of [['missing response',null],['error payload',{data:{error:'403'}}],['legacy alias',{data:{items:[],has_more:false}}],['missing flag',{data:{records:[]}}],['null row',page([null])],['duplicate row',page([{id:'a'},{id:'a'}])],['missing cursor',page([{id:'a'}],true)],['empty continuing page',page([],true,'c')]]) test(label+' rejects',async()=>assert.rejects(collectWorkOrderPages(async()=>p),/WORK_ORDER_LIST_INVALID/));
+test('repeated cursor rejects without endless requests',async()=>{let n=0;await assert.rejects(collectWorkOrderPages(async()=>page([{id:String(++n)}],true,'same')),/INVALID_CURSOR/);assert.equal(n,2)});
+test('second page failure is not partial success',async()=>assert.rejects(collectWorkOrderPages(async p=>{if(p.cursor)throw new Error('429');return page([{id:'a'}],true,'next')}),/429/));

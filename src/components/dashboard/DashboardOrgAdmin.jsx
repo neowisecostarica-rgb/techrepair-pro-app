@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { collectWorkOrderPages } from '@/lib/workOrderPagination';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatsCard from './StatsCard';
 import RecentOrders from './RecentOrders';
@@ -90,20 +91,8 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
   } = useQuery({
     queryKey: ['ordenes-dashboard', effectiveOrgId, canonicalBranchId],
     queryFn: async () => {
-      const rows = [];
-      let cursor = null;
-      do {
-        const res = await base44.functions.invoke('listWorkOrders', {
-          limit: 200,
-          ...(cursor ? { cursor } : {}),
-        });
-        const payload = res.data;
-        const page = payload?.items ?? payload?.ordenes;
-        if (!Array.isArray(page)) throw new Error("WORK_ORDERS_UNAVAILABLE");
-        rows.push(...page.filter(o => !canonicalBranchId || o.branch_id === canonicalBranchId));
-        cursor = payload.has_more ? payload.next_cursor : null;
-      } while (cursor);
-      return rows;
+      const rows = await collectWorkOrderPages(payload => base44.functions.invoke('listWorkOrders', payload));
+      return rows.filter(o => !canonicalBranchId || o.branch_id === canonicalBranchId);
     },
     enabled: canLoadOrgData,
     retry: false,

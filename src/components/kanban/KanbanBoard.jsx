@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { KANBAN_COLUMNS, STATUS_TO_COLUMN } from '@/config/workOrderStatus';
 import { transicionarEstadoOT } from '@/components/ot/transicionarEstadoOT';
 import { base44 } from '@/api/base44Client';
+import { collectWorkOrderPages } from '@/lib/workOrderPagination';
 import { listIdentityAccounts } from '@/api/identity';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import WorkOrderCard from './WorkOrderCard';
@@ -14,24 +15,21 @@ import { useToast } from '@/components/ui/use-toast';
 export default function KanbanBoard({ onCardClick }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const { effectiveOrgId } = useAuthContext();
+  const { effectiveOrgId, effectiveRole, userAccount, user } = useAuthContext();
   const [localOrdenes, setLocalOrdenes] = useState(null); // optimistic state
   const [errorMsg, setErrorMsg] = useState('');
   const { toast } = useToast();
 
-  const { data: fetchedOrdenes = [], isLoading } = useQuery({
-    queryKey: ['listWorkOrders'],
+  const { data: fetchedOrdenes = [], isLoading, isError: ordersError, refetch: retryOrders } = useQuery({
+    queryKey: ['listWorkOrders', effectiveOrgId, effectiveRole, userAccount?.branch_id, user?.id],
     queryFn: async () => {
-      let cursor = null;
-      const all = [];
-      do {
-        const res = await base44.functions.invoke('listWorkOrders', { limit: 200, ...(cursor ? { cursor } : {}) });
-        const page = res.data || {};
-        all.push(...(page.records || []));
-        cursor = page.has_more ? page.next_cursor : null;
-      } while (cursor);
+      const all = await collectWorkOrderPages(payload => base44.functions.invoke('listWorkOrders', payload));
       return all;
     },
+    enabled: !!effectiveOrgId,
+    retry: false,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   // P0.2-A: workforce técnico REAL — solo TECHNICIAN para resolución de nombres en tarjetas
@@ -105,6 +103,9 @@ export default function KanbanBoard({ onCardClick }) {
     }
   };
 
+  if (ordersError) {
+    return <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">No se pudieron consultar las órdenes del tablero. <button type="button" className="underline font-medium" onClick={() => retryOrders()}>Reintentar</button></div>;
+  }
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">

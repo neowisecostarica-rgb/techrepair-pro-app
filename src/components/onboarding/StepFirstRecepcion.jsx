@@ -1,14 +1,18 @@
 import React from 'react';
-import { Wrench, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Wrench, ArrowRight, CheckCircle2, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
+import { safeInstagramProfile } from './onboardingProgress';
 
-export default function StepFirstRecepcion() {
+export default function StepFirstRecepcion({ onFinish }) {
+  const instagramUrl = safeInstagramProfile(import.meta.env.VITE_TRP_INSTAGRAM_URL);
   const goToRecepcion = () => {
+    onFinish?.();
     window.location.href = `${createPageUrl('OrdenesTrabajo')}?activation=first_work_order`;
   };
 
   const goToMiDia = () => {
+    onFinish?.();
     window.location.href = createPageUrl('MiDia');
   };
 
@@ -39,6 +43,16 @@ export default function StepFirstRecepcion() {
         ))}
       </div>
 
+      {instagramUrl && (
+        <div className="rounded-xl border border-slate-200 p-4">
+          <p className="font-medium text-slate-900">Más que un software. Una comunidad.</p>
+          <p className="text-sm text-slate-600 mt-1">Consejos, herramientas y novedades para técnicos.</p>
+          <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-teal-700">
+            <Instagram className="h-4 w-4" /> Síguenos en Instagram
+          </a>
+          <p className="mt-2 text-xs text-slate-500">Opcional. No condiciona el acceso a TRP.</p>
+        </div>
+      )}
       <div className="flex flex-col gap-3">
         <Button onClick={goToRecepcion} size="lg" className="w-full">
           Recibir primer equipo

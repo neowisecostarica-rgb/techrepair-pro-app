@@ -14,6 +14,8 @@ import {
 } from '@/api/identity';
 import { useToast } from '@/components/ui/use-toast';
 import GuidedOnboardingWizard from '@/components/onboarding/GuidedOnboardingWizard';
+import { appParams } from '@/lib/app-params';
+import { progressKey, readProgress, saveProgress } from '@/components/onboarding/onboardingProgress';
 
 export default function Onboarding() {
   const { toast } = useToast();
@@ -23,6 +25,8 @@ export default function Onboarding() {
   const [createdOrg, setCreatedOrg] = useState(null);
   const [effectiveOrgId, setEffectiveOrgId] = useState(null);
   const [primaryBranchId, setPrimaryBranchId] = useState(null);
+  const [wizardKey, setWizardKey] = useState(null);
+  const [initialStep, setInitialStep] = useState('welcome');
   
   // Estados controlados para Selects (P0: hardening)
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -52,6 +56,21 @@ export default function Onboarding() {
 
       const activeAccount = context.userAccount;
       if (activeAccount) {
+        const org = context.organizations?.find(o => o.id === activeAccount.organization_id);
+        const key = progressKey(appParams.appId, context.user.id, activeAccount.organization_id);
+        const resumeStep = readProgress(window.localStorage, key);
+        if (resumeStep && activeAccount.role === 'ORG_ADMIN' && activeAccount.status === 'active' && org?.status === 'active' && org?.provisioning_status === 'READY') {
+          const branches = await base44.entities.Branch.filter({ organization_id: org.id, active: true }, '-created_date', 100);
+          const primary = branches.filter(b => b.organization_id === org.id && b.active === true && b.is_primary === true);
+          if (primary.length !== 1) throw new Error('PRIMARY_BRANCH_UNCONFIRMED');
+          setCreatedOrg(org);
+          setEffectiveOrgId(org.id);
+          setPrimaryBranchId(primary[0].id);
+          setWizardKey(key);
+          setInitialStep(resumeStep);
+          setMode('wizard');
+          return;
+        }
         const targetPage = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN'].includes(activeAccount.role)
           ? 'MiDia'
           : activeAccount.role === 'CUSTOMER_SERVICE'
@@ -141,6 +160,10 @@ export default function Onboarding() {
       if (!result?.success || !result?.readiness?.ready || !result?.organization?.id || !result?.branch?.id || result.branch.organization_id !== result.organization.id || result.branch.active !== true || result.branch.is_primary !== true || result.account?.role !== 'ORG_ADMIN' || result.account?.organization_id !== result.organization.id || result.account?.status !== 'active') {
         throw new Error('PROVISIONING_UNCONFIRMED');
       }
+      const key = progressKey(appParams.appId, user.id, result.organization.id);
+      saveProgress(window.localStorage, key, 'welcome');
+      setWizardKey(key);
+      setInitialStep('welcome');
       setPrimaryBranchId(result.branch.id);
       setCreatedOrg(result.organization);
       setEffectiveOrgId(result?.organization?.id || null);
@@ -187,6 +210,8 @@ export default function Onboarding() {
         organization={createdOrg}
         effectiveOrgId={effectiveOrgId}
         primaryBranchId={primaryBranchId}
+        wizardKey={wizardKey}
+        initialStep={initialStep}
       />
     );
   }

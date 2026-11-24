@@ -5,16 +5,17 @@ import StepWelcome from './StepWelcome';
 import StepBusinessDetails from './StepBusinessDetails';
 import StepInviteTeam from './StepInviteTeam';
 import StepFirstRecepcion from './StepFirstRecepcion';
+import { ONBOARDING_STEPS, saveProgress, clearProgress } from './onboardingProgress';
 
-const STEP_ORDER = ['welcome', 'business', 'team', 'first_ot'];
+const STEP_ORDER = ONBOARDING_STEPS;
 
-export default function GuidedOnboardingWizard({ organization, effectiveOrgId, primaryBranchId }) {
-  const [step, setStep] = useState('welcome');
+export default function GuidedOnboardingWizard({ organization, effectiveOrgId, primaryBranchId, wizardKey, initialStep = 'welcome' }) {
+  const [step, setStep] = useState(STEP_ORDER.includes(initialStep) ? initialStep : 'welcome');
 
   const currentIndex = STEP_ORDER.indexOf(step);
   const goNext = () => {
     const next = STEP_ORDER[currentIndex + 1];
-    if (next) setStep(next);
+    if (next) { saveProgress(window.localStorage, wizardKey, next); setStep(next); }
   };
   const goSkip = () => goNext();
 
@@ -45,7 +46,7 @@ export default function GuidedOnboardingWizard({ organization, effectiveOrgId, p
                 onContinue={goNext}
               />
             )}
-            {step === 'first_ot' && <StepFirstRecepcion />}
+            {step === 'first_ot' && <StepFirstRecepcion onFinish={() => clearProgress(window.localStorage, wizardKey)} />}
           </CardContent>
         </Card>
       </div>

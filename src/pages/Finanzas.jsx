@@ -99,8 +99,8 @@ function FinanzasContent() {
     setFechaHasta(hasta.toISOString().split('T')[0]);
   }, [periodoPreset]);
 
-  const { data: metrics, isLoading: isLoadingMetrics, isError: isErrorMetrics } = useQuery({
-    queryKey: ['financial-metrics', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
+  const { data: metrics, isLoading: isLoadingMetrics, isError: isErrorMetrics, refetch: retryMetrics } = useQuery({
+    queryKey: ['financial-metrics', effectiveOrgId, effectiveRole, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
     queryFn: async () => {
       const payload = {
         organization_id: effectiveOrgId,
@@ -110,12 +110,14 @@ function FinanzasContent() {
       if (branchIdFijo) payload.branch_id = branchIdFijo;
       else if (sucursalId) payload.branch_id = sucursalId;
       const res = await base44.functions.invoke('getFinancialMetrics', payload);
+      if (!res.data?.sales || !res.data?.marketing) throw new Error("FINANCIAL_METRICS_UNAVAILABLE");
       return res.data;
     },
-    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta,
+    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta && (!isBranchAdmin || !!branchIdFijo),
+    retry: false,
   });
 
-  const { data: ventasPagadas = [] } = useQuery({
+  const { data: ventasPagadas = [], isError: salesError, isLoading: loadingSales, refetch: retrySales } = useQuery({
     queryKey: ['finanzas-linea', effectiveOrgId, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId, estado: 'pagada' };
@@ -130,7 +132,8 @@ function FinanzasContent() {
         return d >= desde && d <= hasta;
       });
     },
-    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta,
+    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta && (!isBranchAdmin || !!branchIdFijo),
+    retry: false,
   });
 
   const { data: sucursales = [] } = useQuery({
@@ -159,7 +162,7 @@ function FinanzasContent() {
   const newClients   = metrics?.marketing?.total_new_clients ?? 0;
   const marginAmount = revenue * (grossMargin / 100);
 
-  const sinDatos = !isLoadingMetrics && !isErrorMetrics && revenue === 0 && salesCount === 0 && dataLinea.length === 0;
+  const sinDatos = !!metrics && !loadingSales && !salesError && !isLoadingMetrics && !isErrorMetrics && revenue === 0 && salesCount === 0 && dataLinea.length === 0;
 
   let insight = null;
   if (revenue > 0 && marketingSpend > 0) {
@@ -202,11 +205,16 @@ function FinanzasContent() {
         />
       </div>
 
+      {isBranchAdmin && !branchIdFijo && (
+        <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{t("sweep.branchUnassigned", "Sucursal no asignada")}</div>
+      )}
+
       {/* ── ERROR ── */}
       {isErrorMetrics && !isLoadingMetrics && (
         <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4">
           <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
-          <p className="text-sm text-slate-500">{t('financeDash.error','No se pudieron calcular las métricas en este momento.')}</p>
+          <p className="text-sm text-slate-500" role="alert">{t('financeDash.error','No se pudieron calcular las métricas en este momento.')}</p>
+          <button type="button" className="text-sm underline" onClick={() => retryMetrics()}>{t('common.retry','Reintentar')}</button>
         </div>
       )}
 
@@ -220,7 +228,7 @@ function FinanzasContent() {
         </div>
       )}
 
-      {!isLoadingMetrics && (
+      {!isLoadingMetrics && !isErrorMetrics && !!metrics && (!isBranchAdmin || !!branchIdFijo) && (
         <>
           {/* ── KPI CARDS ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -342,7 +350,11 @@ function FinanzasContent() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-7 pb-7 pt-2">
-              {dataLinea.length > 0 ? (
+              {salesError ? (
+                <div role="alert" className="p-6 text-sm text-slate-600">{t("financeDash.error", "No se pudo consultar el historial de ventas.")} <button type="button" className="underline" onClick={() => retrySales()}>{t("common.retry", "Reintentar")}</button></div>
+              ) : loadingSales ? (
+                <div className="p-6 text-sm text-slate-500">{t("financeDash.calculating", "Calculando métricas...")}</div>
+              ) : dataLinea.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <LineChart data={dataLinea} margin={{ top: 8, right: 4, bottom: 4, left: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f8fafc" />

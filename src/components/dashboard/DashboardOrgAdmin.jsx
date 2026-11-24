@@ -62,8 +62,10 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
   const {
     data: financialData,
     isLoading: loadingFinancial,
+    isError: financialError,
+    refetch: retryFinancial,
   } = useQuery({
-    queryKey: ['dashboard-financial', effectiveOrgId, startDate, endDate],
+    queryKey: ['dashboard-financial', effectiveOrgId, effectiveRole, canonicalBranchId, startDate, endDate],
     queryFn: async () => {
       const res = await base44.functions.invoke('getFinancialMetrics', {
         organization_id: effectiveOrgId,
@@ -72,15 +74,19 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
         end_date: endDate,
       });
 
-      return res.data || {};
+      if (!res.data?.sales) throw new Error("FINANCIAL_METRICS_UNAVAILABLE");
+      return res.data;
     },
     enabled: canLoadOrgData,
+    retry: false,
     staleTime: 60_000,
   });
 
   const {
     data: ordenes = [],
     isLoading: loadingOrdenes,
+    isError: ordersError,
+    refetch: retryOrders,
   } = useQuery({
     queryKey: ['ordenes-dashboard', effectiveOrgId, canonicalBranchId],
     queryFn: async () => {
@@ -91,14 +97,16 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
           limit: 200,
           ...(cursor ? { cursor } : {}),
         });
-        const payload = res.data || {};
-        const page = payload.items || payload.ordenes || [];
+        const payload = res.data;
+        const page = payload?.items ?? payload?.ordenes;
+        if (!Array.isArray(page)) throw new Error("WORK_ORDERS_UNAVAILABLE");
         rows.push(...page.filter(o => !canonicalBranchId || o.branch_id === canonicalBranchId));
         cursor = payload.has_more ? payload.next_cursor : null;
       } while (cursor);
       return rows;
     },
     enabled: canLoadOrgData,
+    retry: false,
     staleTime: 60_000,
   });
 
@@ -109,21 +117,21 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
     staleTime: 300_000,
   });
 
-  const { data: organization } = useQuery({
+  const { data: organization, isError: organizationError, isLoading: loadingOrganization } = useQuery({
     queryKey: ['organization', effectiveOrgId],
     queryFn: () => getIdentityOrganization(effectiveOrgId).then(result => result.organization),
     enabled: canLoadOrgData,
     staleTime: 300_000,
   });
 
-  const { data: userAccounts = [] } = useQuery({
+  const { data: userAccounts = [], isError: accountsError, isLoading: loadingAccounts } = useQuery({
     queryKey: ['userAccounts', effectiveOrgId, canonicalBranchId],
     queryFn: () => listIdentityAccounts(effectiveOrgId).then(result => result.accounts),
     enabled: canLoadOrgData,
     staleTime: 300_000,
   });
 
-  const { data: clientes = [] } = useQuery({
+  const { data: clientes = [], isError: clientsError, isLoading: loadingClients } = useQuery({
     queryKey: ['clientes-count', effectiveOrgId, canonicalBranchId],
     queryFn: () =>
       base44.entities.Cliente.filter(
@@ -260,7 +268,7 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
         </p>
       </div>
 
-      {!isBranchAdmin && setupStatus.isSetupIncomplete && (
+      {!isBranchAdmin && !ordersError && !clientsError && !accountsError && !organizationError && !loadingClients && !loadingAccounts && !loadingOrganization && setupStatus.isSetupIncomplete && (
         <QuickStartCard
           hasBasicInfo={setupStatus.hasBasicInfo}
           hasCollaborators={setupStatus.hasCollaborators}
@@ -272,37 +280,44 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Órdenes (mes)"
-          value={ordenesTotal}
+          value={ordersError ? "—" : ordenesTotal}
           icon={Wrench}
           bgColor="bg-emerald-500"
-          subtitle={`${ordenesAbiertas} abiertas / ${ordenesCerradas} cerradas`}
+          subtitle={ordersError ? t("ops.ordersUnavailable", "Órdenes sin verificar") : `${ordenesAbiertas} abiertas / ${ordenesCerradas} cerradas`}
         />
 
         <StatsCard
           title="Ingresos (mes)"
-          value={`₡${Number(ingresosMes || 0).toLocaleString()}`}
+          value={financialError || !financialData ? "—" : `₡${Number(ingresosMes || 0).toLocaleString()}`}
           icon={DollarSign}
           bgColor="bg-blue-500"
-          subtitle={ventasCount ? `${ventasCount} ventas` : 'Sin ventas registradas'}
+          subtitle={financialError || !financialData ? t('financeDash.error','Métricas sin verificar') : ventasCount ? `${ventasCount} ventas` : 'Sin ventas registradas'}
         />
 
         <StatsCard
           title="Clientes Activos"
-          value={clientesActivos}
+          value={clientsError || loadingClients ? "—" : clientesActivos}
           icon={Users}
           bgColor="bg-purple-500"
         />
 
         <StatsCard
           title="Técnicos con OT"
-          value={tecnicosConOTMes}
+          value={ordersError ? "—" : tecnicosConOTMes}
           icon={UserCog}
           bgColor="bg-orange-500"
-          subtitle={`${tecnicosRegistrados} técnicos registrados`}
+          subtitle={accountsError || loadingAccounts ? t("ops.accountsUnavailable", "Equipo sin verificar") : `${tecnicosRegistrados} técnicos registrados`}
         />
       </div>
 
-      <Card className="border-0 shadow-lg">
+      {(financialError || ordersError) && (
+        <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 flex flex-wrap items-center gap-3">
+          <span>{t("ops.dashboardPartialError", "Algunos datos no se pudieron consultar. Los indicadores sin verificar no representan un cero real.")}</span>
+          {financialError && <button type="button" className="underline font-medium" onClick={() => retryFinancial()}>{t("financeDash.retry", "Reintentar ingresos")}</button>}
+          {ordersError && <button type="button" className="underline font-medium" onClick={() => retryOrders()}>{t("ops.retryOrders", "Reintentar órdenes")}</button>}
+        </div>
+      )}
+      {!ordersError && <Card className="border-0 shadow-lg">
         <CardHeader className="border-b border-slate-100">
           <CardTitle className="text-lg font-semibold">{t('ops.orgAdminOrdersChart','Órdenes por Día (7 días)')}</CardTitle>
         </CardHeader>
@@ -325,16 +340,16 @@ export default function DashboardOrgAdmin({ effectiveOrgId, effectiveRole, branc
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
-      </Card>
+      </Card>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <RecentOrders
+          {!ordersError && <RecentOrders
             orders={ordenes.slice(0, 10)}
             onSelectOrder={(order) => {
               if (order?.id) navigate(`/expediente/${encodeURIComponent(order.id)}`);
             }}
-          />
+          />}
         </div>
 
         <QuickActions />

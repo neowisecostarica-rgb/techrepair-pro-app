@@ -60,7 +60,7 @@ function pct(number) {
 
 function FinanzasContent() {
   const { t } = useI18n();
-  const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
+  const { effectiveOrgId, userAccount, effectiveRole, user } = useAuthContext();
   const [periodoPreset, setPeriodoPreset] = useState('mes');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
@@ -217,7 +217,7 @@ function FinanzasContent() {
 
       {!validPeriod && fechaDesde && fechaHasta && <p role="alert">El rango de fechas no es válido.</p>}
       {validPeriod && effectiveOrgId && (!isBranchAdmin || branchIdFijo) && <ResumenCobros key={effectiveOrgId + ':' + (branchIdFijo || sucursalId || 'all')} sales={ventasPagadas} loading={loadingSales} error={salesError} onRetry={retrySales} />}
-      {validPeriod && effectiveOrgId && (!isBranchAdmin || branchIdFijo) && <ArqueoPreliminar key={effectiveOrgId + ':' + (branchIdFijo || sucursalId || 'all') + ':' + fechaDesde + ':' + fechaHasta} sales={ventasPagadas} loading={loadingSales} error={salesError} branchId={branchIdFijo || sucursalId} singleDay={fechaDesde === fechaHasta} />}
+      {validPeriod && effectiveOrgId && (!isBranchAdmin || branchIdFijo) && <ArqueoPreliminar key={effectiveOrgId + ':' + (branchIdFijo || sucursalId || 'all') + ':' + fechaDesde + ':' + fechaHasta} sales={ventasPagadas} loading={loadingSales} error={salesError} branchId={branchIdFijo || sucursalId} singleDay={fechaDesde === fechaHasta} orgId={effectiveOrgId} businessDate={fechaDesde} userId={user?.id} />}
       <p className="text-xs text-slate-500">Importes nominales; moneda histórica no certificada. Margen estimado con costos registrados o actuales, no utilidad contable.</p>
       {/* ── ERROR ── */}
       {isErrorMetrics && !isLoadingMetrics && (

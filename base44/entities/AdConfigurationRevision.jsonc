@@ -1,0 +1,1 @@
+{"name":"AdConfigurationRevision","type":"object","properties":{"organization_id":{"type":"string"},"actor_id":{"type":"string"},"configuration":{"type":"object"},"saved_at":{"type":"string","format":"date-time"}},"required":["organization_id","actor_id","configuration","saved_at"],"rls":{"create":false,"read":false,"update":false,"delete":false}}

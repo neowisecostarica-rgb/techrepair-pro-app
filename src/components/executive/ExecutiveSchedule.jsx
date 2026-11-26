@@ -34,6 +34,7 @@ export default function ExecutiveSchedule({orgId,userId,report}){
  </div>
  <Button disabled={disabled||draft===null} onClick={save}>{busy?'Guardando…':'Guardar programación'}</Button>
  {q.isError&&<p role="alert">Configuración no disponible. <Button variant="link" onClick={()=>q.refetch()}>Reintentar</Button></p>}
+ {q.data?.due_preview&&<p className="text-sm text-slate-600">Horario previsto alcanzado hoy. La generación manual sigue disponible en Historial; no se ejecutó ningún informe automático.</p>}
  {message&&<p role="status">{message}</p>}
  </section>;
 }

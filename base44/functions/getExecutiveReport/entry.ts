@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { resolveAuthorizedContext } from './_shared/userAuthorization.ts';
 import { resolveEffectiveEntitlement } from './_shared/entitlementAuthority.ts';
 
+import {scheduleOccurrence} from './_shared/scheduleOccurrence.ts';
+
 const LIMIT = 500;
 const DAY = 86400000;
 const CLOSED = new Set(['ENTREGADA','CANCELADA']);
@@ -45,7 +47,8 @@ Deno.serve(async req => {
     if(action==='schedule'){
       const rows=await entities.ExecutiveScheduleRevision.filter(storageScope,'-created_date',1);
       if(!Array.isArray(rows))return result({error:'Configuración no disponible'},503);
-      return result({ok:true,schedule:rows[0]?.schedule??null,automation_active:false});
+      const schedule=rows[0]?.schedule??null;
+      return result({ok:true,schedule,automation_active:false,due_preview:schedule?scheduleOccurrence(schedule,new Date(),scopeKey,days):null});
     }
     if(action==='save_schedule'){
       const v=body.schedule;

@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageGuard from '@/components/guards/PageGuard';
@@ -34,69 +34,80 @@ function CuentasPorPagarContent() {
   const { toast } = useToast();
   const { effectiveOrgId, userAccount, effectiveRole, user } = useAuthContext();
   const [showModalFactura, setShowModalFactura] = useState(false);
-  const [showModalPago, setShowModalPago] = useState(false);
-  const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState('all');
   const queryClient = useQueryClient();
+  const invoiceLock = useRef(false);
 
   const isBranchRestricted = effectiveRole === 'BRANCH_ADMIN';
   const branchIdFijo = isBranchRestricted ? userAccount?.branch_id : null;
+
+  const canRead = !!effectiveOrgId && (!isBranchRestricted || !!branchIdFijo);
 
   // Queries
   const { data: proveedores = [] } = useQuery({
     queryKey: ['proveedores', effectiveOrgId],
     queryFn: () => base44.entities.Supplier.filter({ organization_id: effectiveOrgId, active: true }, '-created_date', 200),
-    enabled: !!effectiveOrgId,
+    enabled: canRead,
     staleTime: 300000
   });
 
-  const { data: facturas = [], isLoading } = useQuery({
-    queryKey: ['purchase-invoices', effectiveOrgId, branchIdFijo],
+  const { data: facturas = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ['purchase-invoices', effectiveOrgId, effectiveRole, branchIdFijo, user?.id],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId };
       if (branchIdFijo) query.branch_id = branchIdFijo;
 
-      const allInvoices = await base44.entities.PurchaseInvoice.filter(query, '-created_date', 200);
+      const response = await base44.functions.invoke('operationalGateway', { operation: 'read', entity: 'PurchaseInvoice', method: 'filter', filter: query, sort: '-created_date', limit: 500 });
+      const result = response?.data ?? response;
+      if (result?.error || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error(result?.error || 'Listado incompleto o no confirmado');
+      const allInvoices = result.records;
       return aplicarStatusInvoices(allInvoices).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
     },
-    enabled: !!effectiveOrgId,
+    enabled: canRead,
     staleTime: 60000
   });
 
   // Mutaciones
   const createInvoiceMutation = useMutation({
-    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.PurchaseInvoice.create(withOrgId(data, userAccount)),
+    mutationFn: async (/** @type {Record<string, any>} */ data) => { const result = await base44.entities.PurchaseInvoice.create(withOrgId(data, userAccount)); if (!result?.id || result?.error) throw new Error(result?.error || "Factura no confirmada"); return result; },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-invoices'] });
       setShowModalFactura(false);
     }
   });
 
-  const createPaymentMutation = useMutation({
-    mutationFn: async (/** @type {Record<string, any>} */ data) => {
-      const payment = await base44.entities.SupplierPayment.create(withOrgId(data, userAccount));
-      
-      // Actualizar paid_amount en la factura
-      const invoice = facturas.find(f => f.id === data.purchase_invoice_id);
-      await base44.entities.PurchaseInvoice.update(invoice.id, {
-        paid_amount: (invoice.paid_amount || 0) + data.amount
-      });
-      
-      return payment;
+  // No registrar pagos mediante dos escrituras independientes.
+  // El cierre de este bloqueo requiere el writer financiero autoritativo.
+  const reconciliation = useQuery({
+    queryKey: ['supplier-payment-reconciliation', effectiveOrgId, effectiveRole, branchIdFijo, user?.id],
+    enabled: canRead,
+    retry: false,
+    queryFn: async () => {
+      const filter = { organization_id: effectiveOrgId, ...(branchIdFijo ? { branch_id: branchIdFijo } : {}) };
+      const response = await base44.functions.invoke('operationalGateway', { operation: 'read', entity: 'SupplierPayment', method: 'filter', filter, sort: '-created_date', limit: 500 });
+      const result = response?.data ?? response;
+      if (result?.error || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error(result?.error || 'No se confirmó el historial completo de pagos');
+      return result.records;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['purchase-invoices'] });
-      setShowModalPago(false);
-      setFacturaSeleccionada(null);
-    }
   });
+  const paymentTotals = new Map();
+  for (const payment of reconciliation.data || []) {
+    const previous = paymentTotals.get(payment.purchase_invoice_id) ?? 0;
+    const amount = payment.amount;
+    paymentTotals.set(payment.purchase_invoice_id, Number.isFinite(amount) && amount > 0 ? previous + Math.round(amount * 100) : NaN);
+  }
+  const mismatches = reconciliation.isSuccess && !reconciliation.isError
+    ? facturas.filter(invoice => !Number.isFinite(invoice.paid_amount ?? 0) || (paymentTotals.get(invoice.id) ?? 0) !== Math.round((invoice.paid_amount ?? 0) * 100))
+    : [];
+  const mismatchIds = new Set(mismatches.map(invoice => invoice.id));
 
   const handleSubmitFactura = async (e) => {
     e.preventDefault();
+    if (invoiceLock.current || !canRead || !user?.id || isError || isLoading) return;
     const formData = new FormData(e.target);
     
     const supplier_id = formData.get('supplier_id');
-    const invoice_number = formData.get('invoice_number');
+    const invoice_number = String(formData.get('invoice_number') || '').trim();
     
     // Validar duplicados
     const existente = facturas.find(f => 
@@ -128,32 +139,11 @@ function CuentasPorPagarContent() {
       return;
     }
 
-    createInvoiceMutation.mutate(data);
-  };
-
-  const handleSubmitPago = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    
-    const amount = parseFloat(String(formData.get('amount') ?? ''));
-    const saldo = facturaSeleccionada.saldo;
-    
-    if (amount > saldo) {
-      toast({ variant: 'destructive', title: 'Monto mayor al saldo', description: `El saldo pendiente es ₡${saldo.toLocaleString()}.` });
-      return;
+    if (!invoice_number || !proveedores.some(p => p.id === supplier_id) || !Number.isFinite(data.total_amount) || data.total_amount <= 0) {
+      toast({ variant: "destructive", title: "Datos de factura inválidos" }); return;
     }
-    
-    const data = {
-      purchase_invoice_id: facturaSeleccionada.id,
-      amount,
-      date: formData.get('date'),
-      method: formData.get('method'),
-      reference: formData.get('reference') || null,
-      notes: formData.get('notes') || null,
-      created_by: user.id
-    };
-
-    createPaymentMutation.mutate(data);
+    invoiceLock.current = true;
+    createInvoiceMutation.mutate(data, { onSettled: () => { invoiceLock.current = false; } });
   };
 
   // Cálculos
@@ -175,6 +165,7 @@ function CuentasPorPagarContent() {
   const vencidas = facturas.filter(f => f.status === 'overdue');
   const totalVencido = vencidas.reduce((sum, f) => sum + f.saldo, 0);
 
+  if (!canRead || isError) return <Alert><AlertDescription>No se pudo confirmar la consulta de facturas. <Button variant="link" onClick={() => refetch()}>Reintentar</Button></AlertDescription></Alert>;
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -202,6 +193,13 @@ function CuentasPorPagarContent() {
         </Button>
       </div>
 
+      <Alert className="border-amber-300 bg-amber-50">
+        <AlertDescription>
+          Registro de abonos temporalmente protegido: requiere un proceso financiero que confirme el pago y el saldo de forma consistente. No se modificaron los importes históricos.
+          <div>{reconciliation.isLoading ? 'Consultando historial de pagos…' : reconciliation.isError ? 'Conciliación no disponible; los saldos mostrados son los registrados, no certificados.' : reconciliation.isSuccess ? `Facturas con diferencias entre saldo registrado e historial: ${mismatches.length}.` : 'Conciliación pendiente.'}</div>
+          <Button variant="link" onClick={() => { refetch(); reconciliation.refetch(); }}>Actualizar conciliación</Button>
+        </AlertDescription>
+      </Alert>
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-0 shadow-xl bg-gradient-to-br from-orange-50 to-orange-100">
@@ -323,6 +321,7 @@ function CuentasPorPagarContent() {
                             {config?.icon} {config?.label}
                           </Badge>
                           <span className="text-sm text-slate-500">#{factura.invoice_number}</span>
+                          {mismatchIds.has(factura.id) && <Badge variant="outline">Revisar conciliación</Badge>}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-slate-600">
                           <span>📅 Vence: {format(new Date(factura.due_date), 'dd MMM yyyy', { locale: es })}</span>
@@ -336,17 +335,7 @@ function CuentasPorPagarContent() {
                         </div>
                       </div>
                     </div>
-                    {factura.status !== 'paid' && (
-                      <Button
-                        onClick={() => {
-                          setFacturaSeleccionada(factura);
-                          setShowModalPago(true);
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        Registrar Pago
-                      </Button>
-                    )}
+                    {factura.status !== 'paid' && <Button disabled variant="outline">Pago protegido</Button>}
                   </div>
                 );
               })}
@@ -356,12 +345,13 @@ function CuentasPorPagarContent() {
       </Card>
 
       {/* Modal Factura */}
-      <Dialog open={showModalFactura} onOpenChange={setShowModalFactura}>
+      <Dialog open={showModalFactura} onOpenChange={value => { if (!invoiceLock.current) setShowModalFactura(value); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t('finance.registerInvoice','Registrar Factura de Compra')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmitFactura} className="space-y-4">
+            {createInvoiceMutation.isError && <p role="alert" className="text-red-700">{createInvoiceMutation.error?.message}</p>}
             <div>
               <Label>{t('tail.supplierRequired','Proveedor *')}</Label>
               <Select name="supplier_id" required>
@@ -448,95 +438,6 @@ function CuentasPorPagarContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Pago */}
-      <Dialog open={showModalPago} onOpenChange={setShowModalPago}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('finance.registerPayment','Registrar Pago')}</DialogTitle>
-          </DialogHeader>
-          {facturaSeleccionada && (
-            <form onSubmit={handleSubmitPago} className="space-y-4">
-              <Alert className="bg-slate-50 border-slate-200">
-                <AlertDescription>
-                  <p className="font-semibold text-slate-900 mb-1">
-                    Factura #{facturaSeleccionada.invoice_number}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    Proveedor: {proveedores.find(p => p.id === facturaSeleccionada.supplier_id)?.name}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    Saldo pendiente: <span className="font-bold text-orange-600">₡{facturaSeleccionada.saldo.toLocaleString()}</span>
-                  </p>
-                </AlertDescription>
-              </Alert>
-
-              <div>
-                <Label>{t('finance.amountPay','Monto a Pagar *')}</Label>
-                <Input
-                  name="amount"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max={facturaSeleccionada.saldo}
-                  placeholder={`Máx: ₡${facturaSeleccionada.saldo.toLocaleString()}`}
-                  required
-                />
-              </div>
-              <div>
-                <Label>{t('tail.paymentDate','Fecha de Pago *')}</Label>
-                <Input
-                  name="date"
-                  type="date"
-                  defaultValue={format(new Date(), 'yyyy-MM-dd')}
-                  required
-                />
-              </div>
-              <div>
-                <Label>{t('tail.paymentMethod','Método de Pago *')}</Label>
-                <Select name="method" defaultValue="transferencia">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="efectivo">{t('finance.cash','Efectivo')}</SelectItem>
-                    <SelectItem value="transferencia">{t('finance.transfer','Transferencia')}</SelectItem>
-                    <SelectItem value="cheque">{t('finance.check','Cheque')}</SelectItem>
-                    <SelectItem value="tarjeta">{t('finance.card','Tarjeta')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>{t('finance.reference','Referencia / Nro. Transacción')}</Label>
-                <Input
-                  name="reference"
-                  placeholder="Ej: SINPE-12345"
-                />
-              </div>
-              <div>
-                <Label>{t('finance.notes','Notas')}</Label>
-                <Textarea
-                  name="notes"
-                  placeholder={t('tail.notes','Notas adicionales...')}
-                  rows={2}
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <Button type="button" variant="outline" onClick={() => setShowModalPago(false)}>
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createPaymentMutation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {createPaymentMutation.isPending ? 'Registrando...' : 'Registrar Pago'}
-                </Button>
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

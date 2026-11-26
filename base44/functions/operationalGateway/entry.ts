@@ -366,6 +366,29 @@ async function validateMutationContext(base44, authorization, decision, entityNa
     if (!scope.ok) return scope;
   }
 
+  if (entityName === 'PurchaseInvoice' && operation === 'create') {
+    const supplierId = cleanId(data.supplier_id);
+    const invoiceNumber = cleanId(data.invoice_number);
+    const total = data.total_amount;
+    const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+    if (!supplierId || !invoiceNumber || invoiceNumber.length > 200 || typeof total !== 'number'
+      || !Number.isFinite(total) || total <= 0 || !Number.isSafeInteger(Math.round(total * 100))
+      || !validDate(data.date) || !validDate(data.due_date) || data.due_date < data.date
+      || (data.paid_amount != null && data.paid_amount !== 0)) {
+      return { ok: false, status: 422, code: 'PURCHASE_INVOICE_INVALID', error: 'Datos de factura inválidos' };
+    }
+    const supplier = await findOne(base44.asServiceRole.entities.Supplier, {
+      id: supplierId, organization_id: authorization.organizationId, active: true,
+    });
+    if (!supplier) return { ok: false, status: 404, code: 'SUPPLIER_NOT_FOUND', error: 'Proveedor activo no encontrado' };
+    const existing = await findOne(base44.asServiceRole.entities.PurchaseInvoice, {
+      organization_id: authorization.organizationId, supplier_id: supplierId, invoice_number: invoiceNumber,
+    });
+    if (existing) return { ok: false, status: 409, code: 'PURCHASE_INVOICE_DUPLICATE', error: 'Factura ya registrada' };
+    return { ok: true, data: { ...pickAllowedFields(data, ['date', 'due_date', 'notes', 'total_amount']), supplier_id: supplierId, invoice_number: invoiceNumber, paid_amount: 0 } };
+  }
+
   if (entityName === 'OrdenTrabajo') {
     if (operation !== 'update') return { ok: false, status: 403, error: 'La OT solo puede crearse o cambiar lifecycle mediante sus gateways dedicados' };
     return { ok: true, data: pickAllowedFields(data, WORK_ORDER_EDITABLE_FIELDS) };
@@ -703,6 +726,13 @@ Deno.serve(async (req) => {
 
     const authorization = await resolveAuthorization(base44, user, body);
     if (!authorization.ok) return fail(authorization.error, authorization.status, authorization.code || 'OPERATIONAL_AUTH_DENIED');
+    // Preserve financial records until an authoritative payment writer is available.
+    if (body.entity === 'SupplierPayment' && operation !== 'read') {
+      return fail('Los abonos requieren un comando financiero autoritativo.', 409, 'SUPPLIER_PAYMENT_COMMAND_REQUIRED');
+    }
+    if (body.entity === 'PurchaseInvoice' && ['update', 'delete'].includes(operation)) {
+      return fail('La modificación de facturas registradas requiere conciliación financiera.', 409, 'PURCHASE_INVOICE_COMMAND_REQUIRED');
+    }
     // Paid sales and draft sales are sovereign lifecycle records. Never allow
     // arbitrary frontend deletion, regardless of the UI or requested role.
     if (body.entity === 'Venta' && operation === 'delete') {

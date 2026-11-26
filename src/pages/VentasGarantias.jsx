@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageGuard from '@/components/guards/PageGuard';
@@ -33,37 +33,39 @@ function VentasGarantiasContent() {
   const [garantiaSeleccionada, setGarantiaSeleccionada] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('ACTIVA');
   const [copiedToken, setCopiedToken] = useState(null);
+  const linkLock = useRef(false);
+  const canRead = !!effectiveOrgId && (isOrgAdmin || !!userAccount?.branch_id);
 
   // Detectar filtro "porVencer" desde query params
   const urlParams = new URLSearchParams(window.location.search);
   const filtroPorVencer = urlParams.get('porVencer') === 'true';
 
-  const { data: garantias = [], isLoading } = useQuery({
+  const { data: garantias = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['garantias-ventas', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Garantia.filter({
       organization_id: effectiveOrgId,
       ...branchFilter
     }, '-created_date', 500),
     select: (data) => data.sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()),
-    enabled: !!effectiveOrgId
+    enabled: canRead
   });
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Cliente.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
-    enabled: !!effectiveOrgId
+    enabled: canRead
   });
 
   const { data: ordenesTrabajo = [] } = useQuery({
     queryKey: ['ot-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.OrdenTrabajo.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
-    enabled: !!effectiveOrgId
+    enabled: canRead
   });
 
   const { data: ventas = [] } = useQuery({
     queryKey: ['ventas-gar', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.Venta.filter({ organization_id: effectiveOrgId, ...branchFilter }, '-created_date', 500),
-    enabled: !!effectiveOrgId
+    enabled: canRead
   });
 
   const getClienteName = (clienteId) => {
@@ -125,15 +127,35 @@ function VentasGarantiasContent() {
   });
 
   const copiarLink = async (garantia) => {
-    const link = await issuePublicLink('warranty', garantia.id);
-    navigator.clipboard.writeText(link);
-    setCopiedToken(garantia.id);
-    setTimeout(() => setCopiedToken(null), 2000);
+    if (linkLock.current || !canRead) return;
+    linkLock.current = true;
+    try {
+      const link = await issuePublicLink('warranty', garantia.id);
+      await navigator.clipboard.writeText(link);
+      setCopiedToken(garantia.id);
+      setTimeout(() => setCopiedToken(current => current === garantia.id ? null : current), 2000);
+    } catch (error) {
+      toast({ title: 'No se pudo copiar el enlace', description: error?.message, variant: 'destructive' });
+    } finally { linkLock.current = false; }
   };
 
   const abrirPortal = async (garantia) => {
-    const link = await issuePublicLink('warranty', garantia.id);
-    window.open(link, '_blank');
+    if (linkLock.current || !canRead) return;
+    linkLock.current = true;
+    const tab = window.open('about:blank', '_blank');
+    if (!tab) {
+      linkLock.current = false;
+      toast({ title: 'Ventana bloqueada', description: 'Permite ventanas emergentes o copia el enlace.' });
+      return;
+    }
+    tab.opener = null;
+    try {
+      const link = await issuePublicLink('warranty', garantia.id);
+      tab.location.href = link;
+    } catch (error) {
+      tab.close();
+      toast({ title: 'No se pudo abrir la garantía', description: error?.message, variant: 'destructive' });
+    } finally { linkLock.current = false; }
   };
 
   const estadoConfig = {
@@ -142,6 +164,7 @@ function VentasGarantiasContent() {
     ANULADA: { color: 'bg-red-100 text-red-700', label: 'Anulada' },
   };
 
+  if (!canRead || isError) return <div role="alert">No se pudieron consultar las garantías de la sucursal autorizada. <Button variant="link" onClick={() => refetch()}>Reintentar</Button></div>;
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">

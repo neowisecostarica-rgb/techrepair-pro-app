@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,9 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
   const [destinatario, setDestinatario] = useState('');
   const { user, effectiveOrgId } = useAuthContext();
   const { toast } = useToast();
+  const actionLock = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [preparedLink, setPreparedLink] = useState(null);
   const logMutation = useMutation({
     mutationFn: async (/** @type {Record<string, any>} */ logData) => {
       return await base44.entities.ComprobanteVentaLog.create({
@@ -30,47 +33,71 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
     }
   });
 
-  const handleReimprimir = async () => {
-    await logMutation.mutateAsync({
+  const runAction = async (action) => {
+    if (actionLock.current) return;
+    actionLock.current = true;
+    setBusy(true);
+    try {
+      if (!venta?.id || venta.estado !== 'pagada' || venta.organization_id !== effectiveOrgId || !user?.id) {
+        throw new Error('No se confirmó una venta pagada de la organización activa.');
+      }
+      await action();
+    } catch (error) {
+      toast({ title: 'Acción no confirmada', description: error?.message || 'Actualiza la venta antes de repetir.', variant: 'destructive' });
+    } finally {
+      actionLock.current = false;
+      setBusy(false);
+    }
+  };
+
+  const logConfirmed = async (data) => {
+    const result = await logMutation.mutateAsync(data);
+    if (!result?.id || result?.error) throw new Error(result?.error || 'No se confirmó el registro del comprobante.');
+  };
+
+  const handleReimprimir = () => runAction(async () => {
+    await logConfirmed({
       accion: 'reimpresion',
       canal: 'impresion',
       formato: venta.tipo_concepto === 'revision_diagnostico' ? '80mm' : 'normal'
     });
     setShowTiquete(true);
-  };
+  });
 
   const handleReenviar = (canal) => {
+    if (actionLock.current) return;
     setCanalReenvio(canal);
+    setDestinatario('');
+    setPreparedLink(null);
     setShowReenvio(true);
   };
 
-  const handleConfirmarReenvio = async () => {
-    if (!destinatario.trim()) {
-      toast({ title: 'Destinatario requerido', description: `Ingresa ${canalReenvio === 'whatsapp' ? 'un número de teléfono' : 'un correo electrónico'} antes de continuar.` });
-      return;
+  const handleConfirmarReenvio = () => runAction(async () => {
+    const target = destinatario.trim();
+    const phone = target.replace(/\D/g, '');
+    if (canalReenvio === 'whatsapp' ? !/^[1-9]\d{7,14}$/.test(phone) : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) {
+      throw new Error('Ingresa un destinatario válido, con código de país si corresponde.');
     }
-
     const receiptUrl = await issuePublicLink('receipt', venta.id);
     const mensaje = `Comprobante de venta: ${receiptUrl}`;
-
-    if (canalReenvio === 'whatsapp') {
-      const telefono = destinatario.replace(/\D/g, '');
-      window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
-    } else {
-      window.open(`mailto:${encodeURIComponent(destinatario)}?subject=${encodeURIComponent('Comprobante de venta')}&body=${encodeURIComponent(mensaje)}`, '_blank');
-    }
-
-    await logMutation.mutateAsync({
+    const url = canalReenvio === 'whatsapp'
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`
+      : `mailto:${encodeURIComponent(target)}?subject=${encodeURIComponent('Comprobante de venta')}&body=${encodeURIComponent(mensaje)}`;
+    await logConfirmed({
       accion: canalReenvio === 'whatsapp' ? 'reenvio_whatsapp' : 'reenvio_email',
       canal: canalReenvio,
       formato: venta.tipo_concepto === 'revision_diagnostico' ? 'a4' : 'normal',
-      destinatario: destinatario,
-      notas: 'Canal externo abierto; entrega pendiente de confirmación por el usuario'
+      destinatario: target,
+      notas: 'Comprobante preparado; envío externo no confirmado'
     });
+    setPreparedLink(url);
+    toast({ title: 'Comprobante preparado', description: 'Abre el canal externo y confirma el envío manualmente.' });
+  });
 
-    toast({ title: 'Canal externo abierto', description: `Confirma el envío en ${canalReenvio === 'whatsapp' ? 'WhatsApp' : 'tu aplicación de correo'}.` });
-    setShowReenvio(false);
-    setDestinatario('');
+  const closeShare = (open) => {
+    if (actionLock.current) return;
+    setShowReenvio(open);
+    if (!open) setPreparedLink(null);
   };
 
   if (variant === 'compact') {
@@ -78,7 +105,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
       <>
         <div className="flex gap-2">
           <Button
-            onClick={handleReimprimir}
+            disabled={busy} onClick={handleReimprimir}
             variant="outline"
             size="sm"
             className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
@@ -112,7 +139,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={showReenvio} onOpenChange={setShowReenvio}>
+        <Dialog open={showReenvio} onOpenChange={closeShare}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -126,18 +153,16 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
                 </Label>
                 <Input
                   type={canalReenvio === 'whatsapp' ? 'tel' : 'email'}
-                  value={destinatario}
+                  disabled={busy || !!preparedLink} value={destinatario}
                   onChange={(e) => setDestinatario(e.target.value)}
                   placeholder={canalReenvio === 'whatsapp' ? '+506 1234 5678' : 'cliente@email.com'}
                 />
               </div>
               <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={() => setShowReenvio(false)}>
+                <Button variant="outline" disabled={busy} onClick={() => closeShare(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleConfirmarReenvio}>
-                  Enviar
-                </Button>
+                {preparedLink ? <Button asChild><a href={preparedLink} target="_blank" rel="noopener noreferrer">Abrir canal</a></Button> : <Button disabled={busy} onClick={handleConfirmarReenvio}>Preparar comprobante</Button>}
               </div>
             </div>
           </DialogContent>
@@ -150,7 +175,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
     <>
       <div className="flex gap-3">
         <Button
-          onClick={handleReimprimir}
+          disabled={busy} onClick={handleReimprimir}
           variant="outline"
           className="flex-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50"
         >
@@ -181,7 +206,7 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showReenvio} onOpenChange={setShowReenvio}>
+      <Dialog open={showReenvio} onOpenChange={closeShare}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -195,18 +220,16 @@ export default function AccionesPostVenta({ venta, variant = 'default' }) {
               </Label>
               <Input
                 type={canalReenvio === 'whatsapp' ? 'tel' : 'email'}
-                value={destinatario}
+                disabled={busy || !!preparedLink} value={destinatario}
                 onChange={(e) => setDestinatario(e.target.value)}
                 placeholder={canalReenvio === 'whatsapp' ? '+506 1234 5678' : 'cliente@email.com'}
               />
             </div>
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setShowReenvio(false)}>
+              <Button variant="outline" disabled={busy} onClick={() => closeShare(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleConfirmarReenvio}>
-                Enviar
-              </Button>
+              {preparedLink ? <Button asChild><a href={preparedLink} target="_blank" rel="noopener noreferrer">Abrir canal</a></Button> : <Button disabled={busy} onClick={handleConfirmarReenvio}>Preparar comprobante</Button>}
             </div>
           </div>
         </DialogContent>

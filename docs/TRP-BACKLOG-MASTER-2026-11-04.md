@@ -28,6 +28,8 @@ Avance de este lote: Gastos lectura explícita, fecha civil, guard de registro, 
 
 Lote 1137760: arqueo preliminar no persistente por día/sucursal, bloquea ventas mixtas o no confirmadas; operationalGateway informa completitud; Finanzas/Gastos/AP consumen flag; Ejecutivo 24h. Lote siguiente: PDF nativo jsPDF desde respuesta confirmada y perspectiva seleccionada; objetivos manuales no persistentes para seis métricas de conteo. No equivale a historial, metas compartidas, scheduler ni cierre contable. QA visual/backend pendiente.
 
+Lote Ejecutivo persistencia: entidades ExecutiveReportSnapshot y ExecutiveTargetRevision con RLS cerrada; acciones getExecutiveReport para historial reciente (20), generación manual y objetivos por tenant/ámbito/período; historial de revisiones append-only, alertas en consulta. Typecheck/lint PASS. No certificación de schema o función en runtime, concurrencia de revisiones, deduplicación durable, programación ni envío. No se crearon registros reales.
+
 ## Evidencia preservada / no repetir
 - MB-01 promoción QA-002 CP 6b084a59c7a6406771f5d089 / 1d689f8; 57/57 focalizadas. Taller/repuestos/calidad CP 6b084de16db8d8460233ddbd / 92479cb; guard local y confirmación respuestas.
 - Postventa/AP/CRM CP 6b085894c7666da3d3cdacc0 / 7984cf0; resumen cobros CP 6b0873d22a8594e7f2a3d23c / fd08ca5; protección backend AP CP 6b087ba4b6400b19c05c3888 / 1ced957.

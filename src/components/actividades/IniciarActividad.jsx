@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -28,9 +28,10 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
   const [inventarioCantidad, setInventarioCantidad] = useState('1');
   const [confirmarConsumo, setConfirmarConsumo] = useState(false);
   const queryClient = useQueryClient();
+  const submitting = useRef(false);
   const { user, effectiveOrgId } = useAuthContext();
 
-  const { data: inventario = [] } = useQuery({
+  const { data: inventario = [], isError: inventoryError, isLoading: inventoryLoading, refetch: reloadInventory } = useQuery({
     queryKey: ['inventario', effectiveOrgId],
     queryFn: () => base44.entities.Inventario.filter({
       organization_id: effectiveOrgId,
@@ -59,7 +60,7 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
         confirmar_consumo_repuesto: Boolean(inventarioId && confirmarConsumo),
       });
 
-      if (!response?.data?.success) {
+      if (!response?.data?.success || !response.data.actividad?.id || response.data.actividad.orden_trabajo_id !== ordenTrabajoId) {
         throw new Error(response?.data?.error || 'Error al iniciar la actividad técnica');
       }
 
@@ -68,6 +69,7 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
       queryClient.invalidateQueries({ queryKey: ['expediente-ot'] });
+      queryClient.invalidateQueries({ queryKey: ['inventario'] });
       setOpen(false);
       setTipoActividad('');
       setSubtipo('');
@@ -80,9 +82,10 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!tipoActividad) return;
-    if (!user?.id) return;
-    iniciarMutation.mutate();
+    if (!tipoActividad || !user?.id || submitting.current) return;
+    if (inventarioId && (inventoryError || inventoryLoading || !inventario.some(item => item.id === inventarioId) || !Number.isInteger(Number(inventarioCantidad)) || Number(inventarioCantidad) < 1)) return;
+    submitting.current = true;
+    iniciarMutation.mutate(undefined, { onSettled: () => { submitting.current = false; } });
   };
 
   return (
@@ -95,7 +98,7 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
         Iniciar Actividad
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={value => { if (!submitting.current) setOpen(value); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t('tail.startActivity','Iniciar Actividad')}</DialogTitle>
@@ -158,12 +161,12 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
 
             <div className="space-y-2">
               <Label htmlFor="inventario_id">Repuesto Principal (opcional)</Label>
-              <Select value={inventarioId} onValueChange={setInventarioId}>
+              <Select value={inventarioId || "none"} onValueChange={value => { setInventarioId(value === "none" ? "" : value); setConfirmarConsumo(false); setInventarioCantidad("1"); }} disabled={inventoryLoading || inventoryError || iniciarMutation.isPending}>
                 <SelectTrigger>
                   <SelectValue placeholder="Ninguno" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={null}>Ninguno</SelectItem>
+                  <SelectItem value="none">Ninguno</SelectItem>
                   {inventario.map(item => (
                     <SelectItem key={item.id} value={item.id}>
                       {item.nombre} - {item.sku}
@@ -173,6 +176,7 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
               </Select>
             </div>
 
+            {inventoryError && <div role="alert" className="text-sm text-red-700">No se pudo consultar el inventario. <Button type="button" variant="link" onClick={() => reloadInventory()}>Reintentar</Button></div>}
             {iniciarMutation.isError && (
               <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                 {iniciarMutation.error?.message || 'Error al iniciar la actividad'}
@@ -180,13 +184,13 @@ export default function IniciarActividad({ ordenTrabajoId, onSuccess }) {
             )}
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" disabled={iniciarMutation.isPending} onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 className="bg-gradient-to-r from-emerald-500 to-blue-500"
-                disabled={iniciarMutation.isPending || !tipoActividad || !user?.id}
+                disabled={iniciarMutation.isPending || !tipoActividad || !user?.id || Boolean(inventarioId && (inventoryError || inventoryLoading || !Number.isInteger(Number(inventarioCantidad)) || Number(inventarioCantidad) < 1))}
               >
                 {iniciarMutation.isPending ? 'Iniciando...' : 'Iniciar Actividad'}
               </Button>

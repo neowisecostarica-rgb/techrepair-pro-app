@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useI18n } from '@/i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -16,6 +16,7 @@ export default function ActividadActiva({ actividad, onUpdated }) {
   const [showBloqueoModal, setShowBloqueoModal] = useState(false);
   const [causaBloqueo, setCausaBloqueo] = useState('');
   const queryClient = useQueryClient();
+  const commandLock = useRef(false);
   const { user, effectiveOrgId } = useAuthContext();
   const { t } = useI18n();
 
@@ -42,7 +43,7 @@ export default function ActividadActiva({ actividad, onUpdated }) {
         work_order_id: actividad.orden_trabajo_id,
         correlation_id: crypto.randomUUID(),
       });
-      if (response?.data?.error) throw new Error(response.data.error);
+      if (response?.data?.success !== true || response.data.segment?.id !== actividad.id || response.data.segment?.orden_trabajo_id !== actividad.orden_trabajo_id) throw new Error(response?.data?.error || "No se confirmó la actividad. Actualiza la OT antes de repetir.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
@@ -62,7 +63,7 @@ export default function ActividadActiva({ actividad, onUpdated }) {
         reason: causaBloqueo,
         correlation_id: crypto.randomUUID(),
       });
-      if (response?.data?.error) throw new Error(response.data.error);
+      if (response?.data?.success !== true || response.data.segment?.id !== actividad.id || response.data.segment?.orden_trabajo_id !== actividad.orden_trabajo_id) throw new Error(response?.data?.error || "No se confirmó la actividad. Actualiza la OT antes de repetir.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['actividades_tecnicas'] });
@@ -72,6 +73,12 @@ export default function ActividadActiva({ actividad, onUpdated }) {
     }
   });
 
+  const pending = finalizarMutation.isPending || bloquearMutation.isPending;
+  const execute = (mutation) => {
+    if (commandLock.current) return;
+    commandLock.current = true;
+    mutation.mutate(undefined, { onSettled: () => { commandLock.current = false; } });
+  };
   if (!actividad) return null;
 
   const tipoLabels = {
@@ -125,17 +132,18 @@ export default function ActividadActiva({ actividad, onUpdated }) {
             </div>
           </div>
 
+          {(finalizarMutation.isError || bloquearMutation.isError) && <p role="alert" className="text-sm text-red-700 mb-3">{(bloquearMutation.error || finalizarMutation.error)?.message}</p>}
           <div className="flex gap-3">
             <Button
-              onClick={() => finalizarMutation.mutate()}
-              disabled={finalizarMutation.isPending}
+              onClick={() => execute(finalizarMutation)}
+              disabled={pending}
               className="flex-1 bg-gradient-to-r from-emerald-500 to-blue-500"
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               {finalizarMutation.isPending ? 'Finalizando...' : 'Finalizar'}
             </Button>
             <Button
-              onClick={() => setShowBloqueoModal(true)}
+              disabled={pending} onClick={() => setShowBloqueoModal(true)}
               variant="outline"
               className="flex-1 border-orange-500 text-orange-700 hover:bg-orange-50"
             >
@@ -147,7 +155,7 @@ export default function ActividadActiva({ actividad, onUpdated }) {
       </Card>
 
       {/* Modal Bloqueo */}
-      <Dialog open={showBloqueoModal} onOpenChange={setShowBloqueoModal}>
+      <Dialog open={showBloqueoModal} onOpenChange={value => { if (!commandLock.current) setShowBloqueoModal(value); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('sweep.markBlocked','Marcar Actividad como Bloqueada')}</DialogTitle>
@@ -169,13 +177,13 @@ export default function ActividadActiva({ actividad, onUpdated }) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowBloqueoModal(false)}
+                disabled={pending} onClick={() => setShowBloqueoModal(false)}
               >
                 Cancelar
               </Button>
               <Button
-                onClick={() => bloquearMutation.mutate()}
-                disabled={bloquearMutation.isPending || !causaBloqueo.trim()}
+                onClick={() => execute(bloquearMutation)}
+                disabled={pending || !causaBloqueo.trim()}
                 className="bg-orange-500 hover:bg-orange-600"
               >
                 {bloquearMutation.isPending ? 'Bloqueando...' : 'Confirmar Bloqueo'}

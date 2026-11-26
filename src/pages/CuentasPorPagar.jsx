@@ -59,7 +59,7 @@ function CuentasPorPagarContent() {
 
       const response = await base44.functions.invoke('operationalGateway', { operation: 'read', entity: 'PurchaseInvoice', method: 'filter', filter: query, sort: '-created_date', limit: 500 });
       const result = response?.data ?? response;
-      if (result?.error || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error(result?.error || 'Listado incompleto o no confirmado');
+      if (result?.error || result?.complete === false || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error(result?.error || 'Listado incompleto o no confirmado');
       const allInvoices = result.records;
       return aplicarStatusInvoices(allInvoices).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
     },
@@ -86,7 +86,7 @@ function CuentasPorPagarContent() {
       const filter = { organization_id: effectiveOrgId, ...(branchIdFijo ? { branch_id: branchIdFijo } : {}) };
       const response = await base44.functions.invoke('operationalGateway', { operation: 'read', entity: 'SupplierPayment', method: 'filter', filter, sort: '-created_date', limit: 500 });
       const result = response?.data ?? response;
-      if (result?.error || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error(result?.error || 'No se confirmó el historial completo de pagos');
+      if (result?.error || result?.complete === false || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error(result?.error || 'No se confirmó el historial completo de pagos');
       return result.records;
     },
   });

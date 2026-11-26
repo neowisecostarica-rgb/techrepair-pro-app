@@ -19,7 +19,7 @@ Deno.serve(async req => {
       entitlement.license_status !== 'active' || entitlement.billing_status !== 'active' ||
       !entitlement.capabilities.includes('ADVANCED_ANALYTICS')) return result({error:'Disponible en Business y Corporate activos'},403);
     const body = await req.json().catch(()=>({}));
-    const days = [7,30,90].includes(body.days) ? body.days : 7;
+    const days = [1,7,30,90].includes(body.days) ? body.days : 7;
     if (body.organization_id && body.organization_id !== auth.organizationId) return result({error:'Organización no autorizada'},403);
     const fixed = auth.pilotBranchId || (auth.role === 'BRANCH_ADMIN' ? auth.branchId : null);
     if ((auth.role === 'BRANCH_ADMIN' || auth.pilotMode) && !fixed) return result({error:'Sucursal no autorizada'},403);

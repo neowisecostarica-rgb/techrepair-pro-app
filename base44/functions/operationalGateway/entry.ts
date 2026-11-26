@@ -331,11 +331,14 @@ async function handleRead(base44, authorization, decision, body) {
   // All read methods, including list, must carry the server-derived tenant filter.
   // A raw service-role list would bypass organization isolation.
   const records = await entity.filter(filter, body.sort || '-created_date', fetchLimit);
+  if (!Array.isArray(records)) return {ok:false,status:502,error:'Lectura no confirmada'};
+  const complete = records.length < fetchLimit;
 
   if (authorization.isPlatformGlobal || (decision.branchScope.organizationWide && !requested) || decision.policy.scope === 'organization') {
     return {
       ok: true,
-      records: (records || []).slice(0, limit)
+      complete: complete && records.length <= limit,
+      records: records.slice(0, limit)
         .map(record => projectOperationalReadResult(entityName, record, authorization)),
     };
   }
@@ -356,6 +359,7 @@ async function handleRead(base44, authorization, decision, body) {
   }
   return {
     ok: true,
+    complete: complete && scoped.length < limit,
     records: scoped.map(record => projectOperationalReadResult(entityName, record, authorization)),
   };
 }
@@ -796,7 +800,7 @@ Deno.serve(async (req) => {
       ? await handleRead(base44, authorization, decision, body)
       : await handleMutation(base44, user, authorization, decision, body);
     if (!result.ok) return fail(result.error, result.status, result.code);
-    return Response.json(operation === 'read' ? { records: result.records } : result.record);
+    return Response.json(operation === 'read' ? { records: result.records, complete: result.complete === true } : result.record);
   } catch (error) {
     const message = String(error?.message || '');
     if (/Rate limit exceeded:\s*entity_list\b/i.test(message)) {

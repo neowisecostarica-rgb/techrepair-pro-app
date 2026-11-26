@@ -38,6 +38,7 @@ import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import FiltrosFinanzas from '@/components/finanzas/FiltrosFinanzas';
 import ResumenCobros from '@/components/finanzas/ResumenCobros';
+import ArqueoPreliminar from '@/components/finanzas/ArqueoPreliminar';
 
 export default function Finanzas() {
   return (
@@ -127,7 +128,7 @@ function FinanzasContent() {
       else if (sucursalId) query.branch_id = sucursalId;
       const response = await base44.functions.invoke('operationalGateway', { operation: 'read', method: 'filter', entity: 'Venta', filter: query, sort: '-created_date', limit: 500 });
       const result = response?.data ?? response;
-      if (result?.error || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error('Historial de ventas incompleto o no confirmado');
+      if (result?.error || result?.complete === false || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error('Historial de ventas incompleto o no confirmado');
       const all = result.records;
       return all.filter(v => {
         const d = new Date(v.created_date);
@@ -216,6 +217,7 @@ function FinanzasContent() {
 
       {!validPeriod && fechaDesde && fechaHasta && <p role="alert">El rango de fechas no es válido.</p>}
       {validPeriod && effectiveOrgId && (!isBranchAdmin || branchIdFijo) && <ResumenCobros key={effectiveOrgId + ':' + (branchIdFijo || sucursalId || 'all')} sales={ventasPagadas} loading={loadingSales} error={salesError} onRetry={retrySales} />}
+      {validPeriod && effectiveOrgId && (!isBranchAdmin || branchIdFijo) && <ArqueoPreliminar key={effectiveOrgId + ':' + (branchIdFijo || sucursalId || 'all') + ':' + fechaDesde + ':' + fechaHasta} sales={ventasPagadas} loading={loadingSales} error={salesError} branchId={branchIdFijo || sucursalId} singleDay={fechaDesde === fechaHasta} />}
       {/* ── ERROR ── */}
       {isErrorMetrics && !isLoadingMetrics && (
         <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4">

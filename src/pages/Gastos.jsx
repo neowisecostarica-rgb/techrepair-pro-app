@@ -52,7 +52,7 @@ function GastosContent() {
       const response = await base44.functions.invoke('operationalGateway', { operation:'read', entity:'Expense', method:'filter', filter:query, sort:'-created_date', limit:500 });
       const payload = response?.data ?? response;
       const allGastos = payload?.records;
-      if (!Array.isArray(allGastos) || allGastos.length >= 500 || payload?.ok === false || allGastos.some(g => typeof g.amount !== 'number' || !Number.isFinite(g.amount) || typeof g.date !== 'string')) throw new Error('No se confirmó la totalidad de gastos');
+      if (!Array.isArray(allGastos) || allGastos.length >= 500 || payload?.ok === false || payload?.complete === false || allGastos.some(g => typeof g.amount !== 'number' || !Number.isFinite(g.amount) || typeof g.date !== 'string')) throw new Error('No se confirmó la totalidad de gastos');
       
       return allGastos.filter(g => {
         return g.date >= format(inicioMes, 'yyyy-MM-dd') && g.date <= format(finMes, 'yyyy-MM-dd');

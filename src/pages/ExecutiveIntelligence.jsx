@@ -40,7 +40,7 @@ function ExecutiveContent(){
    <p className="text-slate-300 mt-2">Dirección estratégica, financiera y operativa en un solo lugar.</p>
   </section>
   {!enabled?<p role="alert">Disponible para administradores con acceso Business o Corporate.</p>:<>
-   <div className="flex flex-wrap gap-2" aria-label="Período">{[7,30,90].map(d=><Button key={d} variant={days===d?'default':'outline'} onClick={()=>setDays(d)}>Últimos {d} días</Button>)}</div>
+   <div className="flex flex-wrap gap-2" aria-label="Período">{[1,7,30,90].map(d=><Button key={d} variant={days===d?'default':'outline'} onClick={()=>setDays(d)}>{d===1?"Últimas 24 horas":`Últimos ${d} días`}</Button>)}</div>
    <div className="flex flex-wrap gap-2" aria-label="Perspectiva">{['General','CEO','CFO','Gerencia'].map(v=><Button key={v} variant={view===v?'default':'outline'} onClick={()=>setView(v)}>{v}</Button>)}</div>
    {q.isLoading?<p>Preparando informe…</p>:q.isError?<div role="alert">No se pudo confirmar el informe o el acceso comercial. <Button variant="link" onClick={()=>q.refetch()}>Reintentar</Button></div>:q.data?.requires_branch?<section className="rounded-xl border p-5"><p>Seleccioná una sucursal para consultar el informe Business.</p><select className="mt-3 border rounded-lg p-2" value={branch} onChange={e=>setBranch(e.target.value)}><option value="">Seleccionar sucursal</option>{q.data.branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></section>:q.data&&<>
     <Button variant="outline" onClick={()=>window.print()}>Imprimir / Guardar PDF</Button>

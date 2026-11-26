@@ -61,6 +61,14 @@ export const MENU_ITEMS = [
     category: 'NEGOCIO',
     anyCapabilities: ['TECHNICAL_SUPERVISION'],
   },
+  {
+    label: 'Executive Intelligence',
+    path: 'ExecutiveIntelligence',
+    icon: Building2,
+    category: 'NEGOCIO',
+    anyCapabilities: ['ADVANCED_ANALYTICS'],
+    tenantRoles: ['ORG_ADMIN', 'BRANCH_ADMIN'],
+  },
   // ── TALLER ──────────────────────────────────────────────────────────────────
   {
     label: 'Órdenes',

@@ -1,0 +1,13 @@
+{
+ "name":"ExecutiveTargetRevision","type":"object",
+ "properties":{
+  "organization_id":{"type":"string"},
+  "scope_key":{"type":"string"},
+  "days":{"type":"number","enum":[1,7,30,90]},
+  "actor_id":{"type":"string"},
+  "targets":{"type":"object"},
+  "saved_at":{"type":"string","format":"date-time"}
+ },
+ "required":["organization_id","scope_key","days","actor_id","targets","saved_at"],
+ "rls":{"create":false,"read":false,"update":false,"delete":false}
+}

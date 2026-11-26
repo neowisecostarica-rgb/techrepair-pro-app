@@ -35,6 +35,30 @@ Deno.serve(async req => {
       const branches = await base44.asServiceRole.entities.Branch.filter({id:branch,organization_id:auth.organizationId},'-created_date',1);
       if (!branches?.[0]) return result({error:'Sucursal no autorizada'},403);
     }
+    const action = body.action || 'report';
+    if (!['report','save_snapshot','history','save_targets','targets'].includes(action)) return result({error:'Acción no admitida'},400);
+    const scopeKey = branch ? 'branch:'+branch : 'organization';
+    const storageScope = {organization_id:auth.organizationId,scope_key:scopeKey,days};
+    const entities = base44.asServiceRole.entities;
+    const targetKeys = ['sales','orders','deliveries','completed_activities','blocked_activities','open_quotes'];
+    if (action === 'targets') {
+      const rows = await entities.ExecutiveTargetRevision.filter(storageScope,'-created_date',1);
+      if (!Array.isArray(rows)) return result({error:'Objetivos no disponibles'},503);
+      return result({ok:true,targets:rows[0]?.targets ?? {},saved_at:rows[0]?.saved_at ?? null});
+    }
+    if (action === 'save_targets') {
+      const input=body.targets;
+      if (!input || typeof input !== 'object' || Array.isArray(input) ||
+        Object.entries(input).some(([k,v])=>!targetKeys.includes(k)||typeof v!=='number'||!Number.isSafeInteger(v)||v<0)) return result({error:'Objetivos inválidos'},422);
+      const record=await entities.ExecutiveTargetRevision.create({...storageScope,actor_id:user.id,targets:input,saved_at:new Date().toISOString()});
+      if (!record?.id) return result({error:'Guardado no confirmado'},503);
+      return result({ok:true,id:record.id});
+    }
+    if (action === 'history') {
+      const rows=await entities.ExecutiveReportSnapshot.filter(storageScope,'-created_date',20);
+      if (!Array.isArray(rows)) return result({error:'Historial no disponible'},503);
+      return result({ok:true,reports:rows.map(r=>({id:r.id,generated_at:r.generated_at,report:r.report})),limited:rows.length===20});
+    }
     const scope = {organization_id:auth.organizationId,...(branch ? {branch_id:branch} : {})};
     const now = Date.now(), start = now-days*DAY, previous = start-days*DAY;
     const read = async (entity, filter = scope) => {
@@ -59,7 +83,7 @@ Deno.serve(async req => {
       invoices.reduce((acc,i)=>acc+i.total_amount-i.paid_amount,0);
     const paid = sales?.filter(x=>x.estado==='pagada') ?? null;
     const currentQuotes = quotes?.filter(x=>['borrador','enviada','aprobada'].includes(x.estado)&&x.estado_conversion!=='CONVERTIDA') ?? null;
-    return result({ok:true,generated_at:new Date(now).toISOString(),days,branch_id:branch,package_id:entitlement.package_id,
+    const report={ok:true,generated_at:new Date(now).toISOString(),days,branch_id:branch,package_id:entitlement.package_id,
       metrics:{
         sales:pair(paid,'created_date',count),revenue:pair(paid,'created_date',rows=>sum(rows,'total')),
         orders:pair(orders,'created_date',count),deliveries:pair(orders,'delivered_at',count),
@@ -74,6 +98,12 @@ Deno.serve(async req => {
         active_warranties:warranties===null?null:warranties.filter(x=>x.estado==='ACTIVA'&&typeof x.fecha_fin==='string'&&x.fecha_fin>=new Date(now).toISOString().slice(0,10)).length
       },
       limitations:['Saldo de proveedores según importes registrados, no conciliación bancaria.','Períodos móviles, no cierres contables.','Importes nominales; moneda histórica por documento no acreditada.','Una fuente incompleta o no disponible aparece sin indicador.','Las ventas se atribuyen a su fecha de registro, no a fecha de liquidación bancaria.']
-    });
+    };
+    if(action==='save_snapshot'){
+      const snapshot=await entities.ExecutiveReportSnapshot.create({...storageScope,actor_id:user.id,generated_at:report.generated_at,report});
+      if(!snapshot?.id)return result({error:'Informe no confirmado'},503);
+      return result({ok:true,id:snapshot.id,report});
+    }
+    return result(report);
   } catch {return result({error:'No se pudo generar el informe'},500);}
 });

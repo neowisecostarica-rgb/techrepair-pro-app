@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '@/components/guards/PageGuard';
 import { Button } from '@/components/ui/button';
+import ExecutiveHistory from '@/components/executive/ExecutiveHistory';
 import ExecutiveTargets from '@/components/executive/ExecutiveTargets';
 import { exportExecutiveReport } from '@/components/executive/exportExecutiveReport';
 
@@ -56,7 +57,8 @@ function ExecutiveContent(){
       return <article key={key} className="bg-white border border-slate-200 rounded-2xl p-5"><p className="text-xs uppercase tracking-wider text-teal-700">{section}</p><h2 className="text-sm text-slate-600 mt-2">{label}</h2><p className="text-2xl font-semibold mt-2 tabular-nums">{fmt(paired?item.current:item,kind)}</p>{paired&&<p className="text-xs text-slate-500 mt-2">Período anterior: {fmt(item.previous,kind)}</p>}{!paired&&<p className="text-xs text-slate-500 mt-2">Estado actual, no histórico.</p>}</article>;
      })}
     </div>
-    <ExecutiveTargets key={effectiveOrgId+":"+q.data.branch_id+":"+days} report={q.data}/>
+    <ExecutiveTargets key={effectiveOrgId+":"+q.data.branch_id+":"+days} report={q.data} orgId={effectiveOrgId} userId={user?.id}/>
+    <ExecutiveHistory key={effectiveOrgId+":"+q.data.branch_id+":"+days} orgId={effectiveOrgId} userId={user?.id} report={q.data} definitions={definitions} view={view}/>
     <section className="text-xs text-slate-500 space-y-1">{q.data.limitations.map(note=><p key={note}>{note}</p>)}</section>
    </>}
   </>}

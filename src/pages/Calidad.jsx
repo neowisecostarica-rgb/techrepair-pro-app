@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,17 +45,18 @@ function CalidadContent() {
   const [editingNC, setEditingNC] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('todas');
   const queryClient = useQueryClient();
+  const commandLock = useRef(false);
   const { effectiveOrgId, userAccount, effectiveRole } = useAuthContext();
   const isOrgAdmin = effectiveRole === 'ORG_ADMIN';
   const branchFilter = !isOrgAdmin && userAccount?.branch_id ? { branch_id: userAccount.branch_id } : {};
 
-  const { data: noConformidades = [] } = useQuery({
+  const { data: noConformidades = [], isError, isLoading, refetch } = useQuery({
     queryKey: ['no-conformidades', effectiveOrgId, isOrgAdmin ? 'all' : userAccount?.branch_id],
     queryFn: () => base44.entities.NoConformidad.filter({
       organization_id: effectiveOrgId,
       ...branchFilter
     }, '-created_date', 200),
-    enabled: !!effectiveOrgId,
+    enabled: !!effectiveOrgId && (isOrgAdmin || !!userAccount?.branch_id),
   });
 
   const createMutation = useMutation({
@@ -81,6 +82,7 @@ function CalidadContent() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (commandLock.current || !effectiveOrgId || (!isOrgAdmin && !userAccount?.branch_id)) return;
     const formData = new FormData(e.target);
     const data = {
       titulo: formData.get('titulo'),
@@ -92,16 +94,21 @@ function CalidadContent() {
       accion_correctiva: formData.get('accion_correctiva'),
       fecha_limite: formData.get('fecha_limite'),
       orden_trabajo_id: formData.get('orden_trabajo_id') || undefined,
-      reportado_por: formData.get('reportado_por'),
+      ...(editingNC ? {} : branchFilter),
     };
 
+    commandLock.current = true;
+    const callbacks = { onSettled: () => { commandLock.current = false; } };
     if (editingNC) {
-      updateMutation.mutate({ id: editingNC.id, data });
+      updateMutation.mutate({ id: editingNC.id, data }, callbacks);
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, callbacks);
     }
   };
 
+  const pending = createMutation.isPending || updateMutation.isPending;
+  if (isError || (!isOrgAdmin && !userAccount?.branch_id)) return <div role="alert">No se pudo consultar calidad en una sucursal autorizada. <Button onClick={() => refetch()} variant="link">Reintentar</Button></div>;
+  if (isLoading) return <p>Cargando registros de calidad…</p>;
   const ncFiltradas = noConformidades.filter(nc =>
     filtroEstado === 'todas' || nc.estado === filtroEstado
   );
@@ -247,7 +254,7 @@ function CalidadContent() {
       </div>
 
       {/* Modal Crear/Editar */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={value => { if (!commandLock.current) setShowModal(value); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
@@ -256,6 +263,7 @@ function CalidadContent() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            {(createMutation.isError || updateMutation.isError) && <p role="alert" className="text-red-700 text-sm">{(updateMutation.error || createMutation.error)?.message}</p>}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 col-span-2">
                 <Label htmlFor="titulo">{t('quality.name','Título *')}</Label>
@@ -365,22 +373,14 @@ function CalidadContent() {
                 <p className="text-xs text-slate-500">{t('quality.traceHelp','Vincula esta no conformidad con la historia operacional de la OT.')}</p>
               </div>
 
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="reportado_por">{t('quality.reportedBy','Reportado Por')}</Label>
-                <Input
-                  id="reportado_por"
-                  name="reportado_por"
-                  defaultValue={editingNC?.reportado_por}
-                  placeholder="Email del reportador"
-                />
-              </div>
+              {editingNC?.reportado_por && <p className="col-span-2 text-xs text-slate-500">Reportador registrado: {editingNC.reportado_por}</p>}
             </div>
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+              <Button type="button" variant="outline" disabled={pending} onClick={() => setShowModal(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-gradient-to-r from-red-500 to-orange-500">
+              <Button type="submit" disabled={pending} className="bg-gradient-to-r from-red-500 to-orange-500">
                 {editingNC ? 'Actualizar' : 'Crear'} NC
               </Button>
             </div>

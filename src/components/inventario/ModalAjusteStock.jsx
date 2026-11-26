@@ -22,9 +22,13 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
   const [motivo, setMotivo] = useState('');
   const [loading, setLoading] = useState(false);
   const operationKey = useRef(crypto.randomUUID());
+  const lock = useRef(false);
+  const [attempted, setAttempted] = useState(false);
   const { toast } = useToast();
 
   const handleClose = () => {
+    if (lock.current) return;
+    setAttempted(false);
     setCantidad('');
     setMotivo('');
     setTipo('entrada');
@@ -34,9 +38,10 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (lock.current || !item?.id) return;
 
     const delta = parseFloat(cantidad);
-    if (!delta || delta <= 0 || isNaN(delta)) {
+    if (!Number.isInteger(delta) || delta <= 0) {
       toast({ title: 'Cantidad inválida', description: 'Ingresa una cantidad mayor a 0.', variant: 'destructive' });
       return;
     }
@@ -45,6 +50,8 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
       return;
     }
 
+    lock.current = true;
+    setAttempted(true);
     setLoading(true);
     try {
       const response = await base44.functions.invoke('adjustInventoryStock', {
@@ -56,7 +63,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
       });
 
       const result = response?.data ?? response;
-      if (result?.success !== true) {
+      if (result?.success !== true || result.inventario_id !== item.id || result.tipo !== tipo || result.delta !== delta) {
         throw new Error(result?.error || 'El servidor no confirmó el ajuste de inventario');
       }
 
@@ -65,6 +72,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
         description: `Stock actualizado: ${result.stock_anterior} → ${result.stock_nuevo} unidades.`,
       });
 
+      lock.current = false;
       handleClose();
       onSuccess?.();
     } catch (error) {
@@ -74,6 +82,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
         variant: 'destructive',
       });
     } finally {
+      lock.current = false;
       setLoading(false);
     }
   };
@@ -93,7 +102,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
   const stockNegativo = resultado !== null && resultado < 0;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={value => { if (!value && !attempted) handleClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Ajustar Stock</DialogTitle>
@@ -117,7 +126,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setTipo('entrada')}
+                disabled={attempted || loading} onClick={() => setTipo('entrada')}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all font-medium text-sm ${
                   tipo === 'entrada'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
@@ -129,7 +138,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
               </button>
               <button
                 type="button"
-                onClick={() => setTipo('salida')}
+                disabled={attempted || loading} onClick={() => setTipo('salida')}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all font-medium text-sm ${
                   tipo === 'salida'
                     ? 'border-red-500 bg-red-50 text-red-700'
@@ -150,7 +159,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
               type="number"
               min="1"
               step="1"
-              value={cantidad}
+              disabled={attempted || loading} value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
               placeholder="Ej: 5"
               required
@@ -182,7 +191,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
             <Label htmlFor="motivo" className="text-sm font-semibold">Motivo *</Label>
             <Textarea
               id="motivo"
-              value={motivo}
+              disabled={attempted || loading} value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Ej: Corrección inventario físico, Devolución proveedor, Merma..."
               rows={3}
@@ -191,6 +200,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
             <p className="text-xs text-slate-400">Este motivo quedará registrado en el historial de movimientos.</p>
           </div>
 
+          {attempted && !loading && <p role="alert" className="text-sm text-amber-700">Resultado no confirmado. Reintenta únicamente esta misma operación; no cambies los datos.</p>}
           {/* Acciones */}
           <div className="flex gap-3 pt-2">
             <Button
@@ -198,7 +208,7 @@ export default function ModalAjusteStock({ open, onOpenChange, item, onSuccess }
               variant="outline"
               onClick={handleClose}
               className="flex-1"
-              disabled={loading}
+              disabled={loading || attempted}
             >
               Cancelar
             </Button>

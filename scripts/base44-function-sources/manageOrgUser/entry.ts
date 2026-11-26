@@ -91,6 +91,7 @@ Deno.serve(async (req) => {
   const allowedRoles = ['ORG_ADMIN', 'BRANCH_ADMIN', 'TECHNICIAN', 'SALES', 'INVENTORY', 'CUSTOMER_SERVICE'];
 
   if (action === 'invite') {
+    if (Deno.env.get("TRP_EXTERNAL_EFFECTS_MODE") !== "PRODUCTION") return Response.json({error:"Invitaciones externas deshabilitadas",code:"EXTERNAL_EFFECTS_DISABLED"},{status:409});
     const { user_email, role, branch_id } = data;
     if (!user_email || !role) {
       return Response.json({ error: 'user_email y role son requeridos' }, { status: 400 });

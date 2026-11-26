@@ -16,10 +16,11 @@ Deno.serve(async req=>{
   const equipo=await one(base44.asServiceRole.entities.Equipo,{id:clean(body.equipo_id,160),organization_id:auth.organizationId});
   if(!equipo)return Response.json({error:'Activo no encontrado',code:'ASSET_NOT_FOUND'},{status:404});
   if(auth.role==='BRANCH_ADMIN'&&auth.branchId&&equipo.branch_id&&equipo.branch_id!==auth.branchId)return Response.json({error:'Activo fuera de la sucursal autorizada'},{status:403});
-  const action=String(body.action||'').toUpperCase(), operationKey=clean(body.operation_key,160)||crypto.randomUUID();
+  const fixedBranch=auth.pilotBranchId||(auth.role==='BRANCH_ADMIN'?auth.branchId:null);if(((auth.role==='BRANCH_ADMIN'||auth.pilotMode)&&!fixedBranch)||(auth.isSuperAdmin&&org?.controlled_pilot_mode===true))return Response.json({error:'Ambito no autorizado'},{status:403});if(fixedBranch&&body.branch_id&&body.branch_id!==fixedBranch)return Response.json({error:'Sucursal no autorizada'},{status:403});const action=String(body.action||'').toUpperCase(), operationKey=clean(body.operation_key,160)||crypto.randomUUID();
   const existingOp=await one(base44.asServiceRole.entities.AssetAssignment,{organization_id:auth.organizationId,operation_key:operationKey});
-  if(existingOp)return Response.json({success:true,assignment:existingOp,idempotent:true});
+  if(fixedBranch&&equipo.branch_id!==fixedBranch)return Response.json({error:'Activo fuera de sucursal'},{status:403});if(existingOp){if(fixedBranch&&existingOp.branch_id!==fixedBranch)return Response.json({error:'Operacion fuera de sucursal'},{status:403});return Response.json({error:'Operacion anterior requiere conciliacion',code:'REPLAY_RECONCILIATION_REQUIRED'},{status:409});}
   const active=await one(base44.asServiceRole.entities.AssetAssignment,{organization_id:auth.organizationId,equipo_id:equipo.id,status:'ACTIVE'});
+  if(active&&fixedBranch&&active.branch_id!==fixedBranch)return Response.json({error:'Asignacion fuera de sucursal'},{status:403});
   if(action==='ASSIGN'){
    if(active)return Response.json({error:'El activo ya tiene una asignacion activa',code:'ASSET_ALREADY_ASSIGNED'},{status:409});
    const assigneeName=clean(body.assignee_name,240); if(!assigneeName)return Response.json({error:'Responsable requerido'},{status:422});

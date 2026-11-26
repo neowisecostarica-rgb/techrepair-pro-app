@@ -1550,6 +1550,7 @@ Deno.serve(async (req) => {
     }
     if (action === "adminCreateOrganization") {
       if (!isCanonicalSuperAdmin(user)) return jsonError("Superadmin requerido", 403, "SUPERADMIN_REQUIRED");
+      if (Deno.env.get("TRP_EXTERNAL_EFFECTS_MODE") !== "PRODUCTION") return jsonError("Creacion con invitacion externa deshabilitada",409,"EXTERNAL_EFFECTS_DISABLED");
       const input = body.organization || {};
       const adminEmail = clean3(body.admin_email, 254).toLowerCase();
       const name = clean3(input.name, 240);

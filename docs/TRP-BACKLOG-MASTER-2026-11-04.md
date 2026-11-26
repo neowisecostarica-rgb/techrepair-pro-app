@@ -1,3 +1,39 @@
+# TRP · BACKLOG MAESTRO ÚNICO — 26/11/2026
+Autoridad: ZEUS / Dirección General. App 695d708948469128f473d080. Repo techrepair-pro-app.
+Corte fuente comprobado: 0e7fc5f17fb6681a0993a2ec3e81adff39dd0f68.
+Esta sección es la única cola operativa vigente; el histórico debajo es evidencia, no una segunda cola. Los IDs anteriores son alias de las filas siguientes. No se cierran issues ni se certifica runtime por documentación.
+
+## Directrices vigentes
+Production First: implementar en principal, recuperar selectivamente candidatos útiles, no crear laboratorios ni ramas. No promover cuarentena exclusiva de QA ni copiar datos. Dirección realiza deploy público. Preservar históricos Compu Store; no cobros, correos, invitaciones, facturas fiscales reales de prueba ni infraestructura de pago sin autorización. QA integral al final; controles mínimos por cambio. Revenue First: entrega funcional Compu Store primero; separar lanzamiento general e internacional. No repetir auditorías cerradas.
+
+## Cola única de ejecución (P0 bloqueante; P1 entrega; P2 posterior)
+| ID canónico | Prioridad / estado | Alcance restante y aceptación | Alias históricos |
+|---|---|---|---|
+| MB-07 | P0 parcial/bloqueado | Ledger durable UNIQUE tenant+operación, reserva/commit/estado incierto, hash actor/sucursal/payload, replay Enterprise cross-branch, outbox y conciliación; gate efectos externos incl. correo/invitaciones/workflows; concurrencia real y recuperación. CAS cooperativo y candidatos no son atomicidad. Decidir persistencia autorizada sin costes implícitos. | #13 P0-AUD-01, A4.1–3, RF-SEC-001, MB-AUD |
+| MB-07B | P0 parcial | Identidad multiempresa/multisucursal, scope y proyección SALES sin costo/margen/edición; Super Admin y roles; revisar replays y membresías, revocación. QA autenticado al MB-12, no debilitar permisos. | #12 SEC-013, #15 COM-QA, MB-01/02 históricos, RF-QA-001 |
+| MB-08 | P0 parcial | Caja apertura/arqueo/cierre y movimientos, gastos, abonos proveedores con writer soberano, conciliación de venta/stock/cobro, reintentos y cancelación lógica; reactivar abonos solo tras garantía durable; validar alta factura y discrepancias históricas. Resumen cobros existente no es saldo de caja. | POS-008/009, POS-CONCILIATION, QA-05, QA-FUNC.3 |
+| MB-09 | P0 parcial | Contrato monetario por documento, moneda histórica sin inferencia, impuestos/decimales/formatos/DTO públicos; eliminar CRC e IVA fijo cuando corresponda; comprobante interno vs emisión fiscal real, integración autorizada y normativa aplicable. Internacional bloqueado hasta certificar monedas. | A5.3c–e, monetaryContract, monetaryHistoryReview |
+| MB-10 | P1 parcial | Completar UX Hoy/Negocio/Operación, móvil, gráficos, cola, Calidad/Reciclaje, estados vacíos; anuncios: montaje lateral, formatos adaptables, política backend/consentimiento/plan, kill switch y no espacio en planes pagos; integrar NEOWISE Ads central sin trackers ni activación previa. | MB-04 histórico, UX-RESTANTES, RF-07/A06, MB-10A |
+| MB-11 | P0 pendiente | Respaldo y reconciliación de Compu Store read-only (OT, ventas, stock, usuarios, auditoría histórica); verificar técnico sin vínculo y organización sin sucursal/duplicados sin mutar. Importador multihoja ya en código: QA vista previa 132 filas/10 hojas, N/A y costos ausentes, serie persistida, búsqueda SKU/barcode; no reimportar sin autorización. | AUD-HISTORICAL, USR-TECH-UNLINKED, IMPORT-004/005, QA-01, CODEX-LEGACY-ZIP-001 si ZIP recuperado |
+| MB-14 | P1 parcial | Centro ejecutivo Business/Corporate ya en fuente; completar permisos independientes CEO/CFO/Gerencia, métricas correctas y paginadas, moneda/fecha/estado histórico, selección sucursal, objetivos/alertas editables, generación periódica/historial/PDF; entrega automática opt-in y efectos seguros; EVA futura. Corregir discrepancias de campos/schema y verificar registro de ruta/función. | MB-14A–F |
+| MB-12 | P0 pendiente | Una sola ronda QA final autenticada: CRM→cotización/proforma→venta/stock/caja/recibo→OT recepción/diagnóstico/reparación/repuestos/calidad/entrega/garantía/seguimiento. Roles negativos multiempresa/sucursal, 403 financiero/500 OT/429, concurrencia y replay, importador, onboarding recuperación durable, invitaciones y multi-org, Ejecutivo/Ads y responsive/i18n. No escribir datos reales de clientes; identidad/dataset/efectos seguros antes de pruebas de escritura. Sin nuevo laboratorio; no certificar aislamiento por selector solamente. | QA-01..09, A1–A5, RF-QA-001, E2E-OT-001, COMPU-QA |
+| MB-13 | P0 pendiente | Conciliar fuente, bundles, versión backend y URL publicada; build/QA final, checklist rollback, aceptación Compu Store y GO explícito. Dirección publica. | MB-06/MB-RELEASE históricos, RF-09 |
+| MB-15 | P2 diferido | Community HOLD hasta GO y coste/entitlements/privacidad; packaging/licencias, catálogo/precios no publicar sin ratificación, web comercial, Instagram configurable y CTA voluntario, UGC Rodri, prospectos y métricas; conciliación ingresos/costos RF-08, sin Live ni contactos automáticos. | A6–A8, RF-07/08/09, TRP-BETA/VENTAS, roadmap comercial |
+
+Orden: MB-07/07B → MB-08/09 → MB-10/11/14 (independientes en paralelo conceptual) → MB-12 → MB-13; MB-15 posterior. Si falta dependencia avanzar en otro bloque sin marcar cerrado.
+
+## Evidencia preservada / no repetir
+- MB-01 promoción QA-002 CP 6b084a59c7a6406771f5d089 / 1d689f8; 57/57 focalizadas. Taller/repuestos/calidad CP 6b084de16db8d8460233ddbd / 92479cb; guard local y confirmación respuestas.
+- Postventa/AP/CRM CP 6b085894c7666da3d3cdacc0 / 7984cf0; resumen cobros CP 6b0873d22a8594e7f2a3d23c / fd08ca5; protección backend AP CP 6b087ba4b6400b19c05c3888 / 1ced957.
+- Ads CP 6b08812496844c77289c1ef5 / 20cf2d6 (policy null, sin anuncios). Ejecutivo CP 6b088a3da7fa567cf27d4f7f / 885b04d (fuente, sin QA runtime). Typecheck/lint últimos reportados PASS, no afirmar cobertura global ni E2E.
+- UX-NAV-001 cerrado; CRM, proforma, importador y correcciones anteriores no reconstruir. Preservar pruebas históricas sin sumarlas como certificación. Laboratorios históricos solo referencia; #12/#13/#15 registrados abiertos, estado remoto no consultado hoy.
+- CEOs: agenda maestra docs/CEOS-PORTAFOLIO-AGENDA-MAESTRA-2026-11-23.md, RF-DG-SYNC-002 y RF-09. Una referencia ejecutiva a esta cola, no duplicar acciones. Checkpoint documental no equivale a sincronización de entidades CEOs ni release.
+- Dictamen actual: NO-GO funcional hasta P0 y QA. El presente corte es consolidación documental, no implementación adicional.
+
+---
+
+# HISTÓRICO INMUTABLE DE CONTINUIDAD (NO USAR COMO COLA ACTIVA)
+
 # TRP — BACKLOG MAESTRO Y CHECKPOINT DE CONTINUIDAD
 **ID:** TRP-BACKLOG-MASTER-2026-11-04  
 **Corte:** miércoles 2026-11-04, Costa Rica  

@@ -32,9 +32,10 @@ Deno.serve(async req => {
       else return result({ok:true,requires_branch:true,branches:branches.map(x=>({id:x.id,name:x.name})),package_id:entitlement.package_id});
     }
     if (branch) {
-      const branches = await base44.asServiceRole.entities.Branch.filter({id:branch,organization_id:auth.organizationId},'-created_date',1);
+      const branches = await base44.asServiceRole.entities.Branch.filter({id:branch,organization_id:auth.organizationId,active:true},'-created_date',1);
       if (!branches?.[0]) return result({error:'Sucursal no autorizada'},403);
     }
+    if(auth.isSuperAdmin && auth.organization?.controlled_pilot_mode===true) return result({error:'Acceso ejecutivo de piloto no certificado'},403);
     const action = body.action || 'report';
     if (!['report','save_snapshot','history','save_targets','targets','schedule','save_schedule'].includes(action)) return result({error:'Acción no admitida'},400);
     const scopeKey = branch ? 'branch:'+branch : 'organization';
@@ -81,7 +82,7 @@ Deno.serve(async req => {
     const now = Date.now(), start = now-days*DAY, previous = start-days*DAY;
     const read = async (entity, filter = scope) => {
       const rows = await base44.asServiceRole.entities[entity].filter(filter,'-created_date',LIMIT);
-      if (!Array.isArray(rows) || rows.length >= LIMIT) return null;
+      if (!Array.isArray(rows) || rows.length >= LIMIT || rows.some(r=>r.organization_id!==auth.organizationId || (filter.branch_id && r.branch_id!==filter.branch_id)) || new Set(rows.map(r=>r.id)).size!==rows.length || rows.some(r=>!r.id)) return null;
       return rows;
     };
     const safeRead = async (entity,filter=scope) => {try {return await read(entity,filter);}catch{return null;}};
@@ -89,7 +90,7 @@ Deno.serve(async req => {
       safeRead('Venta'),safeRead('OrdenTrabajo'),safeRead('Cotizacion'),safeRead('Expense'),safeRead('Cliente'),safeRead('Inventario'),safeRead('Garantia'),safeRead('ActividadTecnica',{organization_id:auth.organizationId}),safeRead('PurchaseInvoice')
     ]);
     const inRange = (rows,field,from,to) => rows.filter(x=>{const n=Date.parse(x[field]);return Number.isFinite(n)&&n>=from&&n<to;});
-    const pair = (rows,field,fn) => rows === null ? null : {current:fn(inRange(rows,field,start,now)),previous:fn(inRange(rows,field,previous,start))};
+    const pair = (rows,field,fn) => rows === null || rows.some(r=>!Number.isFinite(Date.parse(r[field]))) ? null : {current:fn(inRange(rows,field,start,now)),previous:fn(inRange(rows,field,previous,start))};
     const count = rows=>rows.length;
     const sum = (rows,field) => rows.every(x=>typeof x[field]==='number'&&Number.isFinite(x[field])&&x[field]>=0) ? rows.reduce((a,x)=>a+x[field],0) : null;
     // Activities inherit branch authority from their work order, not a client field.
@@ -104,9 +105,9 @@ Deno.serve(async req => {
     const report={ok:true,generated_at:new Date(now).toISOString(),days,branch_id:branch,package_id:entitlement.package_id,
       metrics:{
         sales:pair(paid,'created_date',count),revenue:pair(paid,'created_date',rows=>sum(rows,'total')),
-        orders:pair(orders,'created_date',count),deliveries:pair(orders,'delivered_at',count),
+        orders:pair(orders,'created_date',count),deliveries:pair(orders?.filter(o=>o.estado==='ENTREGADA')??null,'delivered_at',count),
         quotes:pair(quotes,'created_date',count),customers:pair(customers,'created_date',count),
-        expenses:pair(expenses,'date',rows=>sum(rows,'amount')),
+        expenses:days===1?null:pair(expenses,'date',rows=>sum(rows,'amount')),
         completed_activities:pair(completedActivities,'ended_at',count),
         blocked_activities:scopedActivities===null?null:scopedActivities.filter(a=>a.estado==='bloqueada').length,
         supplier_balance:invoiceBalance,
@@ -115,7 +116,7 @@ Deno.serve(async req => {
         inventory_records:inventory===null?null:inventory.length,
         active_warranties:warranties===null?null:warranties.filter(x=>x.estado==='ACTIVA'&&typeof x.fecha_fin==='string'&&x.fecha_fin>=new Date(now).toISOString().slice(0,10)).length
       },
-      limitations:['Saldo de proveedores según importes registrados, no conciliación bancaria.','Períodos móviles, no cierres contables.','Importes nominales; moneda histórica por documento no acreditada.','Una fuente incompleta o no disponible aparece sin indicador.','Las ventas se atribuyen a su fecha de registro, no a fecha de liquidación bancaria.']
+      limitations:['Saldo de proveedores según importes registrados, no conciliación bancaria.','Períodos móviles UTC, no cierres contables. Gastos por fecha civil, no disponibles en ventana de 24 horas.','Importes nominales; moneda histórica por documento no acreditada.','Una fuente incompleta o no disponible aparece sin indicador.','Las ventas se atribuyen a su fecha de registro, no a fecha de liquidación bancaria.']
     };
     if(action==='save_snapshot'){
       const snapshot=await entities.ExecutiveReportSnapshot.create({...storageScope,actor_id:user.id,generated_at:report.generated_at,report});

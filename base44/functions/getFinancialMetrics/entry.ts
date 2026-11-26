@@ -34,9 +34,17 @@ Deno.serve(async (req) => {
   const periodEnd = body.period_end || body.end_date || defaultEnd;
 
   // Adjust date-only end strings to include the full day
-  const adjustedEnd = periodEnd.length === 10 ? periodEnd + 'T23:59:59.999Z' : periodEnd;
+  const adjustedEnd = typeof periodEnd === 'string' && periodEnd.length === 10 ? periodEnd + 'T23:59:59.999Z' : periodEnd;
 
   const orgId = authorization.organizationId;
+  if(!orgId || (body.organization_id && body.organization_id!==orgId)) return Response.json({error:'Organización no autorizada'},{status:403});
+  if(typeof periodStart!=='string'||typeof adjustedEnd!=='string'||!Number.isFinite(Date.parse(periodStart))||!Number.isFinite(Date.parse(adjustedEnd))||Date.parse(periodStart)>Date.parse(adjustedEnd)) return Response.json({error:'Período inválido'},{status:422});
+  const readComplete=async(entity,filter)=>{
+    const rows=await entity.filter(filter,'-created_date',500);
+    if(!Array.isArray(rows)||rows.length>=500) throw new Error('FINANCIAL_SOURCE_INCOMPLETE');
+    return rows;
+  };
+  try {
 
   // 1. Obtener Organization para marketing_spend
   const orgs = await base44.asServiceRole.entities.Organization.filter({ id: orgId });
@@ -44,7 +52,7 @@ Deno.serve(async (req) => {
   const marketingSpend = organization.marketing_spend || 0;
 
   // 2. Obtener ventas pagadas del período
-  const ventas = await base44.asServiceRole.entities.Venta.filter({
+  const ventas = await readComplete(base44.asServiceRole.entities.Venta,{
     organization_id: orgId,
     estado: 'pagada',
     ...(effectiveBranchId ? { branch_id: effectiveBranchId } : {}),
@@ -52,9 +60,10 @@ Deno.serve(async (req) => {
 
   const ventasEnPeriodo = ventas.filter(v => {
     const fecha = v.created_date || v.fecha_venta;
-    return fecha >= periodStart && fecha <= adjustedEnd;
+    return Date.parse(fecha) >= Date.parse(periodStart) && Date.parse(fecha) <= Date.parse(adjustedEnd);
   });
 
+  if(ventas.some(v=>!Number.isFinite(Date.parse(v.created_date||v.fecha_venta)))||ventasEnPeriodo.some(v=>typeof v.total!=='number'||!Number.isFinite(v.total)||v.total<0)) throw new Error('FINANCIAL_SOURCE_INVALID');
   const totalSales = ventasEnPeriodo.length;
   const totalRevenue = ventasEnPeriodo.reduce((sum, v) => sum + (v.total || 0), 0);
 
@@ -65,7 +74,7 @@ Deno.serve(async (req) => {
     const ventaIds = ventasEnPeriodo.map(v => v.id);
 
     // Obtener todos los VentaItems de las ventas del período
-    const todosLosItems = await base44.asServiceRole.entities.VentaItem.filter({
+    const todosLosItems = await readComplete(base44.asServiceRole.entities.VentaItem,{
       organization_id: orgId
     });
 
@@ -81,7 +90,7 @@ Deno.serve(async (req) => {
     // Obtener costos de inventario en una sola consulta
     let costosMap = {};
     if (inventarioIds.length > 0) {
-      const inventarios = await base44.asServiceRole.entities.Inventario.filter({
+      const inventarios = await readComplete(base44.asServiceRole.entities.Inventario,{
         organization_id: orgId
       });
       inventarios.forEach(inv => {
@@ -117,14 +126,14 @@ Deno.serve(async (req) => {
   const cpa = totalSales > 0 ? marketingSpend / totalSales : 0;
 
   // 5. CAC = marketing_spend / clientes nuevos en el período
-  const clientes = await base44.asServiceRole.entities.Cliente.filter({
+  const clientes = await readComplete(base44.asServiceRole.entities.Cliente,{
     organization_id: orgId,
     ...(effectiveBranchId ? { branch_id: effectiveBranchId } : {}),
   });
 
   const clientesNuevos = clientes.filter(c => {
     const fecha = c.created_date;
-    return fecha >= periodStart && fecha <= adjustedEnd;
+    return Date.parse(fecha) >= Date.parse(periodStart) && Date.parse(fecha) <= Date.parse(adjustedEnd);
   });
 
   const totalClientesNuevos = clientesNuevos.length;
@@ -153,9 +162,12 @@ Deno.serve(async (req) => {
     avg_margin: Math.round(avgMargin * 100) / 100,
     cpa: Math.round(cpa * 100) / 100,
     cac: Math.round(cac * 100) / 100,
+    coverage: 'bounded_source',
+    margin_basis: 'estimated_historical_or_current_cost',
     period_start: periodStart,
     period_end: periodEnd,
     marketing_spend: marketingSpend,
     total_new_clients: totalClientesNuevos
   });
+  }catch{return Response.json({error:'No se pudo confirmar la cobertura de las métricas financieras'},{status:503});}
 });

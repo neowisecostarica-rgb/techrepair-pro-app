@@ -1,3 +1,4 @@
+import AdPlacementPreview from '@/components/advertising/AdPlacementPreview';
 import { useI18n } from '@/i18n';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -913,6 +914,7 @@ function SaasContent() {
 
       {consoleSection === 'commercial' && (
         <div className="space-y-5">
+          <AdPlacementPreview/>
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{t('saas.commercial','Comercial y planes')}</h2>
             <p className="text-sm text-slate-600 mt-1">{t('saas.commercialOfferDesc','Oferta comercial de TRP. La configuración contractual de cada organización se administra desde esta consola.')}</p>

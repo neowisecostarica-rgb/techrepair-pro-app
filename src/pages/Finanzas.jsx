@@ -49,8 +49,8 @@ export default function Finanzas() {
 }
 
 function fmt(number) {
-  if (number === null || number === undefined) return '₡0';
-  return `₡${Number(number).toLocaleString('es-CR', { maximumFractionDigits: 0 })}`;
+  if (number === null || number === undefined) return 'No disponible';
+  return `${Number(number).toLocaleString('es-CR', { maximumFractionDigits: 0 })}`;
 }
 
 function pct(number) {
@@ -218,6 +218,7 @@ function FinanzasContent() {
       {!validPeriod && fechaDesde && fechaHasta && <p role="alert">El rango de fechas no es válido.</p>}
       {validPeriod && effectiveOrgId && (!isBranchAdmin || branchIdFijo) && <ResumenCobros key={effectiveOrgId + ':' + (branchIdFijo || sucursalId || 'all')} sales={ventasPagadas} loading={loadingSales} error={salesError} onRetry={retrySales} />}
       {validPeriod && effectiveOrgId && (!isBranchAdmin || branchIdFijo) && <ArqueoPreliminar key={effectiveOrgId + ':' + (branchIdFijo || sucursalId || 'all') + ':' + fechaDesde + ':' + fechaHasta} sales={ventasPagadas} loading={loadingSales} error={salesError} branchId={branchIdFijo || sucursalId} singleDay={fechaDesde === fechaHasta} />}
+      <p className="text-xs text-slate-500">Importes nominales; moneda histórica no certificada. Margen estimado con costos registrados o actuales, no utilidad contable.</p>
       {/* ── ERROR ── */}
       {isErrorMetrics && !isLoadingMetrics && (
         <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4">
@@ -269,7 +270,7 @@ function FinanzasContent() {
                   {pct(grossMargin)}
                 </p>
                 <p className="text-sm text-slate-400 mt-2 font-medium">{t('financeDash.margin','Margen')}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{fmt(marginAmount)} ganancia</p>
+                <p className="text-xs text-slate-400 mt-0.5">{fmt(marginAmount)} margen estimado</p>
               </CardContent>
             </Card>
 

@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageGuard from '@/components/guards/PageGuard';
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, DollarSign, TrendingDown, Calendar, Trash2, Edit2, AlertCircle } from 'lucide-react';
+import { Plus, DollarSign, TrendingDown, Calendar, Edit2, AlertCircle } from 'lucide-react';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import { withOrgId } from '@/components/hooks/useOrgData';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -31,7 +31,8 @@ function GastosContent() {
   const { effectiveOrgId, userAccount, effectiveRole, user } = useAuthContext();
   const [showModal, setShowModal] = useState(false);
   const [gastoEditar, setGastoEditar] = useState(null);
-  const [gastoEliminar, setGastoEliminar] = useState(null);
+  const saveLock = useRef(false);
+  const [saveError, setSaveError] = useState("");
   const [mesActual, setMesActual] = useState(new Date());
   const queryClient = useQueryClient();
 
@@ -42,47 +43,55 @@ function GastosContent() {
   const finMes = endOfMonth(mesActual);
 
   // Query gastos del mes
-  const { data: gastos = [], isLoading } = useQuery({
+  const { data: gastos = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['gastos', effectiveOrgId, mesActual.toISOString(), branchIdFijo],
     queryFn: async () => {
       let query = { organization_id: effectiveOrgId };
       if (branchIdFijo) query.branch_id = branchIdFijo;
 
-      const allGastos = await base44.entities.Expense.filter(query, '-created_date', 200);
+      const response = await base44.functions.invoke('operationalGateway', { operation:'read', entity:'Expense', method:'filter', filter:query, sort:'-created_date', limit:500 });
+      const payload = response?.data ?? response;
+      const allGastos = payload?.records;
+      if (!Array.isArray(allGastos) || allGastos.length >= 500 || payload?.ok === false || allGastos.some(g => typeof g.amount !== 'number' || !Number.isFinite(g.amount) || typeof g.date !== 'string')) throw new Error('No se confirmó la totalidad de gastos');
       
       return allGastos.filter(g => {
-        const fecha = new Date(g.date);
-        return fecha >= inicioMes && fecha <= finMes;
+        return g.date >= format(inicioMes, 'yyyy-MM-dd') && g.date <= format(finMes, 'yyyy-MM-dd');
       }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     },
-    enabled: !!effectiveOrgId,
+    enabled: !!effectiveOrgId && (!isBranchRestricted || !!branchIdFijo),
+    retry:false,
     staleTime: 300000 // 5 min
   });
 
+  function confirmExpense(record, expectedId = null) {
+    if (!record?.id || record?.error || (expectedId && record.id !== expectedId)) throw new Error('Registro no confirmado. Revisá los gastos antes de intentar nuevamente.');
+    return record;
+  }
+  const invalidateExpenses = () => {
+    queryClient.invalidateQueries({queryKey:['gastos']});
+    queryClient.invalidateQueries({queryKey:['executive-report']});
+  };
   // Mutaciones
   const createMutation = useMutation({
-    mutationFn: (/** @type {Record<string, any>} */ data) => base44.entities.Expense.create(withOrgId(data, userAccount)),
+    mutationFn: async (/** @type {Record<string, any>} */ data) => confirmExpense(await base44.entities.Expense.create(withOrgId(data, userAccount))),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gastos'] });
+      invalidateExpenses();
       setShowModal(false);
       setGastoEditar(null);
-    }
+    },
+    onError: () => setSaveError("No se confirmó el guardado. Verificá los registros antes de reintentar."),
+    onSettled: () => { saveLock.current = false; }
   });
 
   const updateMutation = useMutation({
-    mutationFn: (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => base44.entities.Expense.update(id, data),
+    mutationFn: async (/** @type {{id: string, data: Record<string, any>}} */ { id, data }) => confirmExpense(await base44.entities.Expense.update(id, data), id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gastos'] });
+      invalidateExpenses();
       setShowModal(false);
       setGastoEditar(null);
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (/** @type {string} */ id) => base44.entities.Expense.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gastos'] });
-    }
+    },
+    onError: () => setSaveError("No se confirmó el guardado. Verificá los registros antes de reintentar."),
+    onSettled: () => { saveLock.current = false; }
   });
 
   // Cálculos
@@ -98,6 +107,7 @@ function GastosContent() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (saveLock.current || saveError || !effectiveOrgId || (isBranchRestricted && !branchIdFijo)) return;
     const formData = new FormData(e.target);
     
     const data = {
@@ -111,7 +121,9 @@ function GastosContent() {
       created_by: user.id
     };
 
+    if (!Number.isFinite(data.amount) || data.amount <= 0 || !data.date) return;
     if (branchIdFijo) data.branch_id = branchIdFijo;
+    saveLock.current = true;
 
     if (gastoEditar) {
       updateMutation.mutate({ id: gastoEditar.id, data });
@@ -129,6 +141,7 @@ function GastosContent() {
     otros: { label: 'Otros', icon: '📦', color: 'bg-slate-100 text-slate-700' }
   };
 
+  if (isError || (isBranchRestricted && !branchIdFijo)) return <Alert><AlertDescription>No se pudo confirmar el listado de gastos. <Button variant="link" onClick={() => refetch()}>Reintentar</Button></AlertDescription></Alert>;
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -146,7 +159,7 @@ function GastosContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">{t('expenses.title','Gastos Operativos')}</h1>
-          <p className="text-slate-600">{t('expenses.subtitle','Control de gastos mensuales y estimados')}</p>
+          <p className="text-slate-600">{t('expenses.subtitle','Importes nominales registrados; moneda histórica por documento no certificada')}</p>
         </div>
         <Button
           onClick={() => {
@@ -204,7 +217,7 @@ function GastosContent() {
               </div>
               <div>
                 <p className="text-xs text-slate-600 mb-1">{t('expenses.total','Total Gastos')}</p>
-                <p className="text-2xl font-bold text-slate-900">₡{totalGastos.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-slate-900">{totalGastos.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -218,7 +231,7 @@ function GastosContent() {
               </div>
               <div>
                 <p className="text-xs text-slate-600 mb-1">{t('expenses.fixed','Gastos Fijos')}</p>
-                <p className="text-2xl font-bold text-slate-900">₡{gastosFijos.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-slate-900">{gastosFijos.toLocaleString()}</p>
                 <Badge className="bg-orange-200 text-orange-800 border-0 text-xs mt-1">
                   Estimado mensual
                 </Badge>
@@ -235,7 +248,7 @@ function GastosContent() {
               </div>
               <div>
                 <p className="text-xs text-slate-600 mb-1">{t('expenses.variable','Gastos Variables')}</p>
-                <p className="text-2xl font-bold text-slate-900">₡{gastosVariables.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-slate-900">{gastosVariables.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -285,13 +298,13 @@ function GastosContent() {
                           )}
                         </div>
                         <p className="text-sm text-slate-500">
-                          {format(new Date(gasto.date), 'dd MMM yyyy', { locale: es })}
+                          {format(new Date(gasto.date + 'T12:00:00'), 'dd MMM yyyy', { locale: es })}
                           {gasto.payment_method && ` · ${gasto.payment_method}`}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold text-red-600">
-                          ₡{gasto.amount.toLocaleString()}
+                          {gasto.amount.toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -306,13 +319,7 @@ function GastosContent() {
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setGastoEliminar(gasto)}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
+
                     </div>
                   </div>
                 );
@@ -323,7 +330,7 @@ function GastosContent() {
       </Card>
 
       {/* Modal crear/editar */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={open => { if (!saveLock.current) { setShowModal(open); if (!open) { setSaveError(""); refetch(); } } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{gastoEditar ? t('expenses.edit','Editar Gasto') : t('expenses.new','Registrar Gasto')}</DialogTitle>
@@ -413,17 +420,18 @@ function GastosContent() {
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-800 text-sm">
-                💡 Los gastos mensuales se calcularán automáticamente en los reportes
+                Los gastos recurrentes se identifican como mensuales; no se generan cargos automáticamente.
               </AlertDescription>
             </Alert>
 
+            {saveError && <Alert><AlertDescription>{saveError}</AlertDescription></Alert>}
             <div className="flex gap-3 justify-end">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+              <Button type="button" variant="outline" disabled={createMutation.isPending || updateMutation.isPending} onClick={() => {setShowModal(false);setSaveError("");refetch();}}>
                 Cancelar
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                disabled={!!saveError || createMutation.isPending || updateMutation.isPending}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 {createMutation.isPending || updateMutation.isPending ? 'Guardando...' : 'Guardar'}

@@ -544,7 +544,10 @@ function LayoutContent({ children, currentPageName }) {
         <div className="px-5 py-6 md:px-8 md:py-8 xl:px-10">
           <WorkspaceHeader currentPageName={currentPageName} t={t} onOpenMenu={() => setMobileMenuOpen(true)} />
           <WorkspaceAdSlot policy={null} organizationId={effectiveOrgId} page={currentPageName} placement="workspace_top" />
-          {children}
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row">
+            <div className="min-w-0 flex-1">{children}</div>
+            <WorkspaceAdSlot policy={null} organizationId={effectiveOrgId} page={currentPageName} placement="workspace_side" />
+          </div>
         </div>
       </main>
     </div>

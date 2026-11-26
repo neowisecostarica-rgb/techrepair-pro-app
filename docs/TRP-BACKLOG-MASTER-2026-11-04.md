@@ -34,6 +34,8 @@ Lote 1137760: arqueo preliminar no persistente por día/sucursal, bloquea ventas
 
 Lote Ejecutivo persistencia: entidades ExecutiveReportSnapshot y ExecutiveTargetRevision con RLS cerrada; acciones getExecutiveReport para historial reciente (20), generación manual y objetivos por tenant/ámbito/período; historial de revisiones append-only, alertas en consulta. Typecheck/lint PASS. No certificación de schema o función en runtime, concurrencia de revisiones, deduplicación durable, programación ni envío. No se crearon registros reales.
 
+Cierre compatible MEGA 01/02: Super Admin Comercial incorpora preview local Ads con formatos y exclusiones; no política comercial persistente ni activación. Ejecutivo valida sucursal activa, tenant, registros duplicados y fechas; gastos 24h no disponibles. Finanzas limita fuentes a 500 y rechaza cobertura incierta, valida tenant/fechas/importes; margen sigue estimado. Typecheck/lint PASS. Diferir decisiones de infraestructura transaccional, proveedor fiscal, QA autenticado y publicación al cierre; no declarar resueltos.
+
 ## Evidencia preservada / no repetir
 - MB-01 promoción QA-002 CP 6b084a59c7a6406771f5d089 / 1d689f8; 57/57 focalizadas. Taller/repuestos/calidad CP 6b084de16db8d8460233ddbd / 92479cb; guard local y confirmación respuestas.
 - Postventa/AP/CRM CP 6b085894c7666da3d3cdacc0 / 7984cf0; resumen cobros CP 6b0873d22a8594e7f2a3d23c / fd08ca5; protección backend AP CP 6b087ba4b6400b19c05c3888 / 1ced957.

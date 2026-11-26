@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const wizard=readFileSync(new URL('../src/components/diagnostico-tecnico/WizardDiagnosticoTecnico.jsx',import.meta.url),'utf8');
+const transitions=readFileSync(new URL('../src/components/ot/transicionarEstadoOT.jsx',import.meta.url),'utf8');
+const load=wizard.split('const cargarDiagnostico =')[1].split('const guardarProgreso =')[0];
+test('opening wizard reads once and never changes drafts',()=>{assert.equal((load.match(/\.filter\(/g)||[]).length,1);assert.doesNotMatch(load,/\.(update|create|delete)\(/);});
+test('ambiguous diagnostics blocked',()=>assert.match(load,/length > 1[\s\S]*return;/));
+test('failed save prevents advancing',()=>assert.match(wizard,/if \(paso > 0 && !\(await guardarProgreso\(\)\)\) return;/));
+test('save lock acquired before request',()=>assert.match(wizard,/saveLock.current = true;[\s\S]*await base44.entities.DiagnosticoTecnico/));
+test('prepared diagnosis must return identifier',()=>assert.match(wizard,/const diagnosticoPreparadoId = diagnosticoPreparado\?\.id;/));
+test('awaits completion callback',()=>assert.match(wizard,/await onComplete\(diagnosticoPreparado\)/));
+test('transition requires confirmed order and state',()=>assert.match(transitions,/data\?\.success !== true \|\| data.orden_trabajo_id !== otId \|\| data.new_status !== estadoNuevo/));
+test('attention requires confirmed order and state',()=>assert.match(transitions,/data\?\.success !== true \|\| data.orden_trabajo_id !== ordenTrabajoId \|\| data.estado_atencion !== nuevoEstadoAtencion/));

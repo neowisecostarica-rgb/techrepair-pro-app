@@ -1,3 +1,4 @@
+import { quoteConversionError, quoteSaleState } from '@/components/pos/saleInteraction';
 import { useI18n } from '@/i18n';
 import { formatDateTime, formatDate } from '@/i18n/format';
 import React, { useState } from 'react';
@@ -59,6 +60,7 @@ function VentasCotizacionesContent() {
   const [showNuevaCotizacion, setShowNuevaCotizacion] = useState(false);
   const [cotizacionEditar, setCotizacionEditar] = useState(null);
   const [sendingQuoteId, setSendingQuoteId] = useState(null);
+  const quoteActionRef = React.useRef(false);
 
   const emitirEnlaceCotizacion = async (quoteId) => {
     const response = await base44.functions.invoke('issuePublicDocumentToken', {
@@ -72,11 +74,12 @@ function VentasCotizacionesContent() {
   };
 
   const enviarCotizacion = async (cotizacion) => {
-    if (!cotizacion || sendingQuoteId) return;
+    if (!cotizacion || sendingQuoteId || quoteActionRef.current) return;
     if (cotizacion.requiere_aprobacion && !cotizacion.aprobada_por) {
       toast({ variant: 'destructive', title: 'Aprobación requerida', description: 'El descuento aplicado requiere aprobación antes de continuar.' });
       return;
     }
+    quoteActionRef.current = true;
     setSendingQuoteId(cotizacion.id);
     try {
       const response = await base44.functions.invoke('approveCotizacion', {
@@ -98,6 +101,7 @@ function VentasCotizacionesContent() {
     } catch (error) {
       toast({ variant: 'destructive', title: 'No se pudo preparar la cotización', description: error?.message || 'Volvé a intentarlo.' });
     } finally {
+      quoteActionRef.current = false;
       setSendingQuoteId(null);
     }
   };
@@ -152,28 +156,9 @@ function VentasCotizacionesContent() {
   };
 
   const convertirAVenta = (cotizacion) => {
-    if (cotizacion.estado !== 'aprobada') {
-      toast({ variant: 'destructive', title: 'Cotización aún no aprobada', description: 'Solo las cotizaciones aprobadas pueden convertirse en venta.' });
-      return;
-    }
-
-    const carrito = cotizacion.items?.map(item => ({
-      tipo: item.tipo || 'producto',
-      referencia_id: item.referencia_id || null,
-      descripcion: item.descripcion,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio_unitario,
-      subtotal: item.subtotal
-    })) || [];
-
-    navigate(createPageUrl('PuntoVenta'), {
-      state: {
-        cotizacion_origen: cotizacion,
-        carrito: carrito,
-        cliente_id: cotizacion.cliente_id,
-        orden_trabajo_id: cotizacion.orden_trabajo_id
-      }
-    });
+    const error = quoteConversionError(cotizacion);
+    if (error) { toast({ variant: 'destructive', title: 'Conversión no disponible', description: error }); return; }
+    navigate(createPageUrl('PuntoVenta'), { state: quoteSaleState(cotizacion) });
   };
 
   const cotizacionesFiltradas = cotizaciones.filter(c => {
@@ -337,7 +322,7 @@ function VentasCotizacionesContent() {
                         </Link>
                       </Button>
                     )}
-                    {cot.estado === 'aprobada' && (
+                    {!quoteConversionError(cot) && (
                       <Button
                         onClick={() => convertirAVenta(cot)}
                         size="sm"
@@ -506,9 +491,13 @@ function VentasCotizacionesContent() {
                     <>
                       <Button
                         onClick={async () => {
-                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
-                          navigator.clipboard.writeText(link);
-                          toast({ title: 'Enlace copiado', description: 'Ya puedes compartirlo con el cliente.' });
+                          try {
+                            const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
+                            await navigator.clipboard.writeText(link);
+                            toast({ title: 'Enlace copiado', description: 'Ya puedes compartirlo con el cliente.' });
+                          } catch {
+                            toast({ variant: 'destructive', title: 'No se pudo copiar el enlace', description: 'Reintentá desde Copiar Link.' });
+                          }
                         }}
                         variant="outline"
                         className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
@@ -530,8 +519,12 @@ function VentasCotizacionesContent() {
                       </Button>
                       <Button
                         onClick={async () => {
-                          const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
-                          window.open(link, '_blank');
+                          try {
+                            const link = await emitirEnlaceCotizacion(cotizacionSeleccionada.id);
+                            window.open(link, '_blank', 'noopener,noreferrer');
+                          } catch {
+                            toast({ variant: 'destructive', title: 'No se pudo abrir la cotización', description: 'Reintentá la impresión.' });
+                          }
                         }}
                         variant="outline"
                       >

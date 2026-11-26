@@ -1,5 +1,6 @@
+import { confirmDelivery, deliveryNotice } from './receptionDeliveryInteraction';
 import { useI18n } from '@/i18n';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,8 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
   const [note, setNote] = useState('');
   const [operationKey, setOperationKey] = useState(newOperationKey);
   const queryClient = useQueryClient();
+  const deliveryLock = useRef(false);
+  const [confirmedOrderId, setConfirmedOrderId] = useState(null);
 
   useEffect(() => {
     setOperationKey(newOperationKey());
@@ -43,9 +46,11 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
         const code = result?.code ? ` (${result.code})` : '';
         throw new Error(`${result?.error || 'No se pudo completar la entrega'}${code}`);
       }
-      return result;
+      return confirmDelivery(result, ordenTrabajo);
     },
     onSuccess: result => {
+      setConfirmedOrderId(result.work_order.id);
+      toast({ title: 'Entrega registrada', description: deliveryNotice(result) });
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
       queryClient.invalidateQueries({ queryKey: ['expediente-ot'] });
       queryClient.invalidateQueries({ queryKey: ['garantias'] });
@@ -55,12 +60,19 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
       setOperationKey(newOperationKey());
       onSuccess?.(result);
     },
+    onSettled: () => { deliveryLock.current = false; },
     onError: error => {
       toast({ variant: 'destructive', title: 'No se pudo completar la entrega', description: error.message });
     },
   });
 
-  if (ordenTrabajo?.estado !== 'FINALIZADA') return null;
+  const submitDelivery = () => {
+    if (deliveryLock.current || delivery.isPending || !acceptance || confirmedOrderId === ordenTrabajo?.id) return;
+    deliveryLock.current = true;
+    delivery.mutate();
+  };
+
+  if (confirmedOrderId === ordenTrabajo?.id || ordenTrabajo?.estado !== 'FINALIZADA') return null;
   if (!['ORG_ADMIN', 'BRANCH_ADMIN', 'SALES'].includes(effectiveRole)) return null;
 
   return (
@@ -70,7 +82,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
         {t('otTech.deliver','Entregar al Cliente')}
       </Button>
 
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={open => { if (!deliveryLock.current) setShowModal(open); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
@@ -103,6 +115,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
                 <Checkbox
                   id="checkbox-entrega"
                   checked={acceptance}
+                  disabled={delivery.isPending}
                   onCheckedChange={value => setAcceptance(value === true)}
                   className="mt-1"
                 />
@@ -116,6 +129,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
               <Label>{t('otTech.deliveryNote','Nota de Entrega (opcional)')}</Label>
               <Textarea
                 value={note}
+                disabled={delivery.isPending}
                 onChange={event => setNote(event.target.value)}
                 placeholder={t('otTech.deliveryPlaceholder','Observaciones sobre la entrega...')}
                 rows={3}
@@ -133,7 +147,7 @@ export default function EntregarOT({ ordenTrabajo, effectiveRole, onSuccess }) {
                 {t('otTech.cancel','Cancelar')}
               </Button>
               <Button
-                onClick={() => delivery.mutate()}
+                onClick={submitDelivery}
                 disabled={!acceptance || delivery.isPending}
                 className="bg-gradient-to-r from-purple-500 to-indigo-500"
               >

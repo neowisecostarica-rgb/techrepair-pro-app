@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const sales=readFileSync(new URL('../src/pages/VentasCotizaciones.jsx',import.meta.url),'utf8');
+const customer=readFileSync(new URL('../src/components/ventas/GestionCotizaciones.jsx',import.meta.url),'utf8');
+const section=(s,a,b)=>s.slice(s.indexOf(a),s.indexOf(b,s.indexOf(a)+a.length));
+const send=section(customer,'const handleEnviar =','const copiarLink =');
+test('sales locks before invoking backend',()=>assert.ok(sales.indexOf('quoteActionRef.current = true')<sales.indexOf("invoke('approveCotizacion'")));
+test('customer locks before invoking backend',()=>assert.ok(send.indexOf('sendingRef.current = true')<send.indexOf("invoke('approveCotizacion'")));
+test('customer requires explicit backend success',()=>assert.match(send,/response\?\.data\?\.success !== true/));
+test('customer releases lock on failure and success',()=>assert.match(send,/finally\s*\{\s*sendingRef.current = false;\s*setSendingQuote\(false\)/));
+test('customer send button disabled while pending',()=>assert.match(customer,/handleEnviar\(cot\)\} disabled=\{sendingQuote\}/));
+test('customer copy awaits clipboard and catches failure',()=>assert.match(section(customer,'const copiarLink =','const descargarPDF'),/await navigator\.clipboard\.writeText\(link\);[\s\S]*catch/));
+test('sales clipboard has no unawaited write',()=>assert.equal((sales.match(/await navigator\.clipboard\.writeText/g)||[]).length,(sales.match(/navigator\.clipboard\.writeText/g)||[]).length));
+test('customer print handles failure',()=>assert.match(section(customer,'const imprimirCotizacion =','const handleEditar'),/try\s*\{[\s\S]*window\.open[\s\S]*catch/));
+test('customer actions pass organization',()=>{assert.match(customer,/copiarLink\(cot, organization\)/);assert.match(customer,/imprimirCotizacion\(cot, organization\)/)});

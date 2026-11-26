@@ -46,6 +46,7 @@ export async function transicionarEstadoOT(otIdOrParams, nuevoEstado, context) {
     throw err;
   }
 
+  if (data?.success !== true || data.orden_trabajo_id !== otId || data.new_status !== estadoNuevo) throw new Error("Cambio de estado no confirmado. Revisá el expediente.");
   return data;
 }
 
@@ -69,5 +70,7 @@ export async function cambiarEstadoAtencionOT({
     motivo_pausa: motivoPausa || null,
     observaciones: observaciones || undefined,
   });
-  return response.data;
+  const data = response.data;
+  if (data?.success !== true || data.orden_trabajo_id !== ordenTrabajoId || data.estado_atencion !== nuevoEstadoAtencion) throw new Error("Estado de atención no confirmado. Revisá el expediente.");
+  return data;
 }

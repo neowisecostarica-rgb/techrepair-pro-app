@@ -1,3 +1,4 @@
+import { quoteConversionError, quoteSaleState } from '@/components/pos/saleInteraction';
 import { useI18n } from '@/i18n';
 import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -37,6 +38,8 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   const { toast } = useToast();
   const [pendingConversion, setPendingConversion] = useState(null);
   const savingRef = useRef(false);
+  const sendingRef = useRef(false);
+  const [sendingQuote, setSendingQuote] = useState(false);
 
   const clienteActual = clienteId || editingCotizacion?.cliente_id || clienteSeleccionadoInterno;
   const organizationId = userAccount?.organization_id;
@@ -304,43 +307,54 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   };
 
   const handleEnviar = async (cotizacion) => {
+    if (sendingRef.current || !cotizacion?.id) return;
     if (!clienteActual) {
       toast({ variant: 'destructive', title: t('quote.selectCustomer','Selecciona un cliente'), description: t('quote.needsCustomerSend','La cotización necesita un cliente antes de enviarse.') });
       return;
     }
-
+    sendingRef.current = true;
+    setSendingQuote(true);
     try {
       const response = await base44.functions.invoke('approveCotizacion', {
         cotizacion_id: cotizacion.id,
         canal_envio: 'link',
       });
-      if (response.data?.error) {
-        toast({ variant: 'destructive', title: t('quote.sendError','No se pudo enviar la cotización'), description: response.data.error });
-        return;
-      }
+      if (response?.data?.success !== true) throw new Error(response?.data?.error || 'El servidor no confirmó la operación');
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones-ventas'] });
       queryClient.invalidateQueries({ queryKey: ['ordenes'] });
+      toast({ title: 'Cotización preparada', description: 'Usá Link para compartirla con el cliente.' });
     } catch (error) {
-      toast({ variant: 'destructive', title: t('quote.sendError','No se pudo enviar la cotización'), description: error.message });
+      toast({ variant: 'destructive', title: t('quote.sendError','No se pudo preparar la cotización'), description: error.message });
+    } finally {
+      sendingRef.current = false;
+      setSendingQuote(false);
     }
   };
 
-  const copiarLink = async (cotizacion, organization) => {
-    const baseUrl = organization?.public_base_url || window.location.origin;
-    const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
-    navigator.clipboard.writeText(link);
-    toast({ title: t('quote.linkCopied','Enlace copiado'), description: t('quote.linkCopiedDesc','El enlace público de la cotización está en el portapapeles.') });
+  const copiarLink = async (cotizacion, org) => {
+    try {
+      const baseUrl = org?.public_base_url || window.location.origin;
+      const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
+      await navigator.clipboard.writeText(link);
+      toast({ title: t('quote.linkCopied','Enlace copiado'), description: t('quote.linkCopiedDesc','El enlace público de la cotización está en el portapapeles.') });
+    } catch {
+      toast({ variant: 'destructive', title: 'No se pudo copiar el enlace', description: 'Reintentá desde Link.' });
+    }
   };
 
   const descargarPDF = (cotizacion, cliente, organization, tipoDocumento = 'cotizacion') => {
     descargarDocumentoCotizacion(cotizacion, cliente, organization, tipoDocumento);
   };
 
-  const imprimirCotizacion = async (cotizacion, organization) => {
-    const baseUrl = organization?.public_base_url || window.location.origin;
-    const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
-    window.open(link, '_blank', 'noopener,noreferrer');
+  const imprimirCotizacion = async (cotizacion, org) => {
+    try {
+      const baseUrl = org?.public_base_url || window.location.origin;
+      const link = await issuePublicLink('quote', cotizacion.id, baseUrl);
+      window.open(link, '_blank', 'noopener,noreferrer');
+    } catch {
+      toast({ variant: 'destructive', title: 'No se pudo abrir la cotización', description: 'Reintentá la impresión.' });
+    }
   };
 
   const handleEditar = (cotizacion) => {
@@ -354,29 +368,17 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
   };
 
   const handleConvertirEnFactura = async (cotizacion) => {
-    if (cotizacion.estado !== 'aprobada') {
-      toast({ title: 'Conversión no disponible', description: 'Solo las cotizaciones aprobadas se pueden convertir en venta.' });
-      return;
-    }
-
-    if (cotizacion.estado_conversion === 'EN_PROCESO_FACTURACION') {
-      toast({ title: 'Conversión en proceso', description: 'Esta cotización ya está siendo convertida.' });
-      return;
-    }
-
-    if (cotizacion.estado_conversion === 'CONVERTIDA') {
-      toast({ title: 'Cotización convertida', description: 'Esta cotización ya fue convertida a venta.' });
-      return;
-    }
-
+    const error = quoteConversionError(cotizacion);
+    if (error) { toast({ variant: 'destructive', title: 'Conversión no disponible', description: error }); return; }
     setPendingConversion(cotizacion);
   };
 
   const confirmarConversion = () => {
     const cotizacion = pendingConversion;
-    if (!cotizacion) return;
+    const error = quoteConversionError(cotizacion);
+    if (error) { toast({ variant: 'destructive', title: 'Conversión no disponible', description: error }); return; }
     setPendingConversion(null);
-    navigate(createPageUrl('PuntoVenta'), { state: { cotizacion_origen: cotizacion, carrito: cotizacion.items, cliente_id: cotizacion.cliente_id, orden_trabajo_id: cotizacion.orden_trabajo_id } });
+    navigate(createPageUrl('PuntoVenta'), { state: quoteSaleState(cotizacion) });
   };
 
   const estadoConfig = {
@@ -480,11 +482,11 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                           <button onClick={() => handleEditar(cot)}
                             className="text-[10px] text-slate-500 hover:text-slate-800 underline">{t('quoteManage.edit','Editar')}</button>
                           <span className="text-slate-300">·</span>
-                          <button onClick={() => handleEnviar(cot)}
-                            className="text-[10px] text-blue-600 hover:text-blue-800 underline">Enviar</button>
+                          <button onClick={() => handleEnviar(cot)} disabled={sendingQuote}
+                            className="text-[10px] text-blue-600 hover:text-blue-800 underline disabled:opacity-50">Preparar</button>
                         </>
                       )}
-                      {cot.estado === 'aprobada' && cot.estado_conversion === 'SIN_CONVERTIR' && (
+                      {!quoteConversionError(cot) && (
                         <button
                           onClick={() => handleConvertirEnFactura(cot)}
                           className="text-[10px] text-emerald-600 hover:text-emerald-800 underline">
@@ -493,7 +495,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                       )}
                       {(cot.estado === 'enviada' || cot.estado === 'aprobada') && (
                         <>
-                          <button onClick={() => copiarLink(cot)}
+                          <button onClick={() => copiarLink(cot, organization)}
                             className="text-[10px] text-slate-500 hover:text-slate-800 underline">Link</button>
                           <span className="text-slate-300">·</span>
                           <button onClick={() => descargarPDF(cot, cliente, organization)}
@@ -502,7 +504,7 @@ export default function GestionCotizaciones({ clienteId, ordenTrabajoId, user, u
                           <button onClick={() => descargarPDF(cot, cliente, organization, 'proforma')}
                             className="text-[10px] text-slate-500 hover:text-slate-800 underline">Proforma PDF</button>
                           <span className="text-slate-300">·</span>
-                          <button onClick={() => imprimirCotizacion(cot)}
+                          <button onClick={() => imprimirCotizacion(cot, organization)}
                             className="text-[10px] text-slate-500 hover:text-slate-800 underline">Imprimir</button>
                         </>
                       )}

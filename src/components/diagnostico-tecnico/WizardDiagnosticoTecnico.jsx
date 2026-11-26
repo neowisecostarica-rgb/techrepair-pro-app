@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,8 @@ export default function WizardDiagnosticoTecnico({
   const { toast } = useToast();
   const [paso, setPaso] = useState(0); // 0 = contexto, 1-4 = wizard
   const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
+  const [loadBlocked, setLoadBlocked] = useState(true);
   const [diagnostico, setDiagnostico] = useState(null);
   const [formData, setFormData] = useState({
     tipo_intervencion: '',
@@ -59,34 +61,16 @@ export default function WizardDiagnosticoTecnico({
 
   const cargarDiagnostico = async () => {
     try {
-      // FASE 1: Inactivar diagnósticos previos activos (unicidad)
-      const diagnosticosActivos = await base44.entities.DiagnosticoTecnico.filter({
-        organization_id: effectiveOrgId,
-        orden_trabajo_id: ordenTrabajo.id,
-        bloqueado: false
-      });
-
-      // Si hay múltiples activos, bloquear todos excepto el más reciente
-      if (diagnosticosActivos.length > 1) {
-        const ordenadosPorFecha = diagnosticosActivos.sort((a, b) => 
-          new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime()
-        );
-        
-        // Bloquear todos excepto el primero (más reciente)
-        for (let i = 1; i < ordenadosPorFecha.length; i++) {
-          await base44.entities.DiagnosticoTecnico.update(ordenadosPorFecha[i].id, {
-            bloqueado: true
-          });
-        }
-      }
-
-      // Cargar el diagnóstico activo (solo debe haber uno ahora)
+      // Opening the wizard must be read-only. Ambiguous drafts need reconciliation.
       const diagnosticosActivosActualizados = await base44.entities.DiagnosticoTecnico.filter({
         organization_id: effectiveOrgId,
         orden_trabajo_id: ordenTrabajo.id,
         bloqueado: false
       });
-
+      if (diagnosticosActivosActualizados.length > 1) {
+        toast({ variant: 'destructive', title: 'Diagnósticos pendientes de conciliación', description: 'Existe más de un diagnóstico activo. Revisá el expediente antes de continuar.' });
+        return;
+      }
       if (diagnosticosActivosActualizados.length > 0) {
         const diag = diagnosticosActivosActualizados[0];
         setDiagnostico(diag);
@@ -102,12 +86,16 @@ export default function WizardDiagnosticoTecnico({
           repuestos_requeridos: diag.repuestos_requeridos || []
         });
       }
+      setLoadBlocked(false);
     } catch (error) {
+      toast({ variant: 'destructive', title: 'No se pudo cargar el diagnóstico', description: 'Cerrá y volvé a abrir el expediente antes de guardar.' });
       console.error('Error cargando diagnóstico técnico:', error);
     }
   };
 
   const guardarProgreso = async () => {
+    if (loadBlocked || saveLock.current) return false;
+    saveLock.current = true;
     setSaving(true);
     try {
       const data = {
@@ -121,20 +109,26 @@ export default function WizardDiagnosticoTecnico({
       };
 
       if (diagnostico) {
-        await base44.entities.DiagnosticoTecnico.update(diagnostico.id, data);
+        const updated = await base44.entities.DiagnosticoTecnico.update(diagnostico.id, data);
+        if (updated?.id !== diagnostico.id) throw new Error('Guardado no confirmado');
       } else {
         const created = await base44.entities.DiagnosticoTecnico.create(data);
+        if (!created?.id) throw new Error("Guardado no confirmado");
         setDiagnostico(created);
       }
+      return true;
     } catch (error) {
       console.error('Error guardando progreso:', error);
       toast({ variant: 'destructive', title: t('diagTech.saveError','No se pudo guardar el diagnóstico'), description: error.message });
+      return false;
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   };
 
   const prepararDiagnostico = async () => {
+    if (loadBlocked || saveLock.current) return;
     // Un diagnóstico finalizado ya no puede volver a prepararse.
     if (diagnostico?.credito_consumido_finalizacion === true) {
       console.warn('PREPARAR_DIAG_SKIP', {
@@ -153,6 +147,7 @@ export default function WizardDiagnosticoTecnico({
       ts: new Date().toISOString() 
     });
 
+    saveLock.current = true;
     setSaving(true);
     try {
       // CC-002: el wizard solo persiste el contenido editable/listo.
@@ -175,7 +170,7 @@ export default function WizardDiagnosticoTecnico({
         diagnosticoPreparado = await base44.entities.DiagnosticoTecnico.create(dataPreparada);
       }
       setDiagnostico(diagnosticoPreparado);
-      const diagnosticoPreparadoId = diagnosticoPreparado?.id || diagnostico?.id;
+      const diagnosticoPreparadoId = diagnosticoPreparado?.id;
       if (!diagnosticoPreparadoId) {
         throw new Error(t('diagTech.resolveError','No se pudo resolver el diagnóstico técnico preparado'));
       }
@@ -189,20 +184,20 @@ export default function WizardDiagnosticoTecnico({
       // El panel emite el documento y solo entonces solicita la finalización
       // autoritativa al backend. No se usa un error como control de flujo.
       if (onComplete) {
-        onComplete(diagnosticoPreparado);
+        await onComplete(diagnosticoPreparado);
       }
     } catch (error) {
       console.error('Error preparando diagnóstico:', error);
       toast({ variant: 'destructive', title: t('diagTech.prepareError','No se pudo preparar el diagnóstico'), description: error.message });
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   };
 
   const handleSiguiente = async () => {
-    if (paso > 0) {
-      await guardarProgreso();
-    }
+    if (loadBlocked || saveLock.current) return;
+    if (paso > 0 && !(await guardarProgreso())) return;
     setPaso(paso + 1);
   };
 
@@ -628,7 +623,7 @@ export default function WizardDiagnosticoTecnico({
           {paso < 4 ? (
             <Button
               onClick={handleSiguiente}
-              disabled={saving || (paso === 1 && !formData.tipo_intervencion)}
+              disabled={loadBlocked || saving || (paso === 1 && !formData.tipo_intervencion)}
               className="bg-gradient-to-r from-purple-500 to-blue-500"
             >
               {saving ? (
@@ -647,7 +642,7 @@ export default function WizardDiagnosticoTecnico({
             <Button
               onClick={prepararDiagnostico}
               disabled={
-                saving || 
+                loadBlocked || saving ||
                 diagnostico?.credito_consumido_finalizacion === true || 
                 !formData.trabajo_recomendado || 
                 !formData.tiempo_estimado_horas

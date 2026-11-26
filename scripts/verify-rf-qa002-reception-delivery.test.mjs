@@ -1,0 +1,18 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {confirmReception,confirmEquipment,confirmDelivery,deliveryNotice} from '../src/components/ot/receptionDeliveryInteraction.js';
+const reception={success:true,correlation_id:'c',work_order:{id:'ot'},equipment:{id:'e'},dmr:{id:'d'},event:{id:'ev'}};
+test('valid reception retains receipt',()=>assert.equal(confirmReception(reception,'c'),reception));
+for(const key of ['work_order','equipment','dmr','event'])test('missing '+key+' rejected',()=>assert.throws(()=>confirmReception({...reception,[key]:null},'c')));
+test('wrong correlation rejected',()=>assert.throws(()=>confirmReception(reception,'other')));
+test('equipment must match customer',()=>{assert.equal(confirmEquipment({id:'e',cliente_id:'c'},'c').id,'e');assert.throws(()=>confirmEquipment({id:'e',cliente_id:'x'},'c'));});
+const order={id:'ot',organization_id:'a',branch_id:'b'};
+const delivery={success:true,work_order:{...order,estado:'ENTREGADA'},delivery_log:{id:'log'},warranty_outcome:'ISSUED',warranty:{id:'w'}};
+test('valid delivery confirmed',()=>assert.equal(confirmDelivery(delivery,order),delivery));
+for(const field of ['id','organization_id','branch_id','estado'])test('delivery mismatch '+field,()=>assert.throws(()=>confirmDelivery({...delivery,work_order:{...delivery.work_order,[field]:'wrong'}},order)));
+test('missing delivery log rejected',()=>assert.throws(()=>confirmDelivery({...delivery,delivery_log:null},order)));
+test('warranty distinction and pending followup',()=>{assert.match(deliveryNotice(delivery),/Garantía registrada/);assert.match(deliveryNotice({...delivery,warranty:null}),/pendiente/);assert.match(deliveryNotice({...delivery,warranty_outcome:'NOT_APPLICABLE'}),/no aplicable/);assert.match(deliveryNotice({...delivery,non_critical_side_effects:{event_status:'PENDING_RETRY'}}),/No repitás/);});
+const source=readFileSync(new URL('../src/pages/OrdenesTrabajo.jsx',import.meta.url),'utf8');
+test('reception conditions shared by existing and new equipment',()=>assert.match(source,/!editingOT && \(selectedEquipoId \|\| showInlineEquipo\)[\s\S]*Condiciones de esta recepción[\s\S]*accesorios_ingreso/));
+test('physical condition not fabricated',()=>assert.doesNotMatch(source,/estado_fisico_ingreso: 'bueno'/));

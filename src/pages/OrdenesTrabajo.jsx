@@ -69,7 +69,7 @@ function OrdenesTrabajoContent() {
     modelo: '',
     serie_ingreso: '',
     accesorios_ingreso: '',
-    estado_fisico_ingreso: 'bueno',
+    estado_fisico_ingreso: '',
     contrasena_ingreso: ''
   });
   const queryClient = useQueryClient();
@@ -256,6 +256,7 @@ function OrdenesTrabajoContent() {
     setMotivoIngreso('');
     setShowInlineEquipo(false);
     setReceptionError(null);
+    setShowPinField(false);
     receptionCorrelationRef.current = null;
     receptionSubmitInFlightRef.current = false;
     setNewEquipoData({
@@ -264,7 +265,7 @@ function OrdenesTrabajoContent() {
       modelo: '',
       serie_ingreso: '',
       accesorios_ingreso: '',
-      estado_fisico_ingreso: 'bueno',
+      estado_fisico_ingreso: '',
       contrasena_ingreso: ''
     });
   };
@@ -732,12 +733,14 @@ function OrdenesTrabajoContent() {
                     setSelectedClienteId(id);
                     setSelectedEquipoId('');
                     setShowInlineEquipo(false);
+                    setNewEquipoData({ tipo: '', marca: '', modelo: '', serie_ingreso: '', accesorios_ingreso: '', estado_fisico_ingreso: '', contrasena_ingreso: '' });
+                    setShowPinField(false);
                   }}
                   onRequestCreate={() => setShowQuickCreateCliente(true)}
                 />
               ) : (
                 <>
-                  <Input value={getClienteName(selectedClienteId)} disabled className="bg-slate-100" />
+                  <Input value={getClienteName(editingOT || { cliente_id: selectedClienteId })} disabled className="bg-slate-100" />
                   <p className="text-xs text-slate-500">{t('tail.customerLocked','Cliente no editable para mantener integridad de datos')}</p>
                 </>
               )}
@@ -751,7 +754,7 @@ function OrdenesTrabajoContent() {
                 <div className="flex gap-2">
                   <Select 
                     value={selectedEquipoId} 
-                    onValueChange={setSelectedEquipoId}
+                    onValueChange={id => { setSelectedEquipoId(id); setNewEquipoData({ tipo: '', marca: '', modelo: '', serie_ingreso: '', accesorios_ingreso: '', estado_fisico_ingreso: '', contrasena_ingreso: '' }); setShowPinField(false); }}
                     disabled={!selectedClienteId || !!editingOT}
                   >
                     <SelectTrigger className="flex-1">
@@ -797,7 +800,7 @@ function OrdenesTrabajoContent() {
                           modelo: '',
                           serie_ingreso: '',
                           accesorios_ingreso: '',
-                          estado_fisico_ingreso: 'bueno',
+                          estado_fisico_ingreso: '',
                           contrasena_ingreso: ''
                         });
                       }}
@@ -845,6 +848,14 @@ function OrdenesTrabajoContent() {
                       />
                     </div>
 
+                  </div>
+                </div>
+              )}
+
+              {!editingOT && (selectedEquipoId || showInlineEquipo) && (
+                <div className="border rounded-lg p-4 space-y-3">
+                  <h4 className="font-medium">Condiciones de esta recepción</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label className="text-sm">{t('workOrders.serialIMEI','Serie / IMEI')}</Label>
                       <Input
@@ -861,7 +872,7 @@ function OrdenesTrabajoContent() {
                         onValueChange={(value) => setNewEquipoData({...newEquipoData, estado_fisico_ingreso: value})}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Seleccionar condición observada" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="excelente">{t('workOrders.conditionExcellent','Excelente')}</SelectItem>
@@ -909,7 +920,7 @@ function OrdenesTrabajoContent() {
                   </div>
                 </div>
               )}
-              
+
               {!selectedClienteId && (
                 <p className="text-xs text-slate-500">
                   {t('workOrders.selectClientFirstHelp','Debes seleccionar un cliente primero')}
@@ -1092,6 +1103,10 @@ function OrdenesTrabajoContent() {
         onCreated={(newCliente) => {
           queryClient.invalidateQueries({ queryKey: ['clientes'] });
           setSelectedClienteId(newCliente.id);
+          setSelectedEquipoId('');
+          setShowInlineEquipo(false);
+          setNewEquipoData({ tipo: '', marca: '', modelo: '', serie_ingreso: '', accesorios_ingreso: '', estado_fisico_ingreso: '', contrasena_ingreso: '' });
+          setShowPinField(false);
         }}
       />
 

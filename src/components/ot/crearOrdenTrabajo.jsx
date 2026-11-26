@@ -1,3 +1,4 @@
+import { confirmReception } from './receptionDeliveryInteraction';
 import { base44 } from '@/api/base44Client';
 
 /**
@@ -26,5 +27,5 @@ export async function crearOrdenTrabajo(datosOT) {
     responsable_recepcion: datosOT.responsable_recepcion,
     tracking_code: datosOT.tracking_code,
   });
-  return response.data;
+  return confirmReception(response.data, datosOT.correlation_id);
 }

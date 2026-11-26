@@ -5,7 +5,7 @@ const source = readFileSync(new URL('../src/pages/PuntoVenta.jsx', import.meta.u
 test('POS confirmation locks synchronously before any await and releases after completion', () => {
   const handler = source.split('const confirmarYProcesarVenta = async () => {')[1]?.split('const handleSearchKeyDown')[0];
   assert.ok(handler);
-  const guard = handler.indexOf('if (saleConfirmationLock.current || createVentaMutation.isPending) return;');
+  const guard = handler.indexOf('if (saleConfirmationLock.current || createVentaMutation.isPending || ventaCompletada) return;');
   const lock = handler.indexOf('saleConfirmationLock.current = true;');
   const firstAwait = handler.indexOf('await ');
   assert.ok(guard >= 0 && lock > guard && firstAwait > lock, 'lock must precede first await');

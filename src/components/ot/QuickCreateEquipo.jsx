@@ -1,5 +1,6 @@
+import { confirmEquipment } from './receptionDeliveryInteraction';
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,10 +19,13 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
   const [modelo, setModelo] = useState('');
   const [serie, setSerie] = useState('');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    if (!clienteId) { setError("Seleccioná un cliente antes de registrar el equipo."); return; }
 
     if (!tipo || !marca.trim()) {
       setError('Tipo y marca son requeridos.');
@@ -29,6 +33,7 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
     }
 
     setError('');
+    savingRef.current = true;
     setSaving(true);
     try {
       const response = await base44.functions.invoke('createEquipment', {
@@ -38,8 +43,9 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
         modelo: modelo.trim() || undefined,
         serie: serie.trim() || undefined,
       });
+      const equipment = confirmEquipment(response.data, clienteId);
       toast({ title: 'Equipo creado', description: `${marca.trim()} ${modelo.trim() || ''}`.trim() + ' fue registrado correctamente.' });
-      onCreated(response.data);
+      onCreated(equipment);
       setTipo('');
       setMarca('');
       setModelo('');
@@ -54,12 +60,13 @@ export default function QuickCreateEquipo({ open, onOpenChange, clienteId, onCre
       }
       toast({ title: 'Error al crear equipo', description: msg || 'Ocurrió un error inesperado.', variant: 'destructive' });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={value => { if (!savingRef.current) onOpenChange(value); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('otTech.newEquipment','Nuevo Equipo')}</DialogTitle>

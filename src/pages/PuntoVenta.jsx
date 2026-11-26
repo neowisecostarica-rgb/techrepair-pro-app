@@ -1,3 +1,4 @@
+import { quoteConversionError, confirmedSale, createAttemptCategoryLoader } from '@/components/pos/saleInteraction';
 import { useI18n } from '@/i18n';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -40,7 +41,7 @@ function PuntoVentaContent() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const preloadedVenta = location.state?.venta;
-  const cotizacionOrigen = location.state?.cotizacion_origen;
+  const [cotizacionOrigen, setCotizacionOrigen] = useState(location.state?.cotizacion_origen);
   const carritoPreload = location.state?.carrito;
 
   // Parámetros de navegación OT → Cobrar Diagnóstico (vía query params de URL)
@@ -60,6 +61,7 @@ function PuntoVentaContent() {
   const [showCrearCliente, setShowCrearCliente] = useState(false);
   const [codigoNoEncontrado, setCodigoNoEncontrado] = useState('');
   const [ventaCompletada, setVentaCompletada] = useState(null);
+  const [receiptContext, setReceiptContext] = useState(null);
   const [tipoConcepto, setTipoConcepto] = useState(tipoConceptoInicial);
   const [otSeleccionada, setOtSeleccionada] = useState(otIdInicial);
   const [validacionesPendientes, setValidacionesPendientes] = useState([]);
@@ -108,7 +110,7 @@ function PuntoVentaContent() {
         setCarrito(preloadedVenta.items);
       }
     }
-  }, [preloadedVenta, cotizacionOrigen]);
+  }, [preloadedVenta]);
 
   const cancelDraft = async () => {
     if (isCancellingDraft || !ventaId || preloadedVenta?.estado !== 'borrador') return;
@@ -349,18 +351,26 @@ function PuntoVentaContent() {
         idempotency_key: idempotencyKey,
       });
 
-      if (!response?.data?.success) {
-        throw new Error(response?.data?.error || 'Error al procesar la venta en el servidor');
-      }
-
-      const venta = response.data.data;
-
-      return venta;
+      return confirmedSale(response, ventaData.organization_id, ventaData.branch_id);
     },
-    onSuccess: async (venta) => {
-      // Emisión de garantía (fuera del scope createSale v1)
-      await emitirGarantiaAutomatica(venta);
-
+    onSuccess: async ({ venta, postSalePending, recovered }) => {
+      // Snapshot confirmed sale references before resetting the cart.
+      const receiptOrder = ordenTrabajoObj?.id === venta.referencia_ot_id ? ordenTrabajoObj : null;
+      const receiptQuote = cotizacionOrigen?.id === venta.cotizacion_id ? cotizacionOrigen : null;
+      setReceiptContext({ order: receiptOrder, quote: receiptQuote, equipment: receiptOrder ? equipos.find(e => e.id === receiptOrder.equipo_id) : null, diagnosis: receiptOrder ? diagnosticos.find(d => d.orden_trabajo_id === receiptOrder.id) : null, postSalePending, recovered, warrantyStatus: 'checking' });
+      setVentaCompletada(venta);
+      setCarrito([]);
+      setClienteSeleccionado('');
+      setVentaId(null);
+      setOtSeleccionada('');
+      setOrdenTrabajoObj(null);
+      setCotizacionOrigen(null);
+      setIdempotencyKey(`ik_${crypto.randomUUID()}`);
+      // Do not repeat a confirmed sale or issue a warranty again on replay.
+      const warrantyStatus = postSalePending || recovered ? 'review' : await emitirGarantiaAutomatica(venta);
+      setReceiptContext(previous => previous ? { ...previous, warrantyStatus } : previous);
+      if (postSalePending) toast({ title: 'Venta registrada', description: 'Procesos posteriores pendientes de conciliación. No repitás el cobro.' });
+      queryClient.invalidateQueries({ queryKey: ['garantias-venta'] });
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
       queryClient.invalidateQueries({ queryKey: ['inventario'] });
       queryClient.invalidateQueries({ queryKey: ['cotizaciones'] });
@@ -371,13 +381,6 @@ function PuntoVentaContent() {
       queryClient.invalidateQueries({ queryKey: ['expediente-ot'] });
       queryClient.invalidateQueries({ queryKey: ['expediente-ventas'] });
 
-      setVentaCompletada(venta);
-      setCarrito([]);
-      setClienteSeleccionado('');
-      setVentaId(null);
-      setOtSeleccionada('');
-      setOrdenTrabajoObj(null);
-      setIdempotencyKey(`ik_${crypto.randomUUID()}`);
     },
     onError: (error) => {
       toast({ variant: 'destructive', title: t('pos.saleError','No se pudo completar la venta'), description: error.message || t('pos.saleErrorDesc','Ocurrió un error inesperado. La venta no se marcó como completada.') });
@@ -386,21 +389,21 @@ function PuntoVentaContent() {
 
   const emitirGarantiaAutomatica = async (venta) => {
     try {
-      if (!venta.cliente_id) return;
+      if (!venta.cliente_id) return 'not_applicable';
 
       const { organization: org } = await getIdentityOrganization(venta.organization_id);
       const config = org?.garantia_config;
 
-      if (!config) return;
+      if (!config) return 'not_applicable';
 
       const esReparacion = venta.tipo_concepto === 'reparacion';
       // La garantía de reparación empieza con la entrega del equipo, no con el cobro.
       // EntregarOT es el único emisor para origen OT y evita duplicar certificados.
-      if (esReparacion) return;
+      if (esReparacion) return 'delivery';
       const textoGarantia = esReparacion ? config.texto_reparaciones : config.texto_ventas;
       const mesesVigencia = esReparacion ? config.meses_vigencia_reparaciones : config.meses_vigencia_ventas;
 
-      if (!textoGarantia || !mesesVigencia) return;
+      if (!textoGarantia || !mesesVigencia) return 'not_applicable';
 
       // Verificar si ya existe garantía
       const garantiasExistentes = await base44.entities.Garantia.filter({
@@ -409,14 +412,14 @@ function PuntoVentaContent() {
         origen_id: esReparacion ? venta.referencia_ot_id : venta.id
       });
 
-      if (garantiasExistentes.length > 0) return;
+      if (garantiasExistentes.length > 0) return 'confirmed';
 
       const fechaEmision = new Date();
       const fechaInicio = new Date();
       const fechaFin = new Date();
       fechaFin.setMonth(fechaFin.getMonth() + mesesVigencia);
 
-      await base44.entities.Garantia.create({
+      const warranty = await base44.entities.Garantia.create({
         organization_id: venta.organization_id,
         branch_id: venta.branch_id,
         cliente_id: venta.cliente_id,
@@ -429,8 +432,10 @@ function PuntoVentaContent() {
         texto_snapshot: textoGarantia,
         creado_por: user?.id
       });
+      return warranty?.id ? 'confirmed' : 'review';
     } catch (error) {
       console.error('Error emitiendo garantía:', error);
+      return 'review';
     }
   };
 
@@ -534,7 +539,10 @@ function PuntoVentaContent() {
   const confirmarYProcesarVenta = async () => {
     // A synchronous lock covers the time before React can render isPending.
     // The same idempotency key remains in force for any server-side retry.
-    if (saleConfirmationLock.current || createVentaMutation.isPending) return;
+    if (saleConfirmationLock.current || createVentaMutation.isPending || ventaCompletada) return;
+    if (cotizacionOrigen && quoteConversionError(cotizacionOrigen)) {
+      toast({ variant: 'destructive', title: 'Conversión no disponible', description: quoteConversionError(cotizacionOrigen) }); return;
+    }
     saleConfirmationLock.current = true;
     setIsPreparingSale(true);
     setShowConfirmacionVenta(false);
@@ -583,12 +591,15 @@ function PuntoVentaContent() {
     }
 
     // P0: Validar stock disponible para productos físicos antes de procesar
+    const loadCategory = createAttemptCategoryLoader(async id => {
+      const rows = await base44.entities.CategoriaInventario.filter({ id, organization_id: effectiveOrgId });
+      return rows[0];
+    });
     for (const item of carrito) {
       if (item.tipo === 'producto') {
         const producto = inventario.find(p => p.id === item.referencia_id);
         if (producto) {
-          const categorias = await base44.entities.CategoriaInventario.filter({ id: producto.categoria_id });
-          const categoria = categorias[0];
+          const categoria = await loadCategory(producto.categoria_id);
           
           // Solo validar stock si permite_stock = true
           if (categoria?.permite_stock !== false && item.cantidad > producto.cantidad_disponible) {
@@ -618,8 +629,7 @@ function PuntoVentaContent() {
 
     await createVentaMutation.mutateAsync(ventaData);
     } catch (error) {
-      // The mutation's onError presents the server error. This catch prevents
-      // an unhandled rejection from the confirm button.
+      toast({ variant: 'destructive', title: 'No se confirmó la operación', description: error?.message || 'Verificá el historial antes de repetir el cobro.' });
     } finally {
       saleConfirmationLock.current = false;
       setIsPreparingSale(false);
@@ -666,7 +676,7 @@ function PuntoVentaContent() {
         </h1>
         <p className="text-slate-600 mb-4">
           {cotizacionOrigen 
-            ? t('pos.billingQuote','💼 Facturando cotización aprobada')
+            ? t('pos.billingQuote','Convirtiendo cotización aprobada en venta')
             : ventaId 
             ? t('pos.chargingWorkshop','💳 Cobrar trabajo de taller') 
             : t('pos.registerSales','Registra ventas que impactan caja e inventario inmediatamente')
@@ -697,7 +707,7 @@ function PuntoVentaContent() {
       {/* Panel de Contexto OT */}
       {ordenTrabajoObj && (
         <PanelContextoVenta 
-          ordenTrabajo={ordenTrabajoObj} 
+          ordenTrabajo={ordenTrabajoObj}
           effectiveOrgId={effectiveOrgId}
         />
       )}
@@ -1069,7 +1079,7 @@ function PuntoVentaContent() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!ventaCompletada} onOpenChange={() => setVentaCompletada(null)}>
+      <Dialog open={!!ventaCompletada} onOpenChange={open => { if (!open) { setVentaCompletada(null); setReceiptContext(null); } }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t('residual.salesReceipt','Comprobante de Venta')}</DialogTitle>
@@ -1077,9 +1087,10 @@ function PuntoVentaContent() {
           
           {ventaCompletada && (() => {
             // P0-001: Cargar datos relacionados para EnviarWhatsApp
-            const equipo = ordenTrabajoObj ? equipos.find(e => e.id === ordenTrabajoObj.equipo_id) : null;
-            const diagnostico = ordenTrabajoObj ? diagnosticos.find(d => d.orden_trabajo_id === ordenTrabajoObj.id) : null;
-            const cotizacion = ordenTrabajoObj ? cotizaciones.find(c => c.orden_trabajo_id === ordenTrabajoObj.id && c.estado === 'aprobada') : null;
+            const receiptOrder = receiptContext?.order;
+            const equipo = receiptContext?.equipment || (receiptOrder ? equipos.find(e => e.id === receiptOrder.equipo_id) : null);
+            const diagnostico = receiptContext?.diagnosis || (receiptOrder ? diagnosticos.find(d => d.orden_trabajo_id === receiptOrder.id) : null);
+            const cotizacion = receiptContext?.quote || cotizaciones.find(c => c.id === ventaCompletada.cotizacion_id) || null;
             
             // Buscar garantía (OT o Venta)
             const garantia = ventaCompletada.referencia_ot_id
@@ -1090,9 +1101,10 @@ function PuntoVentaContent() {
 
             return (
               <div className="space-y-6">
+                <Alert><AlertDescription>Venta registrada. Este comprobante comercial no acredita emisión de factura fiscal. {receiptContext?.postSalePending ? 'Procesos posteriores pendientes de conciliación. No repitás el cobro. ' : ''}{receiptContext?.warrantyStatus === 'review' ? 'Garantía pendiente de verificación.' : receiptContext?.warrantyStatus === 'delivery' ? 'Garantía de reparación al entregar el equipo.' : receiptContext?.warrantyStatus === 'checking' ? 'Verificando garantía…' : ''}</AlertDescription></Alert>
                 <TiqueteVenta 
                   venta={ventaCompletada} 
-                  onClose={() => setVentaCompletada(null)}
+                  onClose={() => { setVentaCompletada(null); setReceiptContext(null); }}
                 />
                 
                 <div className="pt-4 border-t">
@@ -1100,7 +1112,7 @@ function PuntoVentaContent() {
                     venta={ventaCompletada}
                     cliente={clientes.find(c => c.id === ventaCompletada.cliente_id)}
                     equipo={equipo}
-                    ordenTrabajo={ordenTrabajoObj}
+                    ordenTrabajo={receiptOrder}
                     diagnostico={diagnostico}
                     cotizacion={cotizacion}
                     garantia={garantia}

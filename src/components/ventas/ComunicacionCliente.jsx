@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,18 +28,24 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
   const [contenido, setContenido] = useState('');
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const submitLock = useRef(false);
+  const [prepared, setPrepared] = useState(null);
 
   const createMensajeMutation = useMutation({
-    mutationFn: (/** @type {Record<string, any>} */ data) => recordCustomerMessage(clienteId, data),
+    mutationFn: async (/** @type {Record<string, any>} */ data) => {
+      const result = await recordCustomerMessage(clienteId, data);
+      if (!result?.mensaje?.id || result.mensaje.cliente_id !== clienteId || result.mensaje.enviado !== false) throw new Error('No se confirmó el registro del mensaje.');
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customer360QueryKeys.detail(clienteId) });
-      setShowModal(false);
-      resetForm();
+      toast({ title: "Mensaje preparado", description: "Abre el canal externo para enviarlo manualmente." });
     },
     onError: (error) => toast({ variant: 'destructive', title: t('comm.errorRegister','No se pudo registrar el mensaje'), description: error?.message || t('comm.errorRetry','Inténtalo nuevamente.') }),
   });
 
   const resetForm = () => {
+    setPrepared(null);
     setPlantillaSeleccionada('');
     setAsunto('');
     setContenido('');
@@ -54,42 +60,37 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitLock.current || prepared || !clienteId || !contenido.trim() || !asunto.trim()) return;
     const formData = new FormData(e.target);
     const canal = formData.get('canal');
     const telefono = cliente?.telefono?.replace(/\D/g, '');
-
-    if (canal === 'email') {
-      if (!cliente?.email) {
-        toast({ title: t('comm.noEmail','Correo no disponible'), description: t('comm.noEmailDesc','El cliente no tiene correo electrónico registrado.') });
-        return;
-      }
-      window.open(`mailto:${encodeURIComponent(cliente.email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(contenido)}`, '_blank');
-    } else if (canal === 'whatsapp') {
-      if (!telefono) {
-        toast({ title: t('comm.noPhone','Teléfono no disponible'), description: t('comm.noPhoneDesc','El cliente no tiene teléfono registrado.') });
-        return;
-      }
-      window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(contenido)}`, '_blank', 'noopener,noreferrer');
-    } else if (canal === 'sms') {
-      if (!telefono) {
-        toast({ title: t('comm.noPhone','Teléfono no disponible'), description: t('comm.noPhoneDesc','El cliente no tiene teléfono registrado.') });
-        return;
-      }
-      window.open(`sms:${telefono}?body=${encodeURIComponent(contenido)}`, '_blank');
+    let url;
+    if (canal === 'email' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cliente?.email || '')) {
+      url = `mailto:${encodeURIComponent(cliente.email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(contenido)}`;
+    } else if (['whatsapp', 'sms'].includes(String(canal)) && /^[1-9]\d{7,14}$/.test(telefono || '')) {
+      url = canal === 'whatsapp' ? `https://wa.me/${telefono}?text=${encodeURIComponent(contenido)}` : `sms:${telefono}?body=${encodeURIComponent(contenido)}`;
+    } else {
+      toast({ title: 'Destinatario no válido', description: 'Revisa el correo o teléfono con código de país.', variant: 'destructive' });
+      return;
     }
-
-    createMensajeMutation.mutate({
-      cliente_id: clienteId,
-      orden_trabajo_id: ordenTrabajoId || null,
-      tipo: plantillaSeleccionada || 'general',
-      plantilla_usada: plantillaSeleccionada ? getPlantillas()[plantillaSeleccionada].nombre : null,
-      asunto: asunto,
-      contenido: contenido,
-      canal,
-      enviado: false,
-    });
+    submitLock.current = true;
+    try {
+      await createMensajeMutation.mutateAsync({
+        cliente_id: clienteId,
+        orden_trabajo_id: ordenTrabajoId || null,
+        tipo: plantillaSeleccionada || 'general',
+        plantilla_usada: plantillaSeleccionada ? getPlantillas()[plantillaSeleccionada].nombre : null,
+        asunto: asunto.trim(),
+        contenido: contenido.trim(),
+        canal,
+        enviado: false,
+      });
+      setPrepared(url);
+    } catch {
+      // onError presents the failure; never open an external channel.
+    } finally { submitLock.current = false; }
   };
 
   const tipoConfig = {
@@ -162,7 +163,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
         )}
       </div>
 
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={value => { if (!submitLock.current) { setShowModal(value); if (!value) resetForm(); } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t('closure.prepareCustomerMessage','Preparar Mensaje al Cliente')}</DialogTitle>
@@ -170,13 +171,13 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-900">
-                {t('comm.infoBanner','ℹ️ El sistema abrirá el canal externo elegido y registrará el intento. Debes confirmar el envío en WhatsApp, correo o SMS.')}
+                {t('comm.infoBanner','ℹ️ Primero registra el mensaje preparado. Después abre el canal externo y confirma el envío manualmente.')}
               </p>
             </div>
 
             <div className="space-y-2">
               <Label>{t('comm.templateOptional','Plantilla (Opcional)')}</Label>
-              <Select value={plantillaSeleccionada} onValueChange={handlePlantillaChange}>
+              <Select disabled={!!prepared || createMensajeMutation.isPending} value={plantillaSeleccionada} onValueChange={handlePlantillaChange}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('comm.selectTemplate','Seleccionar plantilla o escribir mensaje personalizado')} />
                 </SelectTrigger>
@@ -191,7 +192,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
             <div className="space-y-2">
               <Label>{t('comm.subject','Asunto *')}</Label>
               <Input
-                value={asunto}
+                disabled={!!prepared || createMensajeMutation.isPending} value={asunto}
                 onChange={(e) => setAsunto(e.target.value)}
                 placeholder={t('comm.subjectPlaceholder','Asunto del mensaje')}
                 required
@@ -201,7 +202,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
             <div className="space-y-2">
               <Label>{t('comm.content','Contenido *')}</Label>
               <Textarea
-                value={contenido}
+                disabled={!!prepared || createMensajeMutation.isPending} value={contenido}
                 onChange={(e) => setContenido(e.target.value)}
                 placeholder={t('comm.contentPlaceholder','Escribe el mensaje...')}
                 required
@@ -211,7 +212,7 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
 
             <div className="space-y-2">
               <Label>{t('comm.externalChannel','Canal externo *')}</Label>
-              <Select name="canal" defaultValue="email" required>
+              <Select disabled={!!prepared || createMensajeMutation.isPending} name="canal" defaultValue="email" required>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -224,16 +225,13 @@ export default function ComunicacionCliente({ clienteId, ordenTrabajoId, cliente
             </div>
 
             <div className="flex gap-3 justify-end">
-              <Button type="button" variant="outline" onClick={() => {
+              <Button type="button" disabled={createMensajeMutation.isPending} variant="outline" onClick={() => {
                 setShowModal(false);
                 resetForm();
               }}>
                 {t('comm.cancel','Cancelar')}
               </Button>
-              <Button type="submit" disabled={createMensajeMutation.isPending}>
-                <Send className="w-4 h-4 mr-2" />
-                {t('comm.openChannel','Abrir Canal y Registrar')}
-              </Button>
+              {prepared ? <Button asChild><a href={prepared} target="_blank" rel="noopener noreferrer">Abrir canal externo</a></Button> : <Button type="submit" disabled={createMensajeMutation.isPending}><Send className="w-4 h-4 mr-2" />Preparar y registrar</Button>}
             </div>
           </form>
         </DialogContent>

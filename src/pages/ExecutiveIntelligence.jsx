@@ -4,6 +4,8 @@ import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '@/components/guards/PageGuard';
 import { Button } from '@/components/ui/button';
+import ExecutiveTargets from '@/components/executive/ExecutiveTargets';
+import { exportExecutiveReport } from '@/components/executive/exportExecutiveReport';
 
 const definitions = [
  ['revenue','Ingresos registrados','money','CFO'],['expenses','Gastos registrados','money','CFO'],
@@ -22,6 +24,7 @@ function ExecutiveContent(){
  const [days,setDays]=useState(7);
  const [view,setView]=useState('General');
  const [branch,setBranch]=useState('');
+ const [exportError,setExportError]=useState('');
  const enabled=!!effectiveOrgId && capabilities.includes('ADVANCED_ANALYTICS');
  const q=useQuery({
   queryKey:['executive-report',effectiveOrgId,effectiveRole,user?.id,userAccount?.branch_id,days,branch],
@@ -43,7 +46,8 @@ function ExecutiveContent(){
    <div className="flex flex-wrap gap-2" aria-label="Período">{[1,7,30,90].map(d=><Button key={d} variant={days===d?'default':'outline'} onClick={()=>setDays(d)}>{d===1?"Últimas 24 horas":`Últimos ${d} días`}</Button>)}</div>
    <div className="flex flex-wrap gap-2" aria-label="Perspectiva">{['General','CEO','CFO','Gerencia'].map(v=><Button key={v} variant={view===v?'default':'outline'} onClick={()=>setView(v)}>{v}</Button>)}</div>
    {q.isLoading?<p>Preparando informe…</p>:q.isError?<div role="alert">No se pudo confirmar el informe o el acceso comercial. <Button variant="link" onClick={()=>q.refetch()}>Reintentar</Button></div>:q.data?.requires_branch?<section className="rounded-xl border p-5"><p>Seleccioná una sucursal para consultar el informe Business.</p><select className="mt-3 border rounded-lg p-2" value={branch} onChange={e=>setBranch(e.target.value)}><option value="">Seleccionar sucursal</option>{q.data.branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></section>:q.data&&<>
-    <Button variant="outline" onClick={()=>window.print()}>Imprimir / Guardar PDF</Button>
+    <Button variant="outline" onClick={()=>{try{setExportError('');exportExecutiveReport(q.data,definitions,view);}catch{setExportError('No se pudo generar el PDF.');}}}>Descargar informe PDF</Button>
+    {exportError&&<p role="alert">{exportError}</p>}
     {branch&&<Button variant="outline" onClick={()=>setBranch('')}>Cambiar sucursal</Button>}
     <p className="text-sm text-slate-500">Actualizado: {new Date(q.data.generated_at).toLocaleString('es-CR')} · {q.data.branch_id?'Sucursal autorizada':'Organización'}</p>
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -52,6 +56,7 @@ function ExecutiveContent(){
       return <article key={key} className="bg-white border border-slate-200 rounded-2xl p-5"><p className="text-xs uppercase tracking-wider text-teal-700">{section}</p><h2 className="text-sm text-slate-600 mt-2">{label}</h2><p className="text-2xl font-semibold mt-2 tabular-nums">{fmt(paired?item.current:item,kind)}</p>{paired&&<p className="text-xs text-slate-500 mt-2">Período anterior: {fmt(item.previous,kind)}</p>}{!paired&&<p className="text-xs text-slate-500 mt-2">Estado actual, no histórico.</p>}</article>;
      })}
     </div>
+    <ExecutiveTargets key={effectiveOrgId+":"+q.data.branch_id+":"+days} report={q.data}/>
     <section className="text-xs text-slate-500 space-y-1">{q.data.limitations.map(note=><p key={note}>{note}</p>)}</section>
    </>}
   </>}

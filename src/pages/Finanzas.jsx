@@ -37,6 +37,7 @@ import {
 import { es } from 'date-fns/locale';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import FiltrosFinanzas from '@/components/finanzas/FiltrosFinanzas';
+import ResumenCobros from '@/components/finanzas/ResumenCobros';
 
 export default function Finanzas() {
   return (
@@ -95,10 +96,11 @@ function FinanzasContent() {
         desde = startOfMonth(hoy);
         hasta = endOfMonth(hoy);
     }
-    setFechaDesde(desde.toISOString().split('T')[0]);
-    setFechaHasta(hasta.toISOString().split('T')[0]);
+    setFechaDesde(format(desde, 'yyyy-MM-dd'));
+    setFechaHasta(format(hasta, 'yyyy-MM-dd'));
   }, [periodoPreset]);
 
+  const validPeriod = !!fechaDesde && !!fechaHasta && fechaDesde <= fechaHasta;
   const { data: metrics, isLoading: isLoadingMetrics, isError: isErrorMetrics, refetch: retryMetrics } = useQuery({
     queryKey: ['financial-metrics', effectiveOrgId, effectiveRole, fechaDesde, fechaHasta, sucursalId, branchIdFijo],
     queryFn: async () => {
@@ -113,7 +115,7 @@ function FinanzasContent() {
       if (!res.data?.sales || !res.data?.marketing) throw new Error("FINANCIAL_METRICS_UNAVAILABLE");
       return res.data;
     },
-    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta && (!isBranchAdmin || !!branchIdFijo),
+    enabled: !!effectiveOrgId && validPeriod && (!isBranchAdmin || !!branchIdFijo),
     retry: false,
   });
 
@@ -123,16 +125,19 @@ function FinanzasContent() {
       let query = { organization_id: effectiveOrgId, estado: 'pagada' };
       if (branchIdFijo) query.branch_id = branchIdFijo;
       else if (sucursalId) query.branch_id = sucursalId;
-      const all = await base44.entities.Venta.filter(query, '-created_date', 500);
+      const response = await base44.functions.invoke('operationalGateway', { operation: 'read', method: 'filter', entity: 'Venta', filter: query, sort: '-created_date', limit: 500 });
+      const result = response?.data ?? response;
+      if (result?.error || !Array.isArray(result?.records) || result.records.length >= 500) throw new Error('Historial de ventas incompleto o no confirmado');
+      const all = result.records;
       return all.filter(v => {
         const d = new Date(v.created_date);
-        const desde = new Date(fechaDesde);
-        const hasta = new Date(fechaHasta);
-        hasta.setHours(23, 59, 59);
+        const desde = new Date(fechaDesde + "T00:00:00");
+        const hasta = new Date(fechaHasta + "T23:59:59.999");
+
         return d >= desde && d <= hasta;
       });
     },
-    enabled: !!effectiveOrgId && !!fechaDesde && !!fechaHasta && (!isBranchAdmin || !!branchIdFijo),
+    enabled: !!effectiveOrgId && validPeriod && (!isBranchAdmin || !!branchIdFijo),
     retry: false,
   });
 
@@ -150,7 +155,7 @@ function FinanzasContent() {
   const dataLinea = Object.keys(ventasPorDia)
     .sort()
     .map(fecha => ({
-      fecha: format(new Date(fecha), 'dd MMM', { locale: es }),
+      fecha: format(new Date(fecha + 'T12:00:00'), 'dd MMM', { locale: es }),
       total: ventasPorDia[fecha],
     }));
 
@@ -209,6 +214,8 @@ function FinanzasContent() {
         <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{t("sweep.branchUnassigned", "Sucursal no asignada")}</div>
       )}
 
+      {!validPeriod && fechaDesde && fechaHasta && <p role="alert">El rango de fechas no es válido.</p>}
+      {validPeriod && effectiveOrgId && (!isBranchAdmin || branchIdFijo) && <ResumenCobros key={effectiveOrgId + ':' + (branchIdFijo || sucursalId || 'all')} sales={ventasPagadas} loading={loadingSales} error={salesError} onRetry={retrySales} />}
       {/* ── ERROR ── */}
       {isErrorMetrics && !isLoadingMetrics && (
         <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4">

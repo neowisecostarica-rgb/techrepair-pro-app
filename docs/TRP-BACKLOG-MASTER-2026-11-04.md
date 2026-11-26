@@ -428,3 +428,6 @@ Idea de Dirección: invitar a los técnicos de TRP a visitar y seguir la cuenta 
 
 ## TRP Production First · 2026-11-26
 Dirección autoriza implementación directa en principal y recuperación selectiva de laboratorios existentes; no nuevos laboratorios. Preservar datos históricos y evitar efectos externos reales. operationalGateway: contención de mutaciones SupplierPayment y update/delete PurchaseInvoice; alta factura valida proveedor activo tenant, fechas, importe, saldo inicial cero y consulta de duplicados. No garantiza unicidad concurrente; writer financiero durable y QA runtime pendientes. No declarar pagos habilitados ni publicación certificada.
+
+## MB-10A · NEOWISE Ads · 2026-11-26
+Integrados catálogo adPlacements.js, componente WorkspaceAdSlot.jsx y montaje superior en Layout.jsx. Política null por defecto: sin anuncios, sin espacio reservado ni llamadas externas. Catálogo lateral definido, montaje lateral pendiente. No inferir elegibilidad de Organization.plan legacy. Requiere política backend por tenant, consentimiento comercial, plan gratuito confirmado y configuración de formatos; preview no equivale a campaña activa. Typecheck/lint PASS. QA visual final pendiente. Deploy público a cargo de Dirección.

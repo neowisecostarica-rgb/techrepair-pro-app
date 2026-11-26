@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarMenu from '@/components/layout/SidebarMenu';
+import WorkspaceAdSlot from '@/components/advertising/WorkspaceAdSlot';
 import { MENU_ITEMS } from '@/config/menuConfig';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
@@ -542,6 +543,7 @@ function LayoutContent({ children, currentPageName }) {
       <main data-trp-scroll-root className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
         <div className="px-5 py-6 md:px-8 md:py-8 xl:px-10">
           <WorkspaceHeader currentPageName={currentPageName} t={t} onOpenMenu={() => setMobileMenuOpen(true)} />
+          <WorkspaceAdSlot policy={null} organizationId={effectiveOrgId} page={currentPageName} placement="workspace_top" />
           {children}
         </div>
       </main>

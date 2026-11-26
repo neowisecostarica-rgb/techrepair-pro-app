@@ -21,7 +21,7 @@ export default function ArqueoPreliminar({sales, loading, error, branchId, singl
  const save=async()=>{if(lock.current||!confirmed)return;lock.current=true;setBusy(true);setMessage('');try{const r=await invoke('save',values);if(!r.id)throw new Error();await history.refetch();setMessage('Borrador declarado guardado.');}catch{setMessage('Guardado no confirmado. Revisá el historial antes de repetir.');}finally{lock.current=false;setBusy(false);}};
  const labels = {opening:'Fondo inicial',extra:'Otras entradas en efectivo',withdrawals:'Retiros y gastos en efectivo',counted:'Efectivo contado'};
  const seen=new Set();
- let cash=0,uncertain=0,invalid=false;
+ let cash=0,uncertain=0,invalid=!Array.isArray(sales);
  for(const sale of sales||[]){
   if(!sale.id||seen.has(sale.id)||sale.estado!=='pagada'||typeof sale.total!=='number'||!Number.isFinite(sale.total)||sale.total<0){invalid=true;continue;}
   seen.add(sale.id);

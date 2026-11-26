@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuthContext } from '@/components/contexts/AuthContext';
 import PageGuard from '@/components/guards/PageGuard';
 import { Button } from '@/components/ui/button';
+import ExecutiveSchedule from '@/components/executive/ExecutiveSchedule';
 import ExecutiveHistory from '@/components/executive/ExecutiveHistory';
 import ExecutiveTargets from '@/components/executive/ExecutiveTargets';
 import { exportExecutiveReport } from '@/components/executive/exportExecutiveReport';
@@ -58,6 +59,7 @@ function ExecutiveContent(){
      })}
     </div>
     <ExecutiveTargets key={effectiveOrgId+":"+q.data.branch_id+":"+days} report={q.data} orgId={effectiveOrgId} userId={user?.id}/>
+    <ExecutiveSchedule key={effectiveOrgId+":"+q.data.branch_id+":"+days} orgId={effectiveOrgId} userId={user?.id} report={q.data}/>
     <ExecutiveHistory key={effectiveOrgId+":"+q.data.branch_id+":"+days} orgId={effectiveOrgId} userId={user?.id} report={q.data} definitions={definitions} view={view}/>
     <section className="text-xs text-slate-500 space-y-1">{q.data.limitations.map(note=><p key={note}>{note}</p>)}</section>
    </>}

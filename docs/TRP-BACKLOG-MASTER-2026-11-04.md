@@ -6,6 +6,10 @@ Esta sección es la única cola operativa vigente; el histórico debajo es evide
 ## Directrices vigentes
 Production First: implementar en principal, recuperar selectivamente candidatos útiles, no crear laboratorios ni ramas. No promover cuarentena exclusiva de QA ni copiar datos. Dirección realiza deploy público. Preservar históricos Compu Store; no cobros, correos, invitaciones, facturas fiscales reales de prueba ni infraestructura de pago sin autorización. QA integral al final; controles mínimos por cambio. Revenue First: entrega funcional Compu Store primero; separar lanzamiento general e internacional. No repetir auditorías cerradas.
 
+## Programa de cierre aprobado · tres MEGAS
+MEGA 01 Cierre funcional: MB-08/09/10/14. MEGA 02 Integración y seguridad: MB-07/07B/11 y dependencias pendientes de MEGA 01. MEGA 03 QA, correcciones y entrega: MB-12/13. MB-15 diferido. Este agrupamiento reemplaza la secuencia anterior sin duplicar pendientes. No agregar alcance.
+Avance: configuración de frecuencia, hora, zona horaria y entrega interna de informes, por tenant/ámbito/período, revisiones append-only y RLS cerrada. Motor scheduler no activo: requiere principal autorizado, clave durable por ocurrencia, control de concurrencia y QA. Sin registros reales ni envío.
+
 ## Cola única de ejecución (P0 bloqueante; P1 entrega; P2 posterior)
 | ID canónico | Prioridad / estado | Alcance restante y aceptación | Alias históricos |
 |---|---|---|---|

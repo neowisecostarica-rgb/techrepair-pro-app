@@ -36,11 +36,29 @@ Deno.serve(async req => {
       if (!branches?.[0]) return result({error:'Sucursal no autorizada'},403);
     }
     const action = body.action || 'report';
-    if (!['report','save_snapshot','history','save_targets','targets'].includes(action)) return result({error:'Acción no admitida'},400);
+    if (!['report','save_snapshot','history','save_targets','targets','schedule','save_schedule'].includes(action)) return result({error:'Acción no admitida'},400);
     const scopeKey = branch ? 'branch:'+branch : 'organization';
     const storageScope = {organization_id:auth.organizationId,scope_key:scopeKey,days};
     const entities = base44.asServiceRole.entities;
     const targetKeys = ['sales','orders','deliveries','completed_activities','blocked_activities','open_quotes'];
+    if(action==='schedule'){
+      const rows=await entities.ExecutiveScheduleRevision.filter(storageScope,'-created_date',1);
+      if(!Array.isArray(rows))return result({error:'Configuración no disponible'},503);
+      return result({ok:true,schedule:rows[0]?.schedule??null,automation_active:false});
+    }
+    if(action==='save_schedule'){
+      const v=body.schedule;
+      if(!v||typeof v.requested!=='boolean'||!['daily','weekly','monthly'].includes(v.frequency)||
+        !Number.isInteger(v.weekday)||v.weekday<1||v.weekday>7||
+        !Number.isInteger(v.monthday)||v.monthday<1||v.monthday>28||
+        typeof v.time!=='string'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(v.time)||
+        typeof v.timezone!=='string'||v.timezone.length>80)return result({error:'Configuración inválida'},422);
+      try{new Intl.DateTimeFormat('en',{timeZone:v.timezone}).format(new Date());}catch{return result({error:'Zona horaria inválida'},422);}
+      const schedule={requested:v.requested,frequency:v.frequency,weekday:v.weekday,monthday:v.monthday,time:v.time,timezone:v.timezone,delivery:'in_app'};
+      const record=await entities.ExecutiveScheduleRevision.create({...storageScope,actor_id:user.id,schedule,saved_at:new Date().toISOString()});
+      if(!record?.id)return result({error:'Guardado no confirmado'},503);
+      return result({ok:true,id:record.id,automation_active:false});
+    }
     if (action === 'targets') {
       const rows = await entities.ExecutiveTargetRevision.filter(storageScope,'-created_date',1);
       if (!Array.isArray(rows)) return result({error:'Objetivos no disponibles'},503);

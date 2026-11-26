@@ -22,6 +22,10 @@ Production First: implementar en principal, recuperar selectivamente candidatos 
 
 Orden: MB-07/07B → MB-08/09 → MB-10/11/14 (independientes en paralelo conceptual) → MB-12 → MB-13; MB-15 posterior. Si falta dependencia avanzar en otro bloque sin marcar cerrado.
 
+## Ejecución paralela aprobada · 26/11
+MEGA A = MB-07/07B; MEGA B = MB-08/09; MEGA C = MB-10; MEGA D = MB-11/14; MEGA E = MB-12; MEGA F = MB-13; MEGA G = MB-15 diferido. Frentes coordinados en principal, no agentes autónomos ni ramas. Avanzar tareas compatibles sin esperar dependencias bloqueadas.
+Avance de este lote: Gastos lectura explícita, fecha civil, guard de registro, errores, eliminación no disponible y validación backend; Ads montaje lateral escritorio aún policy null; Ejecutivo actividades por relación OT, saldo nominal registrado de proveedores, impresión nativa del navegador (no PDF certificado). Sin datos reales modificados. Ledger durable, cierre caja, facturación, automatización e historial ejecutivo pendientes. QA runtime final pendiente.
+
 ## Evidencia preservada / no repetir
 - MB-01 promoción QA-002 CP 6b084a59c7a6406771f5d089 / 1d689f8; 57/57 focalizadas. Taller/repuestos/calidad CP 6b084de16db8d8460233ddbd / 92479cb; guard local y confirmación respuestas.
 - Postventa/AP/CRM CP 6b085894c7666da3d3cdacc0 / 7984cf0; resumen cobros CP 6b0873d22a8594e7f2a3d23c / fd08ca5; protección backend AP CP 6b087ba4b6400b19c05c3888 / 1ced957.

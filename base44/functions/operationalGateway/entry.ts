@@ -366,6 +366,22 @@ async function validateMutationContext(base44, authorization, decision, entityNa
     if (!scope.ok) return scope;
   }
 
+  if (entityName === 'Expense') {
+    if (operation === 'delete') return { ok: false, status: 409, error: 'La eliminación requiere conciliación financiera' };
+    const merged = { ...current, ...data };
+    const date = merged.date;
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date ||
+      typeof merged.amount !== 'number' || !Number.isFinite(merged.amount) || merged.amount <= 0 ||
+      !Number.isSafeInteger(Math.round(merged.amount * 100)) ||
+      !['alquiler','servicios','salarios','marketing','transporte','otros'].includes(merged.category) ||
+      !['once','monthly'].includes(merged.frequency ?? 'once') ||
+      (merged.payment_method != null && !['efectivo','tarjeta','transferencia'].includes(merged.payment_method))) {
+      return { ok: false, status: 422, error: 'Datos de gasto inválidos' };
+    }
+    return {ok:true,data:pickAllowedFields(data,['date','amount','category','frequency','is_fixed','description','payment_method'])};
+  }
+
   if (entityName === 'PurchaseInvoice' && operation === 'create') {
     const supplierId = cleanId(data.supplier_id);
     const invoiceNumber = cleanId(data.invoice_number);

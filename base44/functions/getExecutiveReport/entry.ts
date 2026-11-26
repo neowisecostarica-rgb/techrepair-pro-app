@@ -43,13 +43,20 @@ Deno.serve(async req => {
       return rows;
     };
     const safeRead = async (entity,filter=scope) => {try {return await read(entity,filter);}catch{return null;}};
-    const [sales,orders,quotes,expenses,customers,inventory,warranties] = await Promise.all([
-      safeRead('Venta'),safeRead('OrdenTrabajo'),safeRead('Cotizacion'),safeRead('Expense'),safeRead('Cliente'),safeRead('Inventario'),safeRead('Garantia')
+    const [sales,orders,quotes,expenses,customers,inventory,warranties,activities,invoices] = await Promise.all([
+      safeRead('Venta'),safeRead('OrdenTrabajo'),safeRead('Cotizacion'),safeRead('Expense'),safeRead('Cliente'),safeRead('Inventario'),safeRead('Garantia'),safeRead('ActividadTecnica',{organization_id:auth.organizationId}),safeRead('PurchaseInvoice')
     ]);
     const inRange = (rows,field,from,to) => rows.filter(x=>{const n=Date.parse(x[field]);return Number.isFinite(n)&&n>=from&&n<to;});
     const pair = (rows,field,fn) => rows === null ? null : {current:fn(inRange(rows,field,start,now)),previous:fn(inRange(rows,field,previous,start))};
     const count = rows=>rows.length;
     const sum = (rows,field) => rows.every(x=>typeof x[field]==='number'&&Number.isFinite(x[field])&&x[field]>=0) ? rows.reduce((a,x)=>a+x[field],0) : null;
+    // Activities inherit branch authority from their work order, not a client field.
+    const orderIds = new Set((orders ?? []).map(o=>o.id));
+    const scopedActivities = activities === null || orders === null ? null :
+      activities.filter(a=>a.soft_deleted!==true && orderIds.has(a.orden_trabajo_id));
+    const completedActivities = scopedActivities?.filter(a=>a.estado==='finalizada') ?? null;
+    const invoiceBalance = invoices === null || invoices.some(i=>typeof i.total_amount!=='number'||!Number.isFinite(i.total_amount)||typeof i.paid_amount!=='number'||!Number.isFinite(i.paid_amount)||i.paid_amount<0||i.paid_amount>i.total_amount) ? null :
+      invoices.reduce((acc,i)=>acc+i.total_amount-i.paid_amount,0);
     const paid = sales?.filter(x=>x.estado==='pagada') ?? null;
     const currentQuotes = quotes?.filter(x=>['borrador','enviada','aprobada'].includes(x.estado)&&x.estado_conversion!=='CONVERTIDA') ?? null;
     return result({ok:true,generated_at:new Date(now).toISOString(),days,branch_id:branch,package_id:entitlement.package_id,
@@ -58,12 +65,15 @@ Deno.serve(async req => {
         orders:pair(orders,'created_date',count),deliveries:pair(orders,'delivered_at',count),
         quotes:pair(quotes,'created_date',count),customers:pair(customers,'created_date',count),
         expenses:pair(expenses,'date',rows=>sum(rows,'amount')),
+        completed_activities:pair(completedActivities,'ended_at',count),
+        blocked_activities:scopedActivities===null?null:scopedActivities.filter(a=>a.estado==='bloqueada').length,
+        supplier_balance:invoiceBalance,
         active_orders:orders===null?null:orders.filter(x=>!CLOSED.has(x.estado)).length,
         open_quotes:currentQuotes===null?null:currentQuotes.length,
         inventory_records:inventory===null?null:inventory.length,
         active_warranties:warranties===null?null:warranties.filter(x=>x.estado==='ACTIVA'&&typeof x.fecha_fin==='string'&&x.fecha_fin>=new Date(now).toISOString().slice(0,10)).length
       },
-      limitations:['Períodos móviles, no cierres contables.','Importes nominales; moneda histórica por documento no acreditada.','Una fuente incompleta o no disponible aparece sin indicador.','Las ventas se atribuyen a su fecha de registro, no a fecha de liquidación bancaria.']
+      limitations:['Saldo de proveedores según importes registrados, no conciliación bancaria.','Períodos móviles, no cierres contables.','Importes nominales; moneda histórica por documento no acreditada.','Una fuente incompleta o no disponible aparece sin indicador.','Las ventas se atribuyen a su fecha de registro, no a fecha de liquidación bancaria.']
     });
   } catch {return result({error:'No se pudo generar el informe'},500);}
 });

@@ -622,17 +622,26 @@ Deno.serve(async (req) => {
     const org = (await base44.asServiceRole.entities.Organization.filter({ id: auth.organizationId, status: "active" }, "-created_date", 1))?.[0];
     const entitlement = org ? await resolveEffectiveEntitlement(base44, org) : null;
     if (!entitlement?.capabilities?.includes("ENTERPRISE_OFFBOARDING")) return Response.json({ error: "La organizaci\xF3n no tiene Offboarding Enterprise habilitado", code: "ENTERPRISE_ENTITLEMENT_REQUIRED" }, { status: 403 });
+    const fixedBranch = auth.pilotBranchId || (auth.role === "BRANCH_ADMIN" ? auth.branchId : null);
+    if ((auth.role === "BRANCH_ADMIN" || auth.pilotMode) && !fixedBranch || (auth.isSuperAdmin && org?.controlled_pilot_mode === true)) return Response.json({error:"Ambito no autorizado"},{status:403});
+    if (fixedBranch && body.branch_id && body.branch_id !== fixedBranch) return Response.json({error:"Sucursal no autorizada"},{status:403});
     const action = String(body.action || "").toUpperCase(), svc = base44.asServiceRole.entities;
     if (action === "OPEN") {
+      const selectedBranch = fixedBranch || body.branch_id || null;
+      if(selectedBranch && !await one(svc.Branch,{id:selectedBranch,organization_id:auth.organizationId,active:true})) return Response.json({error:"Sucursal no autorizada"},{status:403});
       const name = clean2(body.subject_name, 240);
       if (!name) return Response.json({ error: "Persona requerida" }, { status: 422 });
       const key = clean2(body.operation_key, 160) || crypto.randomUUID(), prior = await one(svc.EnterpriseOffboarding, { organization_id: auth.organizationId, operation_key: key });
-      if (prior) return Response.json({ success: true, offboarding: prior, idempotent: true });
+      if (prior) {
+        if (fixedBranch && prior.branch_id !== fixedBranch) return Response.json({error:"Operacion fuera de sucursal"},{status:403});
+        return Response.json({error:"Operacion anterior requiere conciliacion",code:"REPLAY_RECONCILIATION_REQUIRED"},{status:409});
+      }
       const openCases = await svc.EnterpriseOffboarding.filter({ organization_id: auth.organizationId, status: "OPEN" }, "-created_date", 500);
+      if(!Array.isArray(openCases)||openCases.length>=500)return Response.json({error:"Cobertura de casos no confirmada"},{status:503});
       const candidate = { subject_reference: body.subject_reference, subject_email: body.subject_email, subject_name: name };
       const duplicate = (openCases || []).find((x) => sameSubject(candidate, { assignee_reference: x.subject_reference, assignee_email: x.subject_email, assignee_name: x.subject_name }));
       if (duplicate) return Response.json({ error: "Ya existe un offboarding abierto para esta persona", code: "OFFBOARDING_ALREADY_OPEN" }, { status: 409 });
-      const rec2 = await svc.EnterpriseOffboarding.create({ organization_id: auth.organizationId, branch_id: auth.branchId || body.branch_id || null, subject_reference: clean2(body.subject_reference, 240) || clean2(body.subject_email, 254), subject_name: name, subject_email: clean2(body.subject_email, 254), status: "OPEN", zero_time: body.zero_time || null, opened_at: (/* @__PURE__ */ new Date()).toISOString(), opened_by_user_id: user.id, notes: clean2(body.notes, 2e3), operation_key: key });
+      const rec2 = await svc.EnterpriseOffboarding.create({ organization_id: auth.organizationId, branch_id: selectedBranch, subject_reference: clean2(body.subject_reference, 240) || clean2(body.subject_email, 254), subject_name: name, subject_email: clean2(body.subject_email, 254), status: "OPEN", zero_time: body.zero_time || null, opened_at: (/* @__PURE__ */ new Date()).toISOString(), opened_by_user_id: user.id, notes: clean2(body.notes, 2e3), operation_key: key });
       for (const item of (Array.isArray(body.access_items) ? body.access_items : []).slice(0, 50)) {
         const system = clean2(item.system_name, 240);
         if (system) await svc.OffboardingAccessItem.create({ organization_id: auth.organizationId, branch_id: rec2.branch_id || null, offboarding_id: rec2.id, system_name: system, owner_team: clean2(item.owner_team, 240), status: "PENDING" });
@@ -642,12 +651,12 @@ Deno.serve(async (req) => {
     }
     const id = clean2(body.offboarding_id, 160), rec = await one(svc.EnterpriseOffboarding, { id, organization_id: auth.organizationId });
     if (!rec) return Response.json({ error: "Caso no encontrado" }, { status: 404 });
-    if (auth.role === "BRANCH_ADMIN" && auth.branchId && rec.branch_id && rec.branch_id !== auth.branchId) return Response.json({ error: "Caso fuera de la sucursal autorizada" }, { status: 403 });
+    if (fixedBranch && rec.branch_id !== fixedBranch) return Response.json({ error: "Caso fuera de la sucursal autorizada" }, { status: 403 });
     if (action === "CONFIRM_ACCESS") {
       const item = await one(svc.OffboardingAccessItem, { id: clean2(body.access_item_id, 160), offboarding_id: rec.id, organization_id: auth.organizationId });
-      if (!item) return Response.json({ error: "Acceso no encontrado" }, { status: 404 });
+      if (!item || (item.branch_id || null) !== (rec.branch_id || null)) return Response.json({ error: "Acceso no encontrado" }, { status: 404 });
       const status = ["CONFIRMED", "NOT_APPLICABLE"].includes(body.status) ? body.status : "CONFIRMED", key = clean2(body.operation_key, 160) || `offboarding-access:${item.id}:${status}`;
-      if (item.status === status) return Response.json({ success: true, item, idempotent: true });
+      if (item.status === status) return Response.json({error:"Confirmacion anterior requiere conciliacion",code:"REPLAY_RECONCILIATION_REQUIRED"},{status:409});
       if (item.status !== "PENDING") return Response.json({ error: "El acceso ya fue resuelto con otro estado", code: "ACCESS_ALREADY_RESOLVED" }, { status: 409 });
       const updated = await svc.OffboardingAccessItem.update(item.id, { status, confirmed_at: (/* @__PURE__ */ new Date()).toISOString(), confirmed_by_user_id: user.id, evidence_note: clean2(body.evidence_note, 1e3) });
       await appendAuditEvent(base44, { eventType: "OFFBOARDING_ACCESS_CONFIRMED", principalClass: auth.principalClass, actorUserId: user.id, actorPrimaryRole: auth.persistedRole, organizationId: auth.organizationId, branchId: rec.branch_id, resourceType: "OffboardingAccessItem", resourceId: item.id, commandPolicyId: "CP-ENTERPRISE-OFFBOARD-001", correlationId: key, operationKey: key, auditOperationId: `offboarding-access:${item.id}:${status}`, operationSemantics: { action: "CONFIRM_ACCESS", status }, priorState: { status: item.status }, newState: { status, system_name: item.system_name } });
@@ -655,10 +664,11 @@ Deno.serve(async (req) => {
     }
     if (action === "CLOSE") {
       const key = clean2(body.operation_key, 160) || `offboarding-close:${rec.id}`;
-      if (rec.status === "CLOSED") return Response.json({ success: true, offboarding: rec, idempotent: true });
+      if (rec.status === "CLOSED") return Response.json({error:"Cierre anterior requiere conciliacion",code:"REPLAY_RECONCILIATION_REQUIRED"},{status:409});
       const assignments = await svc.AssetAssignment.filter({ organization_id: auth.organizationId, status: "ACTIVE" }, "-assigned_at", 500);
       const subjectAssets = (assignments || []).filter((a) => sameSubject(rec, a));
       const access = await svc.OffboardingAccessItem.filter({ organization_id: auth.organizationId, offboarding_id: rec.id }, "-created_date", 100);
+      if(!Array.isArray(assignments)||assignments.length>=500||!Array.isArray(access)||access.length>=100)return Response.json({error:"Cobertura de cierre no confirmada"},{status:503});
       const pending = (access || []).filter((x) => x.status === "PENDING");
       if (subjectAssets.length || pending.length) return Response.json({ error: "El caso tiene activos o accesos pendientes", code: "OFFBOARDING_NOT_READY", pending_assets: subjectAssets.length, pending_access: pending.length }, { status: 409 });
       const updated = await svc.EnterpriseOffboarding.update(rec.id, { status: "CLOSED", closed_at: (/* @__PURE__ */ new Date()).toISOString(), closed_by_user_id: user.id });

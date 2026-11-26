@@ -24,7 +24,13 @@ Deno.serve(async req => {
     const fixed = auth.pilotBranchId || (auth.role === 'BRANCH_ADMIN' ? auth.branchId : null);
     if ((auth.role === 'BRANCH_ADMIN' || auth.pilotMode) && !fixed) return result({error:'Sucursal no autorizada'},403);
     if (fixed && body.branch_id && body.branch_id !== fixed) return result({error:'Sucursal no autorizada'},403);
-    const branch = fixed || (typeof body.branch_id === 'string' && body.branch_id.trim() ? body.branch_id.trim() : null);
+    let branch = fixed || (typeof body.branch_id === 'string' && body.branch_id.trim() ? body.branch_id.trim() : null);
+    if (!branch && entitlement.package_id === 'advanced') {
+      const branches = await base44.asServiceRole.entities.Branch.filter({organization_id:auth.organizationId,active:true},'-created_date',500);
+      if (!Array.isArray(branches) || branches.length >= 500) return result({error:'Sucursales no disponibles'},503);
+      if (branches.length === 1) branch = branches[0].id;
+      else return result({ok:true,requires_branch:true,branches:branches.map(x=>({id:x.id,name:x.name})),package_id:entitlement.package_id});
+    }
     if (branch) {
       const branches = await base44.asServiceRole.entities.Branch.filter({id:branch,organization_id:auth.organizationId},'-created_date',1);
       if (!branches?.[0]) return result({error:'Sucursal no autorizada'},403);

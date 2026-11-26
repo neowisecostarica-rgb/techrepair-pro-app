@@ -20,14 +20,15 @@ function ExecutiveContent(){
  const {effectiveOrgId,effectiveRole,user,userAccount,capabilities} = useAuthContext();
  const [days,setDays]=useState(7);
  const [view,setView]=useState('General');
+ const [branch,setBranch]=useState('');
  const enabled=!!effectiveOrgId && capabilities.includes('ADVANCED_ANALYTICS');
  const q=useQuery({
-  queryKey:['executive-report',effectiveOrgId,effectiveRole,user?.id,userAccount?.branch_id,days],
+  queryKey:['executive-report',effectiveOrgId,effectiveRole,user?.id,userAccount?.branch_id,days,branch],
   enabled,retry:false,staleTime:60000,
   queryFn:async()=>{
-   const response=await base44.functions.invoke('getExecutiveReport',{days,organization_id:effectiveOrgId});
+   const response=await base44.functions.invoke('getExecutiveReport',{days,organization_id:effectiveOrgId,...(branch?{branch_id:branch}:{})});
    const data=response?.data??response;
-   if(data?.ok!==true||!data.metrics) throw new Error(data?.error||'No se confirmó el informe');
+   if(data?.ok!==true||(!data.metrics&&!data.requires_branch)) throw new Error(data?.error||'No se confirmó el informe');
    return data;
   }
  });
@@ -40,7 +41,8 @@ function ExecutiveContent(){
   {!enabled?<p role="alert">Disponible para administradores con acceso Business o Corporate.</p>:<>
    <div className="flex flex-wrap gap-2" aria-label="Período">{[7,30,90].map(d=><Button key={d} variant={days===d?'default':'outline'} onClick={()=>setDays(d)}>Últimos {d} días</Button>)}</div>
    <div className="flex flex-wrap gap-2" aria-label="Perspectiva">{['General','CEO','CFO','Gerencia'].map(v=><Button key={v} variant={view===v?'default':'outline'} onClick={()=>setView(v)}>{v}</Button>)}</div>
-   {q.isLoading?<p>Preparando informe…</p>:q.isError?<div role="alert">No se pudo confirmar el informe o el acceso comercial. <Button variant="link" onClick={()=>q.refetch()}>Reintentar</Button></div>:q.data&&<>
+   {q.isLoading?<p>Preparando informe…</p>:q.isError?<div role="alert">No se pudo confirmar el informe o el acceso comercial. <Button variant="link" onClick={()=>q.refetch()}>Reintentar</Button></div>:q.data?.requires_branch?<section className="rounded-xl border p-5"><p>Seleccioná una sucursal para consultar el informe Business.</p><select className="mt-3 border rounded-lg p-2" value={branch} onChange={e=>setBranch(e.target.value)}><option value="">Seleccionar sucursal</option>{q.data.branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></section>:q.data&&<>
+    {branch&&<Button variant="outline" onClick={()=>setBranch('')}>Cambiar sucursal</Button>}
     <p className="text-sm text-slate-500">Actualizado: {new Date(q.data.generated_at).toLocaleString('es-CR')} · {q.data.branch_id?'Sucursal autorizada':'Organización'}</p>
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
      {definitions.filter(d=>view==='General'||d[3]===view).map(([key,label,kind,section])=>{

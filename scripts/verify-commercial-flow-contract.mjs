@@ -101,7 +101,9 @@ pass('work orders cannot finalize without successful technical QA evidence',
   && qaEvidence.includes('QA_LATER_INCOMPATIBLE_RESULT'));
 
 pass('repair warranty issuance is deferred until delivery',
-  pos.includes('if (esReparacion) return;'));
+  pos.includes("if (esReparacion) return 'delivery';")
+  && pos.indexOf("if (esReparacion) return 'delivery';") < pos.indexOf('base44.entities.Garantia.create')
+  && pos.includes("warrantyStatus === 'delivery'"));
 
 pass('delivery evidence and warranty are owned by one recoverable backend command',
   delivery.includes("functions.invoke('deliverWorkOrder'")
